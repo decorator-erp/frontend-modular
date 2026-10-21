@@ -1,0 +1,124 @@
+<!-- Translated from B-01 in PERA App - Admin.html -->
+<!-- .ad-head/.ad-toolbar/.filt-rail/.tbl/.who-row/.av-c/.st-pill -->
+<div class="bg-bg min-h-full">
+  <!-- ============ .pg header ============ -->
+  <pera-page-header
+    title="Employees"
+    [count]="
+      activeCount() +
+      ' ACTIVE · ' +
+      inactiveCount() +
+      ' INACTIVE · ' +
+      (departmentOptions().length - 1) +
+      ' DEPARTMENTS'
+    "
+  >
+    <div actions class="flex gap-2 items-center">
+      <pera-button variant="secondary" iconStart="file-text" (click)="exportCsv()"
+        >Export CSV</pera-button
+      >
+      <ng-container *peraCan="'employees.create'">
+        <pera-button variant="primary" iconStart="plus" (click)="openAdd()"
+          >Add employee</pera-button
+        >
+      </ng-container>
+    </div>
+
+    <div toolbar class="flex items-start gap-2.5 flex-wrap w-full">
+      <!-- The Department / Role / Status chips this bar printed were inert `<span>`s.
+           FilterBar wires exactly those three, plus the search box that already worked.
+           The Density chip is dropped: pera-data-table owns density now. -->
+      <pera-filter-bar
+        class="flex-1 min-w-0"
+        [search]="true"
+        [facets]="facets()"
+        [value]="filters()"
+        (valueChange)="onFilters($event)"
+        (clearAll)="onClearFilters()"
+      />
+    </div>
+  </pera-page-header>
+
+  <!-- Single filter surface: the FilterBar above. The Department / Role / Status rail
+       was removed at the T056 gate (user ruling 2026-07-10) — the hubs prototype has
+       no rail, and every facet it carried is already on the bar. Its per-facet counts
+       survive inside the dropdown option labels. -->
+  <div>
+    <!-- ============ .tbl ============ -->
+    <div class="bg-bg overflow-x-auto">
+      @if (loading()) {
+        <div class="px-7 py-10 text-center">
+          <pera-skeleton [height]="240" rounded="md" />
+        </div>
+      } @else if (!pageRows().length) {
+        <pera-empty
+          title="No employees match"
+          description="Adjust the filters or invite someone new."
+        />
+      } @else {
+        <!-- The drafted columns() + five cell templates go live here. bulkActions and
+             selectable are deliberately NOT passed (Principle IV, decision D3). -->
+        <div class="p-6">
+          <pera-data-table
+            density="compact"
+            [columns]="columns()"
+            [rows]="pageRows()"
+            [rowId]="rowId"
+            [sortBy]="sort().sortBy"
+            [sortDir]="sort().sortDir"
+            [page]="page()"
+            [pageSize]="pageSize"
+            [totalCount]="totalCount()"
+            [hasRowClick]="true"
+            (sortChange)="onSort($event)"
+            (pageChange)="onPage($event)"
+            (rowClick)="openDetail($event)"
+          />
+        </div>
+      }
+    </div>
+  </div>
+</div>
+
+<!-- ============ Cell templates consumed by columns() ============ -->
+<ng-template #avatarTpl let-row>
+  <pera-avatar [name]="row.fullName" size="sm" />
+</ng-template>
+
+<ng-template #nameTpl let-row>
+  <div class="font-medium leading-tight" [style.fontSize]="'var(--fs-caption)'">
+    {{ row.fullName }}
+  </div>
+</ng-template>
+
+<!-- One department per employee now: the wire carries the scalar `primaryDepartmentId`, so there
+     is no "+N" case left, and the NAME is joined from LookupCache rather than sent. -->
+<ng-template #departmentTpl let-row>
+  @if (departmentName(row.primaryDepartmentId); as name) {
+    <span>{{ name }}</span>
+  } @else {
+    <span class="text-text-muted">—</span>
+  }
+</ng-template>
+
+<!-- No #roleTpl: HR holds no roles, and nothing returns them for a list of employees. -->
+
+<ng-template #statusTpl let-row>
+  <span
+    class="inline-flex items-center gap-1.5 font-mono font-medium px-1.5 py-0.5 border"
+    [style.fontSize]="'var(--fs-micro)'"
+    [class.text-success]="row.isActive"
+    [class.border-success]="row.isActive"
+    [class.bg-success-soft]="row.isActive"
+    [class.text-text-muted]="!row.isActive"
+    [class.border-border]="!row.isActive"
+    [class.bg-bg]="!row.isActive"
+  >
+    <span
+      class="w-1.5 h-1.5 rounded-full"
+      [class.bg-success]="row.isActive"
+      [class.bg-text-muted]="!row.isActive"
+    ></span>
+    {{ row.isActive ? 'Active' : 'Inactive' }}
+  </span>
+</ng-template>

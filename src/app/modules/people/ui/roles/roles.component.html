@@ -1,0 +1,167 @@
+<!-- Translated from left pane of B-04 in PERA App - Admin.html -->
+<!-- .ad-head + .rp-roles list -->
+<div class="bg-bg min-h-full flex flex-col">
+  <!-- ============ .pg header ============ -->
+  <pera-page-header
+    title="Roles & Permissions"
+    [count]="
+      roles().length + ' ' + (roles().length === 1 ? 'ROLE' : 'ROLES') + ' · CONFIG-DRIVEN ACCESS'
+    "
+  >
+    <div actions class="flex gap-2 items-center">
+      <a routerLink="/permissions" class="font-mono fs-label text-accent hover:underline"
+        >View capability matrix →</a
+      >
+      <ng-container *peraCan="'roles.manage'">
+        <pera-button variant="primary" iconStart="plus" (click)="openCreate()"
+          >New role</pera-button
+        >
+      </ng-container>
+    </div>
+  </pera-page-header>
+
+  <!-- ============ Body: .rp-roles list (left) + .rp-detail (selected) ============ -->
+  <div class="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-[var(--w-rail)_minmax(0,1fr)]">
+    <!-- .rp-roles aside -->
+    <aside class="border-e border-border bg-surface flex flex-col overflow-hidden">
+      <div class="px-4 py-3 border-b border-border flex items-center justify-between">
+        <h3 class="m-0 fs-caption font-semibold uppercase tracking-[0.04em] text-text-secondary">
+          Roles
+        </h3>
+        <span class="font-mono fs-label text-text-muted">{{ roles().length }}</span>
+      </div>
+      <div class="flex-1 overflow-y-auto">
+        @if (loading()) {
+          <div class="p-4">
+            <pera-skeleton [height]="40" />
+            <div class="h-2"></div>
+            <pera-skeleton [height]="40" />
+            <div class="h-2"></div>
+            <pera-skeleton [height]="40" />
+          </div>
+        } @else {
+          @for (role of roles(); track role.id) {
+            <button
+              type="button"
+              (click)="select(role)"
+              class="flex items-center gap-2.5 px-3 py-2.5 border-b border-border-soft cursor-pointer transition-colors w-full text-start hover:bg-surface-muted"
+              [class.bg-accent-soft]="selected()?.id === role.id"
+              [class.border-s-2]="selected()?.id === role.id"
+              [class.border-s-accent]="selected()?.id === role.id"
+            >
+              <!-- .ic — role icon box -->
+              <span
+                class="w-icon-md h-icon-md border border-border bg-bg inline-flex items-center justify-center text-text-secondary shrink-0"
+              >
+                <svg
+                  width="11"
+                  height="11"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.6"
+                >
+                  <path d="M12 2l8 4v6c0 5-3.5 9-8 10-4.5-1-8-5-8-10V6z" />
+                </svg>
+              </span>
+              <!-- .nm -->
+              <span class="flex-1 min-w-0 fs-caption font-medium truncate">{{ role.name }}</span>
+              <!-- .ct member count -->
+              <span class="font-mono fs-label text-text-muted">
+                {{ memberCountOf(role) }}
+              </span>
+            </button>
+          } @empty {
+            <p class="m-0 px-4 py-4 fs-caption text-text-muted">No roles yet.</p>
+          }
+        }
+      </div>
+    </aside>
+
+    <!-- .rp-detail (selected role) -->
+    <main class="overflow-y-auto bg-bg">
+      @if (selected(); as role) {
+        <div class="px-8 py-6 max-w-4xl">
+          <!-- Selected role header -->
+          <div class="font-mono fs-micro uppercase tracking-[0.06em] text-text-muted mb-2">
+            Selected role
+          </div>
+          <div class="flex items-start justify-between gap-4 mb-6">
+            <div>
+              <h2 class="m-0 fs-h2 font-semibold tracking-tight leading-tight">
+                {{ role.name }}
+              </h2>
+            </div>
+            <span
+              class="inline-flex items-center gap-1.5 font-mono fs-label px-2 py-0.5 border border-accent bg-accent-soft text-accent"
+            >
+              {{ permissionCount() === null ? '— caps' : permissionCount() + ' caps' }}
+            </span>
+          </div>
+
+          @if (detailLoading()) {
+            <pera-skeleton [height]="200" rounded="md" />
+          } @else {
+            <!-- Members panel -->
+            <section class="border border-border bg-surface">
+              <div class="px-5 py-3.5 border-b border-border flex items-center justify-between">
+                <div class="flex items-baseline gap-2.5">
+                  <h3 class="m-0 fs-body font-semibold">Members</h3>
+                  <span class="font-mono fs-label text-text-muted">{{ members().length }}</span>
+                </div>
+                <ng-container *peraCan="'roles.manage'">
+                  <button
+                    type="button"
+                    (click)="openAssign(role)"
+                    class="font-mono fs-label text-accent hover:underline cursor-pointer"
+                  >
+                    + Assign to user
+                  </button>
+                </ng-container>
+              </div>
+              <div class="max-h-[var(--h-scroll)] overflow-y-auto">
+                @for (member of members(); track member.id) {
+                  <div
+                    class="flex items-center gap-2.5 px-5 py-2.5 border-b border-border-soft last:border-b-0 hover:bg-surface-muted"
+                  >
+                    <pera-avatar [name]="member.fullName" size="sm" />
+                    <div class="flex-1 min-w-0">
+                      <div class="fs-caption font-medium leading-tight truncate">
+                        {{ member.fullName }}
+                      </div>
+                      <div class="font-mono fs-micro text-text-muted mt-0.5 truncate">
+                        {{ member.jobTitle || member.email }}
+                      </div>
+                    </div>
+                  </div>
+                } @empty {
+                  <p class="m-0 px-5 py-4 fs-caption text-text-muted">
+                    No one holds this role yet.
+                  </p>
+                }
+              </div>
+            </section>
+          }
+        </div>
+      } @else if (!loading()) {
+        <div class="p-8">
+          <pera-empty
+            title="Select a role"
+            description="Pick a role to see its members and permissions."
+          />
+        </div>
+      }
+    </main>
+  </div>
+</div>
+
+<!-- Cell templates -->
+<ng-template #nameTpl let-row>
+  <span class="font-medium">{{ row.name }}</span>
+</ng-template>
+<ng-template #membersTpl let-row>
+  <span class="tabular-nums">{{ memberCountOf(row) }}</span>
+</ng-template>
+<ng-template #statusTpl let-row>
+  <pera-badge tone="success" [dot]="true">Active</pera-badge>
+</ng-template>

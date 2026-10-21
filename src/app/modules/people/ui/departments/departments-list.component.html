@@ -1,0 +1,245 @@
+<!-- Translated from B-03 in PERA App - Admin.html -->
+<!-- .ad-head + ph-tabs (List view · Org chart) + list table + .org-node org chart -->
+<div class="bg-bg min-h-full flex flex-col">
+  <!-- ============ .pg header ============ -->
+  <pera-page-header
+    title="Departments"
+    [count]="
+      departments().length + ' ' + (departments().length === 1 ? 'DEPARTMENT' : 'DEPARTMENTS')
+    "
+  >
+    <div actions class="flex gap-2 items-center">
+      <ng-container *peraCan="'departments.create'">
+        <pera-button variant="primary" iconStart="plus" (click)="openCreate()"
+          >Add department</pera-button
+        >
+      </ng-container>
+    </div>
+  </pera-page-header>
+
+  <!-- ph-tabs -->
+  <div class="px-7 border-b border-border bg-surface flex gap-0">
+    @for (tab of tabs; track tab.id) {
+      <button
+        type="button"
+        (click)="activeTab.set(tab.id)"
+        class="px-3.5 py-3 fs-caption cursor-pointer border-b-2 transition-colors"
+        [class.text-text-primary]="activeTab() === tab.id"
+        [class.font-medium]="activeTab() === tab.id"
+        [class.border-text-primary]="activeTab() === tab.id"
+        [class.text-text-secondary]="activeTab() !== tab.id"
+        [class.border-transparent]="activeTab() !== tab.id"
+        [class.hover:text-text-primary]="activeTab() !== tab.id"
+      >
+        {{ tab.label }}
+      </button>
+    }
+  </div>
+
+  @if (loading()) {
+    <div class="p-6"><pera-skeleton [height]="360" rounded="md" /></div>
+  } @else if (!departments().length) {
+    <div class="p-6">
+      <pera-empty
+        title="No departments yet"
+        description="Add the first department to start grouping employees."
+      />
+    </div>
+  } @else if (activeTab() === 'list') {
+    <!-- List view: table + right rail -->
+    <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_var(--w-rail)] flex-1">
+      <div class="bg-bg overflow-x-auto">
+        <table class="w-full border-collapse">
+          <thead>
+            <tr>
+              <th
+                class="text-start font-mono fs-micro tracking-[0.02em] text-text-muted font-medium px-3.5 py-2.5 border-b border-border bg-surface whitespace-nowrap"
+              >
+                Name
+              </th>
+              <th
+                class="text-start font-mono fs-micro tracking-[0.02em] text-text-muted font-medium px-3.5 py-2.5 border-b border-border bg-surface whitespace-nowrap w-44"
+              >
+                Head
+              </th>
+              <!-- No Created column: createdAt is not on the wire. -->
+            </tr>
+          </thead>
+          <tbody>
+            @for (d of departments(); track d.id) {
+              <tr
+                (click)="select(d)"
+                class="hover:bg-surface-muted cursor-pointer transition-colors"
+                [class.bg-accent-soft]="selectedId() === d.id"
+              >
+                <td
+                  class="px-3.5 py-2.5 border-b border-border-soft align-middle fs-caption font-medium"
+                >
+                  {{ d.name }}
+                </td>
+                <td class="px-3.5 py-2.5 border-b border-border-soft align-middle">
+                  @if (hasHead(d)) {
+                    <span class="inline-flex items-center gap-1.5">
+                      <pera-avatar [name]="headName(d)" size="xs" />
+                      <span class="fs-caption">{{ headName(d) }}</span>
+                    </span>
+                  } @else {
+                    <span class="text-text-muted">{{ NO_HEAD }}</span>
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Right rail -->
+      @if (selected(); as d) {
+        <aside class="border-s border-border bg-surface overflow-y-auto">
+          <div class="px-5 py-4 border-b border-border">
+            <div class="flex items-start justify-between gap-2">
+              <div class="font-mono fs-micro uppercase tracking-[0.06em] text-text-muted mb-2">
+                Selected · Department
+              </div>
+              <button
+                type="button"
+                *peraCan="'departments.update'"
+                (click)="openEdit(d)"
+                class="font-mono fs-label text-accent hover:underline cursor-pointer shrink-0"
+              >
+                Edit →
+              </button>
+            </div>
+            <h2 class="m-0 fs-body font-semibold tracking-tight">{{ d.name }}</h2>
+            @if (d.description) {
+              <p class="m-0 mt-2 fs-caption text-text-secondary leading-relaxed">
+                {{ d.description }}
+              </p>
+            }
+          </div>
+
+          <div class="px-5 py-4 border-b border-border">
+            <div class="grid grid-cols-[var(--w-column-sm)_1fr] gap-3 py-1.5 fs-caption">
+              <div class="font-mono fs-micro text-text-muted pt-px">HEAD</div>
+              <div class="text-text-primary font-medium">
+                <div class="flex items-center justify-between gap-2 flex-wrap">
+                  @if (hasHead(d)) {
+                    <span class="inline-flex items-center gap-1.5">
+                      <pera-avatar [name]="headName(d)" size="xs" />
+                      {{ headName(d) }}
+                    </span>
+                  } @else {
+                    <span class="text-text-muted">{{ NO_HEAD }}</span>
+                  }
+                  <span class="inline-flex gap-2">
+                    <ng-container *peraCan="PERM.departments.assignDepartmentHead">
+                      <button
+                        type="button"
+                        (click)="assignHead(d)"
+                        class="font-mono fs-label text-accent hover:underline cursor-pointer"
+                      >
+                        {{ hasHead(d) ? 'Change' : 'Assign' }}
+                      </button>
+                    </ng-container>
+                    @if (hasHead(d)) {
+                      <ng-container *peraCan="PERM.departments.unassignDepartmentHead">
+                        <button
+                          type="button"
+                          (click)="removeHead(d)"
+                          class="font-mono fs-label text-danger hover:underline cursor-pointer"
+                        >
+                          Unassign
+                        </button>
+                      </ng-container>
+                    }
+                  </span>
+                </div>
+              </div>
+            </div>
+            <!-- No CREATED row: createdAt is not on the wire. -->
+            <div class="grid grid-cols-[var(--w-column-sm)_1fr] gap-3 py-1.5 fs-caption">
+              <div class="font-mono fs-micro text-text-muted pt-px">MEMBERS</div>
+              <div class="text-text-primary font-medium">{{ members().length }}</div>
+            </div>
+          </div>
+
+          <!-- Gated: GET /departments/{id}/members requires departments.view_users. Ungated, a 403
+               was swallowed into "No members." — a denial rendered as a fact. -->
+          <div class="px-5 py-4" *peraCan="PERM.departments.viewUsers">
+            <div class="font-mono fs-micro uppercase tracking-[0.03em] text-text-muted mb-2.5">
+              Members · {{ members().length }}
+            </div>
+            @if (membersLoading()) {
+              <pera-skeleton [height]="80" />
+            } @else {
+              <div class="flex flex-col gap-1.5 max-h-72 overflow-y-auto">
+                @for (m of members(); track m.id) {
+                  <div class="flex items-center gap-2 px-2 py-1.5 border border-border-soft bg-bg">
+                    <pera-avatar [name]="m.fullName" size="xs" />
+                    <div class="min-w-0 flex-1">
+                      <div class="fs-caption truncate leading-tight">
+                        {{ m.fullName }}
+                      </div>
+                      <div class="font-mono fs-micro text-text-muted truncate">
+                        {{ m.jobTitle || '—' }}
+                      </div>
+                    </div>
+                  </div>
+                } @empty {
+                  <p class="m-0 fs-caption text-text-muted">No members.</p>
+                }
+              </div>
+            }
+          </div>
+        </aside>
+      }
+    </div>
+  } @else {
+    <!-- Org chart view: .org-node tree (flat in v1 — no parentId) -->
+    <div class="px-9 pt-7 pb-9 overflow-x-auto flex-1">
+      <div class="flex justify-center mb-9">
+        <!-- root -->
+        <div
+          class="border border-border bg-surface px-3.5 py-3 min-w-[var(--w-column-lg)] border-s-[length:var(--border-accent)] border-s-accent text-center"
+        >
+          <div class="fs-caption font-semibold leading-tight">Atelier PERA</div>
+          <div class="font-mono fs-micro text-text-muted mt-1">STUDIO · ROOT</div>
+          <div
+            class="font-mono fs-micro text-text-secondary mt-2 pt-2 border-t border-border-soft flex justify-between"
+          >
+            <span>{{ departments().length }} DEPTS</span>
+          </div>
+        </div>
+      </div>
+      <div class="flex justify-center items-start gap-4 flex-wrap relative">
+        <!-- vertical bar from root -->
+        <div
+          class="absolute -top-[var(--space-5)] start-1/2 w-px h-[var(--space-5)] bg-text-muted -translate-x-1/2"
+        ></div>
+        @for (d of departments(); track d.id) {
+          <button
+            type="button"
+            (click)="select(d); activeTab.set('list')"
+            class="text-start border border-border bg-surface px-3.5 py-3 min-w-[var(--w-node)] hover:border-text-muted hover:shadow transition-all relative"
+          >
+            <!-- connector to root -->
+            <div class="absolute -top-2 start-1/2 w-px h-2 bg-text-muted -translate-x-1/2"></div>
+            <div class="fs-caption font-semibold leading-tight">{{ d.name }}</div>
+            <div class="font-mono fs-micro text-text-muted mt-1 uppercase">
+              @if (hasHead(d)) {
+                HEAD · {{ headName(d) }}
+              } @else {
+                {{ NO_HEAD }}
+              }
+            </div>
+          </button>
+        }
+      </div>
+      <p
+        class="m-0 mt-8 font-mono fs-micro uppercase tracking-[0.04em] text-text-muted text-center"
+      >
+        Flat structure · v1 does not expose parent hierarchy
+      </p>
+    </div>
+  }
+</div>

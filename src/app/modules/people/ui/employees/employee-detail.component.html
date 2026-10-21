@@ -1,0 +1,345 @@
+<!-- Translated from B-02 in PERA App - Admin.html -->
+<!-- profile header card + ph-tabs + kv-row + 2-column body with right rail -->
+<div class="bg-bg min-h-full flex flex-col">
+  @if (loading()) {
+    <div class="p-6">
+      <pera-skeleton [height]="140" rounded="md" />
+      <div class="h-3"></div>
+      <pera-skeleton [height]="48" rounded="md" />
+      <div class="h-3"></div>
+      <pera-skeleton [height]="240" rounded="md" />
+    </div>
+  } @else if (failed()) {
+    <div class="p-6">
+      <pera-empty
+        title="Couldn't load this employee"
+        description="They may have been removed, or you may not have access."
+        [cta]="{ label: 'Back to Employees', action: goBack.bind(this) }"
+      />
+    </div>
+  } @else if (employee(); as person) {
+    <!-- ============ profile header card ============ -->
+    <div class="px-8 pt-6 pb-0 border-b border-border bg-surface">
+      <div class="flex items-start gap-5">
+        <!-- .av-c.xl — large avatar -->
+        <pera-avatar [name]="person.fullName" size="lg" />
+        <div class="flex-1 min-w-0">
+          <h1 class="m-0 fs-h2 font-semibold tracking-tight leading-tight">
+            {{ person.fullName }}
+          </h1>
+          <!-- mono uppercase meta -->
+          <div
+            class="flex gap-3 items-center mt-2 font-mono fs-label text-text-secondary flex-wrap"
+          >
+            <span class="uppercase">{{ person.jobTitle || '—' }}</span>
+            @if (departmentName(); as dep) {
+              <span class="text-border">·</span>
+              <span class="uppercase">{{ dep }}</span>
+            }
+            <span class="text-border">·</span>
+            <span class="uppercase">Riyadh HQ</span>
+            <!-- .st-pill -->
+            <span
+              class="inline-flex items-center gap-1.5 font-mono fs-micro font-medium px-1.5 py-0.5 border"
+              [class.text-success]="person.isActive"
+              [class.border-success]="person.isActive"
+              [class.bg-success-soft]="person.isActive"
+              [class.text-text-muted]="!person.isActive"
+              [class.border-border]="!person.isActive"
+              [class.bg-bg]="!person.isActive"
+            >
+              <span
+                class="w-1.5 h-1.5 rounded-full"
+                [class.bg-success]="person.isActive"
+                [class.bg-text-muted]="!person.isActive"
+              ></span>
+              {{ person.isActive ? 'Active' : 'Inactive' }}
+            </span>
+          </div>
+          <!-- contact row -->
+          <div class="flex gap-6 mt-4 fs-caption text-text-secondary flex-wrap">
+            <a
+              [href]="'mailto:' + person.email"
+              class="inline-flex items-center gap-1.5 hover:text-accent"
+            >
+              <svg
+                width="13"
+                height="13"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.6"
+              >
+                <path d="M4 6h16v12H4z" />
+                <path d="M4 6l8 7 8-7" />
+              </svg>
+              {{ person.email }}
+            </a>
+            @if (person.phoneNumber) {
+              <span class="inline-flex items-center gap-1.5" dir="ltr">
+                <svg
+                  width="13"
+                  height="13"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.6"
+                >
+                  <path
+                    d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8 10a16 16 0 0 0 6 6l1.36-1.36a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"
+                  />
+                </svg>
+                {{ person.phoneNumber }}
+              </span>
+            }
+            @if (tenureLabel()) {
+              <span class="font-mono fs-label text-text-muted">{{ tenureLabel() }}</span>
+            }
+          </div>
+        </div>
+        <!-- header actions -->
+        <div class="flex gap-2">
+          <button
+            type="button"
+            [disabled]="true"
+            peraTooltip="Sharing a profile has no endpoint yet"
+            class="inline-flex items-center gap-1.5 px-3 py-2 border border-border bg-bg fs-caption cursor-not-allowed opacity-50"
+          >
+            <svg
+              width="12"
+              height="12"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.7"
+            >
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" />
+            </svg>
+            Share profile
+          </button>
+          <!-- Edit is offered only while active: PUT on a deactivated employee answers 204 and
+               changes nothing, because Employee.Update() returns early when !IsActive. -->
+          @if (person.isActive) {
+            <ng-container *peraCan="'employees.update'">
+              <button
+                type="button"
+                (click)="openEdit()"
+                class="inline-flex items-center gap-1.5 px-3 py-2 fs-caption font-medium cursor-pointer transition-colors bg-bg border border-border hover:bg-surface-muted"
+              >
+                <svg
+                  width="12"
+                  height="12"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.7"
+                >
+                  <path d="M3 21l3-1 11-11-2-2L4 18z" />
+                </svg>
+                Edit
+              </button>
+            </ng-container>
+          }
+          <!-- Separate control, separate permission. This button used to be LABELLED "Edit" while
+               it opened a Deactivate confirm. -->
+          <ng-container *peraCan="'employees.set_active'">
+            <button
+              type="button"
+              (click)="toggleActive()"
+              class="inline-flex items-center gap-1.5 px-3 py-2 fs-caption font-medium cursor-pointer transition-colors"
+              [class.bg-accent]="!person.isActive"
+              [class.text-text-on-accent]="!person.isActive"
+              [class.hover:bg-accent-hover]="!person.isActive"
+              [class.bg-bg]="person.isActive"
+              [class.border]="person.isActive"
+              [class.border-border]="person.isActive"
+              [class.hover:bg-surface-muted]="person.isActive"
+            >
+              {{ person.isActive ? 'Deactivate' : 'Reactivate' }}
+            </button>
+          </ng-container>
+        </div>
+      </div>
+
+      <!-- ============ .ph-tabs ============ -->
+      <div class="flex gap-0 mt-[var(--space-5)] -mx-8 px-8">
+        @for (tab of tabs; track tab.id) {
+          <button
+            type="button"
+            (click)="activeTab.set(tab.id)"
+            class="px-3.5 py-3 fs-caption cursor-pointer border-b-2 transition-colors"
+            [class.text-text-primary]="activeTab() === tab.id"
+            [class.font-medium]="activeTab() === tab.id"
+            [class.border-text-primary]="activeTab() === tab.id"
+            [class.text-text-secondary]="activeTab() !== tab.id"
+            [class.border-transparent]="activeTab() !== tab.id"
+            [class.hover:text-text-primary]="activeTab() !== tab.id"
+          >
+            {{ tab.label }}
+          </button>
+        }
+      </div>
+    </div>
+
+    <!-- ============ Body 2-column grid ============ -->
+    @if (activeTab() === 'overview') {
+      <div class="px-8 py-6 grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_var(--w-rail)] gap-6">
+        <div class="flex flex-col gap-5">
+          <!-- Contact panel -->
+          <section class="border border-border bg-surface">
+            <div class="px-5 py-3.5 border-b border-border">
+              <h3 class="m-0 fs-body font-semibold">Contact</h3>
+            </div>
+            <div class="px-5 py-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div class="grid grid-cols-[var(--w-column-sm)_1fr] gap-3 py-1.5 fs-caption">
+                <div class="font-mono fs-micro text-text-muted pt-px">EMAIL</div>
+                <div class="text-text-primary font-medium truncate">{{ person.email }}</div>
+              </div>
+              <div class="grid grid-cols-[var(--w-column-sm)_1fr] gap-3 py-1.5 fs-caption">
+                <div class="font-mono fs-micro text-text-muted pt-px">PHONE</div>
+                <div class="text-text-primary font-medium" dir="ltr">
+                  {{ person.phoneNumber || '—' }}
+                </div>
+              </div>
+              <!-- No USERNAME row: userName lives in Identity and no HR route exposes it. -->
+              <div class="grid grid-cols-[var(--w-column-sm)_1fr] gap-3 py-1.5 fs-caption">
+                <div class="font-mono fs-micro text-text-muted pt-px">CONTRACT</div>
+                <div class="text-text-primary font-medium">{{ contractLabel() }}</div>
+              </div>
+              <div class="grid grid-cols-[var(--w-column-sm)_1fr] gap-3 py-1.5 fs-caption">
+                <div class="font-mono fs-micro text-text-muted pt-px">EMERGENCY</div>
+                <div class="text-text-primary font-medium" dir="ltr">
+                  {{ person.emergencyContactPhone || '—' }}
+                </div>
+              </div>
+              <div class="grid grid-cols-[var(--w-column-sm)_1fr] gap-3 py-1.5 fs-caption">
+                <div class="font-mono fs-micro text-text-muted pt-px">LOCATION</div>
+                <div class="text-text-primary font-medium">Riyadh HQ</div>
+              </div>
+            </div>
+          </section>
+
+          <!-- Workload panel -->
+          <section class="border border-border bg-surface">
+            <div class="px-5 py-3.5 border-b border-border">
+              <h3 class="m-0 fs-body font-semibold">Workload</h3>
+            </div>
+            <div class="px-5 py-4 grid grid-cols-3 gap-3">
+              <div class="flex flex-col gap-1 p-3 border border-border-soft bg-bg">
+                <span class="font-mono fs-micro uppercase text-text-muted">Projects</span>
+                <span class="fs-h2 font-semibold tabular-nums leading-none">{{
+                  overview()?.projectCount ?? 0
+                }}</span>
+              </div>
+              <div class="flex flex-col gap-1 p-3 border border-border-soft bg-bg">
+                <span class="font-mono fs-micro uppercase text-text-muted">Active stages</span>
+                <span class="fs-h2 font-semibold tabular-nums leading-none">{{
+                  overview()?.activeStageCount ?? 0
+                }}</span>
+              </div>
+              <div class="flex flex-col gap-1 p-3 border border-border-soft bg-bg">
+                <span class="font-mono fs-micro uppercase text-text-muted">Open tasks</span>
+                <span class="fs-h2 font-semibold tabular-nums leading-none">{{
+                  overview()?.assignedTaskCount ?? 0
+                }}</span>
+              </div>
+            </div>
+          </section>
+
+          <!-- No Roles panel: HR holds no roles, and nothing returns the roles of an employee.
+               Role assignment lives on the Roles screen, keyed by the Identity user id. -->
+        </div>
+
+        <!-- Right rail — Org context -->
+        <div class="flex flex-col gap-5">
+          <section class="border border-border bg-surface">
+            <div class="px-5 py-3.5 border-b border-border">
+              <h3 class="m-0 fs-body font-semibold">Org context</h3>
+            </div>
+            @if (departmentName(); as dep) {
+              <div class="px-5 py-4">
+                <div class="grid grid-cols-[var(--w-column-sm)_1fr] gap-3 py-1.5 fs-caption">
+                  <div class="font-mono fs-micro text-text-muted pt-px">DEPARTMENT</div>
+                  <div class="text-text-primary font-medium">{{ dep }}</div>
+                </div>
+                <div class="grid grid-cols-[var(--w-column-sm)_1fr] gap-3 py-1.5 fs-caption">
+                  <div class="font-mono fs-micro text-text-muted pt-px">POSITION</div>
+                  <div class="text-text-primary font-medium">{{ person.jobTitle || '—' }}</div>
+                </div>
+              </div>
+            } @else {
+              <div class="px-5 py-4 fs-caption text-text-muted">
+                Not assigned to a department yet
+              </div>
+            }
+          </section>
+
+          <!-- No "Other departments": an employee has ONE primaryDepartmentId on the wire. -->
+        </div>
+      </div>
+    }
+
+    @if (activeTab() === 'projects') {
+      <div class="px-8 py-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        @for (project of projects(); track project.projectId) {
+          <button
+            type="button"
+            (click)="openProject(project.projectId)"
+            class="text-start border border-border bg-surface p-4 hover:bg-surface-muted hover:border-border-strong cursor-pointer transition-colors"
+          >
+            <div class="font-mono fs-label text-text-muted">
+              {{ project.code || project.projectId.slice(0, 6).toUpperCase() }}
+            </div>
+            <div class="fs-body-sm font-medium mt-1.5 truncate">{{ project.projectName }}</div>
+            <div
+              class="mt-2.5 inline-flex items-center gap-1.5 font-mono fs-micro px-1.5 py-0.5 border border-border bg-bg text-text-secondary"
+            >
+              <span class="w-1.5 h-1.5 rounded-full bg-text-muted"></span>
+              {{ projectLabel(project.status) }}
+            </div>
+          </button>
+        } @empty {
+          <div class="md:col-span-2 lg:col-span-3">
+            <pera-empty
+              title="No projects"
+              description="Projects this employee joins will appear here."
+            />
+          </div>
+        }
+      </div>
+    }
+
+    @if (activeTab() === 'tasks') {
+      <div class="px-8 py-6">
+        <pera-data-table
+          [columns]="taskColumns()"
+          [rows]="tasks()"
+          [empty]="{ title: 'No tasks assigned' }"
+          [hasRowClick]="true"
+          (rowClick)="openProject($event.projectId)"
+        />
+      </div>
+    }
+
+    @if (activeTab() === 'activity') {
+      <div class="px-8 py-6">
+        <pera-empty
+          title="Audit log integration coming soon"
+          description="Recent actions by this employee will appear here."
+        />
+      </div>
+    }
+  }
+</div>
+
+<ng-template #taskStatusTpl let-row>
+  <span
+    class="inline-flex items-center gap-1.5 font-mono fs-micro px-1.5 py-0.5 border border-border bg-bg"
+  >
+    <span class="w-1.5 h-1.5 rounded-full bg-text-muted"></span>
+    {{ taskLabel(row.status) }}
+  </span>
+</ng-template>
+<ng-template #taskDueTpl let-row>
+  <span class="tabular-nums font-mono fs-label">{{ shortDate(row.dueDate, locale.locale()) }}</span>
+</ng-template>

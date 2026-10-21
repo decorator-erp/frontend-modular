@@ -1,0 +1,410 @@
+<!-- Translated from matrix portion of B-04 in PERA App - Admin.html -->
+<!-- .ad-head + .rp-toolbar + .rp-mat (sticky head/col + mod-row group bands) + per-user overrides bottom panel -->
+<div class="bg-bg min-h-full flex flex-col">
+  <!-- ============ .pg header ============ -->
+  <pera-page-header
+    title="Roles & Permissions"
+    [count]="
+      roles().length +
+      ' ROLES · ' +
+      allPermissions().length +
+      ' CAPABILITIES · CONFIG-DRIVEN ACCESS' +
+      (canEdit() ? '' : ' · READ-ONLY')
+    "
+  >
+    <div actions class="flex gap-2 items-center">
+      <pera-button variant="secondary" size="sm">Export policy</pera-button>
+      <a routerLink="/roles" class="font-mono fs-label text-accent hover:underline"
+        >Manage roles →</a
+      >
+    </div>
+  </pera-page-header>
+
+  @if (loading()) {
+    <div class="p-6"><pera-skeleton [height]="360" rounded="md" /></div>
+  } @else if (catalogFailed()) {
+    <!-- GET /api/permissions requires permissions.manage. An empty matrix here would read as
+         "no role holds anything", which is the opposite of what actually happened. -->
+    <div class="p-6">
+      <pera-empty
+        title="The permission catalog is unavailable"
+        description="Reading the full capability list needs the permissions.manage permission. Ask an administrator to grant it, or check that the API is reachable."
+        iconName="lock"
+      />
+    </div>
+  } @else {
+    <!-- ============ .rp-toolbar — search + role chips + legend ============ -->
+    <div class="px-7 py-3 border-b border-border bg-surface flex items-center gap-2.5 flex-wrap">
+      <!-- .ad-search -->
+      <div
+        class="inline-flex items-center gap-2 px-2.5 py-1.5 border border-border bg-bg min-w-[var(--w-panel)]"
+      >
+        <svg
+          width="13"
+          height="13"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          class="text-text-muted"
+        >
+          <circle cx="11" cy="11" r="7" />
+          <path d="M21 21l-4.3-4.3" />
+        </svg>
+        <input
+          type="text"
+          placeholder="Search capabilities…"
+          [ngModel]="search()"
+          (ngModelChange)="search.set($event)"
+          class="border-0 outline-0 bg-transparent font-sans fs-caption text-text-primary flex-1 min-w-0"
+        />
+      </div>
+      <!-- Role chip toggles -->
+      <div class="flex items-center gap-1 flex-wrap">
+        @for (role of roles(); track role.id) {
+          <button
+            type="button"
+            (click)="toggleRoleVisibility(role.id)"
+            class="inline-flex items-center px-2 py-1 border font-mono fs-micro cursor-pointer transition-colors"
+            [class.bg-accent-soft]="!hiddenRoles().has(role.id)"
+            [class.text-accent]="!hiddenRoles().has(role.id)"
+            [class.border-accent]="!hiddenRoles().has(role.id)"
+            [class.bg-bg]="hiddenRoles().has(role.id)"
+            [class.text-text-muted]="hiddenRoles().has(role.id)"
+            [class.border-border]="hiddenRoles().has(role.id)"
+          >
+            {{ role.name }}
+          </button>
+        }
+      </div>
+      <div class="flex-1"></div>
+    </div>
+
+    <!-- ============ .rp-mat ============ -->
+    <div
+      class="max-md:hidden overflow-auto border-b border-border bg-surface max-h-[calc(100vh-var(--h-chrome))]"
+    >
+      <table class="w-full border-collapse">
+        <thead class="sticky top-0 z-20">
+          <tr>
+            <th
+              class="sticky start-0 z-30 bg-surface-muted text-start font-mono fs-micro tracking-[0.02em] text-text-muted font-medium px-3.5 py-2.5 min-w-[var(--w-panel)] border-b border-border"
+            >
+              Capability
+            </th>
+            @for (role of visibleRoles(); track role.id) {
+              <th
+                class="bg-surface text-center font-mono fs-micro text-text-muted font-medium px-3 py-2.5 whitespace-nowrap border-b border-r border-border-soft min-w-[var(--w-column-sm)] align-bottom"
+              >
+                <span
+                  class="block text-text-primary fs-label font-medium mb-1 max-w-16 mx-auto leading-tight"
+                  >{{ role.name }}</span
+                >
+                <span class="block fs-micro text-text-muted">ROLE</span>
+              </th>
+            }
+          </tr>
+        </thead>
+        <tbody>
+          @for (grp of groups(); track grp.group) {
+            <!-- .mod-row — gray band header per module -->
+            <tr class="mod-row">
+              <td
+                [attr.colspan]="visibleRoles().length + 1"
+                class="px-5 py-1.5 font-mono fs-micro tracking-[0.04em] uppercase text-text-muted bg-surface-muted border-y border-border"
+              >
+                {{ grp.group }}
+              </td>
+            </tr>
+            @for (permission of grp.permissions; track permission.value) {
+              <tr class="hover:bg-surface-muted/40 transition-colors">
+                <!-- sticky first col -->
+                <td class="sticky start-0 z-10 bg-surface px-3.5 py-2 border-b border-border-soft">
+                  <div class="fs-caption">{{ permission.displayName }}</div>
+                  <div class="font-mono fs-micro text-text-muted mt-0.5">
+                    {{ permission.value }}
+                  </div>
+                </td>
+                @for (role of visibleRoles(); track role.id) {
+                  <td
+                    class="text-center border-b border-r border-border-soft px-2 py-1.5 last:border-r-0"
+                  >
+                    <!-- .rp-x cell — 14×14 ink-fill on, hollow off -->
+                    <button
+                      type="button"
+                      class="w-icon-xs h-icon-xs inline-flex items-center justify-center border"
+                      [class.bg-text-primary]="has(role.id, permission.value)"
+                      [class.border-text-primary]="has(role.id, permission.value)"
+                      [class.bg-bg]="!has(role.id, permission.value)"
+                      [class.border-border]="!has(role.id, permission.value)"
+                      [class.opacity-50]="!canEdit() || isPending(role.id, permission.value)"
+                      [class.cursor-not-allowed]="
+                        !canEdit() || isPending(role.id, permission.value)
+                      "
+                      [disabled]="!canEdit() || isPending(role.id, permission.value)"
+                      [attr.aria-label]="permission.displayName + ' for ' + role.name"
+                      [attr.aria-pressed]="has(role.id, permission.value)"
+                      [peraTooltip]="canEdit() ? '' : 'You need roles.manage to edit'"
+                      (click)="toggle(role, permission)"
+                    >
+                      @if (has(role.id, permission.value)) {
+                        <svg
+                          width="9"
+                          height="9"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="var(--color-bg)"
+                          stroke-width="3"
+                        >
+                          <path d="M5 12l4 4L19 6" />
+                        </svg>
+                      }
+                    </button>
+                  </td>
+                }
+              </tr>
+            }
+          } @empty {
+            <tr>
+              <td
+                [attr.colspan]="visibleRoles().length + 1"
+                class="px-3.5 py-6 fs-caption text-text-muted text-center"
+              >
+                No permissions match the search.
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Mobile: accordion per role -->
+    <div class="md:hidden flex flex-col gap-3 p-4">
+      @for (role of visibleRoles(); track role.id) {
+        <div class="border border-border bg-surface">
+          <div class="px-4 py-3 border-b border-border">
+            <h2 class="m-0 fs-body font-semibold">{{ role.name }}</h2>
+          </div>
+          <div class="p-4">
+            @for (grp of groups(); track grp.group) {
+              <details class="border-t border-border-soft first:border-t-0 py-1.5">
+                <summary
+                  class="font-mono fs-micro tracking-[0.03em] text-text-muted uppercase cursor-pointer py-1"
+                >
+                  {{ grp.group }}
+                </summary>
+                <div class="flex flex-col gap-1.5 py-1.5">
+                  @for (permission of grp.permissions; track permission.value) {
+                    <label class="flex items-center gap-2 fs-caption">
+                      <input
+                        type="checkbox"
+                        class="w-3.5 h-3.5 accent-[var(--color-accent)]"
+                        [checked]="has(role.id, permission.value)"
+                        [disabled]="!canEdit() || isPending(role.id, permission.value)"
+                        (change)="toggle(role, permission)"
+                      />
+                      {{ permission.displayName }}
+                    </label>
+                  }
+                </div>
+              </details>
+            }
+          </div>
+        </div>
+      }
+    </div>
+
+    <!-- ============ Per-user overrides — bottom panel ============ -->
+    <section class="px-7 py-6 border-t border-border bg-surface mt-4">
+      <h2 class="m-0 fs-body font-semibold tracking-tight">Per-user overrides</h2>
+      <p class="m-0 mt-1 mb-4 fs-caption text-text-muted">
+        Grant or deny a single capability for one person, on top of their roles.
+      </p>
+
+      <!-- User picker -->
+      <div class="relative max-w-md">
+        <div class="inline-flex items-center gap-2 px-2.5 py-1.5 border border-border bg-bg w-full">
+          <svg
+            width="13"
+            height="13"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            class="text-text-muted"
+          >
+            <circle cx="11" cy="11" r="7" />
+            <path d="M21 21l-4.3-4.3" />
+          </svg>
+          <input
+            type="text"
+            placeholder="Find an employee…"
+            [ngModel]="userSearch()"
+            (ngModelChange)="onUserSearch($event)"
+            class="border-0 outline-0 bg-transparent font-sans fs-caption text-text-primary flex-1 min-w-0"
+          />
+        </div>
+        @if (userResults().length > 0) {
+          <div
+            class="absolute z-30 mt-1 w-full bg-surface border border-border shadow-md py-1 max-h-64 overflow-auto"
+          >
+            @for (person of userResults(); track person.id) {
+              <button
+                type="button"
+                (click)="pickUser(person)"
+                class="w-full flex items-center gap-2.5 px-3 py-1.5 text-start cursor-pointer hover:bg-surface-muted"
+              >
+                <pera-avatar [name]="person.fullName" size="xs" />
+                <span class="min-w-0">
+                  <span class="block fs-caption truncate">{{ person.fullName }}</span>
+                  <span class="block font-mono fs-label text-text-muted truncate">{{
+                    person.email
+                  }}</span>
+                </span>
+              </button>
+            }
+          </div>
+        }
+      </div>
+
+      @if (selectedUser(); as user) {
+        <div class="mt-4 flex items-center gap-2.5 px-4 py-3 border border-border bg-bg">
+          <pera-avatar [name]="user.fullName" size="sm" />
+          <div class="min-w-0 flex-1">
+            <div class="fs-caption font-medium leading-tight">{{ user.fullName }}</div>
+            <div class="font-mono fs-label text-text-muted mt-0.5">{{ user.email }}</div>
+          </div>
+          <ng-container *peraCan="'permissions.manage'">
+            <button
+              type="button"
+              (click)="openNewOverride()"
+              class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-accent text-text-on-accent fs-caption font-medium cursor-pointer hover:bg-accent-hover"
+            >
+              + New override
+            </button>
+          </ng-container>
+        </div>
+
+        @if (effectiveLoading()) {
+          <div class="mt-3 flex flex-col gap-2">
+            <pera-skeleton [height]="24" />
+            <pera-skeleton [height]="60" />
+          </div>
+        } @else if (effective(); as eff) {
+          <!-- Effective permissions -->
+          <div class="mt-5">
+            <div class="font-mono fs-micro uppercase tracking-[0.03em] text-text-muted mb-1.5">
+              Effective permissions ({{ eff.permissions.length }})
+            </div>
+            <div class="flex flex-wrap gap-1">
+              @for (permission of eff.permissions; track permission) {
+                <span
+                  class="inline-flex items-center font-mono fs-micro px-1.5 py-0.5 border border-border bg-bg text-text-secondary"
+                >
+                  {{ permission }}
+                </span>
+              } @empty {
+                <span class="fs-caption text-text-muted">None.</span>
+              }
+            </div>
+          </div>
+
+          <!-- Overrides table -->
+          <div class="mt-5 overflow-x-auto border border-border">
+            <table class="w-full border-collapse">
+              <thead>
+                <tr class="bg-surface-muted">
+                  <th
+                    class="text-start font-mono fs-micro tracking-[0.02em] text-text-muted font-medium px-3 py-2 border-b border-border"
+                  >
+                    Permission
+                  </th>
+                  <th
+                    class="text-start font-mono fs-micro tracking-[0.02em] text-text-muted font-medium px-3 py-2 border-b border-border"
+                  >
+                    Type
+                  </th>
+                  <th
+                    class="text-start font-mono fs-micro tracking-[0.02em] text-text-muted font-medium px-3 py-2 border-b border-border max-md:hidden"
+                  >
+                    Reason
+                  </th>
+                  <!-- No "Created" column: PermissionOverrideResponse carries no createdAt. -->
+                  <th
+                    class="text-start font-mono fs-micro tracking-[0.02em] text-text-muted font-medium px-3 py-2 border-b border-border max-md:hidden"
+                  >
+                    Expires
+                  </th>
+                  <th class="px-3 py-2 border-b border-border">
+                    <span class="sr-only">Actions</span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (override of eff.overrides; track override.id) {
+                  <tr>
+                    <td class="px-3 py-2 font-mono fs-label border-b border-border-soft">
+                      {{ override.permission }}
+                    </td>
+                    <td class="px-3 py-2 border-b border-border-soft">
+                      <span
+                        class="inline-flex items-center gap-1.5 font-mono fs-micro px-1.5 py-0.5 border"
+                        [class.text-success]="override.isGranted"
+                        [class.border-success]="override.isGranted"
+                        [class.bg-success-soft]="override.isGranted"
+                        [class.text-danger]="!override.isGranted"
+                        [class.border-danger]="!override.isGranted"
+                        [class.bg-danger-soft]="!override.isGranted"
+                      >
+                        <span
+                          class="w-1.5 h-1.5 rounded-full"
+                          [class.bg-success]="override.isGranted"
+                          [class.bg-danger]="!override.isGranted"
+                        ></span>
+                        {{ override.isGranted ? 'Grant' : 'Deny' }}
+                      </span>
+                    </td>
+                    <td
+                      class="px-3 py-2 fs-caption text-text-secondary border-b border-border-soft max-md:hidden"
+                    >
+                      {{ override.reason || '—' }}
+                    </td>
+                    <td
+                      class="px-3 py-2 font-mono fs-label text-text-muted border-b border-border-soft max-md:hidden"
+                    >
+                      {{ override.expiresAt ? longDate(override.expiresAt, locale.locale()) : '—' }}
+                    </td>
+                    <td class="px-3 py-2 text-end border-b border-border-soft">
+                      <ng-container *peraCan="'permissions.manage'">
+                        <button
+                          type="button"
+                          (click)="revokeOverride(override.permission)"
+                          class="font-mono fs-label text-accent hover:underline cursor-pointer"
+                        >
+                          Revoke
+                        </button>
+                      </ng-container>
+                    </td>
+                  </tr>
+                } @empty {
+                  <tr>
+                    <td colspan="6" class="px-3 py-4 fs-caption text-text-muted text-center">
+                      No overrides for this user.
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        } @else {
+          <div class="mt-5">
+            <pera-empty
+              title="Couldn't load this user's permissions"
+              description="Try again in a moment."
+            />
+          </div>
+        }
+      }
+    </section>
+  }
+</div>
