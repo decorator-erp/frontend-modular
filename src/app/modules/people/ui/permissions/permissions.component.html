@@ -23,12 +23,12 @@
   @if (loading()) {
     <div class="p-6"><pera-skeleton [height]="360" rounded="md" /></div>
   } @else if (catalogFailed()) {
-    <!-- GET /api/permissions requires permissions.manage. An empty matrix here would read as
-         "no role holds anything", which is the opposite of what actually happened. -->
+    <!-- GET /api/permissions needs roles.read or permissions.manage (backend v3). An empty matrix
+         here would read as "no role holds anything", the opposite of what actually happened. -->
     <div class="p-6">
       <pera-empty
         title="The permission catalog is unavailable"
-        description="Reading the full capability list needs the permissions.manage permission. Ask an administrator to grant it, or check that the API is reachable."
+        description="Reading the full capability list needs the roles.read or permissions.manage permission. Ask an administrator to grant one, or check that the API is reachable."
         iconName="lock"
       />
     </div>

@@ -211,3 +211,46 @@ describe('PermissionsComponent — overrides on your own account (006b-1 #7)', (
     expect(data.data.existing).toHaveLength(1);
   });
 });
+
+/** 006b-1 #9: `GET /api/permissions` is `roles.read` OR `permissions.manage` since backend v3. */
+describe('PermissionsComponent — catalog access (006b-1 #9)', () => {
+  function configure(getAll: () => unknown) {
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter([]),
+        {
+          provide: PermissionService,
+          useValue: { getAll, getRolePermissions: () => of([]) },
+        },
+        { provide: RoleService, useValue: { getAll: () => of([DESIGNER]) } },
+        {
+          provide: EmployeeService,
+          useValue: { listPaged: () => of({ items: [], totalCount: 0, page: 1, pageSize: 500 }) },
+        },
+        { provide: PermissionsService, useValue: { can: () => false } },
+        { provide: ModalService, useValue: { open: vi.fn() } },
+        { provide: ConfirmService, useValue: { open: vi.fn() } },
+        { provide: ToastService, useValue: { show: vi.fn() } },
+        {
+          provide: AuthStore,
+          useValue: { user: () => ({ userId: 'viewer-1' }), can: () => false },
+        },
+      ],
+    });
+    const fixture = TestBed.createComponent(PermissionsComponent);
+    fixture.detectChanges();
+    return fixture.nativeElement as HTMLElement;
+  }
+
+  it('a roles.read viewer whose catalog read succeeds sees the (read-only) matrix', () => {
+    const el = configure(() => of([{ module: 'Projects', permissions: ['projects.read'] }]));
+    expect(el.textContent).not.toContain('The permission catalog is unavailable');
+    expect(el.querySelector('button[aria-label="Projects read for Designer"]')).toBeTruthy();
+  });
+
+  it('a 403 keeps the ported empty state, which now names both permissions', () => {
+    const el = configure(() => throwError(() => new HttpErrorResponse({ status: 403 })));
+    expect(el.textContent).toContain('The permission catalog is unavailable');
+    expect(el.textContent).toContain('roles.read or permissions.manage');
+  });
+});

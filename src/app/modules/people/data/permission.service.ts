@@ -29,9 +29,8 @@ export class PermissionService extends ApiService {
   /**
    * The whole catalog, grouped by the module that declares each permission.
    *
-   * Requires `permissions.manage` server-side — a viewer holding only `roles.read` gets a 403
-   * here even though they can read `getRolePermissions`. Render a failure state, not an empty
-   * matrix.
+   * Requires `roles.read` or `permissions.manage` server-side (backend v3, so a role editor can
+   * read it too). Anyone else gets a 403: render a failure state, not an empty matrix.
    */
   getAll(): Observable<ModulePermissionSet[]> {
     return this.get<unknown>('/permissions').pipe(

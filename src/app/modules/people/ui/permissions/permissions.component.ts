@@ -88,7 +88,7 @@ export class PermissionsComponent implements OnInit {
   private readonly authStore = inject(AuthStore);
 
   readonly loading = signal(true);
-  /** True when the catalog read itself failed — 403 for anyone without `permissions.manage`. */
+  /** True when the catalog read itself failed — 403 for anyone without `roles.read` or `permissions.manage`. */
   readonly catalogFailed = signal(false);
   readonly allPermissions = signal<PermissionRow[]>([]);
   readonly roles = signal<RoleResponse[]>([]);
@@ -177,8 +177,8 @@ export class PermissionsComponent implements OnInit {
         this.loadGrants(roles);
       },
       error: () => {
-        // `GET /api/permissions` requires `permissions.manage`. Say so rather than rendering an
-        // empty matrix, which reads as "this role has no permissions" — the opposite of the truth.
+        // `GET /api/permissions` requires `roles.read` or `permissions.manage`. Say so rather than
+        // rendering an empty matrix, which reads as "this role has no permissions" — the opposite.
         this.catalogFailed.set(true);
         this.loading.set(false);
       },
