@@ -8,7 +8,6 @@
 export const ERROR_MESSAGES: Record<string, string> = {
   // From api-docs/01-auth.md
   'authentications.InvalidCredentials': 'The email or password is incorrect.',
-  'authentications.UserNotActive': 'This account is deactivated. Contact your administrator.',
   'authentications.UnAuthorization': 'You are not authorized to do that.',
   'authentications.InvalidToken': 'Your session is invalid. Please sign in again.',
   'authentications.InvalidRefreshToken': 'Your session expired. Please sign in again.',
@@ -16,6 +15,11 @@ export const ERROR_MESSAGES: Record<string, string> = {
   'authentications.DuplicatedEmail': 'This email is already taken.',
   'authentications.InvalidRegister':
     'The account details are invalid. Please review and try again.',
+  // Backend remediation v3 (002b A5, KNOWN-DELTA-3). `UserNotActive` was deleted there: a
+  // deactivated account now answers `InvalidCredentials`.
+  'authentications.StaleToken': 'Your session is no longer valid. Please sign in again.',
+  'authentications.LockedOut': 'Too many attempts. Try again in 15 minutes.',
+  'authentications.RefreshTokenReused': 'Your session has ended. Please sign in again.',
   'users.NotFound': 'User not found.',
 
   // From api-docs/02-clients.md
