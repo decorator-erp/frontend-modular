@@ -66,8 +66,14 @@ export class PermissionService extends ApiService {
     );
   }
 
+  /**
+   * The caller's own effective set. `/me/effective` reads the user from the token; one route for
+   * self (006b-1 #5b). `getUserEffective(id)` stays for the admin screen.
+   */
   getMyEffective(): Observable<EffectivePermissionsResponse> {
-    return this.getUserEffective(this.authStore.user()?.userId ?? '');
+    return this.get<unknown>('/permissions/me/effective').pipe(
+      map((response) => this.normalizeEffective(this.unwrap(response))),
+    );
   }
 
   /** Both ids are in the path; the body is empty. Gated on `roles.manage`, not `permissions.*`. */
