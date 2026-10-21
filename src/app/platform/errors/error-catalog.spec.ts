@@ -36,3 +36,13 @@ describe('ERROR_MESSAGES — permissions and roles (006b-1 #5)', () => {
     expect(ERROR_MESSAGES['permissions.SelfModification']).toContain('Ask another administrator');
   });
 });
+
+/** 006b-1 #25: codes deleted from backend v3 (Phase 5). */
+describe('ERROR_MESSAGES — dead permissions/roles keys (006b-1 #25)', () => {
+  it.each(['permissions.NotFoundForTarget', 'roles.UserNotInRole'])(
+    'no longer carries %s',
+    (code) => {
+      expect(code in ERROR_MESSAGES).toBe(false);
+    },
+  );
+});

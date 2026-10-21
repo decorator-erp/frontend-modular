@@ -49,12 +49,10 @@ export const ERROR_MESSAGES: Record<string, string> = {
   // From api-docs/05-roles-permissions.md
   'roles.NotFound': 'Role not found.',
   'roles.DuplicatedRole': 'A role with this name already exists.',
-  'roles.UserNotInRole': 'The user does not have this role.',
   'permissions.InvalidPermission': 'That permission is not recognized by the system.',
   'permissions.PermissionOverrideAlreadyExists':
     'An override for this permission already exists for that user.',
   'permissions.PermissionOverrideNotFound': 'No override exists for this permission.',
-  'permissions.NotFoundForTarget': 'This permission is not set for the selected target.',
   // Backend remediation v3 (006b-1 #5, KNOWN-DELTA-3). For `CannotDelegate` the screen shows the
   // server's description, which names the missing permissions; this is the fallback.
   'permissions.CannotDelegate': 'You can only give permissions you hold yourself.',
