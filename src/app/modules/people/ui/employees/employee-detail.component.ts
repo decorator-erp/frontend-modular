@@ -46,6 +46,9 @@ import {
   TabDef,
 } from '@ds';
 
+/** How long the login gets to come back on after activate before we look again. */
+const LOGIN_RECHECK_DELAY_MS = 2000;
+
 @Component({
   selector: 'app-employee-detail',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -72,6 +75,8 @@ export class EmployeeDetailComponent implements OnInit {
   readonly loading = signal(true);
   readonly failed = signal(false);
   readonly employee = signal<EmployeeFull | null>(null);
+  /** Set between an activate and its delayed login refetch (006b-2 #20). */
+  readonly loginRecheckPending = signal(false);
   readonly overview = signal<EmployeeOverview | null>(null);
   readonly projects = signal<EmployeeProjectRef[]>([]);
   readonly tasks = signal<EmployeeTaskRef[]>([]);
@@ -225,7 +230,30 @@ export class EmployeeDetailComponent implements OnInit {
           message: `${current.fullName} ${deactivating ? 'deactivated' : 'reactivated'}`,
         });
         this.employee.set({ ...current, isActive: !deactivating });
+        // 006b-2 #20: activation re-enables the login asynchronously (outbox), so the fresh state
+        // can still read "login off" for a moment. Hold the banner, refetch once after ~2 s, and
+        // let that answer decide.
+        if (!deactivating) {
+          this.loginRecheckPending.set(true);
+          setTimeout(() => this.recheckLogin(current.id), LOGIN_RECHECK_DELAY_MS);
+        }
       },
+    });
+  }
+
+  /** True when the employee is active but cannot sign in, and no post-activate refetch is due. */
+  readonly loginOffWarning = computed(() => {
+    const e = this.employee();
+    return !!e && e.isActive && !e.loginActive && !this.loginRecheckPending();
+  });
+
+  private recheckLogin(id: string): void {
+    this.employeesApi.getFull(id).subscribe({
+      next: (employee) => {
+        this.employee.set(employee);
+        this.loginRecheckPending.set(false);
+      },
+      error: () => this.loginRecheckPending.set(false),
     });
   }
 }

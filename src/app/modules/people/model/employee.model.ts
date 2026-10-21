@@ -44,6 +44,11 @@ export interface EmployeeFull extends EmployeeListItem {
   hireDate: string;
   endDate: string | null;
   notes: string | null;
+  /**
+   * Backend v3: whether the employee's LOGIN is enabled (`EmployeeDetailResponse.LoginActive`).
+   * Activating an employee re-enables it asynchronously through the outbox (006b-2 #20).
+   */
+  loginActive: boolean;
 }
 
 /** Mirrors EmployeeOverviewResponse. */

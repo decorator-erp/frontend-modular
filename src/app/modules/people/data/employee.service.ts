@@ -435,6 +435,8 @@ export class EmployeeService extends ApiService {
       hireDate: this.field<string>(source, 'hireDate') ?? '',
       endDate: this.field<string | null>(source, 'endDate') ?? null,
       notes: this.field<string | null>(source, 'notes') ?? null,
+      // Absent on an older payload: assume the login is on rather than raise a false alarm.
+      loginActive: this.field<boolean>(source, 'loginActive') ?? true,
     };
   }
 
