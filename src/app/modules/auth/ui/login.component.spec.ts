@@ -33,7 +33,11 @@ describe('LoginComponent — sign-in failure messages (002b A4)', () => {
     const fixture = TestBed.createComponent(LoginComponent);
     const component = fixture.componentInstance;
     fixture.detectChanges();
-    component.form.setValue({ email: 'nourhan@pera.test', password: 'Secret#123', remember: true });
+    component.form.setValue({
+      email: 'nourhan@pera.test',
+      password: 'Secret-pass1!',
+      remember: true,
+    });
 
     const done = component.submit();
     backend.expectOne(LOGIN).flush(body, { status, statusText });
