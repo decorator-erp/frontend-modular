@@ -54,11 +54,12 @@ export class RoleService extends ApiService {
   }
 
   /**
-   * Roles held by one user.
+   * Roles held by one user — `GET /api/roles/users/{userId}`.
    *
-   * Returns `200 []` for an UNKNOWN user, not 404 — the backend cannot tell "no such user" apart
-   * from "user has no roles". An empty array is therefore not proof the user exists; do not render
-   * it as a confident statement.
+   * Backend v3: authenticated, and the handler answers for yourself or with `roles.read`; anyone
+   * else gets **404** `users.NotFound` (`GetUserRolesQueryHandler`), so no route gate is needed for
+   * your own roles (006b-1 #19). The pre-v3 note that it returned `200 []` for an unknown user no
+   * longer holds.
    */
   getUserRoles(userId: string): Observable<RoleResponse[]> {
     return this.get<unknown>(`/roles/users/${userId}`).pipe(

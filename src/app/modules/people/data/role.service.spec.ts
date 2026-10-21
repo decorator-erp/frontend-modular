@@ -67,4 +67,21 @@ describe('RoleService', () => {
       .flush({ title: 'roles.NotFound' }, { status: 404, statusText: 'Not Found' });
     expect(error?.status).toBe(404);
   });
+
+  /** 006b-1 #19: self or roles.read; anyone else is a 404, not `200 []`. */
+  it('getUserRoles(): your own roles load; someone else without roles.read is a 404', () => {
+    let mine: unknown;
+    service.getUserRoles('me-1').subscribe((r) => (mine = r));
+    backend
+      .expectOne(`${environment.apiUrl}/roles/users/me-1`)
+      .flush([{ id: 'r-emp', name: 'employee', description: null, isActive: true }]);
+    expect(mine).toEqual([{ id: 'r-emp', name: 'employee', description: null, isActive: true }]);
+
+    let error: HttpErrorResponse | undefined;
+    service.getUserRoles('u-9').subscribe({ error: (e) => (error = e) });
+    backend
+      .expectOne(`${environment.apiUrl}/roles/users/u-9`)
+      .flush({ title: 'users.NotFound' }, { status: 404, statusText: 'Not Found' });
+    expect(error?.status).toBe(404);
+  });
 });
