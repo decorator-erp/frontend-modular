@@ -6,6 +6,13 @@ layout on this machine). Start with `PORT-CHARTER.md`, then the matching `specs/
 whichever spec is active. This file is the **only** `.md` this repo is allowed to hold — everything
 else (reports, audits, decision records) goes in the docs folder.
 
+**Cloud layout.** In a cloud session the siblings are checkouts next to this repo: `../docs` is
+`decorator-erp/dms-docs` (a clone or a symlink to it), `../frontend` is the old app
+(`decorator-erp/frontend`; `SOURCE_SHA` is on `refactor/phase-1-dedup`) and `../dms-modular` is the
+backend (`decorator-erp/dms`, `master`), all read-only except `../docs`. Locally they are the
+`D:\Elzanfaly\Repositories` siblings: `dms-docs` (the docs repo), `old\frontend` and `dms-modular`.
+Node comes from `.nvmrc`.
+
 ## What this is
 
 DMS is a fresh Angular 22 application that ports the production app at `../frontend` (read-only
