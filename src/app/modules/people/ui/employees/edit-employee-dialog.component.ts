@@ -144,13 +144,14 @@ export class EditEmployeeDialogComponent {
     this.submitting.set(true);
     this.serverError.set(null);
     const v = this.form.getRawValue();
+    // A full replacement: all six keys, and a cleared field goes out as `null`, never `""`.
     const patch: EmployeePatch = {
       jobTitle: v.jobTitle.trim(),
       contractType: v.contractType,
-      phoneNumber: v.phoneNumber.trim(),
-      emergencyContactPhone: v.emergencyContactPhone.trim(),
-      endDate: v.endDate.trim(),
-      notes: v.notes.trim(),
+      phoneNumber: orNull(v.phoneNumber),
+      emergencyContactPhone: orNull(v.emergencyContactPhone),
+      endDate: orNull(v.endDate),
+      notes: orNull(v.notes),
     };
 
     this.employees.update(this.data.employeeId, patch).subscribe({
@@ -161,9 +162,23 @@ export class EditEmployeeDialogComponent {
       },
       error: (err) => {
         const parsed = this.errorHandler.parse(err);
-        this.serverError.set({ ...parsed, generalMessage: friendly(parsed) });
+        // The end date is the field at fault, so show it there rather than as a banner.
+        if (parsed.code === 'employees.EndDateBeforeHireDate') {
+          this.serverError.set({
+            ...parsed,
+            generalMessage: '',
+            fieldErrors: { ...parsed.fieldErrors, endDate: [friendly(parsed)] },
+          });
+        } else {
+          this.serverError.set({ ...parsed, generalMessage: friendly(parsed) });
+        }
         this.submitting.set(false);
       },
     });
   }
+}
+
+/** A trimmed blank is `null`: backend v3 clears the field, and `""` would not bind for a date. */
+function orNull(value: string): string | null {
+  return value.trim() || null;
 }

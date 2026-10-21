@@ -40,14 +40,22 @@ interface Accumulated {
 }
 
 /** Fields `PUT /api/employees/{id}` actually binds. Nothing else on the entity is updatable. */
-export type EmployeePatch = Partial<{
+/**
+ * `PUT /api/employees/{id}` is a FULL replacement in backend v3 (006b-2 #14): all six fields are
+ * sent every time, and a cleared field is `null`, never `""` — `"endDate": ""` fails model binding
+ * (`DateOnly?`, no lenient converter: a 400 on every save with a blank end date; 006 report V1).
+ * `firstName`/`lastName` are optional, and only meaningful together (both or neither).
+ */
+export type EmployeePatch = {
   jobTitle: string;
   contractType: string;
-  phoneNumber: string;
-  emergencyContactPhone: string;
-  notes: string;
-  endDate: string;
-}>;
+  phoneNumber: string | null;
+  emergencyContactPhone: string | null;
+  notes: string | null;
+  endDate: string | null;
+  firstName?: string;
+  lastName?: string;
+};
 
 /**
  * Employees: the HR write surface (create/update/activate/assign) and the directory reads
