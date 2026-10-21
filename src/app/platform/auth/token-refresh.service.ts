@@ -1,9 +1,25 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { Observable, finalize, map, shareReplay, throwError } from 'rxjs';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { Observable, finalize, map, retry, shareReplay, throwError, timer } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { AuthResponse } from './auth.models';
 import { TokenService } from './token.service';
+
+const RETRY_AFTER_DEFAULT_MS = 2_000;
+const RETRY_AFTER_CAP_MS = 10_000;
+
+/**
+ * How long a 429 asks us to wait: `Retry-After` in whole seconds, 2 s when it is missing or not an
+ * integer (an HTTP-date included), never more than 10 s — a user waiting on a click should not sit
+ * through a whole rate-limit window.
+ */
+export function retryAfterMs(error: HttpErrorResponse): number {
+  const header = error.headers?.get('Retry-After')?.trim() ?? '';
+  if (!/^\d+$/.test(header)) {
+    return RETRY_AFTER_DEFAULT_MS;
+  }
+  return Math.min(Number(header) * 1000, RETRY_AFTER_CAP_MS);
+}
 
 /**
  * The ONE place a token refresh is performed, shared by the 401 interceptor and the permission
@@ -53,6 +69,16 @@ export class TokenRefreshService {
     this.inFlight$ = this.http
       .post<AuthResponse>(`${environment.apiUrl}/auth/refresh`, { token, refreshToken })
       .pipe(
+        // A 429 is the shared per-IP limiter, not a verdict on the tokens: wait as asked and try
+        // once more. Placed before `finalize`/`shareReplay`, so joiners share the retry and the
+        // in-flight slot still clears on the final error.
+        retry({
+          count: 1,
+          delay: (error) =>
+            error instanceof HttpErrorResponse && error.status === 429
+              ? timer(retryAfterMs(error))
+              : throwError(() => error),
+        }),
         map((response) => {
           this.tokenService.setTokens(response.token, response.refreshToken);
           return response.token;

@@ -68,6 +68,10 @@ const bounceToLogin = (
     .finally(() => (bouncing = null));
 };
 
+const isTransient = (error: unknown): boolean =>
+  error instanceof HttpErrorResponse &&
+  (error.status === 429 || error.status >= 500 || error.status === 0);
+
 /**
  * Refresh once, then retry the request that 401'd.
  *
@@ -106,6 +110,13 @@ const handle401 = (
       return next(addToken(req, newToken));
     }),
     catchError((error) => {
+      // Transient failures keep the session: the limiter (429), the server (5xx) or the network (0)
+      // failed, not the tokens. Fail this one request and let the next 401 try again. Everything
+      // else means the stored tokens are unusable: 400 (an empty or malformed pair), 401, and
+      // non-HTTP errors such as `Missing refresh token` (the tokens vanished mid-refresh).
+      if (isTransient(error)) {
+        return throwError(() => error);
+      }
       bounceToLogin(authStore, router, toast, true);
       return throwError(() => error);
     }),
