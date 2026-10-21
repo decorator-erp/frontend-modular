@@ -9,6 +9,7 @@ import { PermissionsService } from '@platform/permissions';
 import { PermissionService } from '../../data/permission.service';
 import { RoleService } from '../../data/role.service';
 import { EmployeeService } from '../../data/employee.service';
+import { AuthStore } from '@platform/auth/auth.store';
 import { PermissionsComponent } from './permissions.component';
 
 const ADMIN = { id: 'r-admin', name: 'admin', description: null, isActive: true };
@@ -21,6 +22,22 @@ describe('PermissionsComponent — the role matrix (006b-1 #6)', () => {
   const permissionsApi = {
     getAll: vi.fn(() => of([{ module: 'Projects', permissions: ['projects.read'] }])),
     getRolePermissions: vi.fn(() => of([])),
+    getUserEffective: vi.fn((userId: string) =>
+      of({
+        userId,
+        permissions: [],
+        overrides: [
+          {
+            id: 'o-1',
+            permission: 'projects.read',
+            isGranted: true,
+            grantedById: 'x',
+            reason: null,
+            expiresAt: null,
+          },
+        ],
+      }),
+    ),
     assignToRole: vi.fn(),
     removeFromRole: vi.fn(),
   };
@@ -40,6 +57,7 @@ describe('PermissionsComponent — the role matrix (006b-1 #6)', () => {
         { provide: ModalService, useValue: { open: vi.fn() } },
         { provide: ConfirmService, useValue: { open: vi.fn() } },
         { provide: ToastService, useValue: toast },
+        { provide: AuthStore, useValue: { user: () => ({ userId: 'me-1' }), can: () => true } },
       ],
     });
   });
@@ -106,5 +124,90 @@ describe('PermissionsComponent — the role matrix (006b-1 #6)', () => {
       tone: 'danger',
       message: "Couldn't grant Projects read for Designer",
     });
+  });
+});
+
+/** 006b-1 #7: grant, deny and revoke are SelfModification on your own account. */
+describe('PermissionsComponent — overrides on your own account (006b-1 #7)', () => {
+  const modal = { open: vi.fn(() => ({ afterClosed: () => Promise.resolve(false) })) };
+  const confirm = { open: vi.fn(() => Promise.resolve(true)) };
+  const permissionsApi = {
+    getAll: () => of([{ module: 'Projects', permissions: ['projects.read'] }]),
+    getRolePermissions: () => of([]),
+    getUserEffective: (userId: string) =>
+      of({
+        userId,
+        permissions: ['projects.read'],
+        overrides: [
+          {
+            id: 'o-1',
+            permission: 'projects.read',
+            isGranted: true,
+            grantedById: 'x',
+            reason: null,
+            expiresAt: null,
+          },
+        ],
+      }),
+    revoke: vi.fn(() => of(undefined)),
+  };
+  const employee = (userId: string, fullName: string) =>
+    ({ id: `e-${userId}`, userId, fullName, email: `${userId}@pera.test` }) as never;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter([]),
+        { provide: PermissionService, useValue: permissionsApi },
+        { provide: RoleService, useValue: { getAll: () => of([]) } },
+        {
+          provide: EmployeeService,
+          useValue: { listPaged: () => of({ items: [], totalCount: 0, page: 1, pageSize: 500 }) },
+        },
+        { provide: PermissionsService, useValue: { can: () => true } },
+        { provide: ModalService, useValue: modal },
+        { provide: ConfirmService, useValue: confirm },
+        { provide: ToastService, useValue: { show: vi.fn() } },
+        { provide: AuthStore, useValue: { user: () => ({ userId: 'me-1' }), can: () => true } },
+      ],
+    });
+  });
+
+  function renderWith(user: never) {
+    const fixture = TestBed.createComponent(PermissionsComponent);
+    fixture.detectChanges();
+    fixture.componentInstance.pickUser(user);
+    fixture.detectChanges();
+    return fixture;
+  }
+
+  const button = (el: HTMLElement, text: string) =>
+    [...el.querySelectorAll('button')].find((b) => b.textContent?.includes(text))!;
+
+  it('self: New override and Revoke are disabled, with the reason; nothing is sent', async () => {
+    const fixture = renderWith(employee('me-1', 'Me Myself'));
+    const el = fixture.nativeElement as HTMLElement;
+
+    expect(button(el, 'New override').disabled).toBe(true);
+    expect(button(el, 'Revoke').disabled).toBe(true);
+    expect(el.textContent).toContain('This is your own account. Ask another administrator.');
+
+    await fixture.componentInstance.openNewOverride();
+    await fixture.componentInstance.revokeOverride('projects.read');
+    expect(modal.open).not.toHaveBeenCalled();
+    expect(confirm.open).not.toHaveBeenCalled();
+    expect(permissionsApi.revoke).not.toHaveBeenCalled();
+  });
+
+  it('someone else: both stay enabled, and the dialog receives the live overrides', async () => {
+    const fixture = renderWith(employee('u-7', 'Mona'));
+    const el = fixture.nativeElement as HTMLElement;
+    expect(button(el, 'New override').disabled).toBe(false);
+    expect(button(el, 'Revoke').disabled).toBe(false);
+
+    await fixture.componentInstance.openNewOverride();
+    const data = (modal.open.mock.calls[0] as unknown[])[1] as { data: { existing: unknown[] } };
+    expect(data.data.existing).toHaveLength(1);
   });
 });

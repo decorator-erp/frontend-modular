@@ -24,6 +24,7 @@ import {
 import { EmployeeService } from '../../data/employee.service';
 import { EmployeeListItem } from '../../model/employee.model';
 import { FULL_ACCESS_REASON, isFullAccessRole } from '../roles/role-policy';
+import { AuthStore } from '@platform/auth/auth.store';
 import { formatLongDate } from '@shared/ui/status';
 import { LocaleService } from '@platform/i18n';
 import {
@@ -84,6 +85,7 @@ export class PermissionsComponent implements OnInit {
   private readonly toast = inject(ToastService);
   private readonly errors = inject(ErrorHandlerService);
   readonly locale = inject(LocaleService);
+  private readonly authStore = inject(AuthStore);
 
   readonly loading = signal(true);
   /** True when the catalog read itself failed — 403 for anyone without `permissions.manage`. */
@@ -105,6 +107,15 @@ export class PermissionsComponent implements OnInit {
   readonly effective = signal<EffectivePermissionsResponse | null>(null);
   readonly effectiveLoading = signal(false);
   private allEmployees: EmployeeListItem[] = [];
+
+  /**
+   * Grant, deny AND revoke on your own account all answer 403 `permissions.SelfModification`
+   * (006b-1 #7), so they are disabled rather than offered.
+   */
+  readonly isSelfTarget = computed(
+    () => !!this.selectedUser() && this.selectedUser()?.userId === this.authStore.user()?.userId,
+  );
+  readonly selfTargetReason = 'This is your own account. Ask another administrator.';
 
   readonly canEdit = computed(() =>
     this.perms.can([PERM.permissions.assignToRole, PERM.permissions.removeFromRole]),
@@ -306,13 +317,14 @@ export class PermissionsComponent implements OnInit {
 
   async openNewOverride(): Promise<void> {
     const user = this.selectedUser();
-    if (!user) return;
+    if (!user || this.isSelfTarget()) return;
     const ref = this.modal.open<boolean>(NewOverrideDialogComponent, {
       size: 'sm',
       data: {
         targetUserId: user.userId,
         targetName: user.fullName,
         permissions: this.allPermissions(),
+        existing: this.effective()?.overrides ?? [],
       },
     });
     if (await ref.afterClosed()) this.loadEffective(user.userId);
@@ -320,7 +332,7 @@ export class PermissionsComponent implements OnInit {
 
   async revokeOverride(permission: string): Promise<void> {
     const user = this.selectedUser();
-    if (!user) return;
+    if (!user || this.isSelfTarget()) return;
     const ok = await this.confirm.open({
       title: 'Revoke override',
       body: `Remove the ${permission} override for ${user.fullName}?`,

@@ -5,6 +5,8 @@ import { ErrorHandlerService, friendly } from '@platform/http/error-handler.serv
 import { ToastService } from '@platform/feedback/toast.service';
 import { ParsedApiError } from '@platform/types';
 import { PermissionRow } from './permission-row';
+import { PermissionOverrideDto } from '../../model/people.model';
+import { switchMap } from 'rxjs';
 import { PeraValidators, ServerErrorsDirective, firstErrorMessage } from '@shared/forms';
 import {
   PERA_MODAL_DATA,
@@ -23,6 +25,13 @@ export interface NewOverrideDialogData {
   targetUserId: string;
   targetName: string;
   permissions: PermissionRow[];
+  /** The target's current overrides (`/effective` lists live ones only since backend v3). */
+  existing?: PermissionOverrideDto[];
+}
+
+/** A row the backend would refuse to overwrite: no expiry, or an expiry still ahead. */
+function isLive(override: PermissionOverrideDto, now = Date.now()): boolean {
+  return !override.expiresAt || Date.parse(override.expiresAt) > now;
 }
 
 @Component({
@@ -137,10 +146,21 @@ export class NewOverrideDialogComponent {
       permission: v.permission,
       reason: v.reason.trim() || undefined,
     };
-    const call =
+    const write =
       v.type === 'grant'
         ? this.permissionsApi.grant({ ...base, expiresAt: v.expiresAt || undefined })
         : this.permissionsApi.deny(base);
+    // Backend v3 renews an expired or inactive override in place and answers 409 only for a LIVE
+    // one, so delete first ONLY when replacing a live override in the opposite direction
+    // (006b-1 #7). A live override in the same direction is left for the server to refuse.
+    const replaced = (this.data.existing ?? []).find(
+      (o) => o.permission === v.permission && isLive(o) && o.isGranted !== (v.type === 'grant'),
+    );
+    const call = replaced
+      ? this.permissionsApi
+          .revoke({ targetUserId: this.data.targetUserId, permission: v.permission })
+          .pipe(switchMap(() => write))
+      : write;
     call.subscribe({
       next: () => {
         this.toast.show({
