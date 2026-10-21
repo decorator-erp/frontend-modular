@@ -6,6 +6,9 @@ import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { environment } from '../../../environments/environment';
 import { AuthState } from './auth.models';
 import { authInterceptor } from './auth.interceptor';
+import { errorInterceptor } from '../http/error.interceptor';
+import { ErrorHandlerService } from '../http/error-handler.service';
+import { ToastService } from '../feedback/toast.service';
 import { AuthStore } from './auth.store';
 import { TokenService } from './token.service';
 
@@ -64,14 +67,14 @@ describe('AuthStore — permission polling', () => {
 
   const store = () => TestBed.inject(AuthStore);
 
-  it('issues a GET /permissions/users/{userId}/effective immediately and applies the response, without waiting the interval', async () => {
+  it('issues a GET /permissions/me/effective immediately and applies the response, without waiting the interval', async () => {
     const s = store();
     s.setUserFromToken('irrelevant-with-the-token-service-mocked');
 
     s.startPermissionPolling();
     vi.advanceTimersByTime(0); // flush the timer(0, ...) leading tick — no interval elapsed
 
-    const req = http.expectOne(`${environment.apiUrl}/permissions/users/user-1/effective`);
+    const req = http.expectOne(`${environment.apiUrl}/permissions/me/effective`);
     expect(req.request.method).toBe('GET');
     req.flush({ permissions: ['crm.catalog.manage'] });
     await Promise.resolve(); // let firstValueFrom's promise settle and patchState apply
@@ -85,15 +88,13 @@ describe('AuthStore — permission polling', () => {
 
     s.startPermissionPolling();
     vi.advanceTimersByTime(0);
-    http
-      .expectOne(`${environment.apiUrl}/permissions/users/user-1/effective`)
-      .flush({ permissions: [] });
+    http.expectOne(`${environment.apiUrl}/permissions/me/effective`).flush({ permissions: [] });
 
     vi.advanceTimersByTime(599_999);
-    http.expectNone(`${environment.apiUrl}/permissions/users/user-1/effective`);
+    http.expectNone(`${environment.apiUrl}/permissions/me/effective`);
 
     vi.advanceTimersByTime(1);
-    const second = http.expectOne(`${environment.apiUrl}/permissions/users/user-1/effective`);
+    const second = http.expectOne(`${environment.apiUrl}/permissions/me/effective`);
     expect(second.request.method).toBe('GET');
     second.flush({ permissions: [] });
   });
@@ -108,7 +109,7 @@ describe('AuthStore — permission polling', () => {
     await loginPromise;
 
     vi.advanceTimersByTime(0); // the leading tick of the poll login() should have started
-    const req = http.expectOne(`${environment.apiUrl}/permissions/users/user-1/effective`);
+    const req = http.expectOne(`${environment.apiUrl}/permissions/me/effective`);
     expect(req.request.method).toBe('GET');
     req.flush({ permissions: [] });
   });
@@ -119,13 +120,11 @@ describe('AuthStore — permission polling', () => {
 
     s.startPermissionPolling();
     vi.advanceTimersByTime(0);
-    http
-      .expectOne(`${environment.apiUrl}/permissions/users/user-1/effective`)
-      .flush({ permissions: [] });
+    http.expectOne(`${environment.apiUrl}/permissions/me/effective`).flush({ permissions: [] });
 
     s.startPermissionPolling(); // second call — must not start a second subscription
     vi.advanceTimersByTime(0);
-    http.expectNone(`${environment.apiUrl}/permissions/users/user-1/effective`);
+    http.expectNone(`${environment.apiUrl}/permissions/me/effective`);
     expect(s.isAuthenticated()).toBe(true);
   });
 });
@@ -165,7 +164,7 @@ describe('AuthStore — permission drift repair', () => {
   let tokenService: ReturnType<typeof statefulTokenService>;
   let http: HttpTestingController;
 
-  const ME = `${environment.apiUrl}/permissions/users/user-1/effective`;
+  const ME = `${environment.apiUrl}/permissions/me/effective`;
   const REFRESH = `${environment.apiUrl}/auth/refresh`;
 
   beforeEach(() => {
@@ -368,7 +367,7 @@ describe('AuthStore — the poll GET 401s mid-flight', () => {
   let tokenService: ReturnType<typeof statefulTokenService>;
   let http: HttpTestingController;
 
-  const ME = `${environment.apiUrl}/permissions/users/user-1/effective`;
+  const ME = `${environment.apiUrl}/permissions/me/effective`;
   const REFRESH = `${environment.apiUrl}/auth/refresh`;
 
   beforeEach(() => {
@@ -415,5 +414,60 @@ describe('AuthStore — the poll GET 401s mid-flight', () => {
     http.expectNone(REFRESH);
     expect(tokenService.setTokens).toHaveBeenCalledTimes(1);
     expect(s.permissions()).toEqual(['crm.catalog.read', 'crm.catalog.manage']);
+  });
+});
+
+/**
+ * 002b A1. Backend v3 made `GET /permissions/users/{userId}/effective` an administrative read, so
+ * a poll against it 403'd for every user without `permissions.manage`, and `errorInterceptor` turned
+ * each 403 into a toast: at sign-in, every ten minutes and on every window focus. The poll now reads
+ * `/permissions/me/effective`. Runs both interceptors in `app.config.ts` order, so a regression that
+ * only swallowed the toast would still fail the zero-requests assertion.
+ */
+describe('AuthStore — the poll as a user without permissions.manage (002b A1)', () => {
+  let tokenService: ReturnType<typeof statefulTokenService>;
+  let http: HttpTestingController;
+  const toast = { show: vi.fn() };
+
+  const ME = `${environment.apiUrl}/permissions/me/effective`;
+  const REFRESH = `${environment.apiUrl}/auth/refresh`;
+
+  beforeEach(() => {
+    toast.show.mockClear();
+    tokenService = statefulTokenService('token-0', ['crm.catalog.read']);
+    TestBed.configureTestingModule({
+      providers: [
+        AuthStore,
+        provideHttpClient(withInterceptors([authInterceptor, errorInterceptor])),
+        provideHttpClientTesting(),
+        { provide: TokenService, useValue: tokenService },
+        { provide: Router, useValue: { navigate: vi.fn(), url: '/projects' } },
+        { provide: ToastService, useValue: toast },
+        { provide: ErrorHandlerService, useValue: { parse: () => ({ generalMessage: '' }) } },
+      ],
+    });
+    http = TestBed.inject(HttpTestingController);
+  });
+
+  afterEach(() => http.verify());
+
+  it('reads /me/effective, shows no toast, never calls /users/*/effective, and stays quiet', async () => {
+    const s = TestBed.inject(AuthStore);
+    s.setUserFromToken('token-0');
+    const done = s.refreshPermissions();
+
+    // The admin-only route answers 403 to this user; it must never be asked.
+    for (const req of http.match((r) => /\/permissions\/users\/[^/]+\/effective$/.test(r.url))) {
+      req.flush(null, { status: 403, statusText: 'Forbidden' });
+    }
+    http
+      .expectOne(ME)
+      .flush({ userId: 'user-1', permissions: ['crm.catalog.read'], overrides: [] });
+    await done;
+
+    expect(http.match((r) => r.url.includes('/permissions/users/'))).toHaveLength(0);
+    expect(toast.show).not.toHaveBeenCalled();
+    http.expectNone(REFRESH);
+    expect(s.permissions()).toEqual(['crm.catalog.read']);
   });
 });

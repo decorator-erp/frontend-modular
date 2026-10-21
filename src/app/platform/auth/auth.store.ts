@@ -15,7 +15,7 @@ interface AuthStoreState {
   polling: Subscription | null;
   /**
    * Set once when a token refresh completes and the token STILL disagrees with
-   * `/permissions/users/{userId}/effective`. That means the server is minting tokens that
+   * `/permissions/me/effective`. That means the server is minting tokens that
    * contradict its own effective-permissions read — a backend defect worth surfacing loudly rather
    * than hammering with a retry loop. Cleared on login/logout.
    */
@@ -112,6 +112,8 @@ export const AuthStore = signalStore(
        * into the JWT at issue time. That gap is what shows a user a screen whose every call 403s.
        */
       async refreshPermissions(): Promise<void> {
+        // The user id is no longer part of the URL (`/me/effective` reads it from the token); the
+        // guard stays because it still means "signed in".
         const userId = store.user()?.userId;
         if (!userId) {
           return;
@@ -121,7 +123,7 @@ export const AuthStore = signalStore(
         try {
           response = await firstValueFrom(
             http.get<EffectivePermissionsResponse>(
-              `${environment.apiUrl}/permissions/users/${userId}/effective`,
+              `${environment.apiUrl}/permissions/me/effective`,
             ),
           );
         } catch {
@@ -164,7 +166,7 @@ export const AuthStore = signalStore(
             patchState(store, { permissionDriftReported: true });
             console.warn(
               '[auth] Permission drift persists after a token refresh: the issued token disagrees ' +
-                'with GET /permissions/users/{userId}/effective. Not retrying until the next poll.',
+                'with GET /permissions/me/effective. Not retrying until the next poll.',
             );
           }
         } catch {
