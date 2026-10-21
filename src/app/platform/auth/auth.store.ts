@@ -7,6 +7,7 @@ import { AuthState, AuthResponse, LoginRequest, EffectivePermissionsResponse } f
 import { TokenService } from './token.service';
 import { TokenRefreshService } from './token-refresh.service';
 import { ErrorHandlerService } from '../http/error-handler.service';
+import { friendlyMessage } from '../errors/error-catalog';
 
 interface AuthStoreState {
   user: AuthState | null;
@@ -95,10 +96,24 @@ export const AuthStore = signalStore(
           // safe to call unconditionally (a re-login just rejoins the still-live poll).
           this.startPermissionPolling();
         } catch (err: any) {
+          // A 429 from the per-IP auth limiter has an EMPTY body: decide on the status before
+          // anything tries to parse it.
+          if (err?.status === 429) {
+            patchState(store, {
+              error: 'Too many sign-in attempts from this network. Wait a minute.',
+              isLoading: false,
+            });
+            return;
+          }
           // Use the shared parser so this matches every other error site in the app.
-          const message = err?.error
-            ? new ErrorHandlerService().parse(err).generalMessage
-            : 'Login failed';
+          const parsed = err?.error ? new ErrorHandlerService().parse(err) : null;
+          // LockedOut shows the catalog copy; every other code keeps the backend's message.
+          const message =
+            parsed?.code === 'authentications.LockedOut'
+              ? friendlyMessage(parsed.code, parsed.generalMessage)
+              : parsed
+                ? parsed.generalMessage
+                : 'Login failed';
           patchState(store, { error: message || 'Login failed', isLoading: false });
         }
       },
