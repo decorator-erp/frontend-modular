@@ -16,3 +16,23 @@ describe('ERROR_MESSAGES — authentications (002b A5)', () => {
     expect('authentications.UserNotActive' in ERROR_MESSAGES).toBe(false);
   });
 });
+
+/** 006b-1 #5: the permissions and roles families against backend remediation v3. */
+describe('ERROR_MESSAGES — permissions and roles (006b-1 #5)', () => {
+  it.each([
+    'permissions.CannotDelegate',
+    'permissions.SelfModification',
+    'permissions.LastHolder',
+    'roles.SystemRole',
+    'roles.FullAccessLocked',
+    'roles.RoleInUse',
+  ])('carries %s', (code) => {
+    expect(ERROR_MESSAGES[code]).toBeTruthy();
+    expect(friendlyMessage(code, 'fallback')).not.toBe('fallback');
+  });
+
+  it('tells the user what to do on RoleInUse and SelfModification', () => {
+    expect(ERROR_MESSAGES['roles.RoleInUse']).toContain('Remove its members first');
+    expect(ERROR_MESSAGES['permissions.SelfModification']).toContain('Ask another administrator');
+  });
+});

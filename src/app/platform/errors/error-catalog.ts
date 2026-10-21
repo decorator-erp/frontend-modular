@@ -55,6 +55,16 @@ export const ERROR_MESSAGES: Record<string, string> = {
     'An override for this permission already exists for that user.',
   'permissions.PermissionOverrideNotFound': 'No override exists for this permission.',
   'permissions.NotFoundForTarget': 'This permission is not set for the selected target.',
+  // Backend remediation v3 (006b-1 #5, KNOWN-DELTA-3). For `CannotDelegate` the screen shows the
+  // server's description, which names the missing permissions; this is the fallback.
+  'permissions.CannotDelegate': 'You can only give permissions you hold yourself.',
+  'permissions.SelfModification':
+    'You can’t change permissions on your own account. Ask another administrator.',
+  'permissions.LastHolder': 'At least one active user must keep this permission.',
+  'roles.SystemRole': 'This is a system role. It can’t be renamed or deleted.',
+  'roles.FullAccessLocked':
+    'This role always holds every permission. Its permissions can’t be edited.',
+  'roles.RoleInUse': 'This role is still assigned. Remove its members first.',
 
   // From api-docs/06-projects.md
   'projects.NotFound': 'Project not found.',
