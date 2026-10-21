@@ -23,6 +23,7 @@ import {
 } from '../../model/people.model';
 import { EmployeeService } from '../../data/employee.service';
 import { EmployeeListItem } from '../../model/employee.model';
+import { FULL_ACCESS_REASON, isFullAccessRole } from '../roles/role-policy';
 import { formatLongDate } from '@shared/ui/status';
 import { LocaleService } from '@platform/i18n';
 import {
@@ -110,6 +111,19 @@ export class PermissionsComponent implements OnInit {
   );
 
   readonly visibleRoles = computed(() => this.roles().filter((r) => !this.hiddenRoles().has(r.id)));
+
+  /** A failed claim write the server explained (403 `permissions.CannotDelegate`), shown inline. */
+  readonly matrixError = signal<string | null>(null);
+  readonly fullAccessReason = FULL_ACCESS_REASON;
+
+  /** Full-access roles always hold everything; PUT and DELETE of a claim answer 409. */
+  isLocked(role: RoleResponse): boolean {
+    return isFullAccessRole(role.name);
+  }
+
+  cellDisabled(role: RoleResponse, permission: string): boolean {
+    return !this.canEdit() || this.isLocked(role) || this.isPending(role.id, permission);
+  }
 
   readonly groups = computed<PermissionGroup[]>(() => {
     const term = this.search().trim().toLowerCase();
@@ -201,7 +215,8 @@ export class PermissionsComponent implements OnInit {
   }
 
   toggle(role: RoleResponse, permission: PermissionRow): void {
-    if (!this.canEdit() || this.isPending(role.id, permission.value)) return;
+    if (!this.canEdit() || this.isLocked(role) || this.isPending(role.id, permission.value)) return;
+    this.matrixError.set(null);
     const key = `${role.id}:${permission.value}`;
     const had = this.has(role.id, permission.value);
 
@@ -221,13 +236,19 @@ export class PermissionsComponent implements OnInit {
           return next;
         });
       },
-      error: () => {
+      error: (err: HttpErrorResponse) => {
         this.setGrant(role.id, permission.value, had);
         this.pending.update((s) => {
           const next = new Set(s);
           next.delete(key);
           return next;
         });
+        const parsed = this.errors.parse(err);
+        if (parsed.code === 'permissions.CannotDelegate') {
+          // The server's description names the permissions the caller lacks.
+          this.matrixError.set(parsed.generalMessage || friendly(parsed));
+          return;
+        }
         this.toast.show({
           tone: 'danger',
           message: `Couldn't ${had ? 'revoke' : 'grant'} ${permission.displayName} for ${role.name}`,

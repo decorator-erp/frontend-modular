@@ -35,6 +35,7 @@ import {
 } from '@ds';
 import { AssignRoleDialogComponent } from './assign-role-dialog.component';
 import { RoleNameDialogComponent } from './role-name-dialog.component';
+import { isSystemRole } from './role-policy';
 
 @Component({
   selector: 'app-roles',
@@ -101,6 +102,8 @@ export class RolesComponent implements OnInit {
       label: 'Delete',
       capability: PERM.roles.delete,
       tone: 'danger',
+      // Seeded roles can't be deleted (409 roles.SystemRole), so never offer it.
+      visible: (row) => !isSystemRole(row.name),
       action: (row) => this.remove(row),
     },
   ];
@@ -157,7 +160,12 @@ export class RolesComponent implements OnInit {
       size: 'sm',
       // The description must go BOTH ways: `UpdateRoleRequest` persists whatever it receives, so
       // sending only the name nulls the stored description on every rename.
-      data: { roleId: role.id, currentName: role.name, currentDescription: role.description },
+      data: {
+        roleId: role.id,
+        currentName: role.name,
+        currentDescription: role.description,
+        systemRole: isSystemRole(role.name),
+      },
     });
     if (await ref.afterClosed()) this.reload();
   }

@@ -17,12 +17,15 @@ import {
   PeraModalRef,
   PeraTextareaComponent,
 } from '@ds';
+import { SYSTEM_ROLE_NAME_HINT } from './role-policy';
 
 export interface RoleNameDialogData {
   /** When set, the dialog edits this role instead of creating a new one. */
   roleId?: string;
   currentName?: string;
   currentDescription?: string | null;
+  /** A seeded role: the name is locked (409 `roles.SystemRole`), the description stays editable. */
+  systemRole?: boolean;
 }
 
 @Component({
@@ -41,7 +44,12 @@ export interface RoleNameDialogData {
     <pera-modal [title]="data?.roleId ? 'Edit role' : 'New role'" size="sm">
       <form [formGroup]="form" [serverErrors]="serverError()" (ngSubmit)="submit()" novalidate>
         <div class="flex flex-col gap-3">
-          <pera-form-field label="Role name" [required]="true" [error]="errorOf('roleName')">
+          <pera-form-field
+            label="Role name"
+            [required]="true"
+            [error]="errorOf('roleName')"
+            [hint]="data?.systemRole ? systemRoleHint : ''"
+          >
             <pera-input
               formControlName="roleName"
               placeholder="e.g. Project coordinator"
@@ -86,6 +94,12 @@ export class RoleNameDialogComponent {
     ],
     description: [this.data?.currentDescription ?? '', [Validators.maxLength(300)]],
   });
+
+  readonly systemRoleHint = SYSTEM_ROLE_NAME_HINT;
+
+  constructor() {
+    if (this.data?.systemRole) this.form.controls.roleName.disable();
+  }
 
   readonly serverError = signal<ParsedApiError | null>(null);
   readonly submitting = signal(false);

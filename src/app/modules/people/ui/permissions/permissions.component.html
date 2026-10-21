@@ -80,6 +80,15 @@
       <div class="flex-1"></div>
     </div>
 
+    @if (matrixError(); as message) {
+      <div
+        role="alert"
+        class="px-7 py-2.5 border-b border-border bg-danger-soft fs-caption text-text-primary"
+      >
+        {{ message }}
+      </div>
+    }
+
     <!-- ============ .rp-mat ============ -->
     <div
       class="max-md:hidden overflow-auto border-b border-border bg-surface max-h-[calc(100vh-var(--h-chrome))]"
@@ -101,6 +110,12 @@
                   >{{ role.name }}</span
                 >
                 <span class="block fs-micro text-text-muted">ROLE</span>
+                @if (isLocked(role)) {
+                  <span
+                    class="block fs-micro text-text-muted mt-1 max-w-24 mx-auto whitespace-normal"
+                    >{{ fullAccessReason }}</span
+                  >
+                }
               </th>
             }
           </tr>
@@ -137,14 +152,18 @@
                       [class.border-text-primary]="has(role.id, permission.value)"
                       [class.bg-bg]="!has(role.id, permission.value)"
                       [class.border-border]="!has(role.id, permission.value)"
-                      [class.opacity-50]="!canEdit() || isPending(role.id, permission.value)"
-                      [class.cursor-not-allowed]="
-                        !canEdit() || isPending(role.id, permission.value)
-                      "
-                      [disabled]="!canEdit() || isPending(role.id, permission.value)"
+                      [class.opacity-50]="cellDisabled(role, permission.value)"
+                      [class.cursor-not-allowed]="cellDisabled(role, permission.value)"
+                      [disabled]="cellDisabled(role, permission.value)"
                       [attr.aria-label]="permission.displayName + ' for ' + role.name"
                       [attr.aria-pressed]="has(role.id, permission.value)"
-                      [peraTooltip]="canEdit() ? '' : 'You need roles.manage to edit'"
+                      [peraTooltip]="
+                        isLocked(role)
+                          ? fullAccessReason
+                          : canEdit()
+                            ? ''
+                            : 'You need roles.manage to edit'
+                      "
                       (click)="toggle(role, permission)"
                     >
                       @if (has(role.id, permission.value)) {
@@ -184,6 +203,9 @@
         <div class="border border-border bg-surface">
           <div class="px-4 py-3 border-b border-border">
             <h2 class="m-0 fs-body font-semibold">{{ role.name }}</h2>
+            @if (isLocked(role)) {
+              <p class="m-0 mt-0.5 fs-micro text-text-muted">{{ fullAccessReason }}</p>
+            }
           </div>
           <div class="p-4">
             @for (grp of groups(); track grp.group) {
@@ -200,7 +222,7 @@
                         type="checkbox"
                         class="w-3.5 h-3.5 accent-[var(--color-accent)]"
                         [checked]="has(role.id, permission.value)"
-                        [disabled]="!canEdit() || isPending(role.id, permission.value)"
+                        [disabled]="cellDisabled(role, permission.value)"
                         (change)="toggle(role, permission)"
                       />
                       {{ permission.displayName }}
