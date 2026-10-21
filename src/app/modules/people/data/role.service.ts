@@ -2,6 +2,9 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { map, tap } from 'rxjs/operators';
 import { RoleResponse } from '../model/people.model';
+import { UserListItem } from '../model/user.model';
+import { PagedResult } from '@platform/types/paged-result';
+import { UserService } from './user.service';
 import { ApiService } from '@platform/http/api.service';
 import { AuthStore } from '@platform/auth/auth.store';
 
@@ -16,6 +19,7 @@ import { AuthStore } from '@platform/auth/auth.store';
 @Injectable({ providedIn: 'root' })
 export class RoleService extends ApiService {
   private readonly authStore = inject(AuthStore);
+  private readonly usersApi = inject(UserService);
 
   getAll(): Observable<RoleResponse[]> {
     return this.get<unknown>('/roles').pipe(
@@ -59,6 +63,16 @@ export class RoleService extends ApiService {
   getUserRoles(userId: string): Observable<RoleResponse[]> {
     return this.get<unknown>(`/roles/users/${userId}`).pipe(
       map((response) => this.unwrapArray(response).map((role) => this.normalizeRole(role))),
+    );
+  }
+
+  /**
+   * Who holds a role — `GET /api/roles/{roleId}/users` (backend v3, `roles.read`), paged; an
+   * unknown role answers 404 (006b-1 #18). Same `PagedResult<UserListItem>` as `/api/users`.
+   */
+  users(roleId: string, page = 1, pageSize = 50): Observable<PagedResult<UserListItem>> {
+    return this.get<unknown>(`/roles/${roleId}/users`, { page, pageSize }).pipe(
+      map((response) => this.usersApi.normalizePaged(response, pageSize)),
     );
   }
 
