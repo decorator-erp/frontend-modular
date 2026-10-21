@@ -1,0 +1,3 @@
+/* RTL overrides live here. Components should use logical properties
+   (margin-inline-start, padding-inline-end, border-inline-end) so most
+   layout flips automatically. Add specific overrides only when needed. */

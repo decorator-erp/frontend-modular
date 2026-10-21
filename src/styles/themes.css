@@ -1,0 +1,59 @@
+[data-theme='dark'] {
+  --color-bg: #0b0b0c;
+  --color-surface: #131316;
+  --color-surface-muted: #1a1a1e;
+  --color-border: #26262b;
+  --color-border-strong: #34343a;
+  --color-text-primary: #f5f5f5;
+  --color-text-secondary: #c7c7cc;
+  --color-text-muted: #8e8e93;
+  --color-accent: #6fa897;
+  --color-accent-hover: #88bbab;
+  --color-accent-pressed: #5a9686;
+  --color-accent-soft: #1b2a26;
+  --color-pending: #9d86d6;
+  --color-pending-soft: rgba(107, 79, 184, 0.22);
+
+  /* Kit alias layer — dark overrides (Phase 1). Tokens that alias --color-*
+     (--bg, --surface, --border, --ink, --primary*, --accent, --on-accent)
+     flow through the overrides above automatically; only the literal kit
+     tokens need restating here. */
+  --hover: #222222;
+  --selected: #2a2a2a;
+  --border-soft: #232323;
+  --on-ink: rgba(0, 0, 0, 0.08);
+  --on-ink-border: rgba(0, 0, 0, 0.18);
+  --on-ink-text: rgba(0, 0, 0, 0.7);
+  --primary-light: rgba(53, 94, 82, 0.22);
+
+  --success-bg: rgba(47, 125, 91, 0.16);
+  --warning-bg: rgba(184, 116, 26, 0.16);
+  --error-bg: rgba(178, 58, 58, 0.16);
+  --info-bg: rgba(58, 110, 165, 0.16);
+
+  /* 003 — dark overrides for the LITERAL colours introduced in tokens.css.
+     The aliased tokens (--st-inprog/-onhold/-complete/-cancel/-pending, their
+     soft backgrounds, --health-*, and --viz-1/2/3/4/6) resolve through the
+     semantic ramp and need no restatement here.
+
+     The prototype ships light-mode only, so every value below is derived, and
+     dark mode is checked at each batch's visual-QA gate — never inherited. */
+  --st-draft: #9ca3af;
+  --st-draft-bg: rgba(107, 114, 128, 0.16);
+  --st-draft-bd: #3a3a40;
+  --st-inprog-bd: #2f4a63;
+  --st-onhold-bd: #5c4523;
+  --st-complete-bd: #2c4c3e;
+  --st-cancel-bd: #5a2f2f;
+  --st-pending-bd: #453a63;
+  --st-locked: #8a99a7;
+  --st-locked-bg: rgba(90, 107, 123, 0.16);
+  --st-locked-bd: #363d44;
+
+  --pri-low: #5b5f64;
+  --pri-medium: #83878c;
+  --pri-high: #b9bdc2;
+  --pri-urgent: #f5f5f5;
+
+  --viz-5: #6f757b;
+}

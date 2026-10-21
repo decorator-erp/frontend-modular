@@ -1,0 +1,419 @@
+:root {
+  /* Reference — palette (from design-system.md §30.2) */
+  --gray-50: #fafafa;
+  --gray-100: #f5f5f5;
+  --gray-200: #eaeaea;
+  --gray-300: #d6d6d6;
+  --gray-500: #757575;
+  --gray-700: #444444;
+  --gray-900: #111111;
+  --accent-500: #355e52;
+  --accent-600: #2a4d43;
+  --accent-700: #1f3a32;
+  --accent-50: #eaf0ee;
+  --success-500: #2f7d5b;
+  --warning-500: #b8741a;
+  --danger-500: #b23a3a;
+  --info-500: #3a6ea5;
+  --success-50: #ecf4ef;
+  --warning-50: #faf1e4;
+  --danger-50: #f7ecec;
+  --info-50: #edf2f8;
+  /* PendingApproval — the one hue outside the core ramp (DMS dashboards). */
+  --pending-500: #6b4fb8;
+  --pending-50: #f0ebf9;
+
+  /* Semantic — light */
+  --color-bg: var(--gray-50);
+  --color-surface: #ffffff;
+  --color-surface-muted: var(--gray-100);
+  --color-border: var(--gray-200);
+  --color-border-strong: var(--gray-300);
+  --color-text-primary: var(--gray-900);
+  --color-text-secondary: var(--gray-700);
+  --color-text-muted: var(--gray-500);
+  --color-text-on-accent: #ffffff;
+  --color-accent: var(--accent-500);
+  --color-accent-hover: var(--accent-600);
+  --color-accent-pressed: var(--accent-700);
+  --color-accent-soft: var(--accent-50);
+  --color-pending: var(--pending-500);
+  --color-pending-soft: var(--pending-50);
+  --color-focus-ring: var(--accent-500);
+
+  /* Spacing — the prototype's ladder is 4/8/12/16/20/24/32/40/48/64.
+     `--space-5` (card padding, desktop) and `--space-10` (major section break)
+     were the two missing rungs; see contracts/design-tokens.md §2.
+
+     NOTE (003, Batch 0): these are published as raw custom properties only.
+     They are deliberately NOT mapped into Tailwind's `--spacing-*` namespace
+     below, because `--spacing` is undefined here, so `p-5` / `gap-5` / `w-10`
+     currently resolve through Tailwind's 0.25rem multiplier against the 13px
+     root (p-5 = 16.25px, w-10 = 32.5px). Defining `--spacing-5` / `--spacing-10`
+     would silently retune ~180 existing utility usages. The mapping lands in the
+     screen batch that consumes it, behind that batch's visual-QA gate. */
+  /* The one hairline. Border widths are not a scale step, but they are also not
+     an arbitrary value — naming it keeps `1px` out of every component. */
+  --hairline: 1px;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* ---------------------------------------------------------------------
+     Geometry tier — contracts/design-tokens.md §9, ratified 2026-07-10.
+     Derived from the 204 px that survived the type sweep, not chosen: the
+     layout band already sat on a 20px (--space-5) grid, and the glyph
+     cluster's modes are 9/14/18/22/28. Spacing is NOT part of this tier —
+     it snaps to the ladder above. Purpose names only; never a bare alias.
+     Pure geometry, so no dark override is needed (§9.6.4).
+     --------------------------------------------------------------------- */
+
+  /* Square control glyphs. --icon-xs is also pera-icon's default `size`. */
+  --icon-2xs: 9px; /* status & priority dots, legend swatches, node handles */
+  --icon-xs: 14px; /* inline glyph inside a dense control */
+  --icon-sm: 18px; /* a standalone control icon */
+  --icon-md: 22px; /* an emphasis icon or a mini avatar */
+  --icon-lg: 28px; /* a compact avatar or a topbar control */
+
+  /* One-dimensional thicknesses. 1.4px and 1.5px were never two weights.
+     Half-offsets derive: calc(var(--hairline) * 0.5). */
+  --hairline-strong: 1.5px; /* an emphasised outline: brand mark, empty-state glyph */
+  --border-accent: 3px; /* inline-start emphasis edge on a selected row */
+  --bar-track: 4px; /* the thickness of a progress track */
+  --bar-group: 8px; /* a rollup bar — the Gantt stage row */
+  --bar-item: 14px; /* a leaf bar — the Gantt task row. Agrees with --icon-xs today; not the same decision. */
+  --bar-row: 18px; /* a timeline row track — the band segments are drawn inside */
+
+  /* Layout widths. Every value is n x --space-5. */
+  --w-column-sm: 80px; /* a narrow numeric or action column */
+  --w-column: 120px; /* the default data column, before it truncates */
+  --w-field: 140px; /* a filter or form control in an inline row */
+  --w-node: 160px; /* a canvas or timeline node card; a row-label gutter */
+  --w-column-lg: 200px; /* a wide data column, a truncating cell, a narrow palette */
+  --w-panel: 280px; /* a docked panel or picker column */
+  --w-rail: 340px; /* a detail-page side rail */
+  --w-auth: 400px; /* the auth card column */
+  --w-dialog: 400px; /* a dialog's minimum comfortable width */
+  --w-dialog-lg: 480px; /* a wide dialog's minimum width */
+  --w-drawer: 480px; /* a side drawer, small viewport */
+  --w-drawer-lg: 520px; /* a side drawer, large viewport */
+  --w-prose: 560px; /* centred explanatory copy — error pages, empty states */
+  --w-form: 1100px; /* a single-record form or detail page */
+  --w-page: 1280px; /* a full workspace page */
+
+  /* Layout heights. */
+  --h-editor: 80px; /* the minimum body of a text editor */
+  --h-chart: 120px; /* an inline chart or sparkline band */
+  --h-chart-lg: 180px; /* a full chart panel */
+  --h-chrome: 220px; /* the app chrome above a scrolling region */
+  --h-canvas: 280px; /* the minimum body of a builder canvas or picker */
+  --h-scroll: 420px; /* the maximum height of a scrolling sub-list */
+  --h-panel: 560px; /* a tall panel or a centred full-page state */
+  --h-drawer: 640px; /* a full-height drawer body */
+
+  /* Radius */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-full: 9999px;
+  /* Flat surfaces (cards, panels, tables) are square in v2 — hairline border, no radius. */
+  --radius-card: 0;
+
+  /* Shadow */
+  --shadow-sm: 0 1px 2px rgba(17, 17, 17, 0.04);
+  --shadow-md: 0 4px 12px rgba(17, 17, 17, 0.06);
+  --shadow-lg: 0 12px 32px rgba(17, 17, 17, 0.08);
+
+  /* Motion */
+  --dur-fast: 120ms;
+  --dur-base: 180ms;
+  --dur-slow: 280ms;
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+
+  /* Typography */
+  --font-sans: 'Inter', 'Noto Sans Arabic', sans-serif;
+  /* Locked template (colors_and_type.css) collapses "mono" to Inter — no mono
+     labels, no JetBrains. Kept as an alias so `font-mono` utilities still work. */
+  --font-mono: var(--font-sans);
+
+  /* ------------------------------------------------------------------------
+     Type scale (003) — transcribed from `DMS Component Library.dc.html` §Type,
+     the scale of record. Format: size / line-height / weight.
+     The 13px document base (styles.css) does NOT move: --fs-body-sm == base.
+
+     Published as raw custom properties, NOT mapped into Tailwind's `--text-*`
+     namespace — that namespace already backs `text-xs … text-3xl` app-wide, and
+     redefining it would restyle every screen at once. Consumers use var(--fs-*).
+     ------------------------------------------------------------------------ */
+  --fs-display: 40px;
+  --lh-display: 48px; /* 600, -0.02em  — page-level KPI figures */
+  --fs-h1: 28px;
+  --lh-h1: 36px; /* 600, -0.015em — page titles */
+  --fs-h2: 22px;
+  --lh-h2: 30px; /* 600 — section headings */
+  --fs-h3: 18px;
+  --lh-h3: 26px; /* 600 — subsection headings */
+  --fs-body: 14px;
+  --lh-body: 22px; /* 400 — prose */
+  --fs-body-sm: 13px;
+  --lh-body-sm: 20px; /* 400 — secondary text; equals the document base */
+  --fs-caption: 12px;
+  --lh-caption: 16px; /* 500, UPPERCASE +0.5px — KPI labels, table headers */
+  --fs-code: 13px; /* 500, tabular-nums — IDs and codes */
+
+  /* Ratified micro-tokens (contracts/design-tokens.md §1). Sub-scale sizes the
+     product genuinely uses; each carries a purpose so it is not a raw px under a
+     new name. The fractional tier (13.5/12.5/11.5/10.5/9.5) is NOT tokenized —
+     it snaps to a step at each screen's QA gate. */
+  --fs-label: 11px; /* eyebrows, KPI captions, meta labels, tab counts */
+  --fs-micro: 9px; /* chevrons, 24px-avatar initials, chart axis labels */
+
+  /* ------------------------------------------------------------------------
+     Status triplets (003) — base / soft background / border, per prototype.
+     Hues that already exist in the semantic ramp are aliased, never re-hexed.
+     Soft backgrounds alias the kit's dark-aware `--*-bg` tokens.
+
+     `--st-inprog` and `--st-pending` are also declared locally on `.dms-stage`
+     (as var(--info) / var(--color-pending)) — same values, so the local
+     declarations shadow these inertly until Batch 4b retires them.
+     ------------------------------------------------------------------------ */
+  --st-draft: #6b7280;
+  --st-draft-bg: #f4f5f6;
+  --st-draft-bd: #e2e4e7;
+  --st-inprog: var(--info-500);
+  --st-inprog-bg: var(--info-bg);
+  --st-inprog-bd: #c6d7e9;
+  --st-onhold: var(--warning-500);
+  --st-onhold-bg: var(--warning-bg);
+  --st-onhold-bd: #ebcd9f;
+  --st-complete: var(--success-500);
+  --st-complete-bg: var(--success-bg);
+  --st-complete-bd: #bbdaca;
+  --st-cancel: var(--danger-500);
+  --st-cancel-bg: var(--error-bg);
+  --st-cancel-bd: #e3bcbc;
+  --st-pending: var(--pending-500);
+  --st-pending-bg: var(--color-pending-soft);
+  --st-pending-bd: #ccbcec;
+  --st-locked: #5a6b7b;
+  --st-locked-bg: #eef1f4;
+  --st-locked-bd: #d2dae1;
+
+  /* RAG health (003) — consumed by pera-health-indicator. Status is never
+     colour-only: the component pairs each of these with a text label. */
+  --health-good: var(--success-500);
+  --health-warning: var(--warning-500);
+  --health-critical: var(--danger-500);
+
+  /* Priority ramp (003) — deliberately neutral; the prototype reinforces
+     priority by weight, not hue. `.dms-stage` shadows --pri-low/--pri-high with
+     grays today; Batch 4b's de-port retires those local declarations. */
+  --pri-low: #aeb2b7;
+  --pri-medium: #7c8085;
+  --pri-high: #3f4347;
+  --pri-urgent: #111111;
+
+  /* Data-viz palette (003) — Okabe-Ito adapted, colourblind-tuned. */
+  --viz-1: var(--accent-500);
+  --viz-2: var(--info-500);
+  --viz-3: var(--warning-500);
+  --viz-4: var(--pending-500);
+  --viz-5: #9aa0a6;
+  --viz-6: var(--danger-500);
+}
+
+/* ============================================================================
+   Kit alias layer (Phase 1) — mirrors _ds/.../colors_and_type.css so prototype
+   classes (.btn.primary, .panel, .kpi, .ph-tag, .sb-item.active) theme correctly
+   if pasted in. Aliases resolve to the semantic layer above where one exists;
+   dark overrides for the literal tokens live in themes.css.
+   ============================================================================ */
+:root {
+  /* Surfaces & ink */
+  --bg: var(--color-bg);
+  --surface: var(--color-surface);
+  --hover: #f8f8f8;
+  --selected: #f3f3f3;
+  --border: var(--color-border);
+  --border-soft: #f1f1f1;
+  --ink: var(--color-text-primary);
+  --on-ink: rgba(255, 255, 255, 0.1);
+  --on-ink-border: rgba(255, 255, 255, 0.22);
+  --on-ink-text: rgba(255, 255, 255, 0.78);
+  --on-accent: var(--color-text-on-accent);
+
+  /* Accent re-aliased to --primary* */
+  --primary: var(--color-accent);
+  --primary-hover: var(--color-accent-hover);
+  --primary-pressed: var(--color-accent-pressed);
+  --primary-light: var(--color-accent-soft);
+  --accent: var(--primary);
+  --accent-hover: var(--primary-hover);
+  --accent-soft: var(--primary-light);
+  --link: var(--primary);
+
+  /* Status with -bg softs */
+  --success: var(--success-500);
+  --success-bg: var(--success-50);
+  --warning: var(--warning-500);
+  --warning-bg: var(--warning-50);
+  --error: var(--danger-500);
+  --error-bg: var(--danger-50);
+  --info: var(--info-500);
+  --info-bg: var(--info-50);
+
+  /* Type & layout constants */
+  --sans: var(--font-sans);
+  --mono: var(--font-sans); /* see --font-mono note above */
+  --arabic: 'Noto Sans Arabic', 'Inter', system-ui, sans-serif;
+  /* v2 DS migration (002): icon-only sidebar — was 216px, now 56px (permanent,
+     no expand state per spec clarification Q3). Shell lays out from this token. */
+  --sidebar-w: 56px;
+  /* Mobile off-canvas drawer renders the sidebar labelled (research R3); this is
+     the overlay width only — the desktop rail always uses --sidebar-w. */
+  --sidebar-drawer-w: 224px;
+  /* Page filter rail (clients / employees list pages) — a content column, not the
+     nav sidebar. Tokenized to drop the raw 216px literal and decouple from --sidebar-w. */
+  --filter-rail-w: 216px;
+  --topbar-h: 52px;
+}
+
+@theme {
+  --color-bg: var(--color-bg);
+  --color-surface: var(--color-surface);
+  --color-surface-muted: var(--color-surface-muted);
+  --color-border: var(--color-border);
+  --color-border-strong: var(--color-border-strong);
+  --color-text-primary: var(--color-text-primary);
+  --color-text-secondary: var(--color-text-secondary);
+  --color-text-muted: var(--color-text-muted);
+  --color-text-on-accent: var(--color-text-on-accent);
+  --color-accent: var(--color-accent);
+  --color-accent-hover: var(--color-accent-hover);
+  --color-accent-pressed: var(--color-accent-pressed);
+  --color-accent-soft: var(--color-accent-soft);
+  --color-focus-ring: var(--color-focus-ring);
+
+  --color-success: var(--success-500);
+  --color-success-soft: var(--success-50);
+  --color-warning: var(--warning-500);
+  --color-warning-soft: var(--warning-50);
+  --color-danger: var(--danger-500);
+  --color-danger-soft: var(--danger-50);
+  --color-info: var(--info-500);
+  --color-info-soft: var(--info-50);
+  --color-pending: var(--color-pending);
+  --color-pending-soft: var(--color-pending-soft);
+
+  /* 003 — RAG health + data-viz utilities. Additive: these are new names, so no
+     existing utility changes. Spacing deliberately stays at its current rungs;
+     see the --space-5 / --space-10 note above. */
+  --color-health-good: var(--health-good);
+  --color-health-warning: var(--health-warning);
+  --color-health-critical: var(--health-critical);
+  --color-viz-1: var(--viz-1);
+  --color-viz-2: var(--viz-2);
+  --color-viz-3: var(--viz-3);
+  --color-viz-4: var(--viz-4);
+  --color-viz-5: var(--viz-5);
+  --color-viz-6: var(--viz-6);
+
+  /* Geometry tier (§9). Mapped through the --spacing-* namespace so the icon
+     ladder and the bar thicknesses read as `size-icon-sm`, `w-icon-2xs`,
+     `h-bar-track`. Layout widths/heights stay out of the namespace: they are
+     low-frequency and read more honestly as `w-[var(--w-rail)]`. */
+  --spacing-icon-2xs: var(--icon-2xs);
+  --spacing-icon-xs: var(--icon-xs);
+  --spacing-icon-sm: var(--icon-sm);
+  --spacing-icon-md: var(--icon-md);
+  --spacing-icon-lg: var(--icon-lg);
+  --spacing-bar-track: var(--bar-track);
+  --spacing-bar-group: var(--bar-group);
+  --spacing-bar-item: var(--bar-item);
+  --spacing-bar-row: var(--bar-row);
+
+  --spacing-1: var(--space-1);
+  --spacing-2: var(--space-2);
+  --spacing-3: var(--space-3);
+  --spacing-4: var(--space-4);
+  --spacing-6: var(--space-6);
+  --spacing-8: var(--space-8);
+  --spacing-12: var(--space-12);
+  --spacing-16: var(--space-16);
+
+  --radius-xs: var(--radius-xs);
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --radius-full: var(--radius-full);
+  --radius-card: var(--radius-card);
+
+  --shadow-sm: var(--shadow-sm);
+  --shadow-md: var(--shadow-md);
+  --shadow-lg: var(--shadow-lg);
+
+  --font-family-sans: var(--font-sans);
+  --font-family-mono: var(--font-mono);
+}
+
+/* ---------------------------------------------------------------------------
+ * Type-scale utilities (feature 003, Batch 4).
+ *
+ * The `--fs-*` steps are deliberately NOT mapped into Tailwind's `--text-*`
+ * namespace: that would restyle every existing `text-xs` … `text-3xl` in the
+ * app at once. Instead each step gets its own `.fs-*` utility, so a component
+ * can name a scale step without writing a raw pixel and without colliding with
+ * Tailwind's own sizes. Line height rides along where the scale defines one.
+ *
+ * `no-raw-px-styles` ignores `.css` files by design — this is the token layer,
+ * where a px literal is the point.
+ * ------------------------------------------------------------------------- */
+@layer utilities {
+  .fs-display {
+    font-size: var(--fs-display);
+    line-height: var(--lh-display);
+  }
+  .fs-h1 {
+    font-size: var(--fs-h1);
+    line-height: var(--lh-h1);
+  }
+  .fs-h2 {
+    font-size: var(--fs-h2);
+    line-height: var(--lh-h2);
+  }
+  .fs-h3 {
+    font-size: var(--fs-h3);
+    line-height: var(--lh-h3);
+  }
+  .fs-body {
+    font-size: var(--fs-body);
+    line-height: var(--lh-body);
+  }
+  .fs-body-sm {
+    font-size: var(--fs-body-sm);
+    line-height: var(--lh-body-sm);
+  }
+  .fs-caption {
+    font-size: var(--fs-caption);
+    line-height: var(--lh-caption);
+  }
+  .fs-code {
+    font-size: var(--fs-code);
+  }
+  .fs-label {
+    font-size: var(--fs-label);
+  }
+  .fs-micro {
+    font-size: var(--fs-micro);
+  }
+}

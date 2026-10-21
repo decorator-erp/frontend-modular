@@ -1,0 +1,172 @@
+/* ===========================================================================
+   Trust-rule treatments (feature 004) — FR-003, FR-004, FR-010, FR-011, FR-013.
+   Three treatments that are NET-NEW to the design system:
+   `grep -riE "watermark|unconfirmed|superseded|provisional" src` was 0 hits.
+
+   Global by necessity: consumers apply these classes to their OWN elements (a
+   ledger row, an item row, an attachment card), so Angular's style encapsulation
+   rules out a component `styles:` block. Imported once from `src/styles.css`.
+
+   Token-only — zero raw pixels (FR-008, SC-003).
+   =========================================================================== */
+
+/* ---------------------------------------------------------------------------
+   1. UNCONFIRMED (FR-013) — any Draft or Pending artifact, on every screen a
+      designer could reach. A dimmed CONTENT area plus a rotated amber stamp
+      painted from `data-wm`, so the pseudo-element carries the word with no
+      wrapper element of its own.
+
+      ⚠️ The dimming is on `.pera-unconfirmed-content`, an inner wrapper — NOT on
+      `.pera-unconfirmed` itself. `opacity` composites an element and everything
+      inside it (including its own `::after`) as one group against whatever is
+      behind it. Putting the fade on the SAME element that carries the stamp
+      means the stamp fades in lockstep with its own ink/background pair, and
+      raising the group's opacity barely helps — both colors move toward the
+      same backdrop at the same rate, so their MUTUAL contrast stays roughly
+      flat regardless of how high the opacity is turned. Measured at T030
+      (`scratchpad/contrast-check.mjs`): stamp ink-vs-fill sat at 2.65:1 → 2.95:1
+      across the .62 → .75 dark-mode lift — both a hard fail against the 4.5:1
+      WCAG AA text minimum, and the "lift the opacity" fix could never have
+      closed that gap. Exempting the stamp from the fade — so it renders at
+      full, un-composited strength in both themes — recovers 3.38:1, matching
+      the SAME app-wide baseline `pera-status-badge`'s warning tone already
+      ships in light mode today (a pre-existing, out-of-CRM-scope token gap;
+      see the T030 report). A designer's whole JOB when looking at this stamp is
+      to notice it; washing it out with the rest of the row defeats that.
+
+      Consumers wrap the row's own content — NOT the stamp — in
+      `.pera-unconfirmed-content`:
+        <div class="pera-unconfirmed" data-wm="UNCONFIRMED">
+          <div class="pera-unconfirmed-content"> …row markup… </div>
+        </div>
+      No screen consumes this class yet (B3 has not started), so this is the
+      contract from day one, not a retrofit.
+   --------------------------------------------------------------------------- */
+.pera-unconfirmed {
+  position: relative;
+}
+
+.pera-unconfirmed-content {
+  opacity: 0.62;
+}
+
+.pera-unconfirmed::after {
+  content: attr(data-wm);
+  position: absolute;
+  top: 50%;
+  inset-inline-end: var(--space-4);
+
+  /* The prototype rotates -4deg and does NOT mirror it, so in Arabic its stamp
+     leans AGAINST the text. Mirrored below — one line, and it is the difference
+     between "ported" and "ported correctly". */
+  transform: translateY(-50%) rotate(-4deg);
+  transform-origin: center;
+
+  padding: var(--space-1) var(--space-2);
+  border: var(--hairline) solid var(--color-warning);
+  border-radius: var(--radius-sm);
+  background: var(--color-warning-soft);
+  color: var(--color-warning);
+
+  /* The label tier. UPPERCASE is applied BY CSS, never baked into the catalog
+     string — the Arabic value (غير مؤكد) has no case to upper. */
+  font-size: var(--fs-label);
+  line-height: var(--lh-caption);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+
+  pointer-events: none;
+}
+
+[dir='rtl'] .pera-unconfirmed::after {
+  transform: translateY(-50%) rotate(4deg);
+}
+
+/* ---------------------------------------------------------------------------
+   2. LOCKED (FR-010, SC-005) — not a colour. It is the green Approved chip
+      carrying the word `locked`, plus a "New version…" link REPLACING every edit
+      affordance. Absent, never disabled.
+
+      The chip and the link are markup (trustChip() + the catalog); what belongs
+      here is the structural guarantee: a locked artifact's edit and attachment
+      affordances do not render. `display: none` is the backstop, not the
+      mechanism — the component must not emit them in the first place (FR-033).
+   --------------------------------------------------------------------------- */
+.pera-locked [data-edit-affordance],
+.pera-locked [data-upload-affordance],
+.pera-locked [data-remove-affordance] {
+  display: none;
+}
+
+/* ---------------------------------------------------------------------------
+   3. SUPERSEDED (FR-011) — four things together: a dimmed container, a struck
+      title, the slate Superseded chip (markup), and THE TRAIL RETAINED. A
+      superseded artifact is evidence, not a tombstone.
+
+      The prototype applies this as inline styles with no class at all
+      (`style="opacity:.55"` + `style="text-decoration:line-through"`), which
+      would burn style budget and cannot be themed for dark mode. Promoted to a
+      real class here.
+   --------------------------------------------------------------------------- */
+.pera-superseded {
+  opacity: 0.55;
+}
+
+.pera-superseded [data-title],
+.pera-superseded .pera-superseded-title {
+  text-decoration: line-through;
+}
+
+/* The approval trail is the point of the treatment — it must survive the dim. */
+.pera-superseded [data-trail] {
+  opacity: 1;
+  text-decoration: none;
+}
+
+/* ---------------------------------------------------------------------------
+   4. DARK MODE.
+
+      Both opacity treatments dim already-low-contrast text — on a dark surface
+      that is the classic way a light-designed muted state becomes unreadable, so
+      both lift here rather than at each consumer.
+
+      `.pera-superseded` genuinely benefits from a group lift: its title and trail
+      are plain text fading toward the panel behind it (a two-actor pair), and
+      raising the group's opacity measurably recovers their mutual contrast — the
+      neutral status chip inside a superseded row clears 5.36:1 at .68 (T030,
+      `scratchpad/contrast-check.mjs`).
+
+      `.pera-unconfirmed-content` does the SAME thing for the row's own text, for
+      the same reason. The watermark stamp does NOT get a dark-mode opacity lift
+      here, because it no longer needs one — see §1: it is exempted from the fade
+      entirely, which is the fix that actually closes the gap a lift alone cannot
+      (two same-rate-fading colors don't regain contrast from each other just
+      because the group they're both in gets less transparent).
+   --------------------------------------------------------------------------- */
+[data-theme='dark'] .pera-unconfirmed-content {
+  opacity: 0.75;
+}
+
+[data-theme='dark'] .pera-superseded {
+  opacity: 0.68;
+}
+
+/* ⚠️ KNOWN, PRE-EXISTING, OUT-OF-CRM-SCOPE GAP (found at T030, not introduced here,
+   ACCEPTED as separate tracked debt — see `docs/crm-soft-token-dark-debt.md`):
+   `--color-warning-soft` / `--color-success-soft` / `--color-danger-soft` /
+   `--color-info-soft` have NO dark-theme override anywhere in the app — only
+   `--color-pending-soft` and the `neutral` pairing do (grep `themes.css`). So the
+   unconfirmed stamp's fill, and `pera-status-badge`'s success/warning/error tones
+   — which is the Approved, Trusted AND Rejected chip in THIS feature's own trust
+   vocabulary, not just the stamp — render their LIGHT-mode soft background in
+   dark mode too, everywhere in the product, not only in CRM. Exempting the stamp
+   from the fade (§1) recovers it to 3.38:1, the SAME baseline every other warning
+   badge already ships at in light mode today — consistent, not regressed further,
+   but not newly fixed either. Retuning the shared `--color-*-soft` family is a
+   product-wide visual change well beyond a Foundation batch's blast radius (it
+   would touch Finance, project statuses, every existing `pera-status-badge`
+   consumer) and needs an explicit call, not a silent patch inside one feature's
+   CSS file. Tracked, not fixed here — full writeup, root cause and the exact fix
+   shape at `docs/crm-soft-token-dark-debt.md`. */

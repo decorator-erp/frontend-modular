@@ -1,0 +1,81 @@
+{
+  "src/app/design-system/components/dropdown/pera-dropdown.component.ts": {
+    "@angular-eslint/template/click-events-have-key-events": {
+      "count": 2
+    },
+    "@angular-eslint/template/interactive-supports-focus": {
+      "count": 2
+    },
+    "@typescript-eslint/no-unused-expressions": {
+      "count": 1
+    }
+  },
+  "src/app/design-system/components/markdown-editor/pera-markdown-editor.component.ts": {
+    "@angular-eslint/no-output-native": {
+      "count": 1
+    }
+  },
+  "src/app/design-system/components/popover/pera-popover.component.ts": {
+    "@angular-eslint/template/click-events-have-key-events": {
+      "count": 1
+    },
+    "@angular-eslint/template/interactive-supports-focus": {
+      "count": 1
+    }
+  },
+  "src/app/design-system/components/select/pera-select.component.ts": {
+    "@typescript-eslint/no-unused-expressions": {
+      "count": 1
+    }
+  },
+  "src/app/design-system/components/switch/pera-switch.component.ts": {
+    "@angular-eslint/template/label-has-associated-control": {
+      "count": 1
+    }
+  },
+  "src/app/design-system/patterns/attachments-shell/pera-attachments-shell.component.ts": {
+    "@angular-eslint/template/click-events-have-key-events": {
+      "count": 5
+    },
+    "@angular-eslint/template/eqeqeq": {
+      "count": 1
+    },
+    "@angular-eslint/template/interactive-supports-focus": {
+      "count": 5
+    }
+  },
+  "src/app/design-system/patterns/attachments-shell/pera-file-preview-drawer.component.ts": {
+    "@angular-eslint/template/click-events-have-key-events": {
+      "count": 1
+    },
+    "@angular-eslint/template/interactive-supports-focus": {
+      "count": 1
+    }
+  },
+  "src/app/design-system/patterns/data-table/pera-data-table.component.ts": {
+    "@angular-eslint/template/click-events-have-key-events": {
+      "count": 2
+    },
+    "@angular-eslint/template/interactive-supports-focus": {
+      "count": 2
+    },
+    "@typescript-eslint/no-unused-expressions": {
+      "count": 2
+    }
+  },
+  "src/app/design-system/patterns/modal/pera-modal.component.ts": {
+    "@angular-eslint/no-output-native": {
+      "count": 1
+    }
+  },
+  "src/app/design-system/patterns/page-header/pera-page-header.component.ts": {
+    "@angular-eslint/template/eqeqeq": {
+      "count": 1
+    }
+  },
+  "src/app/shared/forms/server-errors.directive.ts": {
+    "@angular-eslint/directive-selector": {
+      "count": 1
+    }
+  }
+}

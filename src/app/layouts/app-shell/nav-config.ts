@@ -1,0 +1,64 @@
+export interface NavItem {
+  label: string;
+  icon: string;
+  route: string;
+  capability?: string;
+}
+
+export interface NavSection {
+  title: string;
+  items: NavItem[];
+}
+
+export const NAV_SECTIONS: NavSection[] = [
+  {
+    title: 'Operations',
+    items: [
+      { label: 'Dashboard', icon: 'home', route: '/dashboard' },
+      { label: 'Projects', icon: 'briefcase', route: '/projects' },
+      { label: 'Leads', icon: 'users', route: '/crm/leads', capability: 'crm.leads.read' },
+    ],
+  },
+  {
+    title: 'Admin',
+    items: [
+      { label: 'Employees', icon: 'users', route: '/employees', capability: 'employees.read' },
+      { label: 'Clients', icon: 'user', route: '/clients', capability: 'clients.read' },
+      {
+        label: 'Departments',
+        icon: 'inbox',
+        route: '/departments',
+        capability: 'departments.read',
+      },
+      { label: 'Roles', icon: 'lock', route: '/roles', capability: 'roles.read' },
+      {
+        label: 'Permissions',
+        icon: 'settings',
+        route: '/permissions',
+        capability: 'permissions.manage',
+      },
+      {
+        label: 'Catalog',
+        icon: 'file-text',
+        route: '/admin/catalog',
+        // Matches the route's own gate (app.routes.ts) — `manage`, not `read`. `read` is
+        // also held by the Client role; the office nav must not offer an editor to a
+        // viewer who will 403 on every button inside it.
+        capability: 'crm.catalog.manage',
+      },
+      { label: 'Finance', icon: 'briefcase', route: '/finance' },
+      { label: 'Audit log', icon: 'file-text', route: '/audit', capability: 'audit.read' },
+    ],
+  },
+  {
+    title: 'Library',
+    items: [
+      { label: 'Stage templates', icon: 'folder', route: '/library/stage-templates' },
+      { label: 'BOQ catalog', icon: 'file-text', route: '/library/boq-catalog' },
+      { label: 'Materials', icon: 'folder', route: '/library/materials' },
+    ],
+  },
+];
+
+/** Flat list for backwards compatibility. */
+export const NAV_ITEMS: NavItem[] = NAV_SECTIONS.flatMap((s) => s.items);

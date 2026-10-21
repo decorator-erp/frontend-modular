@@ -1,0 +1,221 @@
+<!-- Translated from G-10 in PERA App - Utility.html — preserves email+password binding from existing component -->
+<div
+  class="grid grid-cols-1 lg:grid-cols-[60fr_40fr] grid-rows-[1fr_auto] min-h-screen bg-bg text-text-primary font-sans"
+  [attr.dir]="locale.direction()"
+>
+  <!-- ============ FORM PANE (left, 60fr) ============ -->
+  <section class="flex flex-col pt-12 lg:pt-12 px-6 lg:px-16 pb-9">
+    <!-- Brand mark — translated from .login-mark -->
+    <header class="flex items-center gap-2 mb-12">
+      <span class="relative w-icon-xs h-icon-xs shrink-0" aria-hidden="true">
+        <span
+          class="absolute inset-0 border-[length:var(--hairline-strong)] border-text-primary"
+        ></span>
+        <span class="absolute top-1/2 inset-x-0 h-px bg-text-primary"></span>
+        <span
+          class="absolute start-1/2 inset-y-0 w-px bg-text-primary -translate-x-[calc(var(--hairline)*0.5)]"
+        ></span>
+      </span>
+      <span class="text-base font-semibold leading-none">PERA</span>
+    </header>
+
+    <!-- Form area — max-width matches prototype's .login-area (--w-auth) -->
+    <form
+      class="max-w-[var(--w-auth)] flex flex-col"
+      [formGroup]="form"
+      [serverErrors]="serverError()"
+      (ngSubmit)="submit()"
+      novalidate
+    >
+      <h1 class="fs-h1 font-semibold tracking-tight leading-tight m-0 mb-1.5">Sign in to PERA.</h1>
+      <p class="fs-body-sm text-text-secondary m-0 mb-6 leading-snug">
+        Use your work email to continue.
+      </p>
+
+      @if (serverError()?.generalMessage && !errorHandler.isFieldError(serverError())) {
+        <div
+          role="alert"
+          class="flex items-start gap-2 bg-danger-soft border border-border border-s-[length:var(--border-accent)] border-s-danger px-3 py-2.5 fs-body-sm text-text-primary mb-3"
+        >
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            aria-hidden="true"
+            class="mt-0.5 shrink-0 text-danger"
+          >
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="8" x2="12" y2="12" />
+            <line x1="12" y1="16" x2="12.01" y2="16" />
+          </svg>
+          <span>{{ serverError()!.generalMessage }}</span>
+        </div>
+      }
+
+      <!-- Field — mono uppercase label like prototype's .login-field -->
+      <label class="flex flex-col gap-1 mb-3">
+        <span class="font-mono fs-label text-text-muted tracking-[0.02em] uppercase"
+          >Work email</span
+        >
+        <input
+          formControlName="email"
+          type="email"
+          autocomplete="email"
+          placeholder="you@yourstudio.com"
+          class="border border-border bg-bg px-3 py-2.5 fs-body-sm font-sans text-text-primary outline-none focus:border-accent aria-invalid:border-danger"
+          [attr.aria-invalid]="!!errorOf('email') || null"
+        />
+        @if (errorOf('email')) {
+          <span class="text-danger fs-label mt-0.5">{{ errorOf('email') }}</span>
+        }
+      </label>
+
+      <label class="flex flex-col gap-1 mb-3">
+        <span class="font-mono fs-label text-text-muted tracking-[0.02em] uppercase">Password</span>
+        <input
+          formControlName="password"
+          type="password"
+          autocomplete="current-password"
+          class="border border-border bg-bg px-3 py-2.5 fs-body-sm font-sans text-text-primary outline-none focus:border-accent aria-invalid:border-danger"
+          [attr.aria-invalid]="!!errorOf('password') || null"
+        />
+        @if (errorOf('password')) {
+          <span class="text-danger fs-label mt-0.5">{{ errorOf('password') }}</span>
+        }
+      </label>
+
+      <div class="flex items-center justify-between fs-caption mb-3">
+        <label class="inline-flex items-center gap-2 cursor-pointer">
+          <input type="checkbox" formControlName="remember" class="accent-accent" />
+          <span class="text-text-secondary">Remember me</span>
+        </label>
+        <a
+          routerLink="/forgot-password"
+          class="font-mono fs-label text-text-muted hover:text-accent"
+        >
+          Forgot password?
+        </a>
+      </div>
+
+      <!-- Primary button — width:400px from prototype -->
+      <button
+        type="submit"
+        class="inline-flex items-center justify-center gap-2 w-full max-w-[var(--w-auth)] px-3.5 py-3 fs-body-sm font-medium bg-accent text-text-on-accent hover:bg-accent-hover focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2 disabled:opacity-45 disabled:cursor-not-allowed transition-colors"
+        [disabled]="submitting()"
+      >
+        @if (submitting()) {
+          <span
+            aria-hidden="true"
+            class="w-3.5 h-3.5 rounded-full border-2 border-current border-t-transparent animate-spin"
+          ></span>
+        }
+        Sign in
+      </button>
+
+      <!-- New-client intake CTA — a prospective client submits a project request -->
+      <a
+        routerLink="/intake"
+        class="flex items-center justify-between gap-2.5 px-3.5 py-2.5 border border-border bg-bg fs-body-sm text-text-primary text-start w-full max-w-[var(--w-auth)] mt-6 cursor-pointer transition-colors hover:bg-surface-muted hover:border-border-strong focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2"
+      >
+        <span class="inline-flex items-center gap-2.5">
+          <svg
+            class="w-icon-sm h-icon-sm shrink-0 text-text-muted"
+            viewBox="0 0 18 18"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.4"
+            aria-hidden="true"
+          >
+            <rect x="3.5" y="2.5" width="11" height="13" rx="1" />
+            <path d="M6.5 2.5h5v2h-5z" />
+            <path d="M6 8.5h6M6 11.5h4" />
+          </svg>
+          <span>New client? Start a project request</span>
+        </span>
+        <span aria-hidden="true" class="text-text-muted">→</span>
+      </a>
+    </form>
+  </section>
+
+  <!-- ============ BRAND PANE (right, 40fr) — dark, translated from .login-brand-pane ============ -->
+  <aside
+    class="hidden lg:flex flex-col items-center justify-center p-12 bg-text-primary text-bg row-start-1 lg:col-start-2"
+    aria-hidden="true"
+  >
+    <!-- Brand mark (white outline variant) -->
+    <span class="relative w-11 h-11 mb-4" aria-hidden="true">
+      <span class="absolute inset-0 border-2 border-white/55"></span>
+      <span class="absolute top-1/2 inset-x-0 h-[var(--hairline-strong)] bg-white/55"></span>
+      <span
+        class="absolute start-1/2 inset-y-0 w-[var(--hairline-strong)] bg-white/55 -translate-x-[calc(var(--hairline-strong)*0.5)]"
+      ></span>
+    </span>
+    <p class="text-sm text-white/65 text-center max-w-[var(--w-column-lg)] leading-relaxed m-0">
+      The operating system for interior design firms.
+    </p>
+    <!-- Photo plate — translated from .photo-plate (diagonal stripe pattern + framed) -->
+    <div
+      class="w-full aspect-[4/3] border border-white/10 mt-7 flex items-center justify-center text-white/25 font-mono fs-micro"
+      style="
+        background-image: repeating-linear-gradient(
+          135deg,
+          rgba(255, 255, 255, 0.03) 0 var(--space-3),
+          transparent var(--space-3) var(--space-6)
+        );
+      "
+    >
+      [ Studio photograph · monochrome plate ]
+    </div>
+  </aside>
+
+  <!-- ============ FOOTER STRIP — spans both columns, translated from .login-footer-strip ============ -->
+  <footer
+    class="col-span-full row-start-2 border-t border-border bg-bg py-3 px-6 lg:px-16 flex items-center gap-4 flex-wrap"
+  >
+    <!-- Locale toggle — .locale-tog -->
+    <div class="inline-flex border border-border">
+      <button
+        type="button"
+        class="px-2.5 py-1 font-mono fs-micro cursor-pointer border-e border-border last:border-e-0"
+        [class.bg-text-primary]="locale.locale() === 'en'"
+        [class.text-bg]="locale.locale() === 'en'"
+        [class.text-text-secondary]="locale.locale() !== 'en'"
+        (click)="locale.locale() === 'ar' && locale.toggle()"
+      >
+        English
+      </button>
+      <button
+        type="button"
+        class="px-2.5 py-1 font-mono fs-micro cursor-pointer"
+        [class.bg-text-primary]="locale.locale() === 'ar'"
+        [class.text-bg]="locale.locale() === 'ar'"
+        [class.text-text-secondary]="locale.locale() !== 'ar'"
+        (click)="locale.locale() === 'en' && locale.toggle()"
+      >
+        العربية
+      </button>
+    </div>
+
+    <!-- Region tog — visual only for now -->
+    <div class="inline-flex border border-border">
+      <span class="px-2.5 py-1 font-mono fs-micro bg-text-primary text-bg border-e border-border"
+        >KSA</span
+      >
+      <span class="px-2.5 py-1 font-mono fs-micro text-text-secondary border-e border-border"
+        >UAE</span
+      >
+      <span class="px-2.5 py-1 font-mono fs-micro text-text-secondary">International</span>
+    </div>
+
+    <!-- Footer links — .footer-links -->
+    <nav class="flex gap-3.5 ms-auto font-mono fs-micro">
+      <a href="#" class="text-text-muted hover:text-accent">Status</a>
+      <a href="#" class="text-text-muted hover:text-accent">Privacy</a>
+      <a href="#" class="text-text-muted hover:text-accent">Terms</a>
+      <a href="#" class="text-text-muted hover:text-accent">Docs</a>
+    </nav>
+  </footer>
+</div>

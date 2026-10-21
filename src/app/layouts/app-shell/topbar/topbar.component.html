@@ -1,0 +1,119 @@
+<!-- Translated from prototype topbar — .topbar / .bcrumb / .tb-spacer / .tb-search / .tb-actions / .tb-icon-btn / .pip -->
+<header
+  style="height: var(--topbar-h)"
+  class="sticky top-0 z-30 flex items-center gap-6 px-8 bg-surface border-b border-border"
+>
+  <!-- Mobile menu toggle -->
+  <button
+    type="button"
+    class="lg:hidden inline-flex p-1.5 text-text-secondary hover:bg-surface-muted cursor-pointer outline-none focus-visible:outline-2 focus-visible:outline-accent"
+    aria-label="Open navigation"
+    (click)="menuToggle.emit()"
+  >
+    <pera-icon name="menu" [size]="18" />
+  </button>
+
+  <!-- .bcrumb -->
+  <div class="flex items-center gap-2 text-text-secondary">
+    <pera-breadcrumbs [items]="breadcrumbs()" />
+  </div>
+
+  <!-- .tb-spacer -->
+  <div class="flex-1"></div>
+
+  <!-- .tb-search — opens the ⌘K command palette -->
+  <button
+    type="button"
+    (click)="palette.openPalette()"
+    class="hidden md:inline-flex items-center gap-2 px-2.5 py-1.5 border border-border bg-bg w-64 text-start cursor-pointer hover:border-border-strong outline-none focus-visible:outline-2 focus-visible:outline-accent"
+  >
+    <svg
+      width="13"
+      height="13"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      class="text-text-muted shrink-0"
+    >
+      <circle cx="11" cy="11" r="7" />
+      <path d="M21 21l-4.3-4.3" />
+    </svg>
+    <span class="flex-1 min-w-0 truncate fs-caption text-text-muted"
+      >Search projects, drawings, BOQ…</span
+    >
+    <pera-kbd>⌘K</pera-kbd>
+  </button>
+
+  <!-- .tb-actions -->
+  <div class="flex items-center gap-1">
+    <!-- Theme toggle -->
+    <button
+      type="button"
+      class="inline-flex items-center justify-center w-icon-lg h-icon-lg text-text-secondary hover:bg-surface-muted cursor-pointer outline-none focus-visible:outline-2 focus-visible:outline-accent"
+      peraTooltip="Toggle theme"
+      aria-label="Toggle theme"
+      (click)="theme.toggle()"
+    >
+      <pera-icon [name]="theme.theme() === 'dark' ? 'sun' : 'moon'" [size]="15" />
+    </button>
+
+    <!-- Locale toggle -->
+    <button
+      type="button"
+      class="inline-flex items-center justify-center w-icon-lg h-icon-lg font-mono fs-label font-medium text-text-secondary hover:bg-surface-muted cursor-pointer outline-none focus-visible:outline-2 focus-visible:outline-accent"
+      peraTooltip="Toggle language"
+      aria-label="Toggle language"
+      (click)="locale.toggle()"
+    >
+      {{ locale.locale() === 'en' ? 'ع' : 'EN' }}
+    </button>
+
+    <!-- Notifications — live unread badge + (US2) dropdown -->
+    <!-- TODO(005-notifications): <app-notification-bell /> -->
+
+    <!-- Avatar dropdown — borderless, like sb-foot avatar -->
+    <button
+      type="button"
+      cdkOverlayOrigin
+      #avatarOrigin="cdkOverlayOrigin"
+      class="inline-flex items-center gap-1.5 p-1 hover:bg-surface-muted cursor-pointer ms-1 outline-none focus-visible:outline-2 focus-visible:outline-accent"
+      [attr.aria-expanded]="menuOpen()"
+      aria-haspopup="menu"
+      aria-label="Account menu"
+      (click)="menuOpen.set(!menuOpen())"
+    >
+      <pera-avatar [name]="userName()" size="sm" />
+    </button>
+  </div>
+
+  <ng-template
+    cdkConnectedOverlay
+    [cdkConnectedOverlayOrigin]="avatarOrigin"
+    [cdkConnectedOverlayOpen]="menuOpen()"
+    [cdkConnectedOverlayHasBackdrop]="true"
+    cdkConnectedOverlayBackdropClass="cdk-overlay-transparent-backdrop"
+    (backdropClick)="menuOpen.set(false)"
+    (detach)="menuOpen.set(false)"
+  >
+    <div class="bg-surface border border-border py-1 min-w-44 shadow-lg" role="menu">
+      <button
+        type="button"
+        role="menuitem"
+        class="w-full text-start px-3 py-1.5 fs-caption cursor-pointer hover:bg-surface-muted flex items-center gap-2"
+        (click)="goToProfile()"
+      >
+        <pera-icon name="user" [size]="13" /> Profile
+      </button>
+      <div class="h-px bg-border-soft my-1" role="separator"></div>
+      <button
+        type="button"
+        role="menuitem"
+        class="w-full text-start px-3 py-1.5 fs-caption cursor-pointer hover:bg-surface-muted flex items-center gap-2 text-danger"
+        (click)="logout()"
+      >
+        <pera-icon name="log-out" [size]="13" /> Log out
+      </button>
+    </div>
+  </ng-template>
+</header>

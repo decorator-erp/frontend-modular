@@ -1,0 +1,101 @@
+/* Font faces */
+@import './styles/fonts.css';
+
+/* Tailwind v4 + tokens */
+@import 'tailwindcss';
+@import './styles/tokens.css';
+@import './styles/themes.css';
+@import './styles/rtl.css';
+
+/* Trust-rule treatments (feature 004) — unconfirmed / locked / superseded.
+ * Global by necessity: consumers apply these classes to their own elements, so
+ * component style encapsulation cannot reach them. See the file header. */
+@import './app/design-system/patterns/trust/trust.css';
+
+/* Map design tokens into Tailwind's theme namespaces so utilities like
+ * `bg-surface`, `text-text-primary`, `p-4`, `rounded-md`, `font-sans` work.
+ * Reference: https://tailwindcss.com/docs/theme — v4 inline theme.            */
+@theme inline {
+  --color-bg: var(--color-bg);
+  --color-surface: var(--color-surface);
+  --color-surface-muted: var(--color-surface-muted);
+  --color-border: var(--color-border);
+  --color-border-strong: var(--color-border-strong);
+  --color-text-primary: var(--color-text-primary);
+  --color-text-secondary: var(--color-text-secondary);
+  --color-text-muted: var(--color-text-muted);
+  --color-text-on-accent: var(--color-text-on-accent);
+  --color-accent: var(--color-accent);
+  --color-accent-hover: var(--color-accent-hover);
+  --color-accent-pressed: var(--color-accent-pressed);
+  --color-accent-soft: var(--color-accent-soft);
+
+  /* Kit alias layer exposed to Tailwind (Phase 1): bg-ink, bg-hover,
+     bg-selected, border-border-soft, text-on-accent, font-arabic. */
+  --color-ink: var(--ink);
+  --color-hover: var(--hover);
+  --color-selected: var(--selected);
+  --color-border-soft: var(--border-soft);
+  --color-on-accent: var(--on-accent);
+
+  --color-success: var(--success-500);
+  --color-success-soft: var(--success-50);
+  --color-warning: var(--warning-500);
+  --color-warning-soft: var(--warning-50);
+  --color-danger: var(--danger-500);
+  --color-danger-soft: var(--danger-50);
+  --color-info: var(--info-500);
+  --color-info-soft: var(--info-50);
+  --color-pending: var(--color-pending);
+  --color-pending-soft: var(--color-pending-soft);
+  --color-focus-ring: var(--color-focus-ring);
+
+  --spacing-1: var(--space-1);
+  --spacing-2: var(--space-2);
+  --spacing-3: var(--space-3);
+  --spacing-4: var(--space-4);
+  --spacing-6: var(--space-6);
+  --spacing-8: var(--space-8);
+  --spacing-12: var(--space-12);
+  --spacing-16: var(--space-16);
+
+  --radius-xs: var(--radius-xs);
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --radius-full: var(--radius-full);
+
+  --shadow-sm: var(--shadow-sm);
+  --shadow-md: var(--shadow-md);
+  --shadow-lg: var(--shadow-lg);
+
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+  --font-arabic: var(--arabic);
+}
+
+/* Base */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--color-text-primary);
+  background: var(--color-bg);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Tabular numbers in tables */
+table,
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}

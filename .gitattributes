@@ -1,0 +1,24 @@
+# Line endings are decided here, not by each machine's `core.autocrlf`.
+#
+# Every text file is stored LF in the repository and checked out LF. Without this,
+# the stored form depends on whoever committed it: a contributor with `core.autocrlf`
+# unset commits CRLF, and every later diff reads as a whole-file rewrite.
+#
+# Adding this changed nothing at the time it landed — the index was already LF and
+# `git add --renormalize .` produced no diff. It is here to keep that true.
+* text=auto eol=lf
+
+# Binary — never normalize, never diff as text.
+*.ttf binary
+*.woff binary
+*.woff2 binary
+*.eot binary
+*.ico binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.avif binary
+*.pdf binary
+*.zip binary
