@@ -243,3 +243,141 @@ describe('authInterceptor + errorInterceptor — the real app registration order
     });
   });
 });
+
+/**
+ * 002b A2. Backend v3 answers a token whose security stamp moved with 401
+ * `authentications.StaleToken`, and a refresh it refuses with 401 `RefreshTokenReused`,
+ * `InvalidRefreshToken` or `InvalidToken`. The session ending used to be silent, and N concurrent
+ * 401s sharing one failed refresh logged out N times (N toasts once A2 added one, N
+ * `POST /auth/revoke` into the per-IP limit, N navigations). Both interceptors, the REAL
+ * `AuthStore` (so `/auth/revoke` is a real request), and a stateful token service.
+ */
+describe('authInterceptor — stale tokens and the session-ended logout (002b A2)', () => {
+  let http: HttpClient;
+  let backend: HttpTestingController;
+  let toast: { show: ReturnType<typeof vi.fn> };
+  let router: { navigate: ReturnType<typeof vi.fn>; url: string };
+
+  const PROTECTED = `${environment.apiUrl}/employees`;
+  const REFRESH = `${environment.apiUrl}/auth/refresh`;
+  const REVOKE = `${environment.apiUrl}/auth/revoke`;
+  const ENDED = { tone: 'warning', message: 'Your session has ended — please sign in again' };
+
+  const problem = (code: string) => ({
+    title: code,
+    status: 401,
+    errors: { [code]: ['Invalid refresh token.'] },
+  });
+
+  /** Lets every pending promise continuation (logout → navigate → finally) run. */
+  const settle = async () => {
+    for (let i = 0; i < 10; i++) await Promise.resolve();
+  };
+
+  beforeEach(() => {
+    let token: string | null = 'old-token';
+    let refresh: string | null = 'old-refresh';
+    const tokenService = {
+      getToken: vi.fn(() => token),
+      getRefreshToken: vi.fn(() => refresh),
+      setTokens: vi.fn((t: string, r: string) => {
+        token = t;
+        refresh = r;
+      }),
+      clear: vi.fn(() => {
+        token = null;
+        refresh = null;
+      }),
+      isTokenExpired: vi.fn().mockReturnValue(false),
+      parseUser: vi.fn(() => ({
+        userId: 'user-1',
+        userName: 'u',
+        email: 'u@pera.test',
+        roles: [],
+        permissions: [],
+        isActive: true,
+        isSupervisor: false,
+      })),
+    };
+    toast = { show: vi.fn() };
+    router = { navigate: vi.fn().mockResolvedValue(true), url: '/employees' };
+
+    TestBed.configureTestingModule({
+      providers: [
+        AuthStore,
+        provideHttpClient(withInterceptors([authInterceptor, errorInterceptor])),
+        provideHttpClientTesting(),
+        { provide: TokenService, useValue: tokenService },
+        { provide: Router, useValue: router },
+        { provide: ToastService, useValue: toast },
+        { provide: ErrorHandlerService, useValue: { parse: () => ({ generalMessage: '' }) } },
+      ],
+    });
+    http = TestBed.inject(HttpClient);
+    backend = TestBed.inject(HttpTestingController);
+  });
+
+  afterEach(() => backend.verify());
+
+  it('401 StaleToken → one refresh → the retry succeeds, with no toast and no logout', async () => {
+    let result: unknown;
+    http.get(PROTECTED).subscribe((r) => (result = r));
+
+    backend
+      .expectOne(PROTECTED)
+      .flush(problem('authentications.StaleToken'), { status: 401, statusText: 'Unauthorized' });
+    backend
+      .expectOne(REFRESH)
+      .flush({ token: 'new-token', refreshToken: 'new-refresh', expiration: '' });
+    const retried = backend.expectOne(PROTECTED);
+    expect(retried.request.headers.get('Authorization')).toBe('Bearer new-token');
+    retried.flush([{ id: 'e-1' }]);
+
+    await settle();
+    expect(result).toEqual([{ id: 'e-1' }]);
+    backend.expectNone(REVOKE);
+    expect(toast.show).not.toHaveBeenCalled();
+    expect(router.navigate).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    'authentications.RefreshTokenReused',
+    'authentications.InvalidRefreshToken',
+    'authentications.InvalidToken',
+  ])('refresh 401 %s → /login?returnUrl=… plus the session-ended toast', async (code) => {
+    http.get(PROTECTED).subscribe({ error: () => undefined });
+
+    backend.expectOne(PROTECTED).flush(null, { status: 401, statusText: 'Unauthorized' });
+    backend.expectOne(REFRESH).flush(problem(code), { status: 401, statusText: 'Unauthorized' });
+    await settle();
+    backend.expectOne(REVOKE).flush(null);
+    await settle();
+
+    expect(toast.show).toHaveBeenCalledTimes(1);
+    expect(toast.show).toHaveBeenCalledWith(ENDED);
+    expect(router.navigate).toHaveBeenCalledWith(['/login'], {
+      queryParams: { returnUrl: '/employees' },
+    });
+  });
+
+  it('3 concurrent 401s + a refresh 401 → 1 refresh, 1 toast, 1 /auth/revoke, 1 navigation', async () => {
+    const urls = [PROTECTED, `${environment.apiUrl}/clients`, `${environment.apiUrl}/roles`];
+    for (const url of urls) http.get(url).subscribe({ error: () => undefined });
+    for (const url of urls) {
+      backend.expectOne(url).flush(null, { status: 401, statusText: 'Unauthorized' });
+    }
+
+    // One shared refresh — expectOne throws on two.
+    backend.expectOne(REFRESH).flush(problem('authentications.RefreshTokenReused'), {
+      status: 401,
+      statusText: 'Unauthorized',
+    });
+    await settle();
+    backend.expectOne(REVOKE).flush(null);
+    await settle();
+
+    expect(toast.show).toHaveBeenCalledTimes(1);
+    expect(router.navigate).toHaveBeenCalledTimes(1);
+    backend.expectNone(REVOKE);
+  });
+});
