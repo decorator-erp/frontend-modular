@@ -43,6 +43,14 @@ export interface AssignRoleDialogData {
   template: `
     <pera-modal [title]="'Assign “' + data.roleName + '”'" size="md">
       <div class="flex flex-col gap-3">
+        @if (inlineError(); as message) {
+          <div
+            role="alert"
+            class="px-3 py-2 border border-border bg-danger-soft fs-caption text-text-primary"
+          >
+            {{ message }}
+          </div>
+        }
         <pera-input
           iconStart="search"
           placeholder="Search employee"
@@ -95,6 +103,8 @@ export class AssignRoleDialogComponent implements OnInit {
   readonly term = signal('');
   readonly assigning = signal<string | null>(null);
   readonly assigned = signal<Set<string>>(new Set());
+  /** 403 `permissions.CannotDelegate`, shown in the dialog with the server's reason (006b-1 #8). */
+  readonly inlineError = signal<string | null>(null);
   private readonly all = signal<EmployeeListItem[]>([]);
   private changed = false;
 
@@ -124,6 +134,7 @@ export class AssignRoleDialogComponent implements OnInit {
 
   assign(person: EmployeeListItem): void {
     this.assigning.set(person.userId);
+    this.inlineError.set(null);
     this.roles.assignToUser(person.userId, this.data.roleId).subscribe({
       next: () => {
         this.toast.show({
@@ -136,8 +147,14 @@ export class AssignRoleDialogComponent implements OnInit {
       },
       error: (err: HttpErrorResponse) => {
         this.assigning.set(null);
+        const parsed = this.errors.parse(err);
+        // The server decides who may confer a role; its description names what is missing.
+        if (parsed.code === 'permissions.CannotDelegate') {
+          this.inlineError.set(parsed.generalMessage || friendly(parsed));
+          return;
+        }
         // Was swallowed entirely, so an already-assigned user looked like a dead button.
-        this.toast.show({ tone: 'danger', message: friendly(this.errors.parse(err)) });
+        this.toast.show({ tone: 'danger', message: friendly(parsed) });
       },
     });
   }
