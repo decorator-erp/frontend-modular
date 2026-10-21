@@ -257,6 +257,9 @@ export class EmployeesListComponent implements OnInit {
         // for a whole directory rather than one page; the screen pages the result client-side.
         pageSize: 1000,
         isActive: status === 'all' ? undefined : status === 'active',
+        // 006b-2 #10: the server hides inactive employees by default, so *All* and *Inactive*
+        // must ask for them; the client narrowing above stays as a fallback.
+        includeInactive: status !== 'active',
       })
       .subscribe({
         next: (paged) => {

@@ -97,4 +97,33 @@ describe('EmployeeService', () => {
       truncated: false,
     });
   });
+
+  /** 006b-2 #10: backend v3 hides inactive employees unless `includeInactive=true`. */
+  it('listPaged({ includeInactive, isActive: false }) asks for inactive rows and keeps the client narrowing', () => {
+    let result: { items: { id: string }[] } | undefined;
+    service
+      .listPaged({ page: 1, pageSize: 50, isActive: false, includeInactive: true })
+      .subscribe((r) => (result = r));
+
+    const req = backend.expectOne((r) => r.url === `${environment.apiUrl}/employees`);
+    expect(req.request.params.get('includeInactive')).toBe('true');
+    req.flush({
+      items: [
+        { id: 'e-1', appUserId: 'u-1', fullName: 'Active A', jobTitle: 'x', isActive: true },
+        { id: 'e-2', appUserId: 'u-2', fullName: 'Gone B', jobTitle: 'y', isActive: false },
+      ],
+      pageNumber: 1,
+      pageSize: 50,
+      totalCount: 2,
+      totalPages: 1,
+    });
+    expect(result!.items.map((e) => e.id)).toEqual(['e-2']);
+  });
+
+  it('listPaged() without includeInactive leaves the server default (active only)', () => {
+    service.listPaged({ page: 1, pageSize: 50, isActive: true }).subscribe();
+    const req = backend.expectOne((r) => r.url === `${environment.apiUrl}/employees`);
+    expect(req.request.params.has('includeInactive')).toBe(false);
+    req.flush({ items: [], pageNumber: 1, pageSize: 50, totalCount: 0, totalPages: 0 });
+  });
 });

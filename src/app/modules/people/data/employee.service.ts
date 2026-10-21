@@ -298,13 +298,24 @@ export class EmployeeService extends ApiService {
    * asking for 500 active employees returns the active subset of the first 500 rows.
    */
   listPaged(
-    opts: { page?: number; pageSize?: number; isActive?: boolean; jobTitle?: string } = {},
+    opts: {
+      page?: number;
+      pageSize?: number;
+      isActive?: boolean;
+      jobTitle?: string;
+      /**
+       * Backend v3 hides inactive employees unless `includeInactive=true` (006b-2 #10). Pickers leave
+       * it unset (active only); the list's *All* / *Inactive* filters set it. The client-side
+       * `isActive` narrowing below stays as a fallback.
+       */
+      includeInactive?: boolean;
+    } = {},
   ): Observable<Paged<EmployeeListItem>> {
     const startPage = Math.max(1, opts.page ?? 1);
     const wanted = Math.max(1, opts.pageSize ?? MAX_PAGE_SIZE);
     const target = Math.min(wanted, MAX_ROWS);
 
-    return this.fetchFrom(startPage, target, MAX_PAGES, opts.jobTitle).pipe(
+    return this.fetchFrom(startPage, target, MAX_PAGES, opts.jobTitle, opts.includeInactive).pipe(
       map((acc) => {
         const items =
           opts.isActive === undefined
@@ -336,12 +347,14 @@ export class EmployeeService extends ApiService {
     remaining: number,
     pagesLeft: number,
     jobTitle?: string,
+    includeInactive?: boolean,
   ): Observable<Accumulated> {
     const params: Record<string, unknown> = {
       pageNumber,
       pageSize: Math.min(remaining, MAX_PAGE_SIZE),
     };
     if (jobTitle) params['jobTitleFilter'] = jobTitle;
+    if (includeInactive) params['includeInactive'] = true;
 
     return this.get<unknown>('/employees', params).pipe(
       switchMap((response) => {
@@ -356,7 +369,13 @@ export class EmployeeService extends ApiService {
           // Bound reached with rows still outstanding — say so rather than return a short list.
           return of({ ...page, truncated: true });
         }
-        return this.fetchFrom(pageNumber + 1, stillWanted, pagesLeft - 1, jobTitle).pipe(
+        return this.fetchFrom(
+          pageNumber + 1,
+          stillWanted,
+          pagesLeft - 1,
+          jobTitle,
+          includeInactive,
+        ).pipe(
           map((rest) => ({
             items: [...page.items, ...rest.items],
             totalCount: rest.totalCount || page.totalCount,
