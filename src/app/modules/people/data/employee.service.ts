@@ -1,4 +1,4 @@
-import { Injectable, isDevMode } from '@angular/core';
+import { Injectable, inject, isDevMode } from '@angular/core';
 import { Observable, of } from 'rxjs';
 import { map, switchMap } from 'rxjs/operators';
 import {
@@ -15,6 +15,7 @@ import {
 import { Paged } from '@platform/types/paged';
 import { PagedResult } from '@platform/types/paged-result';
 import { ApiService } from '@platform/http/api.service';
+import { RoleService } from './role.service';
 
 /** `GetEmployeesQueryValidator` caps `pageSize` at 200. See `listPaged` for why we honour it. */
 const MAX_PAGE_SIZE = 200;
@@ -62,6 +63,7 @@ export type EmployeePatch = Partial<{
  */
 @Injectable({ providedIn: 'root' })
 export class EmployeeService extends ApiService {
+  private readonly roles = inject(RoleService);
   /**
    * `GET /api/employees`. Paging is optional server-side (defaults 1 / 50) but always sent here so
    * the page size is ours to choose. `pageSize` is capped at 200 by
@@ -244,13 +246,31 @@ export class EmployeeService extends ApiService {
     );
   }
 
-  // TODO(backend-gap): no GET /api/employees/by-role/{roleId} in dms-modular. Nothing lists the
-  // members OF a role — `GET /api/roles/users/{userId}` is per-user only.
+  /**
+   * The members of a role, as directory rows — `GET /api/roles/{roleId}/users` via
+   * `RoleService.users()` (006b-1 #24; backend v3 added the route). A `UserListItem` is an
+   * account, not an HR record: `id`/`userId`/`trackKey` are the user id, `fullName` is first +
+   * last name (email when both are blank), and there is no job title or department on it.
+   */
   byRole(roleId: string, page = 1, pageSize = 100): Observable<Paged<EmployeeListItem>> {
-    return this.get<unknown>(`/employees/by-role/${roleId}`, {
-      pageNumber: page,
-      pageSize,
-    }).pipe(map((r) => ({ ...this.readPage(r, page), pageIndex: page, truncated: false })));
+    return this.roles.users(roleId, page, pageSize).pipe(
+      map((result) => ({
+        items: result.items.map((u) => ({
+          id: u.id,
+          userId: u.id,
+          fullName: `${u.firstName} ${u.lastName}`.trim() || u.email,
+          email: u.email,
+          jobTitle: '',
+          isActive: u.isActive,
+          primaryDepartmentId: null,
+          trackKey: u.id,
+        })),
+        totalCount: result.totalCount,
+        pageIndex: result.page,
+        totalPages: result.totalPages,
+        truncated: false,
+      })),
+    );
   }
 
   /**
