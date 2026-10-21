@@ -88,7 +88,8 @@ export class DepartmentFormDialogComponent {
       this.data?.currentName ?? '',
       [Validators.required, PeraValidators.trimmedLength(2, 100)],
     ],
-    description: [this.data?.currentDescription ?? '', [Validators.maxLength(500)]],
+    // Backend v3 allows up to 2000 and clears the description when it is blank (006b-2 #15).
+    description: [this.data?.currentDescription ?? '', [Validators.maxLength(2000)]],
   });
 
   readonly serverError = signal<ParsedApiError | null>(null);
