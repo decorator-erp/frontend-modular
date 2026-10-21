@@ -10,6 +10,7 @@ import { PermissionService } from '../../data/permission.service';
 import { RoleService } from '../../data/role.service';
 import { EmployeeService } from '../../data/employee.service';
 import { AuthStore } from '@platform/auth/auth.store';
+import { UserService } from '../../data/user.service';
 import { PermissionsComponent } from './permissions.component';
 
 const ADMIN = { id: 'r-admin', name: 'admin', description: null, isActive: true };
@@ -57,6 +58,7 @@ describe('PermissionsComponent — the role matrix (006b-1 #6)', () => {
         { provide: ModalService, useValue: { open: vi.fn() } },
         { provide: ConfirmService, useValue: { open: vi.fn() } },
         { provide: ToastService, useValue: toast },
+        { provide: UserService, useValue: { list: () => of({ items: [], totalCount: 0 }) } },
         { provide: AuthStore, useValue: { user: () => ({ userId: 'me-1' }), can: () => true } },
       ],
     });
@@ -169,6 +171,7 @@ describe('PermissionsComponent — overrides on your own account (006b-1 #7)', (
         { provide: ModalService, useValue: modal },
         { provide: ConfirmService, useValue: confirm },
         { provide: ToastService, useValue: { show: vi.fn() } },
+        { provide: UserService, useValue: { list: () => of({ items: [], totalCount: 0 }) } },
         { provide: AuthStore, useValue: { user: () => ({ userId: 'me-1' }), can: () => true } },
       ],
     });
@@ -231,6 +234,7 @@ describe('PermissionsComponent — catalog access (006b-1 #9)', () => {
         { provide: ModalService, useValue: { open: vi.fn() } },
         { provide: ConfirmService, useValue: { open: vi.fn() } },
         { provide: ToastService, useValue: { show: vi.fn() } },
+        { provide: UserService, useValue: { list: () => of({ items: [], totalCount: 0 }) } },
         {
           provide: AuthStore,
           useValue: { user: () => ({ userId: 'viewer-1' }), can: () => false },
@@ -252,5 +256,61 @@ describe('PermissionsComponent — catalog access (006b-1 #9)', () => {
     const el = configure(() => throwError(() => new HttpErrorResponse({ status: 403 })));
     expect(el.textContent).toContain('The permission catalog is unavailable');
     expect(el.textContent).toContain('roles.read or permissions.manage');
+  });
+});
+
+/** 006b-1 #17: the override picker lists every account, falling back to the directory on 403. */
+describe('PermissionsComponent — the override picker (006b-1 #17)', () => {
+  const ADMIN_USER = {
+    id: 'u-admin',
+    email: 'admin@pera.test',
+    firstName: 'System',
+    lastName: 'Admin',
+    userType: 'Staff',
+    isActive: true,
+    lastLoginAt: null,
+    roles: ['admin'],
+  };
+  const EMPLOYEE = { id: 'e-1', userId: 'u-1', fullName: 'Mona Adel', email: 'mona@pera.test' };
+
+  function create(list: () => unknown, listPaged = vi.fn(() => of({ items: [EMPLOYEE] }))) {
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter([]),
+        {
+          provide: PermissionService,
+          useValue: { getAll: () => of([]), getRolePermissions: () => of([]) },
+        },
+        { provide: RoleService, useValue: { getAll: () => of([]) } },
+        { provide: EmployeeService, useValue: { listPaged } },
+        { provide: PermissionsService, useValue: { can: () => true } },
+        { provide: ModalService, useValue: { open: vi.fn() } },
+        { provide: ConfirmService, useValue: { open: vi.fn() } },
+        { provide: ToastService, useValue: { show: vi.fn() } },
+        { provide: UserService, useValue: { list } },
+        { provide: AuthStore, useValue: { user: () => ({ userId: 'me-1' }), can: () => true } },
+      ],
+    });
+    const fixture = TestBed.createComponent(PermissionsComponent);
+    fixture.detectChanges();
+    return { c: fixture.componentInstance, listPaged };
+  }
+
+  it('reads /api/users, so the seeded admin can be found and picked', () => {
+    const { c, listPaged } = create(() => of({ items: [ADMIN_USER], totalCount: 1 }));
+    c.onUserSearch('admin');
+    expect(c.userResults()).toEqual([
+      { id: 'u-admin', userId: 'u-admin', fullName: 'System Admin', email: 'admin@pera.test' },
+    ]);
+    expect(listPaged).not.toHaveBeenCalled();
+  });
+
+  it('403 (no users.read) → falls back to the employee directory', () => {
+    const { c, listPaged } = create(() => throwError(() => new HttpErrorResponse({ status: 403 })));
+    expect(listPaged).toHaveBeenCalled();
+    c.onUserSearch('mona');
+    expect(c.userResults()).toEqual([
+      { id: 'e-1', userId: 'u-1', fullName: 'Mona Adel', email: 'mona@pera.test' },
+    ]);
   });
 });

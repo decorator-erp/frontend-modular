@@ -25,6 +25,19 @@ import { EmployeeService } from '../../data/employee.service';
 import { EmployeeListItem } from '../../model/employee.model';
 import { FULL_ACCESS_REASON, isFullAccessRole } from '../roles/role-policy';
 import { AuthStore } from '@platform/auth/auth.store';
+import { UserService } from '../../data/user.service';
+import { UserListItem } from '../../model/user.model';
+
+/**
+ * Who an override can target. Built from `GET /api/users` (every account: the seeded admin and
+ * clients included), or from the employee directory when the caller lacks `users.read`.
+ */
+export interface OverrideTarget {
+  id: string;
+  userId: string;
+  fullName: string;
+  email: string;
+}
 import { formatLongDate } from '@shared/ui/status';
 import { LocaleService } from '@platform/i18n';
 import {
@@ -86,6 +99,7 @@ export class PermissionsComponent implements OnInit {
   private readonly errors = inject(ErrorHandlerService);
   readonly locale = inject(LocaleService);
   private readonly authStore = inject(AuthStore);
+  private readonly users = inject(UserService);
 
   readonly loading = signal(true);
   /** True when the catalog read itself failed — 403 for anyone without `roles.read` or `permissions.manage`. */
@@ -102,11 +116,11 @@ export class PermissionsComponent implements OnInit {
 
   // Per-user overrides
   readonly userSearch = signal('');
-  readonly userResults = signal<EmployeeListItem[]>([]);
-  readonly selectedUser = signal<EmployeeListItem | null>(null);
+  readonly userResults = signal<OverrideTarget[]>([]);
+  readonly selectedUser = signal<OverrideTarget | null>(null);
   readonly effective = signal<EffectivePermissionsResponse | null>(null);
   readonly effectiveLoading = signal(false);
-  private allEmployees: EmployeeListItem[] = [];
+  private allEmployees: OverrideTarget[] = [];
 
   /**
    * Grant, deny AND revoke on your own account all answer 403 `permissions.SelfModification`
@@ -184,9 +198,23 @@ export class PermissionsComponent implements OnInit {
       },
     });
 
-    this.directory.listPaged({ page: 1, pageSize: 500, isActive: true }).subscribe((paged) => {
-      this.allEmployees = paged.items;
-    });
+    // 006b-1 #17: every account from `/api/users`, so the seeded admin and clients can be picked.
+    // Without `users.read` that answers 403: fall back to the ported employee directory.
+    this.users
+      .list({ page: 1, pageSize: 200 })
+      .pipe(
+        map((paged) => paged.items.map(fromUser)),
+        catchError((err: HttpErrorResponse) =>
+          err.status === 403
+            ? this.directory
+                .listPaged({ page: 1, pageSize: 500, isActive: true })
+                .pipe(map((paged) => paged.items.map(fromEmployee)))
+            : of([] as OverrideTarget[]),
+        ),
+      )
+      .subscribe((targets) => {
+        this.allEmployees = targets;
+      });
   }
 
   private loadGrants(roles: RoleResponse[]): void {
@@ -294,7 +322,7 @@ export class PermissionsComponent implements OnInit {
     );
   }
 
-  pickUser(user: EmployeeListItem): void {
+  pickUser(user: OverrideTarget): void {
     this.selectedUser.set(user);
     this.userSearch.set('');
     this.userResults.set([]);
@@ -349,4 +377,18 @@ export class PermissionsComponent implements OnInit {
         this.toast.show({ tone: 'danger', message: friendly(this.errors.parse(err)) }),
     });
   }
+}
+
+function fromUser(user: UserListItem): OverrideTarget {
+  const fullName = `${user.firstName} ${user.lastName}`.trim() || user.email;
+  return { id: user.id, userId: user.id, fullName, email: user.email };
+}
+
+function fromEmployee(employee: EmployeeListItem): OverrideTarget {
+  return {
+    id: employee.id,
+    userId: employee.userId,
+    fullName: employee.fullName,
+    email: employee.email,
+  };
 }
