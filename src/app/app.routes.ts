@@ -2,13 +2,10 @@ import { Routes } from '@angular/router';
 import { AuthGuard } from '@platform/auth/auth.guard';
 import { ClientOnlyGuard, NotClientGuard } from '@platform/auth/client-shell.guard';
 import { peopleRoutes } from '@modules/people';
-// TODO(005): PermissionGuard is unused until a real (non-stub) route below needs it —
-// unused imports trip @typescript-eslint/no-unused-vars (warn), and charter §6 makes
-// an uninherited new warning a stop-and-report. Restore alongside the first real
-// PermissionGuard-gated route (005's `clients`/`audit`/`library` etc.).
-// import { PermissionGuard } from '@platform/auth/permission.guard';
-// TODO(005): PERM is unused for the same reason — every route citing a permission
-// string below is still a comment. Restore with the first stub it un-comments.
+import { libraryRoutes } from '@modules/library';
+import { PermissionGuard } from '@platform/auth/permission.guard';
+// TODO(009): PERM is still unused — 005's routes carry raw permission strings, as in the old
+// app; the first PERM-citing stub is a 009 route (crm, approvals, portal, admin/catalog).
 // import { PERM } from '@platform/permissions';
 // TODO(009): CatalogAdminStore lands with modules/crm at spec 009 — the
 // `admin/catalog` stub below cites it but cannot import it yet.
@@ -85,12 +82,19 @@ export const routes: Routes = [
       // their order among the shell's children changes no match ('**' stays last).
       ...peopleRoutes,
       //
-      // TODO(005): 'notifications' -> loadComponent: features/notifications/notifications-page.component
-      //   -> NotificationsPageComponent, data.breadcrumb = 'Notifications'
+      {
+        path: 'notifications',
+        loadComponent: () =>
+          import('@modules/notifications').then((m) => m.NotificationsPageComponent),
+        data: { breadcrumb: 'Notifications' },
+      },
       //
-      // TODO(005): 'clients' -> PermissionGuard, data = { permission: 'clients.read',
-      //   breadcrumb: 'Clients' }, loadComponent: features/clients/clients-list.component
-      //   -> ClientsListComponent
+      {
+        path: 'clients',
+        canActivate: [PermissionGuard],
+        data: { permission: 'clients.read', breadcrumb: 'Clients' },
+        loadComponent: () => import('@modules/clients').then((m) => m.ClientsListComponent),
+      },
       //
       // TODO(009): 'admin/catalog' -> PermissionGuard. Gated on manage, not read — this page
       //   is a full CRUD editor (create, move, clone, delete categories and items), and
@@ -102,12 +106,10 @@ export const routes: Routes = [
       //   loadComponent: features/crm/admin/catalog/catalog-admin-page.component
       //   -> CrmCatalogAdminPageComponent
       //
-      // TODO(005): 'library/stage-templates' -> data = { breadcrumb: 'Stage templates' },
-      //   loadComponent: features/library/stage-templates-list.component
-      //   -> StageTemplatesListComponent
-      //
-      // TODO(005): 'library/boq-catalog' -> data = { breadcrumb: 'BOQ catalog' },
-      //   loadComponent: features/boq/boq-catalog.component -> BoqCatalogComponent
+      // Library (spec 005): stage-templates, boq-catalog, materials, materials/:id. Spread here,
+      // at the first of the old positions; the two materials routes sat further down the old list,
+      // but every path is a distinct literal, so the move changes no match ('**' stays last).
+      ...libraryRoutes,
       //
       // TODO(007): 'finance' -> PermissionGuard, data = { permission: 'finance.read',
       //   breadcrumb: 'Finance' }, loadChildren: features/finance/finance.routes -> financeRoutes
@@ -133,16 +135,12 @@ export const routes: Routes = [
       //   loadComponent: features/crm/designer/design-profile.component
       //   -> CrmDesignProfileComponent
       //
-      // TODO(005): 'library/materials' -> data = { breadcrumb: 'Materials' },
-      //   loadComponent: features/materials/materials-library.component
-      //   -> MaterialsLibraryComponent
-      //
-      // TODO(005): 'library/materials/:id' -> data = { breadcrumb: 'Material' },
-      //   loadComponent: features/materials/material-detail.component -> MaterialDetailComponent
-      //
-      // TODO(005): 'audit' -> PermissionGuard, data = { permission: 'audit.read',
-      //   breadcrumb: 'Audit log' }, loadComponent: features/audit/audit-log.component
-      //   -> AuditLogComponent
+      {
+        path: 'audit',
+        canActivate: [PermissionGuard],
+        data: { permission: 'audit.read', breadcrumb: 'Audit log' },
+        loadComponent: () => import('@modules/audit').then((m) => m.AuditLogComponent),
+      },
       //
       // TODO(008): 'projects' -> loadComponent: features/projects/projects-list.component
       //   -> ProjectsListComponent, data = { breadcrumb: 'Projects' }

@@ -1,0 +1,283 @@
+<!-- Translated from B-10 in PERA App - Admin.html -->
+<!-- .ad-head + filter bar + event stream table (tight rows) + row-expand diff drawer -->
+<div class="bg-bg min-h-full flex flex-col">
+  <!-- ============ .ad-head ============ -->
+  <header class="px-7 pt-5 pb-3.5 border-b border-border bg-surface flex items-start gap-4">
+    <div class="flex-1">
+      <h1 class="m-0 fs-h2 font-semibold tracking-tight leading-tight">Audit log</h1>
+      <div class="font-mono fs-label text-text-muted mt-1.5 flex gap-2.5 items-center flex-wrap">
+        <span>{{ totalCount() }} {{ totalCount() === 1 ? 'EVENT' : 'EVENTS' }}</span>
+      </div>
+    </div>
+    <button
+      type="button"
+      [disabled]="true"
+      peraTooltip="Coming soon"
+      (click)="exportCsv()"
+      class="inline-flex items-center gap-1.5 px-3 py-2 border border-border bg-bg fs-caption cursor-not-allowed opacity-50"
+    >
+      <svg
+        width="12"
+        height="12"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.7"
+      >
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" />
+      </svg>
+      Export CSV
+    </button>
+  </header>
+
+  <!-- ============ Filter bar ============ -->
+  <div class="px-7 py-3 border-b border-border bg-surface flex items-center gap-2.5 flex-wrap">
+    <input
+      type="text"
+      placeholder="Action (e.g. Create)"
+      [ngModel]="action()"
+      (ngModelChange)="action.set($event)"
+      (blur)="onFilterChange()"
+      class="border border-border bg-bg px-2.5 py-1.5 font-sans fs-caption text-text-primary outline-0 focus:border-accent min-w-[var(--w-field)]"
+    />
+    <input
+      type="text"
+      placeholder="Entity (e.g. Project)"
+      [ngModel]="entityName()"
+      (ngModelChange)="entityName.set($event)"
+      (blur)="onFilterChange()"
+      class="border border-border bg-bg px-2.5 py-1.5 font-sans fs-caption text-text-primary outline-0 focus:border-accent min-w-[var(--w-field)]"
+    />
+    <input
+      type="text"
+      placeholder="User ID"
+      [ngModel]="userId()"
+      (ngModelChange)="userId.set($event)"
+      (blur)="onFilterChange()"
+      class="border border-border bg-bg px-2.5 py-1.5 font-sans fs-caption text-text-primary outline-0 focus:border-accent min-w-[var(--w-field)]"
+    />
+    <input
+      type="date"
+      placeholder="From"
+      [ngModel]="from()"
+      (ngModelChange)="from.set($event); onFilterChange()"
+      class="border border-border bg-bg px-2.5 py-1.5 font-sans fs-caption text-text-primary outline-0 focus:border-accent"
+    />
+    <input
+      type="date"
+      placeholder="To"
+      [ngModel]="to()"
+      (ngModelChange)="to.set($event); onFilterChange()"
+      class="border border-border bg-bg px-2.5 py-1.5 font-sans fs-caption text-text-primary outline-0 focus:border-accent"
+    />
+  </div>
+
+  @if (loading()) {
+    <div class="p-6"><pera-skeleton [height]="420" rounded="md" /></div>
+  } @else if (!entries().length) {
+    <div class="p-6">
+      <pera-empty title="No audit events" description="Adjust the filters or wait for activity." />
+    </div>
+  } @else {
+    <!-- ============ Event stream table ============ -->
+    <div class="bg-bg overflow-x-auto flex-1">
+      <table class="w-full border-collapse">
+        <thead class="sticky top-0 z-10 bg-surface">
+          <tr>
+            <th
+              class="text-start font-mono fs-micro tracking-[0.02em] text-text-muted font-medium px-3 py-2.5 border-b border-border w-48"
+            >
+              Timestamp
+            </th>
+            <th
+              class="text-start font-mono fs-micro tracking-[0.02em] text-text-muted font-medium px-3 py-2.5 border-b border-border w-36"
+            >
+              Actor
+            </th>
+            <th
+              class="text-start font-mono fs-micro tracking-[0.02em] text-text-muted font-medium px-3 py-2.5 border-b border-border w-28"
+            >
+              Action
+            </th>
+            <th
+              class="text-start font-mono fs-micro tracking-[0.02em] text-text-muted font-medium px-3 py-2.5 border-b border-border"
+            >
+              Target
+            </th>
+            <th
+              class="text-start font-mono fs-micro tracking-[0.02em] text-text-muted font-medium px-3 py-2.5 border-b border-border w-28"
+            >
+              Outcome
+            </th>
+            <th
+              class="text-start font-mono fs-micro tracking-[0.02em] text-text-muted font-medium px-3 py-2.5 border-b border-border w-32"
+            >
+              IP
+            </th>
+            <th class="px-3 py-2.5 border-b border-border w-10"></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (e of entries(); track e.id) {
+            <tr
+              (click)="toggleExpand(e.id)"
+              class="hover:bg-surface-muted cursor-pointer transition-colors"
+            >
+              <td
+                class="px-3 py-2 border-b border-border-soft align-middle font-mono fs-label text-text-muted whitespace-nowrap"
+              >
+                {{ e.timestamp | date: 'medium' }}
+              </td>
+              <td class="px-3 py-2 border-b border-border-soft align-middle fs-caption">
+                {{ e.userName || e.userEmail || '—' }}
+              </td>
+              <td class="px-3 py-2 border-b border-border-soft align-middle font-mono fs-label">
+                {{ e.action }}
+              </td>
+              <td class="px-3 py-2 border-b border-border-soft align-middle fs-caption">
+                <div>{{ e.entityName }}</div>
+                @if (e.entityId) {
+                  <div
+                    class="font-mono fs-micro text-text-muted truncate max-w-[var(--w-column-lg)]"
+                  >
+                    {{ e.entityId }}
+                  </div>
+                }
+              </td>
+              <td class="px-3 py-2 border-b border-border-soft align-middle">
+                <span
+                  class="inline-flex items-center gap-1.5 font-mono fs-micro font-medium px-1.5 py-0.5 border"
+                  [class.text-success]="outcomeTone(e.outcome) === 'success'"
+                  [class.border-success]="outcomeTone(e.outcome) === 'success'"
+                  [class.bg-success-soft]="outcomeTone(e.outcome) === 'success'"
+                  [class.text-danger]="outcomeTone(e.outcome) === 'danger'"
+                  [class.border-danger]="outcomeTone(e.outcome) === 'danger'"
+                  [class.bg-danger-soft]="outcomeTone(e.outcome) === 'danger'"
+                  [class.text-warning]="outcomeTone(e.outcome) === 'warning'"
+                  [class.border-warning]="outcomeTone(e.outcome) === 'warning'"
+                  [class.bg-warning-soft]="outcomeTone(e.outcome) === 'warning'"
+                  [class.text-text-muted]="outcomeTone(e.outcome) === 'neutral'"
+                  [class.border-border]="outcomeTone(e.outcome) === 'neutral'"
+                  [class.bg-bg]="outcomeTone(e.outcome) === 'neutral'"
+                >
+                  <span
+                    class="w-1.5 h-1.5 rounded-full"
+                    [class.bg-success]="outcomeTone(e.outcome) === 'success'"
+                    [class.bg-danger]="outcomeTone(e.outcome) === 'danger'"
+                    [class.bg-warning]="outcomeTone(e.outcome) === 'warning'"
+                    [class.bg-text-muted]="outcomeTone(e.outcome) === 'neutral'"
+                  ></span>
+                  {{ e.outcome || '—' }}
+                </span>
+              </td>
+              <td
+                class="px-3 py-2 border-b border-border-soft align-middle font-mono fs-label text-text-muted"
+              >
+                {{ e.ipAddress || '—' }}
+              </td>
+              <td
+                class="px-3 py-2 border-b border-border-soft align-middle text-end font-mono fs-label text-accent"
+              >
+                {{ expandedId() === e.id ? '−' : '+' }}
+              </td>
+            </tr>
+            <!-- ============ Row-expand diff drawer ============ -->
+            @if (expandedId() === e.id) {
+              <tr class="border-b border-border-soft bg-surface-muted/40">
+                <td colspan="7" class="px-5 py-4">
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <div
+                        class="font-mono fs-micro uppercase tracking-[0.03em] text-text-muted mb-1.5"
+                      >
+                        Old values
+                      </div>
+                      <pre
+                        class="m-0 p-3 border border-border bg-surface font-mono fs-label text-text-secondary overflow-auto max-h-64 whitespace-pre-wrap"
+                        >{{ prettyJson(e.oldValues) }}</pre>
+                    </div>
+                    <div>
+                      <div
+                        class="font-mono fs-micro uppercase tracking-[0.03em] text-text-muted mb-1.5"
+                      >
+                        New values
+                      </div>
+                      <pre
+                        class="m-0 p-3 border border-border bg-surface font-mono fs-label text-text-secondary overflow-auto max-h-64 whitespace-pre-wrap"
+                        >{{ prettyJson(e.newValues) }}</pre>
+                    </div>
+                    @if (e.description) {
+                      <div class="md:col-span-2">
+                        <div
+                          class="font-mono fs-micro uppercase tracking-[0.03em] text-text-muted mb-1.5"
+                        >
+                          Description
+                        </div>
+                        <p class="m-0 fs-caption text-text-secondary leading-relaxed">
+                          {{ e.description }}
+                        </p>
+                      </div>
+                    }
+                    @if (e.failureReason) {
+                      <div class="md:col-span-2">
+                        <div
+                          class="font-mono fs-micro uppercase tracking-[0.03em] text-danger mb-1.5"
+                        >
+                          Failure reason
+                        </div>
+                        <p class="m-0 fs-caption text-danger leading-relaxed">
+                          {{ e.failureReason }}
+                        </p>
+                      </div>
+                    }
+                    <div
+                      class="md:col-span-2 grid grid-cols-2 md:grid-cols-4 gap-3 pt-3 border-t border-border-soft font-mono fs-label text-text-muted"
+                    >
+                      @if (e.module) {
+                        <span>MODULE · {{ e.module }}</span>
+                      }
+                      @if (e.requestMethod) {
+                        <span>{{ e.requestMethod }}</span>
+                      }
+                      @if (e.requestPath) {
+                        <span class="truncate">{{ e.requestPath }}</span>
+                      }
+                      @if (e.durationMs !== null) {
+                        <span>{{ e.durationMs }}ms</span>
+                      }
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            }
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Pagination -->
+    <div
+      class="px-6 py-3.5 font-mono fs-label text-text-muted border-t border-border bg-surface flex justify-between items-center"
+    >
+      <span>Page {{ page() }} of {{ totalPages() }} · {{ totalCount() }} events</span>
+      <div class="flex items-center gap-2">
+        <button
+          type="button"
+          [disabled]="page() === 1"
+          (click)="onPage(-1)"
+          class="px-2.5 py-1 border border-border bg-bg cursor-pointer hover:bg-surface-muted disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          ← Prev
+        </button>
+        <button
+          type="button"
+          [disabled]="page() >= totalPages()"
+          (click)="onPage(1)"
+          class="px-2.5 py-1 border border-border bg-bg cursor-pointer hover:bg-surface-muted disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          Next →
+        </button>
+      </div>
+    </div>
+  }
+</div>

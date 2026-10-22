@@ -23,8 +23,7 @@ import {
   PeraKbdComponent,
   PeraTooltipDirective,
 } from '@ds';
-// TODO(005-notifications): NotificationBellComponent lands with modules/notifications.
-// import { NotificationBellComponent } from '@modules/notifications';
+import { NotificationBellComponent } from '@modules/notifications';
 
 @Component({
   selector: 'app-topbar',
@@ -37,8 +36,7 @@ import {
     PeraIconComponent,
     PeraKbdComponent,
     PeraTooltipDirective,
-    // TODO(005-notifications): NotificationBellComponent — see import above.
-    // NotificationBellComponent,
+    NotificationBellComponent,
   ],
   templateUrl: './topbar.component.html',
 })

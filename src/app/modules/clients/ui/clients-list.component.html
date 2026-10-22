@@ -1,0 +1,99 @@
+<!-- Translated from D-01 in PERA App - CRM.html (simplified to v1-supported columns only) -->
+<div class="bg-bg min-h-full">
+  <!-- ============ .pg header ============ -->
+  <pera-page-header
+    title="Clients"
+    [count]="
+      totalCount() +
+      ' ' +
+      (status() === 'all' ? 'TOTAL' : status() === 'active' ? 'ACTIVE' : 'INACTIVE')
+    "
+  >
+    <div actions class="flex gap-2 items-center">
+      <ng-container *peraCan="'clients.create'">
+        <pera-button variant="primary" iconStart="plus" (click)="openAdd()">New client</pera-button>
+      </ng-container>
+    </div>
+
+    <div toolbar class="flex items-start gap-2.5 flex-wrap w-full">
+      <pera-filter-bar
+        class="flex-1 min-w-0"
+        [search]="true"
+        [facets]="facets()"
+        [value]="filters()"
+        (valueChange)="onFilters($event)"
+        (clearAll)="onClearFilters()"
+      />
+    </div>
+  </pera-page-header>
+
+  <!-- Single filter surface: the FilterBar above. The left status rail was removed at
+       the T056 gate (user ruling 2026-07-10) — the hubs prototype has no rail, and it
+       duplicated the status facet the bar already exposes. -->
+  <div>
+    <div class="bg-bg overflow-x-auto">
+      @if (loading()) {
+        <div class="p-6"><pera-skeleton [height]="240" rounded="md" /></div>
+      } @else if (!sortedRows().length) {
+        <pera-empty title="No clients found" description="Adjust the search or add a new client." />
+      } @else {
+        <!-- The drafted columns() + four cell templates go live here. rowActions is
+             deliberately NOT passed: those are permission-gated mutations (D3). -->
+        <div class="p-6">
+          <pera-data-table
+            density="compact"
+            [columns]="columns()"
+            [rows]="sortedRows()"
+            [rowId]="rowId"
+            [sortBy]="sort().sortBy"
+            [sortDir]="sort().sortDir"
+            [page]="page()"
+            [pageSize]="pageSize"
+            [totalCount]="totalCount()"
+            [hasRowClick]="true"
+            (sortChange)="onSort($event)"
+            (pageChange)="onPage($event)"
+            (rowClick)="openHub($event)"
+          />
+        </div>
+      }
+    </div>
+  </div>
+</div>
+
+<!-- ============ Cell templates consumed by columns() ============ -->
+<ng-template #avatarTpl let-row>
+  <pera-avatar [name]="row.firstName + ' ' + row.lastName" size="sm" />
+</ng-template>
+
+<ng-template #nameTpl let-row>
+  <div class="font-medium leading-tight" [style.fontSize]="'var(--fs-caption)'">
+    {{ row.firstName }} {{ row.lastName }}
+  </div>
+</ng-template>
+
+<ng-template #phoneTpl let-row>
+  <span class="font-mono text-text-secondary" dir="ltr" [style.fontSize]="'var(--fs-label)'">{{
+    row.phoneNumber || '—'
+  }}</span>
+</ng-template>
+
+<ng-template #statusTpl let-row>
+  <span
+    class="inline-flex items-center gap-1.5 font-mono font-medium px-1.5 py-0.5 border"
+    [style.fontSize]="'var(--fs-micro)'"
+    [class.text-success]="row.isActive"
+    [class.border-success]="row.isActive"
+    [class.bg-success-soft]="row.isActive"
+    [class.text-text-muted]="!row.isActive"
+    [class.border-border]="!row.isActive"
+    [class.bg-bg]="!row.isActive"
+  >
+    <span
+      class="w-1.5 h-1.5 rounded-full"
+      [class.bg-success]="row.isActive"
+      [class.bg-text-muted]="!row.isActive"
+    ></span>
+    {{ row.isActive ? 'Active' : 'Inactive' }}
+  </span>
+</ng-template>
