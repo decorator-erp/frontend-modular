@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { ApiService } from '@platform/http/api.service';
+import { handled } from '@platform/http/handled-errors';
 import { PagedResult } from '@platform/types/paged-result';
 import { UserListItem } from '../model/user.model';
 
@@ -19,9 +20,12 @@ export class UserService extends ApiService {
   ): Observable<PagedResult<UserListItem>> {
     const page = Math.max(1, opts.page ?? 1);
     const pageSize = Math.min(Math.max(1, opts.pageSize ?? 50), MAX_PAGE_SIZE);
-    return this.get<unknown>('/users', { page, pageSize, search: opts.search || undefined }).pipe(
-      map((response) => this.normalizePaged(response, pageSize)),
-    );
+    // 403 is handled: the only caller (permissions page) falls back to the employee directory.
+    return this.get<unknown>(
+      '/users',
+      { page, pageSize, search: opts.search || undefined },
+      { context: handled(403) },
+    ).pipe(map((response) => this.normalizePaged(response, pageSize)));
   }
 
   /** Shared with `RoleService.users()`: both routes return `PagedResult<UserListItem>`. */

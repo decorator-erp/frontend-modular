@@ -1,4 +1,5 @@
 import { Injectable, inject, isDevMode } from '@angular/core';
+import { HttpContext } from '@angular/common/http';
 import { Observable, of } from 'rxjs';
 import { map, switchMap } from 'rxjs/operators';
 import {
@@ -188,8 +189,11 @@ export class EmployeeService extends ApiService {
    * and manager only), so on a fresh environment this is the normal answer until an administrator
    * grants it. Both are "no profile to show", not failures.
    */
-  getMe(): Observable<EmployeeFull> {
-    return this.get<unknown>('/employees/me').pipe(map((r) => this.normalizeFull(this.unwrap(r))));
+  getMe(opts: { context?: HttpContext } = {}): Observable<EmployeeFull> {
+    // `opts.context` is opt-in (spec 002c): the profile page passes `handled(403)`.
+    return this.get<unknown>('/employees/me', undefined, { context: opts.context }).pipe(
+      map((r) => this.normalizeFull(this.unwrap(r))),
+    );
   }
 
   getFull(id: string): Observable<EmployeeFull> {

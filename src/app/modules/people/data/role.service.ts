@@ -1,4 +1,5 @@
 import { Injectable, inject } from '@angular/core';
+import { HttpContext } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { map, tap } from 'rxjs/operators';
 import { RoleResponse } from '../model/people.model';
@@ -6,6 +7,7 @@ import { UserListItem } from '../model/user.model';
 import { PagedResult } from '@platform/types/paged-result';
 import { UserService } from './user.service';
 import { ApiService } from '@platform/http/api.service';
+import { handled } from '@platform/http/handled-errors';
 import { AuthStore } from '@platform/auth/auth.store';
 
 /**
@@ -21,8 +23,12 @@ export class RoleService extends ApiService {
   private readonly authStore = inject(AuthStore);
   private readonly usersApi = inject(UserService);
 
-  getAll(): Observable<RoleResponse[]> {
-    return this.get<unknown>('/roles').pipe(
+  /**
+   * `opts.context` is opt-in (spec 002c): the permissions page's catalog load handles 403 itself
+   * and passes `handled(403)`; the roles screen and `LookupCache` do not, and keep the toast.
+   */
+  getAll(opts: { context?: HttpContext } = {}): Observable<RoleResponse[]> {
+    return this.get<unknown>('/roles', undefined, { context: opts.context }).pipe(
       map((response) => this.unwrapArray(response).map((role) => this.normalizeRole(role))),
     );
   }
@@ -78,7 +84,8 @@ export class RoleService extends ApiService {
   }
 
   assignToUser(userId: string, roleId: string): Observable<void> {
-    return this.post<void>(`/roles/${roleId}/users/${userId}`, {}).pipe(
+    // 403 `CannotDelegate` is handled: the assign-role dialog shows the reason inline.
+    return this.post<void>(`/roles/${roleId}/users/${userId}`, {}, { context: handled(403) }).pipe(
       tap(() => this.refreshSelf(userId)),
     );
   }

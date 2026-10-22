@@ -10,6 +10,7 @@ import {
   RevokePermissionRequest,
 } from '../model/people.model';
 import { ApiService } from '@platform/http/api.service';
+import { handled } from '@platform/http/handled-errors';
 import { AuthStore } from '@platform/auth/auth.store';
 
 /**
@@ -33,7 +34,8 @@ export class PermissionService extends ApiService {
    * read it too). Anyone else gets a 403: render a failure state, not an empty matrix.
    */
   getAll(): Observable<ModulePermissionSet[]> {
-    return this.get<unknown>('/permissions').pipe(
+    // 403 is handled: the only caller renders the "needs roles.read or permissions.manage" state.
+    return this.get<unknown>('/permissions', undefined, { context: handled(403) }).pipe(
       map((response) =>
         this.unwrapArray(response).map((set) => ({
           module: this.field<string>(set, 'module') ?? '',
@@ -77,36 +79,59 @@ export class PermissionService extends ApiService {
 
   /** Both ids are in the path; the body is empty. Gated on `roles.manage`, not `permissions.*`. */
   assignToRole(roleId: string, permission: string): Observable<void> {
-    return this.put<void>(`/permissions/roles/${roleId}/${encodeURIComponent(permission)}`, {});
+    // 403 `CannotDelegate` is handled: the matrix shows the server's reason inline.
+    return this.put<void>(
+      `/permissions/roles/${roleId}/${encodeURIComponent(permission)}`,
+      {},
+      { context: handled(403) },
+    );
   }
 
   removeFromRole(roleId: string, permission: string): Observable<void> {
-    return this.delete<void>(`/permissions/roles/${roleId}/${encodeURIComponent(permission)}`);
+    return this.delete<void>(
+      `/permissions/roles/${roleId}/${encodeURIComponent(permission)}`,
+      undefined,
+      { context: handled(403) },
+    );
   }
 
+  /*
+   * Override writes mark 403 handled (spec 002c): `CannotDelegate` and `SelfModification` are
+   * explained by every caller — the override dialog's banner, the permissions page's own toast.
+   */
   grant(req: GrantPermissionRequest): Observable<void> {
-    return this.post<void>(`/permissions/users/${req.targetUserId}/overrides/grant`, {
-      permission: req.permission,
-      reason: req.reason ?? null,
-      // `expiresAtUtc`, NOT `expiresAt`. The old name bound to null on the server, so every timed
-      // override silently became permanent. The RESPONSE field really is `expiresAt` — the
-      // asymmetry is the backend's, and `normalizeEffective` reads the response name.
-      expiresAtUtc: req.expiresAt ?? null,
-    }).pipe(tap(() => this.refreshSelf(req.targetUserId)));
+    return this.post<void>(
+      `/permissions/users/${req.targetUserId}/overrides/grant`,
+      {
+        permission: req.permission,
+        reason: req.reason ?? null,
+        // `expiresAtUtc`, NOT `expiresAt`. The old name bound to null on the server, so every timed
+        // override silently became permanent. The RESPONSE field really is `expiresAt` — the
+        // asymmetry is the backend's, and `normalizeEffective` reads the response name.
+        expiresAtUtc: req.expiresAt ?? null,
+      },
+      { context: handled(403) },
+    ).pipe(tap(() => this.refreshSelf(req.targetUserId)));
   }
 
   deny(req: DenyPermissionRequest): Observable<void> {
-    return this.post<void>(`/permissions/users/${req.targetUserId}/overrides/deny`, {
-      permission: req.permission,
-      reason: req.reason ?? null,
-      expiresAtUtc: null,
-    }).pipe(tap(() => this.refreshSelf(req.targetUserId)));
+    return this.post<void>(
+      `/permissions/users/${req.targetUserId}/overrides/deny`,
+      {
+        permission: req.permission,
+        reason: req.reason ?? null,
+        expiresAtUtc: null,
+      },
+      { context: handled(403) },
+    ).pipe(tap(() => this.refreshSelf(req.targetUserId)));
   }
 
   /** Deletes the override row outright; the user reverts to whatever their roles grant. */
   revoke(req: RevokePermissionRequest): Observable<void> {
     return this.delete<void>(
       `/permissions/users/${req.targetUserId}/overrides/${encodeURIComponent(req.permission)}`,
+      undefined,
+      { context: handled(403) },
     ).pipe(tap(() => this.refreshSelf(req.targetUserId)));
   }
 
