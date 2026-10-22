@@ -21,6 +21,7 @@ export const ERROR_MESSAGES: Record<string, string> = {
   'authentications.LockedOut': 'Too many attempts. Try again in 15 minutes.',
   'authentications.RefreshTokenReused': 'Your session has ended. Please sign in again.',
   'users.NotFound': 'User not found.',
+  'users.DuplicatedEmail': 'This email is already registered.',
 
   // From api-docs/02-clients.md
   'clients.NotFound': 'Client not found.',
@@ -38,13 +39,21 @@ export const ERROR_MESSAGES: Record<string, string> = {
   'employees.AlreadyInactive': 'This employee is already inactive.',
   'employees.ActiveException': 'Could not activate the employee. Please try again.',
   'employees.InactiveException': 'Could not deactivate the employee. Please try again.',
+  // Backend remediation v3 (006b-2 #28).
+  'employees.Inactive': 'This employee is inactive. Reactivate them first.',
+  'employees.AlreadyInAnotherDepartment':
+    'This employee already belongs to another department. Move them instead.',
+  'employees.EndDateBeforeHireDate': 'The end date can’t be before the hire date.',
+  'employees.WeakPassword':
+    'The password must have at least 8 characters, with a digit, a lowercase letter, an uppercase letter and a symbol.',
 
   // From api-docs/04-departments.md
   'departments.NotFound': 'Department not found.',
   'departments.DuplicatedName': 'A department with this name already exists.',
   'departments.AlreadyInDepartment': 'This employee is already in that department.',
   'departments.UserNotInDepartment': 'This employee is not in the selected department.',
-  'departments.NoEmployeesToMove': 'There are no employees to move in this department.',
+  // Backend remediation v3 (006b-2 #28, KNOWN-DELTA-3). `NoEmployeesToMove` was deleted there.
+  'departments.RemoveHeadFirst': 'This employee heads the department. Unassign them as head first.',
 
   // From api-docs/05-roles-permissions.md
   'roles.NotFound': 'Role not found.',

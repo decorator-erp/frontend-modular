@@ -46,3 +46,25 @@ describe('ERROR_MESSAGES — dead permissions/roles keys (006b-1 #25)', () => {
     },
   );
 });
+
+/** 006b-2 #28: the people-data families against backend remediation v3. */
+describe('ERROR_MESSAGES — employees, departments, users (006b-2 #28)', () => {
+  it.each([
+    'employees.Inactive',
+    'employees.AlreadyInAnotherDepartment',
+    'employees.EndDateBeforeHireDate',
+    'employees.WeakPassword',
+    'departments.RemoveHeadFirst',
+    'users.DuplicatedEmail',
+  ])('carries %s', (code) => {
+    expect(ERROR_MESSAGES[code]).toBeTruthy();
+  });
+
+  it('RemoveHeadFirst tells the user to unassign the head first', () => {
+    expect(ERROR_MESSAGES['departments.RemoveHeadFirst']).toContain('Unassign them as head first');
+  });
+
+  it('no longer carries departments.NoEmployeesToMove (deleted in the backend)', () => {
+    expect('departments.NoEmployeesToMove' in ERROR_MESSAGES).toBe(false);
+  });
+});
