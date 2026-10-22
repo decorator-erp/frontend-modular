@@ -14,7 +14,7 @@ import { ToastService } from '@platform/feedback/toast.service';
 import { CreateEmployeeRequest } from '../../model/people.model';
 import { ParsedApiError } from '@platform/types';
 import { PeraValidators, ServerErrorsDirective, firstErrorMessage } from '@shared/forms';
-import { cryptoRandomPassword } from '@shared/ui/password';
+import { policyPassword } from './password-policy';
 import { CONTRACT_TYPE_OPTIONS } from './contract-type';
 import {
   PeraFormFieldComponent,
@@ -231,7 +231,8 @@ export class AddEmployeeDialogComponent implements OnInit {
       phoneNumber: v.phoneNumber.trim() || null,
       emergencyContactPhone: v.emergencyContactPhone.trim() || null,
       notes: v.notes.trim() || null,
-      password: cryptoRandomPassword(16), // TODO(gap-03): switch to invitation flow once backend POST /api/auth/accept-invitation ships
+      // 006b-2 #23: still `cryptoRandomPassword(16)`, re-drawn until it meets the server policy.
+      password: policyPassword(), // TODO(gap-03): switch to invitation flow once backend POST /api/auth/accept-invitation ships
     };
 
     // Department is the second call `create()` makes for us — it is not part of the command.
@@ -245,7 +246,16 @@ export class AddEmployeeDialogComponent implements OnInit {
       },
       error: (err) => {
         const parsed = this.errorHandler.parse(err);
-        this.serverError.set({ ...parsed, generalMessage: friendly(parsed) });
+        // The email is the field at fault for a duplicate; show it there (006b-2 #23).
+        if (parsed.code === 'users.DuplicatedEmail') {
+          this.serverError.set({
+            ...parsed,
+            generalMessage: '',
+            fieldErrors: { ...parsed.fieldErrors, email: [friendly(parsed)] },
+          });
+        } else {
+          this.serverError.set({ ...parsed, generalMessage: friendly(parsed) });
+        }
         this.submitting.set(false);
       },
     });
