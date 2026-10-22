@@ -141,14 +141,12 @@ export class DepartmentsListComponent implements OnInit {
   }
 
   /**
-   * Resolve the head from the scalar `departmentHeadId`.
-   *
-   * The old version branched on a `departmentHead` OBJECT the API has never sent, so it returned
-   * "no head" for every department including the ones that had one.
+   * The head's name, straight from the list response (backend v3 `headName`, 006b-2 #22): no join
+   * against the directory, no per-department request.
    */
   headName(d: DepartmentResponse): string {
     if (!d.departmentHeadId) return this.NO_HEAD;
-    return this.employeeNames().get(d.departmentHeadId) ?? this.NO_HEAD;
+    return d.headName ?? this.NO_HEAD;
   }
 
   hasHead(d: DepartmentResponse): boolean {

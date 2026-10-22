@@ -77,6 +77,10 @@ export interface DepartmentResponse {
   description: string | null;
   departmentHeadId: string | null;
   isActive: boolean;
+  /** Backend v3 (`DepartmentResponse.HeadName`): the head's display name, or null (006b-2 #22). */
+  headName: string | null;
+  /** Backend v3: active members who are active employees (006b-2 #22). */
+  memberCount: number;
 }
 export interface CreateDepartmentRequest {
   name: string;

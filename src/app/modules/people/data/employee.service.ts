@@ -241,19 +241,6 @@ export class EmployeeService extends ApiService {
     );
   }
 
-  // TODO(backend-gap): no GET /api/departments/{id}/head in dms-modular — the departments group
-  // maps only `/`, `/{id}` and `/{id}/members`. The head is reachable as the scalar
-  // `departmentHeadId` on GET /api/departments/{id}, so this could be rebuilt as two calls if the
-  // Manager card is wanted back; `IHrDirectory.GetDepartmentHeadsAsync` stays internal to Projects.
-  getDepartmentHead(departmentId: string): Observable<EmployeeFull | null> {
-    return this.get<unknown>(`/departments/${departmentId}/head`).pipe(
-      map((r) => {
-        const value = this.unwrap(r);
-        return value ? this.normalizeFull(value) : null;
-      }),
-    );
-  }
-
   /**
    * The members of a role, as directory rows — `GET /api/roles/{roleId}/users` via
    * `RoleService.users()` (006b-1 #24; backend v3 added the route). A `UserListItem` is an

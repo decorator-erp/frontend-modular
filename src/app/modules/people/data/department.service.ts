@@ -116,6 +116,8 @@ export class DepartmentService extends ApiService {
       // one is why every row used to read "No head assigned" even when a head was set.
       departmentHeadId: this.field<string | null>(source, 'departmentHeadId') ?? null,
       isActive: this.field<boolean>(source, 'isActive') ?? true,
+      headName: this.field<string | null>(source, 'headName') ?? null,
+      memberCount: this.field<number>(source, 'memberCount') ?? 0,
     };
   }
 
