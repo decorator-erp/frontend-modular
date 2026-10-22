@@ -139,9 +139,12 @@ export const routes: Routes = [
       // TODO(005): 'library/materials/:id' -> data = { breadcrumb: 'Material' },
       //   loadComponent: features/materials/material-detail.component -> MaterialDetailComponent
       //
-      // TODO(005): 'audit' -> PermissionGuard, data = { permission: 'audit.read',
-      //   breadcrumb: 'Audit log' }, loadComponent: features/audit/audit-log.component
-      //   -> AuditLogComponent
+      {
+        path: 'audit',
+        canActivate: [PermissionGuard],
+        data: { permission: 'audit.read', breadcrumb: 'Audit log' },
+        loadComponent: () => import('@modules/audit').then((m) => m.AuditLogComponent),
+      },
       //
       // TODO(008): 'projects' -> loadComponent: features/projects/projects-list.component
       //   -> ProjectsListComponent, data = { breadcrumb: 'Projects' }
