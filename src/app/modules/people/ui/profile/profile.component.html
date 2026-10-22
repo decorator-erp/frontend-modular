@@ -1,0 +1,296 @@
+<div class="p-4 md:p-6 flex flex-col gap-4 max-w-260 mx-auto">
+  @if (loading()) {
+    <pera-skeleton [height]="120" rounded="md" />
+    <pera-skeleton [height]="36" rounded="md" />
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <pera-skeleton [height]="220" rounded="md" />
+      <pera-skeleton [height]="220" rounded="md" />
+    </div>
+  } @else if (failed()) {
+    <pera-empty
+      title="Couldn't load your profile"
+      description="Try again in a moment"
+      [cta]="{ label: 'Reload', action: reload }"
+    />
+  } @else if (profileUnavailable()) {
+    <!-- 404: this account has no employee record (a client user has none). 403: employees.view_own
+         has not been granted — the Employee role seeds with no claims. Neither is an error. -->
+    <pera-empty
+      title="No employee profile for this account"
+      description="Your profile appears here once you have an employee record and the employees.view_own permission. Ask an administrator if you expected to see one."
+      iconName="user"
+    />
+  } @else if (me(); as employee) {
+    <!-- Header (B-02) -->
+    <pera-card padding="lg">
+      <div class="flex flex-col md:flex-row md:items-start gap-5">
+        <pera-avatar [name]="employee.fullName" size="lg" />
+        <div class="flex-1 min-w-0">
+          <h1 class="m-0 text-2xl font-semibold tracking-tight leading-tight">
+            {{ employee.fullName }}
+          </h1>
+          <div
+            class="flex flex-wrap items-center gap-3 mt-2 font-mono fs-label uppercase tracking-[0.04em] text-text-secondary"
+          >
+            <span>{{ employee.jobTitle || '—' }}</span>
+            @if (departmentName(); as dep) {
+              <span class="text-border" aria-hidden="true">·</span>
+              <span>{{ dep }}</span>
+            }
+            <pera-badge [tone]="employee.isActive ? 'success' : 'neutral'" [dot]="true">
+              {{ employee.isActive ? 'Active' : 'Inactive' }}
+            </pera-badge>
+          </div>
+          <div class="flex flex-wrap items-center gap-5 mt-4 fs-body-sm text-text-secondary">
+            <span class="inline-flex items-center gap-1.5">
+              <pera-icon name="user" [size]="14" />
+              <span>{{ employee.email }}</span>
+            </span>
+            @if (employee.phoneNumber) {
+              <span class="inline-flex items-center gap-1.5" dir="ltr">
+                <pera-icon name="external-link" [size]="14" />
+                <span>{{ employee.phoneNumber }}</span>
+              </span>
+            }
+            @if (tenureLabel()) {
+              <span class="text-text-muted text-xs">{{ tenureLabel() }}</span>
+            }
+          </div>
+        </div>
+        <pera-button
+          variant="primary"
+          [disabled]="true"
+          peraTooltip="Editing your own profile needs the employees.update permission — ask an administrator, or edit from the Employees screen"
+          >Edit profile</pera-button
+        >
+      </div>
+    </pera-card>
+
+    <pera-tabs [tabs]="tabs" [activeId]="activeTab()" (activeChange)="setTab($event)" />
+
+    <!-- ============ OVERVIEW ============ -->
+    @if (activeTab() === 'overview') {
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div class="flex flex-col gap-4">
+          <pera-card>
+            <h2 class="m-0 mb-3 text-sm font-semibold">About</h2>
+            <div class="flex flex-col gap-2.5 text-sm">
+              <p class="m-0 text-text-secondary">
+                {{ employee.notes || 'Add a short bio (coming soon)' }}
+              </p>
+              <div class="flex justify-between gap-3">
+                <span class="text-text-muted fs-body-sm">Preferred contact</span>
+                <span class="text-end">{{ employee.email }}</span>
+              </div>
+              @if (employee.phoneNumber) {
+                <div class="flex justify-between gap-3">
+                  <span class="text-text-muted fs-body-sm">Phone</span>
+                  <span dir="ltr">{{ employee.phoneNumber }}</span>
+                </div>
+              }
+              <div class="flex justify-between gap-3">
+                <span class="text-text-muted fs-body-sm">Languages spoken</span>
+                <span>English · العربية</span>
+              </div>
+            </div>
+          </pera-card>
+
+          <pera-card>
+            <h2 class="m-0 mb-3 text-sm font-semibold">Quick stats</h2>
+            @if (overviewUnavailable()) {
+              <!-- Rendering 0 / 0 / 0 here would state, confidently and wrongly, that this person
+                   has no work. Nothing aggregates these counts over HTTP. -->
+              <p class="m-0 text-sm text-text-muted">
+                Not available yet — no endpoint aggregates project, stage and task counts.
+              </p>
+            } @else {
+              <div class="flex flex-col text-sm">
+                <div class="flex justify-between py-2 border-b border-border">
+                  <span class="text-text-muted fs-body-sm">Open projects</span>
+                  <span class="tabular-nums font-medium">{{ overview()?.projectCount ?? 0 }}</span>
+                </div>
+                <div class="flex justify-between py-2 border-b border-border">
+                  <span class="text-text-muted fs-body-sm">Active stages</span>
+                  <span class="tabular-nums font-medium">{{
+                    overview()?.activeStageCount ?? 0
+                  }}</span>
+                </div>
+                <div class="flex justify-between py-2 border-b border-border">
+                  <span class="text-text-muted fs-body-sm">Open tasks</span>
+                  <span class="tabular-nums font-medium">{{
+                    overview()?.assignedTaskCount ?? 0
+                  }}</span>
+                </div>
+                <div class="flex justify-between py-2">
+                  <span class="text-text-muted fs-body-sm">This week's logged hours</span>
+                  <span class="text-text-muted" peraTooltip="Available when timesheets ship"
+                    >—</span
+                  >
+                </div>
+              </div>
+            }
+          </pera-card>
+        </div>
+
+        <div class="flex flex-col gap-4">
+          <pera-card>
+            <h2 class="m-0 mb-3 text-sm font-semibold">Manager</h2>
+            @if (managerUnavailable()) {
+              <p class="m-0 text-sm text-text-muted">
+                Not available yet — no endpoint returns a department's head.
+              </p>
+            } @else if (managerName(); as manager) {
+              <div class="flex items-center gap-2.5">
+                <pera-avatar [name]="manager" size="sm" />
+                <span class="text-sm">{{ manager }}</span>
+              </div>
+            } @else {
+              <p class="m-0 text-sm text-text-muted">No manager assigned</p>
+            }
+          </pera-card>
+
+          <!-- No Roles card: HR holds no roles, and nothing returns the roles of an employee. -->
+
+          <pera-card>
+            <h2 class="m-0 mb-3 text-sm font-semibold">Department</h2>
+            @if (departmentName(); as dep) {
+              <div class="flex items-center justify-between gap-3 text-sm">
+                <span>{{ dep }}</span>
+                <span class="text-xs text-text-muted">{{ employee.jobTitle || 'Member' }}</span>
+              </div>
+            } @else {
+              <p class="m-0 text-sm text-text-muted">Not assigned to a department yet</p>
+            }
+          </pera-card>
+        </div>
+      </div>
+    }
+
+    <!-- ============ PROJECTS ============ -->
+    @if (activeTab() === 'projects') {
+      @if (projectsLoading()) {
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <pera-skeleton [height]="96" rounded="md" />
+          <pera-skeleton [height]="96" rounded="md" />
+        </div>
+      } @else {
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          @for (project of projects() ?? []; track project.projectId) {
+            <pera-card [interactive]="true" (click)="openProject(project.projectId)">
+              <div class="flex items-start justify-between gap-3">
+                <div class="min-w-0">
+                  <div class="font-mono fs-label text-text-muted">{{ project.code || '—' }}</div>
+                  <div class="text-sm font-medium truncate mt-0.5">{{ project.projectName }}</div>
+                  @if (project.roles.length > 0) {
+                    <div class="text-xs text-text-muted mt-1 truncate">
+                      {{ project.roles.join(' · ') }}
+                    </div>
+                  }
+                </div>
+                <div class="flex flex-col items-end gap-1.5 shrink-0">
+                  <pera-badge [tone]="projectTone(project.status)" [dot]="true">
+                    {{ projectLabel(project.status) }}
+                  </pera-badge>
+                  @if (project.isHead) {
+                    <pera-badge tone="accent" size="micro">Head</pera-badge>
+                  }
+                </div>
+              </div>
+            </pera-card>
+          } @empty {
+            <div class="md:col-span-2">
+              @if (projectsUnavailable()) {
+                <pera-empty
+                  title="Projects are not available yet"
+                  description="No endpoint returns the projects an employee belongs to. This is a missing API, not an empty list."
+                  iconName="alert-triangle"
+                />
+              } @else {
+                <pera-empty
+                  title="No projects yet"
+                  description="Projects you join will appear here."
+                />
+              }
+            </div>
+          }
+        </div>
+      }
+    }
+
+    <!-- ============ TASKS ============ -->
+    @if (activeTab() === 'tasks') {
+      <pera-data-table
+        [columns]="taskColumns()"
+        [rows]="tasks() ?? []"
+        [loading]="tasksLoading()"
+        [empty]="
+          tasksUnavailable()
+            ? {
+                title: 'Tasks are not available yet',
+                description:
+                  'No endpoint returns the tasks assigned to an employee. This is a missing API, not an empty list.',
+              }
+            : {
+                title: 'No tasks assigned',
+                description: 'Tasks assigned to you will appear here.',
+              }
+        "
+        [hasRowClick]="true"
+        (rowClick)="openProject($event.projectId)"
+      />
+    }
+
+    <!-- ============ SETTINGS ============ -->
+    @if (activeTab() === 'settings') {
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <pera-card>
+          <h2 class="m-0 mb-3 text-sm font-semibold">Display</h2>
+          <div class="flex flex-col text-sm">
+            <div class="flex items-center justify-between py-2 border-b border-border">
+              <span class="text-text-secondary">Theme</span>
+              <pera-button size="sm" variant="tertiary" (click)="theme.toggle()">
+                {{ theme.theme() === 'dark' ? 'Dark — switch to light' : 'Light — switch to dark' }}
+              </pera-button>
+            </div>
+            <div class="flex items-center justify-between py-2">
+              <span class="text-text-secondary">Language</span>
+              <pera-button size="sm" variant="tertiary" (click)="locale.toggle()">
+                {{
+                  locale.locale() === 'en'
+                    ? 'English — switch to العربية'
+                    : 'العربية — switch to English'
+                }}
+              </pera-button>
+            </div>
+          </div>
+        </pera-card>
+
+        <pera-card>
+          <h2 class="m-0 mb-3 text-sm font-semibold">Security</h2>
+          <div class="flex flex-col gap-3 text-sm">
+            <div>
+              <pera-button
+                variant="secondary"
+                [disabled]="true"
+                peraTooltip="Not wired yet — POST /api/auth/change-password exists but has no UI"
+                >Change password</pera-button
+              >
+            </div>
+            <!-- No "Last login": lastLoginAt lives in Identity and no HR route exposes it. -->
+          </div>
+        </pera-card>
+      </div>
+    }
+  }
+</div>
+
+<!-- Task cell templates -->
+<ng-template #taskStatusTpl let-row>
+  <pera-badge [tone]="taskTone(row.status)" [dot]="true">{{ taskLabel(row.status) }}</pera-badge>
+</ng-template>
+<ng-template #taskPriorityTpl let-row>
+  <span class="text-text-muted" peraTooltip="Priority is not exposed by the tasks API yet">—</span>
+</ng-template>
+<ng-template #taskDueTpl let-row>
+  <span class="tabular-nums">{{ shortDate(row.dueDate, locale.locale()) }}</span>
+</ng-template>

@@ -10,6 +10,7 @@ import { catchError, switchMap, throwError } from 'rxjs';
 import { TokenService } from './token.service';
 import { TokenRefreshService } from './token-refresh.service';
 import { AuthStore } from './auth.store';
+import { ToastService } from '../feedback/toast.service';
 
 const addToken = (request: HttpRequest<unknown>, token: string): HttpRequest<unknown> =>
   request.clone({ setHeaders: { Authorization: `Bearer ${token}` } });
@@ -23,26 +24,53 @@ const skipAuth = (url: string): boolean =>
   url.includes('/crm/public/');
 
 /**
+ * The logout in progress, or `null`. N concurrent 401s that share one failed refresh each reach
+ * `catchError`; without this they would each toast, each POST `/auth/revoke` (into the same per-IP
+ * rate limit) and each navigate. Reset when the logout settles.
+ */
+let bouncing: Promise<void> | null = null;
+
+/**
  * Log out and return to `/login`, preserving where the user was so they land back there after
- * signing in.
+ * signing in. Single-flight: the first caller toasts (when `sessionEnded`), logs out once and
+ * navigates once; concurrent callers join that same logout.
  *
  * `errorInterceptor` used to own this redirect and supplied the `returnUrl`; it no longer handles
  * 401 at all (see `error.interceptor.ts`), so the query param moved here with the rest of the
  * lifecycle. `router.url` is read BEFORE the async logout, and omitted when it is absent or
  * already `/login` — the latter would send the login page back to itself.
  */
-const bounceToLogin = (authStore: InstanceType<typeof AuthStore>, router: Router): void => {
+const bounceToLogin = (
+  authStore: InstanceType<typeof AuthStore>,
+  router: Router,
+  toast: ToastService,
+  sessionEnded: boolean,
+): void => {
+  if (bouncing) {
+    return;
+  }
+
   const returnUrl = router.url;
   const keepReturnUrl = Boolean(returnUrl) && !returnUrl.startsWith('/login');
 
-  void authStore
+  if (sessionEnded) {
+    toast.show({ tone: 'warning', message: 'Your session has ended — please sign in again' });
+  }
+
+  bouncing = authStore
     .logout()
     .then(() =>
       keepReturnUrl
         ? router.navigate(['/login'], { queryParams: { returnUrl } })
         : router.navigate(['/login']),
-    );
+    )
+    .then(() => undefined)
+    .finally(() => (bouncing = null));
 };
+
+const isTransient = (error: unknown): boolean =>
+  error instanceof HttpErrorResponse &&
+  (error.status === 429 || error.status >= 500 || error.status === 0);
 
 /**
  * Refresh once, then retry the request that 401'd.
@@ -66,12 +94,13 @@ const handle401 = (
   tokenRefresh: TokenRefreshService,
   authStore: InstanceType<typeof AuthStore>,
   router: Router,
+  toast: ToastService,
 ) => {
   const token = tokenService.getToken();
   const refreshToken = tokenService.getRefreshToken();
 
   if (!token || !refreshToken) {
-    bounceToLogin(authStore, router);
+    bounceToLogin(authStore, router, toast, false);
     return throwError(() => new Error('Missing refresh token'));
   }
 
@@ -81,7 +110,14 @@ const handle401 = (
       return next(addToken(req, newToken));
     }),
     catchError((error) => {
-      bounceToLogin(authStore, router);
+      // Transient failures keep the session: the limiter (429), the server (5xx) or the network (0)
+      // failed, not the tokens. Fail this one request and let the next 401 try again. Everything
+      // else means the stored tokens are unusable: 400 (an empty or malformed pair), 401, and
+      // non-HTTP errors such as `Missing refresh token` (the tokens vanished mid-refresh).
+      if (isTransient(error)) {
+        return throwError(() => error);
+      }
+      bounceToLogin(authStore, router, toast, true);
       return throwError(() => error);
     }),
   );
@@ -92,13 +128,14 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const tokenRefresh = inject(TokenRefreshService);
   const authStore = inject(AuthStore);
   const router = inject(Router);
+  const toast = inject(ToastService);
   const token = tokenService.getToken();
   const request = token && !skipAuth(req.url) ? addToken(req, token) : req;
 
   return next(request).pipe(
     catchError((error) => {
       if (error instanceof HttpErrorResponse && error.status === 401 && !skipAuth(req.url)) {
-        return handle401(request, next, tokenService, tokenRefresh, authStore, router);
+        return handle401(request, next, tokenService, tokenRefresh, authStore, router, toast);
       }
       return throwError(() => error);
     }),

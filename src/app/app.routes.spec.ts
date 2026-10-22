@@ -5,6 +5,7 @@ import { routes } from './app.routes';
 import { ForbiddenComponent } from './layouts/errors/forbidden.component';
 import { ServerErrorComponent } from './layouts/errors/server-error.component';
 import { NotFoundComponent } from './layouts/errors/not-found.component';
+import { PermissionGuard } from '@platform/auth/permission.guard';
 
 /** Flatten the shell's children — the stub routes live under the app-shell route. */
 function shellChildren(): Route[] {
@@ -86,12 +87,47 @@ describe('app.routes — the 004 shell skeleton', () => {
   });
 
   // Real (non-stub) office-shell children. Stubs are comments, so this counts only
-  // what is wired. Last updated: spec 004. Every spec that un-stubs a route into
-  // this array should bump the constant (and rename it to _AT_0XX) alongside its
-  // own app.routes.spec.ts additions — see spec 005's recipe step 4.
-  const EXPECTED_SHELL_CHILDREN_AT_004 = 4; // '' -> dashboard redirect, 403, 500, **
+  // what is wired. Last updated: spec 006, which ran BEFORE 005 (charter ORDER-EXCEPTION-1);
+  // 005 renames this to _AT_005 with its own +N and records that it ran after 006. Every spec
+  // that un-stubs a route into this array should bump the constant (and rename it to _AT_0XX)
+  // alongside its own app.routes.spec.ts additions — see spec 005's recipe step 4.
+  // 004: '' -> dashboard redirect, 403, 500, ** (4). 006: +6 people routes.
+  const EXPECTED_SHELL_CHILDREN_AT_006 = 10;
 
   it('has exactly the expected number of real (non-stub) shell children', () => {
-    expect(shellChildren()).toHaveLength(EXPECTED_SHELL_CHILDREN_AT_004);
+    expect(shellChildren()).toHaveLength(EXPECTED_SHELL_CHILDREN_AT_006);
+  });
+
+  it("keeps '**' as the shell's last child", () => {
+    const children = shellChildren();
+    expect(children[children.length - 1].path).toBe('**');
+  });
+});
+
+describe('app.routes — the 006 people routes', () => {
+  const route = (path: string) => shellChildren().find((r) => r.path === path);
+
+  it.each([
+    ['employees', 'employees.read', 'Employees', 'EmployeesListComponent'],
+    ['employees/:id', 'employees.read', 'Employee', 'EmployeeDetailComponent'],
+    ['roles', 'roles.read', 'Roles', 'RolesComponent'],
+    ['permissions', 'permissions.manage', 'Permissions', 'PermissionsComponent'],
+    ['departments', 'departments.read', 'Departments', 'DepartmentsListComponent'],
+  ])('%s: PermissionGuard, %s, breadcrumb %s', async (path, permission, breadcrumb, cmpName) => {
+    const r = route(path);
+    expect(r).toBeTruthy();
+    expect(r!.canActivate).toEqual([PermissionGuard]);
+    expect(r!.data).toEqual({ permission, breadcrumb });
+    const cmp = (await r!.loadComponent!()) as { name: string };
+    expect(cmp.name).toContain(cmpName);
+  });
+
+  it('profile: no guard, breadcrumb Profile', async () => {
+    const r = route('profile');
+    expect(r).toBeTruthy();
+    expect(r!.canActivate).toBeUndefined();
+    expect(r!.data).toEqual({ breadcrumb: 'Profile' });
+    const cmp = (await r!.loadComponent!()) as { name: string };
+    expect(cmp.name).toContain('ProfileComponent');
   });
 });

@@ -8,7 +8,6 @@
 export const ERROR_MESSAGES: Record<string, string> = {
   // From api-docs/01-auth.md
   'authentications.InvalidCredentials': 'The email or password is incorrect.',
-  'authentications.UserNotActive': 'This account is deactivated. Contact your administrator.',
   'authentications.UnAuthorization': 'You are not authorized to do that.',
   'authentications.InvalidToken': 'Your session is invalid. Please sign in again.',
   'authentications.InvalidRefreshToken': 'Your session expired. Please sign in again.',
@@ -16,7 +15,13 @@ export const ERROR_MESSAGES: Record<string, string> = {
   'authentications.DuplicatedEmail': 'This email is already taken.',
   'authentications.InvalidRegister':
     'The account details are invalid. Please review and try again.',
+  // Backend remediation v3 (002b A5, KNOWN-DELTA-3). `UserNotActive` was deleted there: a
+  // deactivated account now answers `InvalidCredentials`.
+  'authentications.StaleToken': 'Your session is no longer valid. Please sign in again.',
+  'authentications.LockedOut': 'Too many attempts. Try again in 15 minutes.',
+  'authentications.RefreshTokenReused': 'Your session has ended. Please sign in again.',
   'users.NotFound': 'User not found.',
+  'users.DuplicatedEmail': 'This email is already registered.',
 
   // From api-docs/02-clients.md
   'clients.NotFound': 'Client not found.',
@@ -34,23 +39,39 @@ export const ERROR_MESSAGES: Record<string, string> = {
   'employees.AlreadyInactive': 'This employee is already inactive.',
   'employees.ActiveException': 'Could not activate the employee. Please try again.',
   'employees.InactiveException': 'Could not deactivate the employee. Please try again.',
+  // Backend remediation v3 (006b-2 #28).
+  'employees.Inactive': 'This employee is inactive. Reactivate them first.',
+  'employees.AlreadyInAnotherDepartment':
+    'This employee already belongs to another department. Move them instead.',
+  'employees.EndDateBeforeHireDate': 'The end date can’t be before the hire date.',
+  'employees.WeakPassword':
+    'The password must have at least 8 characters, with a digit, a lowercase letter, an uppercase letter and a symbol.',
 
   // From api-docs/04-departments.md
   'departments.NotFound': 'Department not found.',
   'departments.DuplicatedName': 'A department with this name already exists.',
   'departments.AlreadyInDepartment': 'This employee is already in that department.',
   'departments.UserNotInDepartment': 'This employee is not in the selected department.',
-  'departments.NoEmployeesToMove': 'There are no employees to move in this department.',
+  // Backend remediation v3 (006b-2 #28, KNOWN-DELTA-3). `NoEmployeesToMove` was deleted there.
+  'departments.RemoveHeadFirst': 'This employee heads the department. Unassign them as head first.',
 
   // From api-docs/05-roles-permissions.md
   'roles.NotFound': 'Role not found.',
   'roles.DuplicatedRole': 'A role with this name already exists.',
-  'roles.UserNotInRole': 'The user does not have this role.',
   'permissions.InvalidPermission': 'That permission is not recognized by the system.',
   'permissions.PermissionOverrideAlreadyExists':
     'An override for this permission already exists for that user.',
   'permissions.PermissionOverrideNotFound': 'No override exists for this permission.',
-  'permissions.NotFoundForTarget': 'This permission is not set for the selected target.',
+  // Backend remediation v3 (006b-1 #5, KNOWN-DELTA-3). For `CannotDelegate` the screen shows the
+  // server's description, which names the missing permissions; this is the fallback.
+  'permissions.CannotDelegate': 'You can only give permissions you hold yourself.',
+  'permissions.SelfModification':
+    'You can’t change permissions on your own account. Ask another administrator.',
+  'permissions.LastHolder': 'At least one active user must keep this permission.',
+  'roles.SystemRole': 'This is a system role. It can’t be renamed or deleted.',
+  'roles.FullAccessLocked':
+    'This role always holds every permission. Its permissions can’t be edited.',
+  'roles.RoleInUse': 'This role is still assigned. Remove its members first.',
 
   // From api-docs/06-projects.md
   'projects.NotFound': 'Project not found.',

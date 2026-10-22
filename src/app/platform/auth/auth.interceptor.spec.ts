@@ -2,11 +2,13 @@ import { TestBed } from '@angular/core/testing';
 import { HttpClient, provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { Router } from '@angular/router';
-import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
+import { describe, expect, it, vi, beforeEach, afterEach, type Mock } from 'vitest';
+import { throwError } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { authInterceptor } from './auth.interceptor';
 import { AuthStore } from './auth.store';
 import { TokenService } from './token.service';
+import { TokenRefreshService } from './token-refresh.service';
 import { errorInterceptor } from '../http/error.interceptor';
 import { ErrorHandlerService } from '../http/error-handler.service';
 import { ToastService } from '../feedback/toast.service';
@@ -238,6 +240,272 @@ describe('authInterceptor + errorInterceptor — the real app registration order
     expect(authStore.logout).toHaveBeenCalledTimes(1);
     await Promise.resolve();
     // The returnUrl `errorInterceptor` used to supply now comes from `handle401` instead.
+    expect(router.navigate).toHaveBeenCalledWith(['/login'], {
+      queryParams: { returnUrl: '/employees' },
+    });
+  });
+});
+
+/**
+ * 002b A2. Backend v3 answers a token whose security stamp moved with 401
+ * `authentications.StaleToken`, and a refresh it refuses with 401 `RefreshTokenReused`,
+ * `InvalidRefreshToken` or `InvalidToken`. The session ending used to be silent, and N concurrent
+ * 401s sharing one failed refresh logged out N times (N toasts once A2 added one, N
+ * `POST /auth/revoke` into the per-IP limit, N navigations). Both interceptors, the REAL
+ * `AuthStore` (so `/auth/revoke` is a real request), and a stateful token service.
+ */
+describe('authInterceptor — stale tokens and the session-ended logout (002b A2)', () => {
+  let http: HttpClient;
+  let backend: HttpTestingController;
+  let toast: { show: ReturnType<typeof vi.fn> };
+  let router: { navigate: ReturnType<typeof vi.fn>; url: string };
+
+  const PROTECTED = `${environment.apiUrl}/employees`;
+  const REFRESH = `${environment.apiUrl}/auth/refresh`;
+  const REVOKE = `${environment.apiUrl}/auth/revoke`;
+  const ENDED = { tone: 'warning', message: 'Your session has ended — please sign in again' };
+
+  const problem = (code: string) => ({
+    title: code,
+    status: 401,
+    errors: { [code]: ['Invalid refresh token.'] },
+  });
+
+  /** Lets every pending promise continuation (logout → navigate → finally) run. */
+  const settle = async () => {
+    for (let i = 0; i < 10; i++) await Promise.resolve();
+  };
+
+  beforeEach(() => {
+    let token: string | null = 'old-token';
+    let refresh: string | null = 'old-refresh';
+    const tokenService = {
+      getToken: vi.fn(() => token),
+      getRefreshToken: vi.fn(() => refresh),
+      setTokens: vi.fn((t: string, r: string) => {
+        token = t;
+        refresh = r;
+      }),
+      clear: vi.fn(() => {
+        token = null;
+        refresh = null;
+      }),
+      isTokenExpired: vi.fn().mockReturnValue(false),
+      parseUser: vi.fn(() => ({
+        userId: 'user-1',
+        userName: 'u',
+        email: 'u@pera.test',
+        roles: [],
+        permissions: [],
+        isActive: true,
+        isSupervisor: false,
+      })),
+    };
+    toast = { show: vi.fn() };
+    router = { navigate: vi.fn().mockResolvedValue(true), url: '/employees' };
+
+    TestBed.configureTestingModule({
+      providers: [
+        AuthStore,
+        provideHttpClient(withInterceptors([authInterceptor, errorInterceptor])),
+        provideHttpClientTesting(),
+        { provide: TokenService, useValue: tokenService },
+        { provide: Router, useValue: router },
+        { provide: ToastService, useValue: toast },
+        { provide: ErrorHandlerService, useValue: { parse: () => ({ generalMessage: '' }) } },
+      ],
+    });
+    http = TestBed.inject(HttpClient);
+    backend = TestBed.inject(HttpTestingController);
+  });
+
+  afterEach(() => backend.verify());
+
+  it('401 StaleToken → one refresh → the retry succeeds, with no toast and no logout', async () => {
+    let result: unknown;
+    http.get(PROTECTED).subscribe((r) => (result = r));
+
+    backend
+      .expectOne(PROTECTED)
+      .flush(problem('authentications.StaleToken'), { status: 401, statusText: 'Unauthorized' });
+    backend
+      .expectOne(REFRESH)
+      .flush({ token: 'new-token', refreshToken: 'new-refresh', expiration: '' });
+    const retried = backend.expectOne(PROTECTED);
+    expect(retried.request.headers.get('Authorization')).toBe('Bearer new-token');
+    retried.flush([{ id: 'e-1' }]);
+
+    await settle();
+    expect(result).toEqual([{ id: 'e-1' }]);
+    backend.expectNone(REVOKE);
+    expect(toast.show).not.toHaveBeenCalled();
+    expect(router.navigate).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    'authentications.RefreshTokenReused',
+    'authentications.InvalidRefreshToken',
+    'authentications.InvalidToken',
+  ])('refresh 401 %s → /login?returnUrl=… plus the session-ended toast', async (code) => {
+    http.get(PROTECTED).subscribe({ error: () => undefined });
+
+    backend.expectOne(PROTECTED).flush(null, { status: 401, statusText: 'Unauthorized' });
+    backend.expectOne(REFRESH).flush(problem(code), { status: 401, statusText: 'Unauthorized' });
+    await settle();
+    backend.expectOne(REVOKE).flush(null);
+    await settle();
+
+    expect(toast.show).toHaveBeenCalledTimes(1);
+    expect(toast.show).toHaveBeenCalledWith(ENDED);
+    expect(router.navigate).toHaveBeenCalledWith(['/login'], {
+      queryParams: { returnUrl: '/employees' },
+    });
+  });
+
+  it('3 concurrent 401s + a refresh 401 → 1 refresh, 1 toast, 1 /auth/revoke, 1 navigation', async () => {
+    const urls = [PROTECTED, `${environment.apiUrl}/clients`, `${environment.apiUrl}/roles`];
+    for (const url of urls) http.get(url).subscribe({ error: () => undefined });
+    for (const url of urls) {
+      backend.expectOne(url).flush(null, { status: 401, statusText: 'Unauthorized' });
+    }
+
+    // One shared refresh — expectOne throws on two.
+    backend.expectOne(REFRESH).flush(problem('authentications.RefreshTokenReused'), {
+      status: 401,
+      statusText: 'Unauthorized',
+    });
+    await settle();
+    backend.expectOne(REVOKE).flush(null);
+    await settle();
+
+    expect(toast.show).toHaveBeenCalledTimes(1);
+    expect(router.navigate).toHaveBeenCalledTimes(1);
+    backend.expectNone(REVOKE);
+  });
+});
+
+/**
+ * 002b A3. What logs the user out when the refresh itself fails. KEEP the session (rethrow, tokens
+ * untouched) only for transient failures: 429 (the shared per-IP limiter), ≥ 500 and 0. Log out on
+ * everything else: 400 and 401 (unusable tokens) and non-HTTP errors such as `Missing refresh
+ * token`. The two 400 specs above stay unchanged and still log out.
+ */
+describe('authInterceptor — transient refresh failures keep the session (002b A3)', () => {
+  let http: HttpClient;
+  let backend: HttpTestingController;
+  let tokenService: {
+    getToken: Mock<() => string | null>;
+    getRefreshToken: Mock<() => string | null>;
+    setTokens: Mock<(t: string, r: string) => void>;
+    clear: Mock<() => void>;
+  };
+  let authStore: { logout: ReturnType<typeof vi.fn>; setUserFromToken: ReturnType<typeof vi.fn> };
+  let router: { navigate: ReturnType<typeof vi.fn>; url: string };
+
+  const PROTECTED = `${environment.apiUrl}/employees`;
+  const REFRESH = `${environment.apiUrl}/auth/refresh`;
+
+  function configure(extra: unknown[] = []): void {
+    let token: string | null = 'old-token';
+    let refresh: string | null = 'old-refresh';
+    tokenService = {
+      getToken: vi.fn(() => token),
+      getRefreshToken: vi.fn(() => refresh),
+      setTokens: vi.fn((t: string, r: string) => {
+        token = t;
+        refresh = r;
+      }),
+      clear: vi.fn(() => {
+        token = null;
+        refresh = null;
+      }),
+    };
+    authStore = { logout: vi.fn().mockResolvedValue(undefined), setUserFromToken: vi.fn() };
+    router = { navigate: vi.fn().mockResolvedValue(true), url: '/employees' };
+    TestBed.configureTestingModule({
+      providers: [
+        provideHttpClient(withInterceptors([authInterceptor, errorInterceptor])),
+        provideHttpClientTesting(),
+        { provide: TokenService, useValue: tokenService },
+        { provide: AuthStore, useValue: authStore },
+        { provide: Router, useValue: router },
+        { provide: ToastService, useValue: { show: vi.fn() } },
+        { provide: ErrorHandlerService, useValue: { parse: () => ({ generalMessage: '' }) } },
+        ...(extra as []),
+      ],
+    });
+    http = TestBed.inject(HttpClient);
+    backend = TestBed.inject(HttpTestingController);
+  }
+
+  const settle = async () => {
+    for (let i = 0; i < 10; i++) await Promise.resolve();
+  };
+
+  afterEach(() => {
+    vi.useRealTimers();
+    backend.verify();
+  });
+
+  it('refresh 429 twice → the request fails with 429, tokens kept, no logout, no navigation; the next 401 refreshes afresh', async () => {
+    vi.useFakeTimers();
+    configure();
+    let error: unknown;
+    http.get(PROTECTED).subscribe({ error: (e) => (error = e) });
+
+    backend.expectOne(PROTECTED).flush(null, { status: 401, statusText: 'Unauthorized' });
+    backend.expectOne(REFRESH).flush(null, { status: 429, statusText: 'Too Many Requests' });
+    vi.advanceTimersByTime(2_000);
+    backend.expectOne(REFRESH).flush(null, { status: 429, statusText: 'Too Many Requests' });
+    await settle();
+
+    expect((error as { status: number }).status).toBe(429);
+    expect(tokenService.getToken()).toBe('old-token');
+    expect(tokenService.getRefreshToken()).toBe('old-refresh');
+    expect(tokenService.clear).not.toHaveBeenCalled();
+    expect(authStore.logout).not.toHaveBeenCalled();
+    expect(router.navigate).not.toHaveBeenCalled();
+
+    // The in-flight refresh cleared on the error, so the next 401 starts a NEW one.
+    http.get(PROTECTED).subscribe();
+    backend.expectOne(PROTECTED).flush(null, { status: 401, statusText: 'Unauthorized' });
+    backend
+      .expectOne(REFRESH)
+      .flush({ token: 'new-token', refreshToken: 'new-refresh', expiration: '' });
+    backend.expectOne(PROTECTED).flush([]);
+  });
+
+  it.each([
+    [503, 'Service Unavailable'],
+    [0, 'Unknown Error'],
+  ])('refresh %s → tokens kept, no logout', async (status, statusText) => {
+    configure();
+    let error: unknown;
+    http.get(PROTECTED).subscribe({ error: (e) => (error = e) });
+
+    backend.expectOne(PROTECTED).flush(null, { status: 401, statusText: 'Unauthorized' });
+    backend.expectOne(REFRESH).flush(null, { status, statusText });
+    await settle();
+
+    expect((error as { status: number }).status).toBe(status);
+    expect(tokenService.getToken()).toBe('old-token');
+    expect(authStore.logout).not.toHaveBeenCalled();
+    expect(router.navigate).not.toHaveBeenCalled();
+  });
+
+  it('the tokens vanish mid-refresh (a non-HTTP "Missing refresh token") → logout', async () => {
+    configure([
+      {
+        provide: TokenRefreshService,
+        useValue: { refresh: () => throwError(() => new Error('Missing refresh token')) },
+      },
+    ]);
+    http.get(PROTECTED).subscribe({ error: () => undefined });
+
+    backend.expectOne(PROTECTED).flush(null, { status: 401, statusText: 'Unauthorized' });
+    await settle();
+
+    expect(authStore.logout).toHaveBeenCalledTimes(1);
     expect(router.navigate).toHaveBeenCalledWith(['/login'], {
       queryParams: { returnUrl: '/employees' },
     });

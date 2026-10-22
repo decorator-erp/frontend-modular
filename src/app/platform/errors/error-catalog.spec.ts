@@ -1,0 +1,70 @@
+import { describe, expect, it } from 'vitest';
+import { ERROR_MESSAGES, friendlyMessage } from './error-catalog';
+
+/** 002b A5: the authentications family against backend remediation v3 (`AuthErrors.cs`). */
+describe('ERROR_MESSAGES — authentications (002b A5)', () => {
+  it.each([
+    ['authentications.StaleToken', 'Your session is no longer valid. Please sign in again.'],
+    ['authentications.LockedOut', 'Too many attempts. Try again in 15 minutes.'],
+    ['authentications.RefreshTokenReused', 'Your session has ended. Please sign in again.'],
+  ])('carries %s', (code, message) => {
+    expect(ERROR_MESSAGES[code]).toBe(message);
+    expect(friendlyMessage(code, 'fallback')).toBe(message);
+  });
+
+  it('no longer carries authentications.UserNotActive (deleted in the backend)', () => {
+    expect('authentications.UserNotActive' in ERROR_MESSAGES).toBe(false);
+  });
+});
+
+/** 006b-1 #5: the permissions and roles families against backend remediation v3. */
+describe('ERROR_MESSAGES — permissions and roles (006b-1 #5)', () => {
+  it.each([
+    'permissions.CannotDelegate',
+    'permissions.SelfModification',
+    'permissions.LastHolder',
+    'roles.SystemRole',
+    'roles.FullAccessLocked',
+    'roles.RoleInUse',
+  ])('carries %s', (code) => {
+    expect(ERROR_MESSAGES[code]).toBeTruthy();
+    expect(friendlyMessage(code, 'fallback')).not.toBe('fallback');
+  });
+
+  it('tells the user what to do on RoleInUse and SelfModification', () => {
+    expect(ERROR_MESSAGES['roles.RoleInUse']).toContain('Remove its members first');
+    expect(ERROR_MESSAGES['permissions.SelfModification']).toContain('Ask another administrator');
+  });
+});
+
+/** 006b-1 #25: codes deleted from backend v3 (Phase 5). */
+describe('ERROR_MESSAGES — dead permissions/roles keys (006b-1 #25)', () => {
+  it.each(['permissions.NotFoundForTarget', 'roles.UserNotInRole'])(
+    'no longer carries %s',
+    (code) => {
+      expect(code in ERROR_MESSAGES).toBe(false);
+    },
+  );
+});
+
+/** 006b-2 #28: the people-data families against backend remediation v3. */
+describe('ERROR_MESSAGES — employees, departments, users (006b-2 #28)', () => {
+  it.each([
+    'employees.Inactive',
+    'employees.AlreadyInAnotherDepartment',
+    'employees.EndDateBeforeHireDate',
+    'employees.WeakPassword',
+    'departments.RemoveHeadFirst',
+    'users.DuplicatedEmail',
+  ])('carries %s', (code) => {
+    expect(ERROR_MESSAGES[code]).toBeTruthy();
+  });
+
+  it('RemoveHeadFirst tells the user to unassign the head first', () => {
+    expect(ERROR_MESSAGES['departments.RemoveHeadFirst']).toContain('Unassign them as head first');
+  });
+
+  it('no longer carries departments.NoEmployeesToMove (deleted in the backend)', () => {
+    expect('departments.NoEmployeesToMove' in ERROR_MESSAGES).toBe(false);
+  });
+});

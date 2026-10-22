@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 import { AuthGuard } from '@platform/auth/auth.guard';
 import { ClientOnlyGuard, NotClientGuard } from '@platform/auth/client-shell.guard';
+import { peopleRoutes } from '@modules/people';
 // TODO(005): PermissionGuard is unused until a real (non-stub) route below needs it —
 // unused imports trip @typescript-eslint/no-unused-vars (warn), and charter §6 makes
 // an uninherited new warning a stop-and-report. Restore alongside the first real
@@ -79,30 +80,17 @@ export const routes: Routes = [
       // TODO(010): 'dashboard' -> loadComponent: features/dashboard/dashboard.component
       //   -> DashboardComponent, data.breadcrumb = 'Dashboard'
       //
-      // TODO(006): 'profile' -> loadComponent: features/profile/profile.component
-      //   -> ProfileComponent, data.breadcrumb = 'Profile'
+      // People (spec 006): profile, employees, employees/:id, roles, permissions, departments.
+      // Spread here, at the first of the six old positions; every path is a distinct literal, so
+      // their order among the shell's children changes no match ('**' stays last).
+      ...peopleRoutes,
       //
       // TODO(005): 'notifications' -> loadComponent: features/notifications/notifications-page.component
       //   -> NotificationsPageComponent, data.breadcrumb = 'Notifications'
       //
-      // TODO(006): 'employees' -> PermissionGuard, data = { permission: 'employees.read',
-      //   breadcrumb: 'Employees' }, loadComponent: features/employees/employees-list.component
-      //   -> EmployeesListComponent
-      //
-      // TODO(006): 'employees/:id' -> PermissionGuard, data = { permission: 'employees.read',
-      //   breadcrumb: 'Employee' }, loadComponent: features/employees/employee-detail.component
-      //   -> EmployeeDetailComponent
-      //
       // TODO(005): 'clients' -> PermissionGuard, data = { permission: 'clients.read',
       //   breadcrumb: 'Clients' }, loadComponent: features/clients/clients-list.component
       //   -> ClientsListComponent
-      //
-      // TODO(006): 'roles' -> PermissionGuard, data = { permission: 'roles.read',
-      //   breadcrumb: 'Roles' }, loadComponent: features/roles/roles.component -> RolesComponent
-      //
-      // TODO(006): 'permissions' -> PermissionGuard, data = { permission: 'permissions.manage',
-      //   breadcrumb: 'Permissions' }, loadComponent: features/permissions/permissions.component
-      //   -> PermissionsComponent
       //
       // TODO(009): 'admin/catalog' -> PermissionGuard. Gated on manage, not read — this page
       //   is a full CRUD editor (create, move, clone, delete categories and items), and
@@ -151,10 +139,6 @@ export const routes: Routes = [
       //
       // TODO(005): 'library/materials/:id' -> data = { breadcrumb: 'Material' },
       //   loadComponent: features/materials/material-detail.component -> MaterialDetailComponent
-      //
-      // TODO(006): 'departments' -> PermissionGuard, data = { permission: 'departments.read',
-      //   breadcrumb: 'Departments' }, loadComponent: features/departments/departments-list.component
-      //   -> DepartmentsListComponent
       //
       // TODO(005): 'audit' -> PermissionGuard, data = { permission: 'audit.read',
       //   breadcrumb: 'Audit log' }, loadComponent: features/audit/audit-log.component

@@ -125,3 +125,104 @@ describe('TokenRefreshService', () => {
     backend.expectNone(REFRESH);
   });
 });
+
+/**
+ * 002b A3. A 429 from `/auth/refresh` is the shared per-IP auth limiter, not a verdict on the
+ * tokens. Retry once after `Retry-After` (whole seconds; 2 s when absent; capped at 10 s). The
+ * backend sends the header on every 429 and exposes it over CORS (`Api/DI.cs:163–167, 246–259`).
+ */
+describe('TokenRefreshService — 429 retry (002b A3)', () => {
+  let service: TokenRefreshService;
+  let backend: HttpTestingController;
+  let tokenService: {
+    getToken: ReturnType<typeof vi.fn>;
+    getRefreshToken: ReturnType<typeof vi.fn>;
+    setTokens: ReturnType<typeof vi.fn>;
+  };
+
+  const REFRESH = `${environment.apiUrl}/auth/refresh`;
+  const OK = { token: 'new-token', refreshToken: 'new-refresh', expiration: '' };
+  const tooMany = (retryAfter?: string) => {
+    const headers: Record<string, string> =
+      retryAfter === undefined ? {} : { 'Retry-After': retryAfter };
+    return { status: 429, statusText: 'Too Many Requests', headers };
+  };
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    tokenService = {
+      getToken: vi.fn().mockReturnValue('old-token'),
+      getRefreshToken: vi.fn().mockReturnValue('old-refresh'),
+      setTokens: vi.fn(),
+    };
+    TestBed.configureTestingModule({
+      providers: [
+        TokenRefreshService,
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        { provide: TokenService, useValue: tokenService },
+      ],
+    });
+    service = TestBed.inject(TokenRefreshService);
+    backend = TestBed.inject(HttpTestingController);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    backend.verify();
+  });
+
+  /** Flush a 429, then prove the retry waits exactly `waitMs` before its POST. */
+  function expectRetryAfter(retryAfter: string | undefined, waitMs: number): void {
+    let token: string | undefined;
+    service.refresh().subscribe((t) => (token = t));
+
+    backend.expectOne(REFRESH).flush(null, tooMany(retryAfter));
+    vi.advanceTimersByTime(waitMs - 1);
+    backend.expectNone(REFRESH);
+    vi.advanceTimersByTime(1);
+    backend.expectOne(REFRESH).flush(OK);
+
+    expect(token).toBe('new-token');
+    expect(tokenService.setTokens).toHaveBeenCalledWith('new-token', 'new-refresh');
+  }
+
+  it('429 without Retry-After → no second POST before 2 s → POST after → success', () => {
+    expectRetryAfter(undefined, 2_000);
+  });
+
+  it('Retry-After: 5 is honoured', () => {
+    expectRetryAfter('5', 5_000);
+  });
+
+  it('Retry-After: 37 (a realistic remaining window) is capped at 10 s', () => {
+    expectRetryAfter('37', 10_000);
+  });
+
+  it('Retry-After: 60 is capped at 10 s', () => {
+    expectRetryAfter('60', 10_000);
+  });
+
+  it('429 twice → the error reaches the caller, and the next call issues a FRESH POST', () => {
+    let error: unknown;
+    service.refresh().subscribe({ error: (e) => (error = e) });
+
+    backend.expectOne(REFRESH).flush(null, tooMany('1'));
+    vi.advanceTimersByTime(1_000);
+    backend.expectOne(REFRESH).flush(null, tooMany('1'));
+
+    expect((error as { status: number }).status).toBe(429);
+    expect(tokenService.setTokens).not.toHaveBeenCalled();
+
+    service.refresh().subscribe();
+    backend.expectOne(REFRESH).flush(OK);
+    expect(tokenService.setTokens).toHaveBeenCalledWith('new-token', 'new-refresh');
+  });
+
+  it('a non-429 failure is not retried', () => {
+    service.refresh().subscribe({ error: () => undefined });
+    backend.expectOne(REFRESH).flush(null, { status: 401, statusText: 'Unauthorized' });
+    vi.advanceTimersByTime(10_000);
+    backend.expectNone(REFRESH);
+  });
+});

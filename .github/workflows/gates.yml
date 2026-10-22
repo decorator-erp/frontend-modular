@@ -1,0 +1,45 @@
+name: gates
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: gates-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  gates:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+
+      - name: tsc (app)
+        run: npx tsc --noEmit -p tsconfig.app.json
+
+      - name: tsc (spec)
+        run: npx tsc --noEmit -p tsconfig.spec.json
+
+      - name: lint (0 errors)
+        run: npm run lint
+
+      - name: lint:px-styles (must not rise)
+        run: npm run lint:px-styles
+
+      - name: test
+        run: npm test -- --watch=false
+
+      - name: TODO audit (printed, not gated)
+        run: grep -rn "TODO(0" src/ || true

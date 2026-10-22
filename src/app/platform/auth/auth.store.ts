@@ -7,6 +7,7 @@ import { AuthState, AuthResponse, LoginRequest, EffectivePermissionsResponse } f
 import { TokenService } from './token.service';
 import { TokenRefreshService } from './token-refresh.service';
 import { ErrorHandlerService } from '../http/error-handler.service';
+import { friendlyMessage } from '../errors/error-catalog';
 
 interface AuthStoreState {
   user: AuthState | null;
@@ -15,7 +16,7 @@ interface AuthStoreState {
   polling: Subscription | null;
   /**
    * Set once when a token refresh completes and the token STILL disagrees with
-   * `/permissions/users/{userId}/effective`. That means the server is minting tokens that
+   * `/permissions/me/effective`. That means the server is minting tokens that
    * contradict its own effective-permissions read — a backend defect worth surfacing loudly rather
    * than hammering with a retry loop. Cleared on login/logout.
    */
@@ -95,10 +96,24 @@ export const AuthStore = signalStore(
           // safe to call unconditionally (a re-login just rejoins the still-live poll).
           this.startPermissionPolling();
         } catch (err: any) {
+          // A 429 from the per-IP auth limiter has an EMPTY body: decide on the status before
+          // anything tries to parse it.
+          if (err?.status === 429) {
+            patchState(store, {
+              error: 'Too many sign-in attempts from this network. Wait a minute.',
+              isLoading: false,
+            });
+            return;
+          }
           // Use the shared parser so this matches every other error site in the app.
-          const message = err?.error
-            ? new ErrorHandlerService().parse(err).generalMessage
-            : 'Login failed';
+          const parsed = err?.error ? new ErrorHandlerService().parse(err) : null;
+          // LockedOut shows the catalog copy; every other code keeps the backend's message.
+          const message =
+            parsed?.code === 'authentications.LockedOut'
+              ? friendlyMessage(parsed.code, parsed.generalMessage)
+              : parsed
+                ? parsed.generalMessage
+                : 'Login failed';
           patchState(store, { error: message || 'Login failed', isLoading: false });
         }
       },
@@ -112,6 +127,8 @@ export const AuthStore = signalStore(
        * into the JWT at issue time. That gap is what shows a user a screen whose every call 403s.
        */
       async refreshPermissions(): Promise<void> {
+        // The user id is no longer part of the URL (`/me/effective` reads it from the token); the
+        // guard stays because it still means "signed in".
         const userId = store.user()?.userId;
         if (!userId) {
           return;
@@ -121,7 +138,7 @@ export const AuthStore = signalStore(
         try {
           response = await firstValueFrom(
             http.get<EffectivePermissionsResponse>(
-              `${environment.apiUrl}/permissions/users/${userId}/effective`,
+              `${environment.apiUrl}/permissions/me/effective`,
             ),
           );
         } catch {
@@ -164,7 +181,7 @@ export const AuthStore = signalStore(
             patchState(store, { permissionDriftReported: true });
             console.warn(
               '[auth] Permission drift persists after a token refresh: the issued token disagrees ' +
-                'with GET /permissions/users/{userId}/effective. Not retrying until the next poll.',
+                'with GET /permissions/me/effective. Not retrying until the next poll.',
             );
           }
         } catch {
