@@ -2,6 +2,7 @@ import { HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { catchError, throwError } from 'rxjs';
 import { ErrorHandlerService } from './error-handler.service';
+import { HANDLED_ERROR_STATUSES } from './handled-errors';
 import { ToastService } from '../feedback/toast.service';
 
 /**
@@ -14,6 +15,8 @@ import { ToastService } from '../feedback/toast.service';
  *   404  -> silent; caller decides
  *   5xx  -> toast (parsed message when available)
  *   0    -> toast (network/CORS)
+ *   any status the request marks `handled(...)` -> silent; the call site shows its own message or
+ *           a deliberate fallback (spec 002c)
  *
  * Errors are always re-thrown so the caller keeps full control.
  *
@@ -38,6 +41,10 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
       // The anonymous public intake page owns its own inline states — never layer a global toast
       // over its rendered error/network states.
       const isPublicCall = req.url.includes('/crm/public/');
+
+      if (req.context.get(HANDLED_ERROR_STATUSES).includes(status)) {
+        return throwError(() => error);
+      }
 
       if (status === 403) {
         toast.show({
