@@ -63,6 +63,8 @@ export class DepartmentsListComponent implements OnInit {
   readonly selectedId = signal<string | null>(null);
   readonly members = signal<EmployeeListResponse[]>([]);
   readonly membersLoading = signal(false);
+  /** Backend v3: `/members` of an unknown or deleted department is 404, no longer `200 []` (#26). */
+  readonly membersNotFound = signal(false);
 
   readonly activeTab = signal('list');
   readonly tabs: TabDef[] = [
@@ -128,13 +130,15 @@ export class DepartmentsListComponent implements OnInit {
   select(d: DepartmentResponse): void {
     this.selectedId.set(d.id);
     this.membersLoading.set(true);
+    this.membersNotFound.set(false);
     this.api.getMembers(d.id).subscribe({
       next: (list) => {
         this.members.set(list);
         this.membersLoading.set(false);
       },
-      error: () => {
+      error: (err: HttpErrorResponse) => {
         this.members.set([]);
+        this.membersNotFound.set(err?.status === 404);
         this.membersLoading.set(false);
       },
     });

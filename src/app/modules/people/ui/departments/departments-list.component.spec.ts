@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
+import { HttpErrorResponse } from '@angular/common/http';
 import { provideRouter } from '@angular/router';
-import { of } from 'rxjs';
+import { of, throwError } from 'rxjs';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ConfirmService, ModalService } from '@ds';
 import { ToastService } from '@platform/feedback/toast.service';
@@ -74,5 +75,44 @@ describe('DepartmentsListComponent — list response only (006b-2 #22)', () => {
 
   it('EmployeeService no longer offers the never-existing /departments/{id}/head lookup', () => {
     expect('getDepartmentHead' in EmployeeService.prototype).toBe(false);
+  });
+});
+
+/** 006b-2 #26: `/members` of an unknown or deleted department is now 404 `departments.NotFound`. */
+describe('DepartmentsListComponent — a vanished department (006b-2 #26)', () => {
+  function render(getMembers: () => unknown) {
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter([]),
+        {
+          provide: DepartmentService,
+          useValue: { getAll: () => of([dept('a', { memberCount: 3 })]), getMembers },
+        },
+        { provide: EmployeeService, useValue: { listPaged: () => of({ items: [] }) } },
+        { provide: ModalService, useValue: { open: vi.fn() } },
+        { provide: ConfirmService, useValue: { open: vi.fn() } },
+        { provide: ToastService, useValue: { show: vi.fn() } },
+        { provide: PermissionsService, useValue: { can: () => true } },
+      ],
+    });
+    const fixture = TestBed.createComponent(DepartmentsListComponent);
+    fixture.detectChanges();
+    return fixture.nativeElement as HTMLElement;
+  }
+
+  it('a 404 on /members shows the not-found state, not "No members."', () => {
+    const el = render(() =>
+      throwError(
+        () => new HttpErrorResponse({ status: 404, error: { title: 'departments.NotFound' } }),
+      ),
+    );
+    expect(el.textContent).toContain('This department no longer exists.');
+    expect(el.textContent).not.toContain('No members.');
+  });
+
+  it('an empty, existing department still reads "No members."', () => {
+    const el = render(() => of([]));
+    expect(el.textContent).toContain('No members.');
+    expect(el.textContent).not.toContain('This department no longer exists.');
   });
 });

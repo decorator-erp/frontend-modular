@@ -171,6 +171,10 @@
             </div>
             @if (membersLoading()) {
               <pera-skeleton [height]="80" />
+            } @else if (membersNotFound()) {
+              <p role="status" class="m-0 fs-caption text-text-muted">
+                This department no longer exists. Refresh the list.
+              </p>
             } @else {
               <div class="flex flex-col gap-1.5 max-h-72 overflow-y-auto">
                 @for (m of members(); track m.id) {
