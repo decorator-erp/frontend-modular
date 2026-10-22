@@ -123,4 +123,38 @@ describe('EditEmployeeDialogComponent — full replacement (006b-2 #14)', () => 
     expect(c.serverError()?.generalMessage).toBeTruthy();
     expect(modalRef.close).not.toHaveBeenCalled();
   });
+
+  /** 006b-2 #21: the login's name, optional, both or neither. */
+  it('both names → sent with the six fields', () => {
+    const c = create().componentInstance;
+    c.form.patchValue({ firstName: ' Mona ', lastName: 'Saeed' });
+    c.submit();
+    const req = backend.expectOne(PUT);
+    expect(req.request.body).toMatchObject({ firstName: 'Mona', lastName: 'Saeed' });
+    expect(Object.keys(req.request.body)).toHaveLength(8);
+    req.flush(null);
+  });
+
+  it('only one name → invalid, explained, and nothing is sent', () => {
+    const fixture = create();
+    const c = fixture.componentInstance;
+    c.form.patchValue({ firstName: 'Mona' });
+    c.form.controls.firstName.markAsTouched();
+    c.submit();
+    fixture.detectChanges();
+    backend.expectNone(PUT);
+    expect(c.form.hasError('nameBothOrNeither')).toBe(true);
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain(
+      'Enter both the first and the last name, or leave both blank.',
+    );
+  });
+
+  it('neither name → no name keys (the name stays as it is)', () => {
+    const c = create().componentInstance;
+    c.submit();
+    const req = backend.expectOne(PUT);
+    expect('firstName' in req.request.body).toBe(false);
+    expect('lastName' in req.request.body).toBe(false);
+    req.flush(null);
+  });
 });

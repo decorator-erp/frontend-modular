@@ -1,5 +1,11 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import {
+  AbstractControl,
+  FormBuilder,
+  ReactiveFormsModule,
+  ValidationErrors,
+  Validators,
+} from '@angular/forms';
 import { EmployeeService, EmployeePatch } from '../../data/employee.service';
 import { ErrorHandlerService, friendly } from '@platform/http/error-handler.service';
 import { ToastService } from '@platform/feedback/toast.service';
@@ -57,6 +63,22 @@ export interface EditEmployeeDialogData {
     <pera-modal [title]="'Edit ' + data.fullName" size="md">
       <form [formGroup]="form" [serverErrors]="serverError()" (ngSubmit)="submit()" novalidate>
         <div class="flex flex-col gap-3">
+          <!-- 006b-2 #21: the login's name, optional, both or neither (blank = unchanged). -->
+          <div class="grid grid-cols-2 gap-3">
+            <pera-form-field
+              label="First name"
+              [error]="errorOf('firstName') || nameError()"
+              hint="Optional · leave both blank to keep the name"
+            >
+              <pera-input
+                formControlName="firstName"
+                [error]="errorOf('firstName') || nameError()"
+              />
+            </pera-form-field>
+            <pera-form-field label="Last name" [error]="errorOf('lastName') || nameError()">
+              <pera-input formControlName="lastName" [error]="errorOf('lastName') || nameError()" />
+            </pera-form-field>
+          </div>
           <pera-form-field label="Job title" [required]="true" [error]="errorOf('jobTitle')">
             <pera-input formControlName="jobTitle" [error]="errorOf('jobTitle')" />
           </pera-form-field>
@@ -115,14 +137,27 @@ export class EditEmployeeDialogComponent {
 
   readonly contractTypes = CONTRACT_TYPE_OPTIONS;
 
-  readonly form = this.fb.nonNullable.group({
-    jobTitle: [this.data.jobTitle, [Validators.required, PeraValidators.trimmedLength(2, 200)]],
-    contractType: [this.data.contractType],
-    phoneNumber: [this.data.phoneNumber ?? '', [Validators.maxLength(50)]],
-    emergencyContactPhone: [this.data.emergencyContactPhone ?? '', [Validators.maxLength(50)]],
-    endDate: [this.data.endDate ?? '', [PeraValidators.isoDate]],
-    notes: [this.data.notes ?? '', [Validators.maxLength(2000)]],
-  });
+  readonly form = this.fb.nonNullable.group(
+    {
+      firstName: ['', [Validators.maxLength(100)]],
+      lastName: ['', [Validators.maxLength(100)]],
+      jobTitle: [this.data.jobTitle, [Validators.required, PeraValidators.trimmedLength(2, 200)]],
+      contractType: [this.data.contractType],
+      phoneNumber: [this.data.phoneNumber ?? '', [Validators.maxLength(50)]],
+      emergencyContactPhone: [this.data.emergencyContactPhone ?? '', [Validators.maxLength(50)]],
+      endDate: [this.data.endDate ?? '', [PeraValidators.isoDate]],
+      notes: [this.data.notes ?? '', [Validators.maxLength(2000)]],
+    },
+    { validators: [bothOrNeither] },
+  );
+
+  /** Backend v3 answers 400 unless both names are sent, or neither. */
+  nameError(): string {
+    const touched = this.form.controls.firstName.touched || this.form.controls.lastName.touched;
+    return touched && this.form.hasError('nameBothOrNeither')
+      ? 'Enter both the first and the last name, or leave both blank.'
+      : '';
+  }
 
   readonly serverError = signal<ParsedApiError | null>(null);
   readonly submitting = signal(false);
@@ -153,6 +188,11 @@ export class EditEmployeeDialogComponent {
       endDate: orNull(v.endDate),
       notes: orNull(v.notes),
     };
+    // Both or neither: omitted means "keep the current name".
+    if (v.firstName.trim() && v.lastName.trim()) {
+      patch.firstName = v.firstName.trim();
+      patch.lastName = v.lastName.trim();
+    }
 
     this.employees.update(this.data.employeeId, patch).subscribe({
       next: () => {
@@ -181,4 +221,11 @@ export class EditEmployeeDialogComponent {
 /** A trimmed blank is `null`: backend v3 clears the field, and `""` would not bind for a date. */
 function orNull(value: string): string | null {
   return value.trim() || null;
+}
+
+/** 006b-2 #21: a name change needs both halves (backend v3 validator: both or neither). */
+function bothOrNeither(group: AbstractControl): ValidationErrors | null {
+  const first = String(group.get('firstName')?.value ?? '').trim();
+  const last = String(group.get('lastName')?.value ?? '').trim();
+  return !!first === !!last ? null : { nameBothOrNeither: true };
 }

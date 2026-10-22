@@ -196,6 +196,11 @@ export class EmployeeDetailComponent implements OnInit {
       emergencyContactPhone: patch.emergencyContactPhone || null,
       notes: patch.notes || null,
       endDate: patch.endDate || null,
+      // 006b-2 #21: a name edit sends both halves; the detail shows them joined.
+      fullName:
+        patch.firstName && patch.lastName
+          ? `${patch.firstName} ${patch.lastName}`
+          : current.fullName,
     });
   }
 
