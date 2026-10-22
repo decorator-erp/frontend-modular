@@ -2,11 +2,7 @@ import { Routes } from '@angular/router';
 import { AuthGuard } from '@platform/auth/auth.guard';
 import { ClientOnlyGuard, NotClientGuard } from '@platform/auth/client-shell.guard';
 import { peopleRoutes } from '@modules/people';
-// TODO(005): PermissionGuard is unused until a real (non-stub) route below needs it —
-// unused imports trip @typescript-eslint/no-unused-vars (warn), and charter §6 makes
-// an uninherited new warning a stop-and-report. Restore alongside the first real
-// PermissionGuard-gated route (005's `clients`/`audit`/`library` etc.).
-// import { PermissionGuard } from '@platform/auth/permission.guard';
+import { PermissionGuard } from '@platform/auth/permission.guard';
 // TODO(005): PERM is unused for the same reason — every route citing a permission
 // string below is still a comment. Restore with the first stub it un-comments.
 // import { PERM } from '@platform/permissions';
@@ -88,9 +84,12 @@ export const routes: Routes = [
       // TODO(005): 'notifications' -> loadComponent: features/notifications/notifications-page.component
       //   -> NotificationsPageComponent, data.breadcrumb = 'Notifications'
       //
-      // TODO(005): 'clients' -> PermissionGuard, data = { permission: 'clients.read',
-      //   breadcrumb: 'Clients' }, loadComponent: features/clients/clients-list.component
-      //   -> ClientsListComponent
+      {
+        path: 'clients',
+        canActivate: [PermissionGuard],
+        data: { permission: 'clients.read', breadcrumb: 'Clients' },
+        loadComponent: () => import('@modules/clients').then((m) => m.ClientsListComponent),
+      },
       //
       // TODO(009): 'admin/catalog' -> PermissionGuard. Gated on manage, not read — this page
       //   is a full CRUD editor (create, move, clone, delete categories and items), and
