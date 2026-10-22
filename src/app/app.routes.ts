@@ -2,6 +2,7 @@ import { Routes } from '@angular/router';
 import { AuthGuard } from '@platform/auth/auth.guard';
 import { ClientOnlyGuard, NotClientGuard } from '@platform/auth/client-shell.guard';
 import { peopleRoutes } from '@modules/people';
+import { libraryRoutes } from '@modules/library';
 import { PermissionGuard } from '@platform/auth/permission.guard';
 // TODO(005): PERM is unused for the same reason — every route citing a permission
 // string below is still a comment. Restore with the first stub it un-comments.
@@ -101,12 +102,10 @@ export const routes: Routes = [
       //   loadComponent: features/crm/admin/catalog/catalog-admin-page.component
       //   -> CrmCatalogAdminPageComponent
       //
-      // TODO(005): 'library/stage-templates' -> data = { breadcrumb: 'Stage templates' },
-      //   loadComponent: features/library/stage-templates-list.component
-      //   -> StageTemplatesListComponent
-      //
-      // TODO(005): 'library/boq-catalog' -> data = { breadcrumb: 'BOQ catalog' },
-      //   loadComponent: features/boq/boq-catalog.component -> BoqCatalogComponent
+      // Library (spec 005): stage-templates, boq-catalog, materials, materials/:id. Spread here,
+      // at the first of the old positions; the two materials routes sat further down the old list,
+      // but every path is a distinct literal, so the move changes no match ('**' stays last).
+      ...libraryRoutes,
       //
       // TODO(007): 'finance' -> PermissionGuard, data = { permission: 'finance.read',
       //   breadcrumb: 'Finance' }, loadChildren: features/finance/finance.routes -> financeRoutes
@@ -131,13 +130,6 @@ export const routes: Routes = [
       //   data = { permission: PERM.crm.designProfile.read, breadcrumb: 'Client design profile' },
       //   loadComponent: features/crm/designer/design-profile.component
       //   -> CrmDesignProfileComponent
-      //
-      // TODO(005): 'library/materials' -> data = { breadcrumb: 'Materials' },
-      //   loadComponent: features/materials/materials-library.component
-      //   -> MaterialsLibraryComponent
-      //
-      // TODO(005): 'library/materials/:id' -> data = { breadcrumb: 'Material' },
-      //   loadComponent: features/materials/material-detail.component -> MaterialDetailComponent
       //
       {
         path: 'audit',

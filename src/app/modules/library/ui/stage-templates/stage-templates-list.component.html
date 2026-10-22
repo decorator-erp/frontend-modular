@@ -1,0 +1,218 @@
+<!-- Translated from C-01 in PERA App - Library.html -->
+<!-- .ad-head + table density + selected-template right rail -->
+<div class="bg-bg min-h-full">
+  <!-- ============ .ad-head ============ -->
+  <header class="px-7 pt-5 pb-3.5 border-b border-border bg-surface flex items-start gap-4">
+    <div class="flex-1">
+      <h1 class="m-0 fs-h2 font-semibold tracking-tight leading-tight">Stage templates</h1>
+      <div class="font-mono fs-label text-text-muted mt-1.5 flex gap-2.5 items-center flex-wrap">
+        <span
+          >{{ templates().length }} {{ templates().length === 1 ? 'TEMPLATE' : 'TEMPLATES' }}</span
+        >
+        <span class="text-border">·</span>
+        <span>{{ activeCount() }} ACTIVE</span>
+        <span class="text-border">·</span>
+        <span>{{ defaultCount() }} DEFAULT</span>
+      </div>
+    </div>
+    <ng-container *peraCan="'stages.manage'">
+      <button
+        type="button"
+        (click)="openCreate()"
+        class="inline-flex items-center gap-1.5 px-3 py-2 bg-accent text-text-on-accent fs-caption font-medium cursor-pointer hover:bg-accent-hover transition-colors"
+      >
+        <svg
+          width="12"
+          height="12"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+        >
+          <path d="M12 5v14M5 12h14" />
+        </svg>
+        + New template
+      </button>
+    </ng-container>
+  </header>
+
+  @if (loading()) {
+    <div class="p-6"><pera-skeleton [height]="360" rounded="md" /></div>
+  } @else if (!templates().length) {
+    <pera-empty
+      title="No templates yet"
+      description="Create the first template to seed projects with stages."
+    />
+  } @else {
+    <!-- 2-col body: table + selected rail -->
+    <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_var(--w-rail)]">
+      <!-- Templates table -->
+      <div class="bg-bg overflow-x-auto">
+        <table class="w-full border-collapse">
+          <thead>
+            <tr>
+              <th
+                class="text-start font-mono fs-micro tracking-[0.02em] text-text-muted font-medium px-3.5 py-2.5 border-b border-border bg-surface whitespace-nowrap"
+              >
+                Name
+              </th>
+              <th
+                class="text-start font-mono fs-micro tracking-[0.02em] text-text-muted font-medium px-3.5 py-2.5 border-b border-border bg-surface whitespace-nowrap w-28"
+              >
+                Type
+              </th>
+              <th
+                class="text-start font-mono fs-micro tracking-[0.02em] text-text-muted font-medium px-3.5 py-2.5 border-b border-border bg-surface whitespace-nowrap w-28"
+              >
+                Status
+              </th>
+              <th
+                class="px-3.5 py-2.5 border-b border-border bg-surface whitespace-nowrap w-32"
+              ></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (t of templates(); track t.id) {
+              <tr
+                (click)="select(t)"
+                class="hover:bg-surface-muted cursor-pointer transition-colors"
+                [class.bg-accent-soft]="selectedId() === t.id"
+              >
+                <td class="px-3.5 py-2.5 border-b border-border-soft align-middle">
+                  <div class="fs-caption font-medium leading-tight">{{ t.name }}</div>
+                  @if (t.description) {
+                    <div
+                      class="font-mono fs-micro text-text-muted mt-0.5 truncate max-w-[var(--w-dialog-lg)]"
+                    >
+                      {{ t.description }}
+                    </div>
+                  }
+                </td>
+                <td class="px-3.5 py-2.5 border-b border-border-soft align-middle">
+                  @if (t.isDefault) {
+                    <span
+                      class="inline-flex items-center font-mono fs-micro px-1.5 py-0.5 border border-accent bg-accent-soft text-accent"
+                      >Default</span
+                    >
+                  } @else {
+                    <span
+                      class="inline-flex items-center font-mono fs-micro px-1.5 py-0.5 border border-border bg-bg text-text-secondary"
+                      >Custom</span
+                    >
+                  }
+                </td>
+                <td class="px-3.5 py-2.5 border-b border-border-soft align-middle">
+                  <span
+                    class="inline-flex items-center gap-1.5 font-mono fs-micro font-medium px-1.5 py-0.5 border"
+                    [class.text-success]="t.isActive"
+                    [class.border-success]="t.isActive"
+                    [class.bg-success-soft]="t.isActive"
+                    [class.text-text-muted]="!t.isActive"
+                    [class.border-border]="!t.isActive"
+                    [class.bg-bg]="!t.isActive"
+                  >
+                    <span
+                      class="w-1.5 h-1.5 rounded-full"
+                      [class.bg-success]="t.isActive"
+                      [class.bg-text-muted]="!t.isActive"
+                    ></span>
+                    {{ t.isActive ? 'Active' : 'Archived' }}
+                  </span>
+                </td>
+                <td class="px-3.5 py-2.5 border-b border-border-soft align-middle text-end">
+                  @if (!isSystem(t)) {
+                    <button
+                      type="button"
+                      *peraCan="'stages.manage'"
+                      (click)="$event.stopPropagation(); openEditor(t)"
+                      class="font-mono fs-label text-accent hover:underline cursor-pointer"
+                    >
+                      Edit →
+                    </button>
+                  } @else {
+                    <span class="font-mono fs-micro text-text-muted">System</span>
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Selected template right rail -->
+      @if (selected(); as t) {
+        <aside class="border-s border-border bg-surface overflow-y-auto">
+          <div class="px-5 py-4 border-b border-border">
+            <div class="font-mono fs-micro uppercase tracking-[0.06em] text-text-muted mb-2">
+              Selected template
+            </div>
+            <h2 class="m-0 fs-body font-semibold tracking-tight">{{ t.name }}</h2>
+            @if (t.description) {
+              <p class="m-0 mt-2 fs-caption text-text-secondary leading-relaxed">
+                {{ t.description }}
+              </p>
+            }
+            <div class="flex flex-wrap gap-1.5 mt-3">
+              @if (t.isDefault) {
+                <span
+                  class="inline-flex items-center font-mono fs-micro px-1.5 py-0.5 border border-accent bg-accent-soft text-accent"
+                  >Default</span
+                >
+              }
+              <span
+                class="inline-flex items-center gap-1.5 font-mono fs-micro font-medium px-1.5 py-0.5 border"
+                [class.text-success]="t.isActive"
+                [class.border-success]="t.isActive"
+                [class.bg-success-soft]="t.isActive"
+                [class.text-text-muted]="!t.isActive"
+                [class.border-border]="!t.isActive"
+                [class.bg-bg]="!t.isActive"
+              >
+                <span
+                  class="w-1.5 h-1.5 rounded-full"
+                  [class.bg-success]="t.isActive"
+                  [class.bg-text-muted]="!t.isActive"
+                ></span>
+                {{ t.isActive ? 'Active' : 'Archived' }}
+              </span>
+            </div>
+          </div>
+
+          <div class="px-5 py-4 border-b border-border">
+            <div class="grid grid-cols-[var(--w-column)_1fr] gap-3 py-1.5 fs-caption">
+              <div class="font-mono fs-micro text-text-muted pt-px">USED BY</div>
+              <div class="text-text-muted" title="Used-by count ships when backend exposes it">
+                —
+              </div>
+            </div>
+            <div class="grid grid-cols-[var(--w-column)_1fr] gap-3 py-1.5 fs-caption">
+              <div class="font-mono fs-micro text-text-muted pt-px">CYCLE TIME</div>
+              <div class="text-text-muted">—</div>
+            </div>
+          </div>
+
+          <div class="px-5 py-4 flex flex-col gap-2">
+            @if (!isSystem(t)) {
+              <ng-container *peraCan="'stages.manage'">
+                <button
+                  type="button"
+                  (click)="openEditor(t)"
+                  class="inline-flex items-center justify-center gap-1.5 px-3 py-2 border border-border bg-bg fs-caption cursor-pointer hover:bg-surface-muted"
+                >
+                  Open editor
+                </button>
+              </ng-container>
+            }
+            <button
+              type="button"
+              (click)="duplicate(t)"
+              class="inline-flex items-center justify-center gap-1.5 px-3 py-2 font-mono fs-label text-accent hover:underline cursor-pointer"
+            >
+              Duplicate template
+            </button>
+          </div>
+        </aside>
+      }
+    </div>
+  }
+</div>

@@ -145,10 +145,7 @@ module.exports = tseslint.config(
   {
     files: ['**/*.ts'],
     ignores: ['dist/**', '.angular/**', 'node_modules/**'],
-    extends: [
-      ...tseslint.configs.recommended,
-      ...angular.configs.tsRecommended,
-    ],
+    extends: [...tseslint.configs.recommended, ...angular.configs.tsRecommended],
     processor: angular.processInlineTemplates,
     plugins: {
       boundaries,
@@ -234,19 +231,32 @@ module.exports = tseslint.config(
           // the target element — the target is `{{to.*}}`.
           message: '{{from.type}} is not allowed to import {{to.type}}',
           policies: [
-            { from: { element: { type: 'platform' } }, allow: { to: { element: { type: ['platform'] } } } },
-            { from: { element: { type: 'shared' } }, allow: { to: { element: { type: ['shared', 'platform'] } } } },
+            {
+              from: { element: { type: 'platform' } },
+              allow: { to: { element: { type: ['platform'] } } },
+            },
+            {
+              from: { element: { type: 'shared' } },
+              allow: { to: { element: { type: ['shared', 'platform'] } } },
+            },
             // ds regains its `shared` allowance (spec 003-T00a) — restored from
             // the old app's own matrix. `shared` above still cannot reach `ds`,
             // so the stack stays a strict line: platform <- shared <- ds <- module.
-            { from: { element: { type: 'ds' } }, allow: { to: { element: { type: ['ds', 'shared', 'platform'] } } } },
+            {
+              from: { element: { type: 'ds' } },
+              allow: { to: { element: { type: ['ds', 'shared', 'platform'] } } },
+            },
             {
               from: { element: { type: 'layout' } },
-              allow: { to: { element: { type: ['layout', 'module', 'ds', 'shared', 'platform'] } } },
+              allow: {
+                to: { element: { type: ['layout', 'module', 'ds', 'shared', 'platform'] } },
+              },
             },
             {
               from: { element: { type: 'app' } },
-              allow: { to: { element: { type: ['app', 'layout', 'module', 'ds', 'shared', 'platform'] } } },
+              allow: {
+                to: { element: { type: ['app', 'layout', 'module', 'ds', 'shared', 'platform'] } },
+              },
             },
             {
               from: { element: { type: 'module' } },
@@ -260,7 +270,10 @@ module.exports = tseslint.config(
             // empty, so the selector matches every module, same as today.
             {
               to: {
-                element: { type: 'module', captured: { module: '!{{ from.element.captured.module }}' } },
+                element: {
+                  type: 'module',
+                  captured: { module: '!{{ from.element.captured.module }}' },
+                },
               },
               disallow: { to: { element: { fileInternalPath: '!index.ts' } } },
               // Policy-level message is NOT decorative: resolveCustomMessage
@@ -295,7 +308,7 @@ module.exports = tseslint.config(
         },
         {
           selector:
-            "Literal[value=/font-family\\s*:\\s*(?!['\\\"]?(?:Inter|Noto Sans Arabic|var\\())/i]",
+            'Literal[value=/font-family\\s*:\\s*(?![\'\\"]?(?:Inter|Noto Sans Arabic|var\\())/i]',
           message:
             'Font not provided by the design system. Use --sans / --arabic / --mono via var() or font-sans / font-arabic / font-mono utilities.',
         },
@@ -305,10 +318,9 @@ module.exports = tseslint.config(
   {
     // Legit raw hex, ported from the legacy .oxlintrc.json overrides: the icon
     // registry embeds SVG fill colors and the materials mock carries sample data.
-    // TODO(005): pin the exact materials.mock.ts path once library/ is ported.
     files: [
       'src/app/design-system/components/icon/icon-registry.ts',
-      'src/app/modules/library/**/materials.mock.ts',
+      'src/app/modules/library/ui/materials/mock/materials.mock.ts',
     ],
     rules: {
       'no-restricted-syntax': 'off',
@@ -340,10 +352,7 @@ module.exports = tseslint.config(
   },
   {
     files: ['**/*.html'],
-    extends: [
-      ...angular.configs.templateRecommended,
-      ...angular.configs.templateAccessibility,
-    ],
+    extends: [...angular.configs.templateRecommended, ...angular.configs.templateAccessibility],
     plugins: {
       'pera-ds': { rules: { 'no-raw-px-template': noRawPxTemplateRule } },
     },
