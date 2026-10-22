@@ -1,0 +1,51 @@
+<section class="p-6 max-w-3xl mx-auto">
+  <header class="flex items-center justify-between gap-3 mb-4 flex-wrap">
+    <h1 class="text-lg font-medium text-text-primary">Notifications</h1>
+    <div class="flex items-center gap-3">
+      <pera-segmented
+        [options]="filterOptions"
+        [ngModel]="store.page().unreadOnly"
+        (ngModelChange)="onFilterChange($event)"
+        ariaLabel="Filter notifications"
+      />
+      @if (store.hasUnread()) {
+        <pera-button variant="secondary" size="sm" (click)="store.markAllRead()">
+          Mark all read
+        </pera-button>
+      }
+    </div>
+  </header>
+
+  @if (store.page().loading) {
+    <ul class="m-0 p-0 list-none border border-border divide-y divide-border-soft">
+      @for (row of skeletonRows; track row) {
+        <li class="px-3 py-3"><pera-skeleton [height]="14" width="60%" /></li>
+      }
+    </ul>
+  } @else if (store.page().items.length) {
+    <ul class="m-0 p-0 list-none border border-border divide-y divide-border-soft">
+      @for (n of store.page().items; track n.id) {
+        <li>
+          <app-notification-item [notification]="n" (activated)="store.activate(n)" />
+        </li>
+      }
+    </ul>
+    <div class="mt-4">
+      <pera-pagination
+        [page]="store.page().pageIndex"
+        [pageSize]="pageSize"
+        [totalCount]="store.page().totalCount"
+        (pageChange)="onPageChange($event)"
+      />
+    </div>
+  } @else {
+    <pera-empty
+      [title]="store.page().unreadOnly ? 'No unread notifications' : 'No notifications'"
+      description="You're all caught up."
+    />
+  }
+
+  @if (store.error()) {
+    <p class="mt-3 text-xs text-danger" role="alert">{{ store.error() }}</p>
+  }
+</section>

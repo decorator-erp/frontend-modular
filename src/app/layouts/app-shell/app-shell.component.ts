@@ -9,8 +9,7 @@ import {
   // ProjectsCommandSource,
 } from './palette-sources';
 import { RouteHistoryService } from '@platform/navigation/route-history.service';
-// TODO(005-notifications): NotificationStore lands with modules/notifications.
-// import { NotificationStore } from '@modules/notifications';
+import { NotificationStore } from '@modules/notifications';
 import { SidebarComponent } from './sidebar/sidebar.component';
 import { TopbarComponent } from './topbar/topbar.component';
 
@@ -37,8 +36,7 @@ export class AppShellComponent {
   // private readonly projectsSource = inject(ProjectsCommandSource);
   // Instantiate the notification store app-wide so its onInit wires the real-time connection
   // lifecycle (start on auth, resync on reconnect, teardown on logout) before any bell UI exists.
-  // TODO(005-notifications): NotificationStore — see import above.
-  // private readonly notifications = inject(NotificationStore);
+  private readonly notifications = inject(NotificationStore);
 
   toggleMobileDrawer(): void {
     this.mobileDrawerOpen.update((v) => !v);

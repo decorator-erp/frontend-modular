@@ -4,8 +4,8 @@ import { ClientOnlyGuard, NotClientGuard } from '@platform/auth/client-shell.gua
 import { peopleRoutes } from '@modules/people';
 import { libraryRoutes } from '@modules/library';
 import { PermissionGuard } from '@platform/auth/permission.guard';
-// TODO(005): PERM is unused for the same reason — every route citing a permission
-// string below is still a comment. Restore with the first stub it un-comments.
+// TODO(009): PERM is still unused — 005's routes carry raw permission strings, as in the old
+// app; the first PERM-citing stub is a 009 route (crm, approvals, portal, admin/catalog).
 // import { PERM } from '@platform/permissions';
 // TODO(009): CatalogAdminStore lands with modules/crm at spec 009 — the
 // `admin/catalog` stub below cites it but cannot import it yet.
@@ -82,8 +82,12 @@ export const routes: Routes = [
       // their order among the shell's children changes no match ('**' stays last).
       ...peopleRoutes,
       //
-      // TODO(005): 'notifications' -> loadComponent: features/notifications/notifications-page.component
-      //   -> NotificationsPageComponent, data.breadcrumb = 'Notifications'
+      {
+        path: 'notifications',
+        loadComponent: () =>
+          import('@modules/notifications').then((m) => m.NotificationsPageComponent),
+        data: { breadcrumb: 'Notifications' },
+      },
       //
       {
         path: 'clients',
