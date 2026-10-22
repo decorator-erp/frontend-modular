@@ -14,6 +14,7 @@ import { ThemeService } from '@platform/theme';
 import { LocaleService } from '@platform/i18n';
 import { LookupCache } from '../../data/lookup.cache';
 import { EmployeeService } from '../../data/employee.service';
+import { handled } from '@platform/http/handled-errors';
 import {
   EmployeeFull,
   EmployeeOverview,
@@ -156,7 +157,8 @@ export class ProfileComponent implements OnInit {
     this.loading.set(true);
     this.failed.set(false);
     this.profileUnavailable.set(false);
-    this.employees.getMe().subscribe({
+    // 403 handled (spec 002c): `employees.view_own` missing renders the unavailable state.
+    this.employees.getMe({ context: handled(403) }).subscribe({
       next: (me) => {
         this.me.set(me);
         this.loading.set(false);

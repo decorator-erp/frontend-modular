@@ -15,6 +15,7 @@ import { PermissionService } from '../../data/permission.service';
 import { RoleService } from '../../data/role.service';
 import { ToastService } from '@platform/feedback/toast.service';
 import { ErrorHandlerService, friendly } from '@platform/http/error-handler.service';
+import { handled } from '@platform/http/handled-errors';
 import { CanDirective, PERM, PermissionsService } from '@platform/permissions';
 import {
   EffectivePermissionsResponse,
@@ -183,7 +184,8 @@ export class PermissionsComponent implements OnInit {
   ngOnInit(): void {
     forkJoin({
       permissions: this.permissionsApi.getAll(),
-      roles: this.rolesApi.getAll(),
+      // 403 handled (spec 002c): a failed catalog load renders `catalogFailed`, not a toast.
+      roles: this.rolesApi.getAll({ context: handled(403) }),
     }).subscribe({
       next: ({ permissions, roles }) => {
         this.allPermissions.set(toRows(permissions));

@@ -1,4 +1,5 @@
 import { Injectable, inject, isDevMode } from '@angular/core';
+import { HttpContext } from '@angular/common/http';
 import { Observable, of } from 'rxjs';
 import { map, switchMap } from 'rxjs/operators';
 import {
@@ -114,8 +115,9 @@ export class EmployeeService extends ApiService {
   }
 
   /**
-   * `Employee.Update()` returns early when the employee is INACTIVE and the endpoint still answers
-   * 204, so an edit on a deactivated employee is a silent no-op. Callers must not offer it.
+   * An edit on an INACTIVE employee answers 409 `employees.Inactive` since backend v3 — it used to
+   * be a silent 204 (`UpdateEmployeeCommandHandler.cs:40–41`; `EmployeeErrors.cs:17`). Callers
+   * still should not offer it; the edit dialog maps the code to a form message (006b-2 #14).
    */
   update(id: string, patch: EmployeePatch): Observable<void> {
     return this.put<void>(`/employees/${id}`, patch);
@@ -188,8 +190,11 @@ export class EmployeeService extends ApiService {
    * and manager only), so on a fresh environment this is the normal answer until an administrator
    * grants it. Both are "no profile to show", not failures.
    */
-  getMe(): Observable<EmployeeFull> {
-    return this.get<unknown>('/employees/me').pipe(map((r) => this.normalizeFull(this.unwrap(r))));
+  getMe(opts: { context?: HttpContext } = {}): Observable<EmployeeFull> {
+    // `opts.context` is opt-in (spec 002c): the profile page passes `handled(403)`.
+    return this.get<unknown>('/employees/me', undefined, { context: opts.context }).pipe(
+      map((r) => this.normalizeFull(this.unwrap(r))),
+    );
   }
 
   getFull(id: string): Observable<EmployeeFull> {
@@ -282,15 +287,16 @@ export class EmployeeService extends ApiService {
    * the returned page carries `truncated: true` and dev builds warn, so a short list is never
    * mistaken for a complete one.
    *
-   * The 200 cap is currently DORMANT server-side — `ValidationDecorator` declares no
-   * `QueryHandler` and `DecorateQueryHandler` applies only the logging decorator, so no query
-   * validator in any module actually runs and `pageSize=500` is served in full. Honour the cap
-   * anyway: the day a query-validation decorator is added, every one of those call sites would
-   * start 400ing at once.
+   * The 200 cap is LOAD-BEARING since backend v3 Phase 0: query validators run
+   * (`ModuleCqrsRegistration.cs:128` decorates every query handler with
+   * `ValidationDecorator.QueryHandler`), and `GetEmployeeProfilesQueryValidator` requires `pageSize`
+   * in 1..200 (`GetEmployeeProfilesQueryHandler.cs:22`). A request above 200 answers 400, so the
+   * clamp is what keeps a `pageSize=500` call site working.
    *
-   * `isActive` is applied CLIENT-SIDE — the backend dropped that filter, and its list returns
-   * inactive employees too. It therefore narrows what was fetched rather than what was searched:
-   * asking for 500 active employees returns the active subset of the first 500 rows.
+   * Inactive employees are hidden server-side unless `includeInactive=true` (v3 Phase 2;
+   * `EmployeeEndpoints.cs:38–43`, `GetEmployeeProfilesQueryHandler.cs:44–47`; 006b-2 #10). The
+   * client-side `isActive` narrowing is now a FALLBACK: it narrows what was fetched rather than
+   * what was searched, so it only matters when `includeInactive` brought inactive rows back.
    */
   listPaged(
     opts: {

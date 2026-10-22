@@ -1,4 +1,4 @@
-import { HttpClient, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpContext, HttpParams } from '@angular/common/http';
 import { inject, isDevMode } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
@@ -29,22 +29,42 @@ export abstract class ApiService {
   protected readonly http = inject(HttpClient);
   protected readonly base = environment.apiUrl;
 
-  protected get<T>(path: string, params?: Record<string, unknown>): Observable<T> {
-    return this.http.get<T>(`${this.base}${path}`, { params: this.toParams(params) });
+  // `options.context` carries per-request flags such as `handled(403)` (spec 002c).
+  protected get<T>(
+    path: string,
+    params?: Record<string, unknown>,
+    options?: { context?: HttpContext },
+  ): Observable<T> {
+    return this.http.get<T>(`${this.base}${path}`, {
+      params: this.toParams(params),
+      context: options?.context,
+    });
   }
 
-  protected post<T>(path: string, body: unknown): Observable<T> {
-    return this.http.post<T>(`${this.base}${path}`, body);
+  protected post<T>(
+    path: string,
+    body: unknown,
+    options?: { context?: HttpContext },
+  ): Observable<T> {
+    return this.http.post<T>(`${this.base}${path}`, body, { context: options?.context });
   }
 
-  protected put<T>(path: string, body: unknown): Observable<T> {
-    return this.http.put<T>(`${this.base}${path}`, body);
+  protected put<T>(
+    path: string,
+    body: unknown,
+    options?: { context?: HttpContext },
+  ): Observable<T> {
+    return this.http.put<T>(`${this.base}${path}`, body, { context: options?.context });
   }
 
-  protected delete<T>(path: string, body?: unknown): Observable<T> {
+  protected delete<T>(
+    path: string,
+    body?: unknown,
+    options?: { context?: HttpContext },
+  ): Observable<T> {
     return body === undefined
-      ? this.http.delete<T>(`${this.base}${path}`)
-      : this.http.request<T>('DELETE', `${this.base}${path}`, { body });
+      ? this.http.delete<T>(`${this.base}${path}`, { context: options?.context })
+      : this.http.request<T>('DELETE', `${this.base}${path}`, { body, context: options?.context });
   }
 
   protected unwrap<T = unknown>(response: unknown): T {
