@@ -540,7 +540,9 @@ describe('ScopeOfWorkPageComponent — errors (sow #8)', () => {
     render();
     const message = 'Only a stage-workflow project has a scope of work.';
     expect(el.querySelector('[data-free-style]')!.textContent!.trim()).toBe(message);
-    expect(el.querySelector('[data-blocking-reason]')!.textContent!.trim()).toBe(message);
+    // FINDING-7-9: said once, by the page alert; the confirm block does not repeat it.
+    expect(el.querySelector('[data-blocking-reason]')).toBeNull();
+    expect(el.textContent!.split(message)).toHaveLength(2);
     expect(confirmButton()!.disabled).toBe(true);
     const inputs = Array.from(el.querySelectorAll<HTMLInputElement>('input, textarea'));
     expect(inputs.every((i) => i.disabled)).toBe(true);

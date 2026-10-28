@@ -246,6 +246,8 @@ export class SowSummaryComponent {
   /** B10: why confirm is disabled: the catalog message for `blockingReason` (EN/AR). */
   protected readonly blockingText = computed(() => {
     const code = this.scope().blockingReason;
+    // FINDING-7-9: the page's FreeStyle alert already says this; don't say it twice.
+    if (code === 'projects.scope.WorkflowNotSupported') return null;
     if (code)
       return friendlyMessage(code, this.catalog.t('sow.confirmBlocked'), this.catalog.locale());
     return this.confirmPermitted() ? null : this.catalog.t('sow.confirmNoPermission');
