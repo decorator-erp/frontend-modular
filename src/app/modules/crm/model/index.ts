@@ -436,12 +436,14 @@ export interface AddRequirementItemRequest {
 /**
  * `PUT /api/crm/requirement-items/{itemId}` AND `POST .../supersede` body —
  * `UpdateItemRequest`. ⚠️ No `periodId` — unlike add, update/supersede never move an
- * item to a different period.
+ * item to a different period. Both bind every field positionally, so an omitted `spaceTypeId`
+ * CLEARS the item's space type: callers carry the item's own value (009b #24, FINDING-4-5).
  */
 export interface UpdateRequirementItemRequest {
   category: number;
   title: string;
   priority: number;
+  spaceTypeId?: string | null;
   room?: string | null;
   description?: string | null;
   sourceType?: number | null;

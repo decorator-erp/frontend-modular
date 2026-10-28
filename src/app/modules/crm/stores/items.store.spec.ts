@@ -1,6 +1,8 @@
 import { TestBed } from '@angular/core/testing';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { HttpErrorResponse } from '@angular/common/http';
 import { NEVER, of, throwError } from 'rxjs';
+import { ToastService } from '@platform/feedback/toast.service';
 import { CrmItemService, isClientAuthoredItem } from '../data/crm-item.service';
 import { ApprovalState, RequirementCategory, RequirementPriority } from '../model/crm-enums';
 import type { RequirementItem } from '../model';
@@ -51,7 +53,11 @@ describe('ItemsStore', () => {
   beforeEach(() => {
     api = apiMock();
     TestBed.configureTestingModule({
-      providers: [ItemsStore, { provide: CrmItemService, useValue: api }],
+      providers: [
+        ItemsStore,
+        { provide: CrmItemService, useValue: api },
+        { provide: ToastService, useValue: { show: vi.fn() } },
+      ],
     });
   });
 
@@ -184,6 +190,55 @@ describe('ItemsStore', () => {
 
       expect(api.portalCreate).toHaveBeenCalled();
       expect(api.portalSearch).toHaveBeenCalledWith(PROJECT_ID);
+    });
+  });
+
+  describe('mutation errors (009b #24)', () => {
+    function coded(code: string): HttpErrorResponse {
+      return new HttpErrorResponse({
+        status: 409,
+        error: { status: 409, title: code, errors: { [code]: ['x'] } },
+      });
+    }
+
+    it('send: 409 crm.items.ConcurrentUpdate reloads the board (X-3), no error', () => {
+      api.send.mockReturnValue(throwError(() => coded('crm.items.ConcurrentUpdate')));
+      const s = store();
+      s.load(PROJECT_ID);
+      api.listByProject.mockClear();
+
+      s.send('item-1');
+
+      expect(api.listByProject).toHaveBeenCalledWith(PROJECT_ID);
+      expect(s.error()).toBeNull();
+      expect(s.mutating()).toBe(false);
+    });
+
+    it('send in a Closed period: 409 crm.periods.NotOpen shows its catalog message', () => {
+      api.send.mockReturnValue(throwError(() => coded('crm.periods.NotOpen')));
+      const s = store();
+      s.load(PROJECT_ID);
+      api.listByProject.mockClear();
+
+      s.send('item-1');
+
+      expect(s.error()).toBe('The requirement period is not open.');
+      expect(api.listByProject).not.toHaveBeenCalled();
+    });
+
+    it('update and supersede: 409 crm.items.ConcurrentUpdate reloads (X-3)', () => {
+      api.update.mockReturnValue(throwError(() => coded('crm.items.ConcurrentUpdate')));
+      api.supersede.mockReturnValue(throwError(() => coded('crm.items.ConcurrentUpdate')));
+      const s = store();
+      s.load(PROJECT_ID);
+      api.listByProject.mockClear();
+      const request = { category: 1, title: 'x', priority: 1, spaceTypeId: 'T' };
+
+      s.update('item-1', request);
+      s.supersede('item-1', request);
+
+      expect(api.listByProject).toHaveBeenCalledTimes(2);
+      expect(s.error()).toBeNull();
     });
   });
 });

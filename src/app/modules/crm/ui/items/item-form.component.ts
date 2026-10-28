@@ -3,6 +3,7 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import type { Observable } from 'rxjs';
 import { CrmItemService } from '../../data/crm-item.service';
 import { CrmMeetingService } from '../../data/crm-meeting.service';
+import { injectReloadOnConflict } from '@platform/http/concurrency';
 import { ErrorHandlerService, friendly } from '@platform/http/error-handler.service';
 import { CatalogService } from '@platform/i18n/catalog.service';
 import type { CatalogKey } from '@platform/i18n/catalog/en';
@@ -131,6 +132,7 @@ export class CrmItemFormComponent {
   private readonly meetingService = inject(CrmMeetingService);
   private readonly errorHandler = inject(ErrorHandlerService);
   private readonly toast = inject(ToastService);
+  private readonly reloadOnConflict = injectReloadOnConflict();
   private readonly modalRef = inject(PeraModalRef) as PeraModalRef<boolean>;
   protected readonly catalog = inject(CatalogService);
   readonly data = inject(PERA_MODAL_DATA) as CrmItemFormDialogData;
@@ -205,6 +207,8 @@ export class CrmItemFormComponent {
       category: Number(v.category),
       title: v.title.trim(),
       priority: Number(v.priority),
+      // 009b #24: update/supersede bind spaceTypeId positionally — keep the item's own value.
+      spaceTypeId: this.data.existing?.spaceTypeId ?? null,
       room: v.room.trim() || null,
       description: v.details.trim() || null,
       sourceType: v.meetingId ? RequirementSource.Meeting : null,
@@ -229,6 +233,8 @@ export class CrmItemFormComponent {
         this.modalRef.close(true);
       },
       error: (err) => {
+        // 009b #24: 409 crm.items.ConcurrentUpdate → close as done; the board reloads (X-3).
+        if (this.reloadOnConflict(err, () => this.modalRef.close(true))) return;
         const parsed = this.errorHandler.parse(err);
         this.serverError.set({ ...parsed, generalMessage: friendly(parsed) });
         this.submitting.set(false);

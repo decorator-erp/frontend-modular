@@ -161,4 +161,49 @@ describe('CrmItemService', () => {
       expect(items).toEqual([]);
     });
   });
+
+  describe('update / supersede (009b #24)', () => {
+    const request = {
+      category: 1,
+      title: 'Sofa',
+      priority: 2,
+      spaceTypeId: 'T',
+      room: 'Living',
+    };
+    const body = {
+      category: 1,
+      title: 'Sofa',
+      priority: 2,
+      spaceTypeId: 'T',
+      room: 'Living',
+      description: null,
+      sourceType: null,
+      meetingId: null,
+      briefId: null,
+      noteId: null,
+      projectTaskId: null,
+    };
+
+    it('update sends spaceTypeId (positional binding would clear it when omitted)', () => {
+      service.update('I', request).subscribe();
+
+      const req = http.expectOne({ method: 'PUT', url: url('/crm/requirement-items/I') });
+      expect(req.request.body).toEqual(body);
+      req.flush(null, { status: 204, statusText: 'No Content' });
+    });
+
+    it('supersede sends spaceTypeId and reads the new { itemId }', () => {
+      let id: string | undefined;
+      service.supersede('I', request).subscribe((v) => (id = v));
+
+      const req = http.expectOne({
+        method: 'POST',
+        url: url('/crm/requirement-items/I/supersede'),
+      });
+      expect(req.request.body).toEqual(body);
+      req.flush({ itemId: 'I2' }, { status: 201, statusText: 'Created' });
+
+      expect(id).toBe('I2');
+    });
+  });
 });

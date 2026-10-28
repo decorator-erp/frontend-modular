@@ -46,25 +46,32 @@ export class CrmItemService extends ApiService {
     } satisfies Record<string, unknown>).pipe(map((r) => this.unwrapId(r, 'itemId')));
   }
 
-  /** `PUT /requirement-items/{itemId}` → `204`. Blocked once decided (`ItemLocked`/`NotPending`). */
+  /**
+   * `PUT /requirement-items/{itemId}` → `204`. Blocked once decided (`ItemLocked`/`NotPending`).
+   * 409 `crm.items.ConcurrentUpdate` (reload, X-3), `crm.periods.NotOpen`, `crm.projects.Inactive`.
+   */
   update(itemId: string, request: UpdateRequirementItemRequest): Observable<void> {
     return this.put<void>(`/crm/requirement-items/${itemId}`, this.toBody(request));
   }
 
-  /** `PUT /requirement-items/{itemId}/send` → `204`. Sends a Draft item for the client's confirmation. */
+  /**
+   * `PUT /requirement-items/{itemId}/send` → `204`. Sends a Draft item for the client's confirmation.
+   * A Closed period is 409 `crm.periods.NotOpen` (checked before `ItemLocked`); also 409
+   * `crm.items.AlreadyPending` / `TooManyVoidedRounds` / `ConcurrentUpdate`, `crm.projects.Inactive`.
+   */
   send(itemId: string): Observable<void> {
     return this.put<void>(`/crm/requirement-items/${itemId}/send`, {});
   }
 
   /**
-   * `POST /requirement-items/{itemId}/supersede` → `201` with the NEW item's bare `Guid`.
+   * `POST /requirement-items/{itemId}/supersede` → `201 { itemId }`, the NEW item's id (009b #24).
    * Only a locked (trusted) item can be superseded — the ledger rule, same as brief spaces.
    */
   supersede(itemId: string, request: UpdateRequirementItemRequest): Observable<string> {
     return this.post<unknown>(
       `/crm/requirement-items/${itemId}/supersede`,
       this.toBody(request),
-    ).pipe(map((r) => this.unwrap<string>(r)));
+    ).pipe(map((r) => this.unwrapId(r, 'itemId')));
   }
 
   /**
@@ -170,6 +177,7 @@ export class CrmItemService extends ApiService {
       category: request.category,
       title: request.title,
       priority: request.priority,
+      spaceTypeId: request.spaceTypeId ?? null,
       room: request.room ?? null,
       description: request.description ?? null,
       sourceType: request.sourceType ?? null,
