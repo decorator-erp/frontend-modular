@@ -208,6 +208,7 @@ export class ProjectService extends ApiService {
       endDate: this.field<string | null>(source, 'endDate') ?? null,
       actualStartDate: this.field<string | null>(source, 'actualStartDate') ?? null,
       actualEndDate: this.field<string | null>(source, 'actualEndDate', 'actualEndData') ?? null,
+      stageCount: this.num(this.field(source, 'stageCount')),
       financial: this.field<ProjectFinancialBlock>(source, 'financial'),
     };
   }

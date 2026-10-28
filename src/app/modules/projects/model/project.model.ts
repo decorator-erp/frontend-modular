@@ -71,6 +71,8 @@ export interface Project {
   endDate: string | null;
   actualStartDate: string | null;
   actualEndDate: string | null;
+  /** ProjectResponse.StageCount — 0 until a template or a confirmed scope of work creates stages (008b #3). */
+  stageCount: number;
   /** Financial block — present on enriched project responses (financial-queries spec). */
   financial?: ProjectFinancialBlock;
   /** Render-only `@for` key — synthetic when the server omitted `id`. Never send it. */

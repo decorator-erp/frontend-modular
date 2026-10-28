@@ -105,6 +105,7 @@ function details(): ProjectDetails {
       endDate: '2026-11-22',
       actualStartDate: null,
       actualEndDate: null,
+      stageCount: 1,
     },
     stages: [stage],
     unstagedTasks: [],
