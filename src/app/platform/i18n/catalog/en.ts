@@ -289,6 +289,9 @@ export const EN = {
   'brief.general': 'General (whole unit)',
   'brief.viewBoard': 'View board',
   // ── cat.* — catalog admin (feature 006). Chrome only; node/attribute names are DATA. ──
+  // 009b #34–#36: catalog reads the backend cannot serve (targeting, option lists, the
+  // storefront's space-type pool).
+  'cat.notAvailable': 'Not available yet.',
   'cat.title': 'Catalog',
   'cat.rootCrumb': 'Catalog',
   'cat.newNode': 'New node',

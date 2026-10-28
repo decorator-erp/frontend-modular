@@ -263,6 +263,9 @@ export const AR: Partial<Record<CatalogKey, string>> = {
   'brief.general': 'عام (الوحدة كاملة)',
   'brief.viewBoard': 'عرض اللوحة',
   // ── cat.* — إدارة الكتالوج (الميزة 006) ──
+  // 009b #34–#36: catalog reads the backend cannot serve (targeting, option lists, the
+  // storefront's space-type pool).
+  'cat.notAvailable': 'غير متاح بعد.',
   'cat.title': 'الكتالوج',
   'cat.rootCrumb': 'الكتالوج',
   'cat.newNode': 'عنصر جديد',

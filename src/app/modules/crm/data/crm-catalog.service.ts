@@ -62,17 +62,26 @@ export class CrmCatalogService extends ApiService {
   // ── v2 reads ───────────────────────────────────────────────────────────
 
   /**
-   * `GET /api/crm/catalog/categories?categoryId=&includeInactive=` — `crm.catalog.read`.
-   * The category tree, flat. Omit `categoryId` for all of it.
+   * `GET /api/crm/catalog/tree` — `crm.catalog.read` (009b #34). The whole tree, flat, ordered
+   * by depth then `sortOrder`, inactive rows included. The old `categoryId`/`includeInactive`
+   * query is gone, so both filters run here: `categoryId` keeps that category and its
+   * subtree (by materialised `path`), and inactive rows are dropped unless asked for.
    */
   getCategories(
     categoryId?: string | null,
     includeInactive = false,
   ): Observable<CatalogCategory[]> {
-    return this.get<unknown>('/crm/catalog/categories', {
-      categoryId: categoryId ?? undefined,
-      includeInactive,
-    }).pipe(map((r) => this.unwrapArray<unknown>(r).map((c) => this.normalizeCategory(c))));
+    return this.get<unknown>('/crm/catalog/tree').pipe(
+      map((r) =>
+        this.unwrapArray<unknown>(r)
+          .map((c) => this.normalizeCategory(c))
+          .filter(
+            (c) =>
+              (includeInactive || c.isActive) &&
+              (!categoryId || c.id === categoryId || c.path.includes(`/${categoryId}/`)),
+          ),
+      ),
+    );
   }
 
   /**
@@ -417,16 +426,12 @@ export class CrmCatalogService extends ApiService {
       code: this.field<string>(source, 'code') ?? '',
       nameEn: this.field<string>(source, 'nameEn') ?? '',
       nameAr: this.field<string>(source, 'nameAr') ?? '',
-      descriptionEn: this.field<string | null>(source, 'descriptionEn') ?? null,
-      descriptionAr: this.field<string | null>(source, 'descriptionAr') ?? null,
-      imageUri: this.field<string | null>(source, 'imageUri') ?? null,
       path: this.field<string>(source, 'path') ?? '',
       depth: this.field<number>(source, 'depth') ?? 0,
       selectionMode: this.field<number>(source, 'selectionMode') ?? CatalogSelectionMode.None,
       isRequired: this.field<boolean>(source, 'isRequired') ?? false,
       sortOrder: this.field<number>(source, 'sortOrder') ?? 0,
       isActive: this.field<boolean>(source, 'isActive') ?? true,
-      spaceTypeIds: this.field<string[]>(source, 'spaceTypeIds') ?? [],
       trackKey: this.trackKeyFor(source, 'CatalogCategory.id', 'id'),
     };
   }

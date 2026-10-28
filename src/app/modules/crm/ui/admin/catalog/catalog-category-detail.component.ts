@@ -484,7 +484,10 @@ import {
           </div>
         </section>
 
-        <!-- Space-type targeting — read + write now that the read exists. -->
+        <!--
+          Space-type targeting. 009b #34: no route reads a category's mappings, so the
+          current set is "not available"; mapping a new type still works (row 37).
+        -->
         <section class="bg-surface border border-border rounded-card">
           <header class="px-4 py-3 border-b border-border">
             <span class="fs-label uppercase tracking-wide text-text-muted">{{
@@ -492,29 +495,9 @@ import {
             }}</span>
           </header>
           <div class="p-4 flex flex-col gap-2">
-            @if (store.spaceTypesLoading()) {
-              <p class="fs-caption text-text-muted m-0">{{ catalog.t('common.loading') }}</p>
-            } @else if (store.spaceTypeIds().length === 0) {
-              <p class="fs-caption text-text-muted m-0">{{ catalog.t('cat.targetingGlobal') }}</p>
-            } @else {
-              <div class="flex flex-wrap gap-1.5">
-                @for (id of store.spaceTypeIds(); track id) {
-                  <span
-                    class="inline-flex items-center gap-1 fs-micro px-1.5 py-0.5 rounded bg-accent-soft text-accent"
-                  >
-                    {{ spaceTypeName(id) }}
-                    <button
-                      type="button"
-                      *peraCan="PERM.crm.catalog.manage"
-                      [attr.aria-label]="catalog.t('cat.unmapType')"
-                      (click)="unmapType(c, id)"
-                    >
-                      <pera-icon name="x" [size]="10" />
-                    </button>
-                  </span>
-                }
-              </div>
-            }
+            <p class="fs-caption text-text-muted m-0" data-testid="cat-targeting-unavailable">
+              {{ catalog.t('cat.notAvailable') }}
+            </p>
             <div class="flex items-center gap-2" *peraCan="PERM.crm.catalog.manage">
               <pera-select
                 class="flex-1"
@@ -687,13 +670,14 @@ export class CrmCatalogCategoryDetailComponent {
       this.form.reset({
         nameEn: c.nameEn,
         nameAr: c.nameAr,
-        descriptionEn: c.descriptionEn ?? '',
-        descriptionAr: c.descriptionAr ?? '',
-        imageUri: c.imageUri ?? '',
+        // 009b #34: the tree carries no description or image — the fields start empty.
+        descriptionEn: '',
+        descriptionAr: '',
+        imageUri: '',
         selectionMode: String(c.selectionMode),
         isRequired: c.isRequired,
       });
-      this.imagePreview.set(c.imageUri ?? '');
+      this.imagePreview.set('');
     });
 
     this.form.controls.imageUri.valueChanges.subscribe((v) => this.imagePreview.set(v ?? ''));

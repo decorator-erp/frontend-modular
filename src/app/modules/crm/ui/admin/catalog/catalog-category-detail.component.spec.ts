@@ -4,7 +4,9 @@ import { of } from 'rxjs';
 import { describe, expect, it } from 'vitest';
 import { CrmLookupService } from '../../../data/crm-lookup.service';
 import { CatalogAdminStore } from '../../../stores/catalog-admin.store';
-import type { CrmSpaceType } from '../../../model';
+import { CrmCatalogService } from '../../../data/crm-catalog.service';
+import { CatalogSelectionMode } from '../../../model/crm-enums';
+import type { CatalogCategory, CrmSpaceType } from '../../../model';
 import { CrmCatalogCategoryDetailComponent } from './catalog-category-detail.component';
 
 const types: CrmSpaceType[] = [
@@ -41,5 +43,49 @@ describe('CrmCatalogCategoryDetailComponent — targeting picker (009b #27)', ()
   it('still names an inactive type on an existing mapping', () => {
     const c = make(['T2']);
     expect(c.spaceTypeName('T2')).toBe('Attic');
+  });
+});
+
+describe('CrmCatalogCategoryDetailComponent — targeting read (009b #34)', () => {
+  it('renders the current mappings as "not available" instead of "global"', () => {
+    TestBed.configureTestingModule({
+      imports: [CrmCatalogCategoryDetailComponent],
+      providers: [
+        { provide: CrmLookupService, useValue: { spaceTypes: () => of(types) } },
+        { provide: CrmCatalogService, useValue: {} },
+        {
+          provide: CatalogAdminStore,
+          useValue: {
+            currentCategory: signal<CatalogCategory>({
+              id: 'C',
+              parentId: null,
+              code: 'c',
+              nameEn: 'Cat',
+              nameAr: 'Cat',
+              path: '/C/',
+              depth: 0,
+              selectionMode: CatalogSelectionMode.None,
+              isRequired: false,
+              sortOrder: 0,
+              isActive: true,
+              trackKey: 'C',
+            }),
+            effectiveAttributes: signal([]),
+            items: signal([]),
+            spaceTypeIds: signal([]),
+            spaceTypesLoading: signal(false),
+            saving: signal(false),
+          },
+        },
+      ],
+    });
+    const fixture = TestBed.createComponent(CrmCatalogCategoryDetailComponent);
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+
+    expect(el.querySelector('[data-testid="cat-targeting-unavailable"]')?.textContent).toContain(
+      'Not available yet.',
+    );
+    expect(el.textContent).not.toContain('No mappings');
   });
 });

@@ -50,23 +50,16 @@ export function categoryChain(
 }
 
 /**
- * Whether a category applies to a space type. `spaceTypeIds` is inherited down the branch:
- * if NO category in the self-or-ancestor chain declares any targeting at all, the category
- * is global. Otherwise it applies only if some category in that chain explicitly targets
- * this space type — the most specific (nearest) declaration governs in intent, but since
- * an ancestor's own targeting is a separate concern from the leaf's, any match anywhere in
- * the chain is sufficient (matching the backend's own "empty anywhere in the chain ⇒
- * global" rule, applied per-category rather than joined through a separate mapping table).
+ * Whether a category applies to a space type. 009b #34: the category wire
+ * (`CrmCatalogCategoryResponse`) carries no space-type targeting set and no route reads a
+ * category's mappings, so targeting is not available and every category is global.
  */
 export function categoryApplies(
-  category: CatalogCategory,
-  spaceTypeId: string,
-  byId: ReadonlyMap<string, CatalogCategory>,
+  _category: CatalogCategory,
+  _spaceTypeId: string,
+  _byId: ReadonlyMap<string, CatalogCategory>,
 ): boolean {
-  const chain = categoryChain(category, byId);
-  const anyTargeting = chain.some((c) => c.spaceTypeIds.length > 0);
-  if (!anyTargeting) return true;
-  return chain.some((c) => c.spaceTypeIds.includes(spaceTypeId));
+  return true;
 }
 
 /**

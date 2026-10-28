@@ -24,16 +24,12 @@ function category(id: string, over: Partial<CatalogCategory> = {}): CatalogCateg
     code: id,
     nameEn: id,
     nameAr: id,
-    descriptionEn: null,
-    descriptionAr: null,
-    imageUri: null,
     path: `/${id}/`,
     depth: 0,
     selectionMode: CatalogSelectionMode.None,
     isRequired: false,
     sortOrder: 0,
     isActive: true,
-    spaceTypeIds: [],
     trackKey: id,
     ...over,
   };
@@ -82,22 +78,17 @@ const searchable = (i: CatalogItem) => `${i.nameEn} ${i.nameAr}`;
 describe('categoryApplies / offeredCategories', () => {
   const FURNITURE = category('furniture');
   const SEATING = category('seating', { parentId: 'furniture' });
-  const LIGHTING = category('lighting', { spaceTypeIds: ['st-kitchen'] });
-  const byId = new Map([FURNITURE, SEATING, LIGHTING].map((c) => [c.id, c]));
+  const byId = new Map([FURNITURE, SEATING].map((c) => [c.id, c]));
 
+  // 009b #34: no route reads space-type targeting, so every category is global. The two
+  // "targeted to one space type" cases went with the targeting set.
   it('a category with no targeting anywhere in its chain is global', () => {
     expect(categoryApplies(SEATING, 'st-bedroom', byId)).toBe(true);
     expect(categoryApplies(SEATING, 'st-kitchen', byId)).toBe(true);
   });
 
-  it('a category targeted to one space type does not apply to another', () => {
-    expect(categoryApplies(LIGHTING, 'st-bedroom', byId)).toBe(false);
-    expect(categoryApplies(LIGHTING, 'st-kitchen', byId)).toBe(true);
-  });
-
   it('offeredCategories excludes non-leaf categories', () => {
-    // LIGHTING is targeted to st-kitchen only, so at st-bedroom only SEATING (global) offers.
-    const offered = offeredCategories('st-bedroom', [FURNITURE, SEATING, LIGHTING]);
+    const offered = offeredCategories('st-bedroom', [FURNITURE, SEATING]);
     expect(offered.map((c) => c.id)).toEqual(['seating']);
     // FURNITURE has a child (SEATING), so it is never offered directly.
     expect(offered.some((c) => c.id === 'furniture')).toBe(false);
@@ -106,11 +97,6 @@ describe('categoryApplies / offeredCategories', () => {
   it('offeredCategories excludes inactive categories', () => {
     const inactive = category('retired', { isActive: false });
     expect(offeredCategories('st-bedroom', [inactive]).map((c) => c.id)).toEqual([]);
-  });
-
-  it('offeredCategories excludes categories not targeted to this space type', () => {
-    expect(offeredCategories('st-bedroom', [LIGHTING]).map((c) => c.id)).toEqual([]);
-    expect(offeredCategories('st-kitchen', [LIGHTING]).map((c) => c.id)).toEqual(['lighting']);
   });
 });
 

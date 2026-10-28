@@ -28,8 +28,9 @@ import type { CatalogAttributeType, CatalogSelectionMode } from './crm-enums';
 /**
  * A branch. Carries the structure and the rules; holds no attribute values of its own.
  *
- * `spaceTypeIds` is the targeting set: **empty anywhere in the chain ⇒ global**, which
- * is why an empty array is a meaningful answer and not a missing one.
+ * Mirrors `CrmCatalogCategoryResponse` (`Crm.Contracts/Catalog/CatalogContracts.cs:5-7`,
+ * 009b #34): no description, image or space-type targeting set on the wire — no route reads
+ * a category's space-type mappings.
  */
 export interface CatalogCategory {
   id: string;
@@ -39,9 +40,6 @@ export interface CatalogCategory {
   /** Payload DATA, never a catalog string — picked by locale in the component. */
   nameEn: string;
   nameAr: string;
-  descriptionEn: string | null;
-  descriptionAr: string | null;
-  imageUri: string | null;
   /** Materialised `/id/id/…/` with a trailing slash — resolve ancestors by prefix. */
   path: string;
   /** Root = 0. */
@@ -52,8 +50,6 @@ export interface CatalogCategory {
   isRequired: boolean;
   sortOrder: number;
   isActive: boolean;
-  /** Targeted space types. Empty ⇒ applies everywhere. */
-  spaceTypeIds: string[];
   /** Synthetic render key. Never a domain id — see `ApiService.trackKeyFor`. */
   trackKey: string;
 }

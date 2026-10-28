@@ -27,35 +27,65 @@ describe('CrmCatalogService', () => {
   // `record-items-dialog.component.ts`. The storefront that replaces it uses
   // `getItems({ spaceTypeId })`, covered below under 'getItems() — the v2 faceted feed'.
 
-  describe('getCategories() — v2', () => {
-    it('normalizes spaceTypeIds and gives every row a trackKey', () => {
+  // 009b #34: CrmCatalogEndpoints.cs:83-88 serves the whole tree, flat, from GET /tree
+  // (CrmCatalogCategoryResponse, CatalogContracts.cs:5-7) — no description, image or
+  // spaceTypeIds; subtree and isActive filtering happen client-side.
+  describe('getCategories() — GET /tree (009b #34)', () => {
+    const wire = (id: string, path: string, isActive = true, parentId: string | null = null) => ({
+      id,
+      parentId,
+      code: id,
+      nameEn: id,
+      nameAr: id,
+      selectionMode: CatalogSelectionMode.None,
+      isRequired: false,
+      sortOrder: 0,
+      path,
+      depth: path.split('/').length - 3,
+      isActive,
+    });
+
+    it('reads the flat tree and normalizes it to the wire fields plus a trackKey', () => {
       let categories: CatalogCategory[] = [];
-      service.getCategories().subscribe((r) => (categories = r));
+      service.getCategories(null, true).subscribe((r) => (categories = r));
+
+      const req = http.expectOne(url('/crm/catalog/tree'));
+      expect(req.request.method).toBe('GET');
+      expect(req.request.params.keys()).toEqual([]);
+      req.flush([wire('cat-1', '/cat-1/')]);
+
+      expect(categories).toEqual([
+        {
+          id: 'cat-1',
+          parentId: null,
+          code: 'cat-1',
+          nameEn: 'cat-1',
+          nameAr: 'cat-1',
+          path: '/cat-1/',
+          depth: 0,
+          selectionMode: CatalogSelectionMode.None,
+          isRequired: false,
+          sortOrder: 0,
+          isActive: true,
+          trackKey: 'cat-1',
+        },
+      ]);
+    });
+
+    it('filters the subtree and inactive rows client-side', () => {
+      let ids: string[] = [];
+      service.getCategories('a').subscribe((r) => (ids = r.map((c) => c.id)));
 
       http
-        .expectOne((r) => r.url === url('/crm/catalog/categories'))
+        .expectOne(url('/crm/catalog/tree'))
         .flush([
-          {
-            id: 'cat-1',
-            parentId: null,
-            code: 'furniture',
-            nameEn: 'Furniture',
-            nameAr: 'أثاث',
-            descriptionEn: null,
-            descriptionAr: null,
-            imageUri: null,
-            path: '/cat-1/',
-            depth: 0,
-            selectionMode: CatalogSelectionMode.None,
-            isRequired: true,
-            sortOrder: 0,
-            isActive: true,
-            spaceTypeIds: [],
-          },
+          wire('a', '/a/'),
+          wire('b', '/a/b/', true, 'a'),
+          wire('c', '/a/c/', false, 'a'),
+          wire('d', '/d/'),
         ]);
 
-      expect(categories[0].spaceTypeIds).toEqual([]);
-      expect(categories[0].trackKey).toBe('cat-1');
+      expect(ids).toEqual(['a', 'b']);
     });
   });
 
