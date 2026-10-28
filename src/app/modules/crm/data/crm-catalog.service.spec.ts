@@ -144,29 +144,72 @@ describe('CrmCatalogService', () => {
     });
   });
 
-  describe('normalizeAttribute() — the wire nodeId field carries a category id', () => {
-    it('exposes the wire nodeId under categoryId', () => {
-      service.effectiveAttributes('cat-1').subscribe((attrs) => {
-        expect(attrs[0].categoryId).toBe('cat-1');
+  // 009b #36: CrmCatalogEndpoints.cs:98-104 returns a category's OWN attributes only, with no
+  // options (GetCrmCatalogAttributesByCategoryQueryHandler.cs:16); the /nodes/* alias is gone.
+  describe('effectiveAttributes() — own + ancestors, walked client-side (009b #36)', () => {
+    const cat = (id: string, parentId: string | null, path: string) => ({
+      id,
+      parentId,
+      code: id,
+      nameEn: id,
+      nameAr: id,
+      selectionMode: CatalogSelectionMode.None,
+      isRequired: false,
+      sortOrder: 0,
+      path,
+      depth: 0,
+      isActive: true,
+    });
+    const attr = (id: string, categoryId: string) => ({
+      id,
+      categoryId,
+      code: id,
+      nameEn: id,
+      nameAr: id,
+      dataType: CatalogAttributeType.Select,
+      unit: null,
+      isRequired: false,
+      sortOrder: 0,
+      isActive: true,
+    });
+
+    it('reads the tree, then each ancestor and the category itself, ancestor-first', () => {
+      let ids: string[] = [];
+      let categoryIds: string[] = [];
+      service.effectiveAttributes('C').subscribe((r) => {
+        ids = r.map((a) => a.id);
+        categoryIds = r.map((a) => a.categoryId);
       });
 
       http
-        .expectOne(() => true)
-        .flush([
-          {
-            id: 'attr-1',
-            nodeId: 'cat-1',
-            code: 'style',
-            nameEn: 'Style',
-            nameAr: 'الطراز',
-            dataType: CatalogAttributeType.Select,
-            unit: null,
-            isRequired: true,
-            sortOrder: 0,
-            isActive: true,
-            options: [],
-          },
-        ]);
+        .expectOne(url('/crm/catalog/tree'))
+        .flush([cat('A', null, '/A/'), cat('B', 'A', '/A/B/'), cat('C', 'B', '/A/B/C/')]);
+      http.expectOne(url('/crm/catalog/categories/A/attributes')).flush([attr('a1', 'A')]);
+      http.expectOne(url('/crm/catalog/categories/B/attributes')).flush([]);
+      http.expectOne(url('/crm/catalog/categories/C/attributes')).flush([attr('c1', 'C')]);
+      http.expectNone((r) => r.url.includes('/nodes/'));
+
+      expect(ids).toEqual(['a1', 'c1']);
+      expect(categoryIds).toEqual(['A', 'C']);
+    });
+
+    it('falls back to the own route alone for an id missing from the tree', () => {
+      let ids: string[] = [];
+      service.effectiveAttributes('X').subscribe((r) => (ids = r.map((a) => a.id)));
+
+      http.expectOne(url('/crm/catalog/tree')).flush([]);
+      http.expectOne(url('/crm/catalog/categories/X/attributes')).flush([attr('x1', 'X')]);
+
+      expect(ids).toEqual(['x1']);
+    });
+
+    it('normalizes options to [] — no route reads them', () => {
+      let options: unknown[] | undefined;
+      service.categoryAttributes('C').subscribe((r) => (options = r[0].options));
+
+      http.expectOne(url('/crm/catalog/categories/C/attributes')).flush([attr('c1', 'C')]);
+
+      expect(options).toEqual([]);
     });
   });
 

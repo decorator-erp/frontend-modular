@@ -252,11 +252,11 @@ export const CatalogStore = signalStore(
         return store.itemsById()[itemId];
       },
 
-      // ── Effective attributes per node (v1 node id, v2 category id, or v2 item id) ─
+      // ── Effective attributes per category ─
       //
-      // One cache serves all three. `GET /nodes/{id}/attributes` accepts a category id
-      // or an item id in v2 terms just as well as a v1 node id — same ancestor-inclusive
-      // query, same result — so there is no separate v2 method or cache to keep in sync.
+      // 009b #36: keyed by CATEGORY id. `CrmCatalogService.effectiveAttributes` walks the
+      // tree and reads each ancestor's own `/categories/{id}/attributes`; the `/nodes/*`
+      // alias that also took an item id is gone.
 
       loadEffectiveAttributes(nodeId: string): void {
         if (store.attrsByNode()[nodeId]) return;

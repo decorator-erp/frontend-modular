@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
-import { Observable } from 'rxjs';
-import { map } from 'rxjs/operators';
+import { Observable, forkJoin } from 'rxjs';
+import { map, switchMap } from 'rxjs/operators';
 import { ApiService } from '@platform/http/api.service';
 import { CatalogAttributeType, CatalogSelectionMode } from '../model/crm-enums';
 import type {
@@ -29,6 +29,10 @@ import type {
  * project-scoped: reads need `crm.catalog.read`, writes `crm.catalog.manage`.
  * Verified against `API/Endpoints/CrmCatalogEndpoints.cs` and
  * `API/Endpoints/CrmCatalogV2Endpoints.cs` at backend `3d400a7`.
+ *
+ * **009b (KNOWN-DELTA-3):** the modular backend maps only
+ * `Crm.Infrastructure/Endpoints/CrmCatalogEndpoints.cs`. The `/nodes/*` alias described
+ * below is gone; each method's own comment names the route it now calls.
  *
  * v1 `/nodes` retired from here in Run B's F7 — `subtree()`, `search()`,
  * `createNode`/`updateNode`/`moveNode`/`reorderNodes`/`setNodeActive`/`deleteNode` and
@@ -87,9 +91,8 @@ export class CrmCatalogService extends ApiService {
 
   /**
    * `GET /api/crm/catalog/categories/{categoryId}/attributes` — `crm.catalog.read`.
-   * Own + every ancestor's, ancestor-first — identical query and result to
-   * {@link effectiveAttributes}, which also accepts a category id. Kept as its own method
-   * only for callers that want the v2-named route in an otherwise all-v2 call site.
+   * The category's OWN attributes only, ordered by `sortOrder`, with **no options** — no
+   * route reads options (009b #36). {@link effectiveAttributes} adds the ancestors.
    */
   categoryAttributes(categoryId: string): Observable<CatalogAttribute[]> {
     return this.get<unknown>(`/crm/catalog/categories/${categoryId}/attributes`).pipe(
@@ -313,12 +316,25 @@ export class CrmCatalogService extends ApiService {
   }
 
   /**
-   * `GET /api/crm/catalog/nodes/{nodeId}/attributes` — `crm.catalog.read`.
-   * Own + every ancestor's attribute definitions, ancestor-first.
+   * Own + every ancestor's attribute definitions, ancestor-first (009b #36). The backend
+   * serves only a category's OWN attributes (`GET /categories/{id}/attributes`) and the
+   * `/nodes/*` alias is gone, so the chain is walked here: one `GET /tree`, then the own
+   * route for each ancestor (root first) and the category itself. An id the tree does not
+   * hold reads its own route alone. Options are always `[]` (no route reads them).
    */
-  effectiveAttributes(nodeId: string): Observable<CatalogAttribute[]> {
-    return this.get<unknown>(`/crm/catalog/nodes/${nodeId}/attributes`).pipe(
-      map((r) => this.unwrapArray<unknown>(r).map((a) => this.normalizeAttribute(a))),
+  effectiveAttributes(categoryId: string): Observable<CatalogAttribute[]> {
+    return this.getCategories(null, true).pipe(
+      switchMap((tree) => {
+        const byId = new Map(tree.map((c) => [c.id, c]));
+        const chain = [categoryId];
+        let cursor = byId.get(categoryId)?.parentId ?? null;
+        while (cursor && !chain.includes(cursor)) {
+          chain.unshift(cursor);
+          cursor = byId.get(cursor)?.parentId ?? null;
+        }
+        return forkJoin(chain.map((id) => this.categoryAttributes(id)));
+      }),
+      map((lists) => lists.flat()),
     );
   }
 

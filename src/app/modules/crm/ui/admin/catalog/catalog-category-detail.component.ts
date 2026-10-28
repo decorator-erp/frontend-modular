@@ -286,8 +286,9 @@ import {
                           }
                         </span>
                       } @empty {
-                        <span class="fs-micro text-text-muted"
-                          >{{ catalog.t('cat.options') }}: —</span
+                        <!-- 009b #36: no route reads an attribute's options. -->
+                        <span class="fs-micro text-text-muted" data-testid="cat-options-unavailable"
+                          >{{ catalog.t('cat.options') }}: {{ catalog.t('cat.notAvailable') }}</span
                         >
                       }
 

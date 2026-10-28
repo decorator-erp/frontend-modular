@@ -132,7 +132,13 @@ export interface CatalogItemDialogData {
                       <pera-date-input [formControlName]="def.id" />
                     }
                     @case (ATTR_TYPE.Select) {
-                      <pera-select [formControlName]="def.id" [options]="optionsOf(def)" />
+                      <!-- 009b #36: no route reads an attribute's options. -->
+                      <p
+                        class="fs-caption text-text-muted m-0"
+                        data-testid="cat-options-unavailable"
+                      >
+                        {{ catalog.t('cat.notAvailable') }}
+                      </p>
                     }
                     @default {
                       <pera-input [formControlName]="def.id" dir="auto" />
@@ -244,18 +250,6 @@ export class CrmCatalogItemDialogComponent {
   protected specLabel(def: CatalogAttribute): string {
     const name = this.catalog.locale() === 'ar' ? def.nameAr || def.nameEn : def.nameEn;
     return def.unit ? `${name} · ${def.unit}` : name;
-  }
-
-  protected optionsOf(def: CatalogAttribute): SelectOption[] {
-    return [
-      { value: '', label: '—' },
-      ...[...def.options]
-        .sort((a, b) => a.sortOrder - b.sortOrder)
-        .map((o) => ({
-          value: o.id,
-          label: this.catalog.locale() === 'ar' ? o.nameAr || o.nameEn : o.nameEn,
-        })),
-    ];
   }
 
   close(): void {
