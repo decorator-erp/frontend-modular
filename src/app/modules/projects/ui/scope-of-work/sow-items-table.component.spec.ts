@@ -71,6 +71,29 @@ describe('SowItemsTableComponent (sow #3)', () => {
     fixture.componentInstance.remove.subscribe((id) => removed.push(id));
   });
 
+  it('FINDING-7-6: after a move reloads, focus returns to the moved item (other arrow at an end)', () => {
+    render(ITEMS);
+    const down = button(rows()[1], 'Move item 2 down');
+    down.focus();
+    down.click();
+    expect(orders).toEqual([['i1', 'i3', 'i2']]);
+    // The reload: i2 is now last, so its Move down is disabled → its Move up takes focus.
+    render([ITEMS[0], { ...ITEMS[2], order: 2 }, { ...ITEMS[1], order: 3 }]);
+    expect(document.activeElement).toBe(rows()[2].querySelector('[data-action="up"]'));
+  });
+
+  it('FINDING-7-6: after a remove reloads, focus goes to the row now at that index', () => {
+    render(ITEMS);
+    const remove = button(rows()[0], 'Remove item 1');
+    remove.focus();
+    remove.click();
+    render([
+      { ...ITEMS[1], order: 1 },
+      { ...ITEMS[2], order: 2 },
+    ]);
+    expect(document.activeElement).toBe(rows()[0].querySelector('[data-action="remove"]'));
+  });
+
   it('renders order, name, template and fee per row; "—" when the template is gone', async () => {
     render([...ITEMS.slice(0, 2), item({ id: 'i3', order: 3, sourceTemplateName: null })]);
     await fixture.whenStable(); // ngModel writes the CVA value a microtask later

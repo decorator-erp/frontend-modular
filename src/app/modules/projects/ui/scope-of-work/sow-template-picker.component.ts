@@ -1,4 +1,13 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  ElementRef,
+  afterRenderEffect,
+  computed,
+  inject,
+  input,
+  output,
+} from '@angular/core';
 import type { TemplateStage } from '@modules/library';
 import { PeraButtonComponent, PeraChipComponent, PeraCurrencyComponent } from '@ds';
 import { CatalogService } from '@platform/i18n/catalog.service';
@@ -59,7 +68,7 @@ const ROW_ADDED = 'bg-surface text-text-primary border-border hover:bg-surface-m
       }
       @for (s of stages(); track s.id) {
         <div
-          data-stage-row
+          [attr.data-stage-row]="s.id"
           class="flex flex-wrap items-center gap-x-4 gap-y-2 px-3.5 py-3 border border-border bg-surface"
         >
           <div class="flex-1 min-w-48 flex flex-col gap-0.5">
@@ -78,7 +87,7 @@ const ROW_ADDED = 'bg-surface text-text-primary border-border hover:bg-surface-m
               class="${ROW_BUTTON} ${ROW_ADDED}"
               [disabled]="busy()"
               [attr.aria-label]="catalog.t('sow.addedRemove') + ' ' + s.name"
-              (click)="removeStage.emit(s.id)"
+              (click)="refocus = s.id; removeStage.emit(s.id)"
             >
               {{ catalog.t('sow.addedRemove') }}
             </button>
@@ -88,7 +97,7 @@ const ROW_ADDED = 'bg-surface text-text-primary border-border hover:bg-surface-m
               class="${ROW_BUTTON} ${ROW_ADD}"
               [disabled]="busy()"
               [attr.aria-label]="catalog.t('sow.add') + ' ' + s.name"
-              (click)="addStage.emit(s.id)"
+              (click)="refocus = s.id; addStage.emit(s.id)"
             >
               {{ catalog.t('sow.add') }}
             </button>
@@ -120,4 +129,20 @@ export class SowTemplatePickerComponent {
   readonly addTemplate = output<string>();
 
   protected readonly picked = computed(() => new Set(this.pickedStageIds()));
+
+  /** FINDING-7-6: the stage whose Add / Added · remove was pressed, refocused once not busy. */
+  protected refocus: string | null = null;
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+
+  constructor() {
+    afterRenderEffect(() => {
+      this.picked();
+      if (this.busy() || !this.refocus) return;
+      const id = this.refocus;
+      this.refocus = null;
+      this.host.nativeElement
+        .querySelector<HTMLElement>(`[data-stage-row="${id}"] button`)
+        ?.focus();
+    });
+  }
 }

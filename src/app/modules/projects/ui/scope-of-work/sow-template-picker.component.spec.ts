@@ -57,6 +57,22 @@ describe('SowTemplatePickerComponent (sow #4)', () => {
     c.addTemplate.subscribe((id) => emitted['addTemplate'].push(id));
   });
 
+  it('FINDING-7-6: after Add reloads, focus lands on the stage row button', () => {
+    render();
+    const add = stageRows()[0].querySelector<HTMLButtonElement>('button')!;
+    add.focus();
+    add.click();
+    expect(emitted['addStage']).toEqual(['r1']);
+    fixture.componentRef.setInput('busy', true);
+    fixture.detectChanges();
+    fixture.componentRef.setInput('busy', false);
+    fixture.componentRef.setInput('pickedStageIds', ['r1']);
+    fixture.detectChanges();
+    const now = stageRows()[0].querySelector<HTMLButtonElement>('button')!;
+    expect(now.textContent!.trim()).toBe(EN['sow.addedRemove']);
+    expect(document.activeElement).toBe(now);
+  });
+
   it('renders one pill per template, the selected one pressed', () => {
     render();
     const pills = Array.from(el.querySelectorAll<HTMLButtonElement>('[role="group"] button'));

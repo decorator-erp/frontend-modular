@@ -1,4 +1,13 @@
-import { ChangeDetectionStrategy, Component, inject, input, output, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  ElementRef,
+  afterRenderEffect,
+  inject,
+  input,
+  output,
+  signal,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import {
@@ -69,7 +78,7 @@ const HEAD = 'px-3 py-2 fs-caption font-semibold text-text-muted text-start bg-s
           </thead>
           <tbody>
             @for (item of items(); track item.id; let i = $index, first = $first, last = $last) {
-              <tr>
+              <tr [attr.data-item-id]="item.id">
                 <td class="${CELL} font-mono text-text-muted">{{ item.order }}</td>
                 <td class="${CELL} min-w-56">
                   <pera-input
@@ -116,6 +125,7 @@ const HEAD = 'px-3 py-2 fs-caption font-semibold text-text-muted text-start bg-s
                     <button
                       type="button"
                       class="${ICON_BUTTON}"
+                      data-action="up"
                       [disabled]="first"
                       [attr.aria-label]="catalog.t('sow.moveUp', { n: item.order })"
                       (click)="move(i, -1)"
@@ -125,6 +135,7 @@ const HEAD = 'px-3 py-2 fs-caption font-semibold text-text-muted text-start bg-s
                     <button
                       type="button"
                       class="${ICON_BUTTON}"
+                      data-action="down"
                       [disabled]="last"
                       [attr.aria-label]="catalog.t('sow.moveDown', { n: item.order })"
                       (click)="move(i, 1)"
@@ -134,8 +145,9 @@ const HEAD = 'px-3 py-2 fs-caption font-semibold text-text-muted text-start bg-s
                     <button
                       type="button"
                       class="${ICON_BUTTON} hover:text-danger"
+                      data-action="remove"
                       [attr.aria-label]="catalog.t('sow.remove', { n: item.order })"
-                      (click)="remove.emit(item.id)"
+                      (click)="onRemove(item.id, i)"
                     >
                       <pera-icon name="trash" [size]="16" aria-hidden="true" />
                     </button>
@@ -169,6 +181,34 @@ export class SowItemsTableComponent {
   /** Client-side check failures, keyed `<itemId>:name|fee`. */
   protected readonly errors = signal<Record<string, CatalogKey>>({});
 
+  /**
+   * FINDING-7-6: the row action pressed, refocused once the reloaded rows render: the same
+   * item's button (or its other enabled one), else the row now at that index.
+   */
+  private refocus: { id: string; index: number; action: string } | null = null;
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+
+  constructor() {
+    afterRenderEffect(() => {
+      this.items();
+      const target = this.refocus;
+      if (!target) return;
+      this.refocus = null;
+      const root = this.host.nativeElement;
+      const rows = root.querySelectorAll('tbody tr');
+      const row =
+        root.querySelector(`tr[data-item-id="${target.id}"]`) ??
+        rows[Math.min(target.index, rows.length - 1)];
+      const enabled = (sel: string) => row?.querySelector<HTMLElement>(`${sel}:not(:disabled)`);
+      (enabled(`[data-action="${target.action}"]`) ?? enabled('button'))?.focus();
+    });
+  }
+
+  protected onRemove(itemId: string, index: number): void {
+    this.refocus = { id: itemId, index, action: 'remove' };
+    this.remove.emit(itemId);
+  }
+
   protected onName(item: ScopeOfWorkItem, event: Event): void {
     if (!this.editable()) return;
     const name = valueOf(event).trim();
@@ -197,6 +237,7 @@ export class SowItemsTableComponent {
     const target = index + delta;
     if (target < 0 || target >= ids.length) return;
     [ids[index], ids[target]] = [ids[target], ids[index]];
+    this.refocus = { id: ids[target], index: target, action: delta < 0 ? 'up' : 'down' };
     this.reorder.emit(ids);
   }
 
