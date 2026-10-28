@@ -4,6 +4,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { PagedResult } from '@platform/types';
 import { environment } from '../../../../environments/environment';
+import { MeetingSlotStatus } from '../model/crm-enums';
 import type { CrmMeeting } from '../model';
 import { CrmMeetingService } from './crm-meeting.service';
 
@@ -56,6 +57,42 @@ describe('CrmMeetingService', () => {
       expect(req.request.params.get('pageNumber')).toBe('3');
       expect(req.request.params.get('pageSize')).toBe('20');
       req.flush({ items: [], pageNumber: 3, pageSize: 20, totalCount: 0, totalPages: 0 });
+    });
+  });
+
+  describe('getById (009b #19)', () => {
+    it('reads CrmMeetingSlotResponse with no employeeId or holdExpiresAtUtc', () => {
+      let meeting: CrmMeeting | undefined;
+      service.getById('M').subscribe((m) => (meeting = m));
+
+      http.expectOne({ method: 'GET', url: url('/crm/meetings/M') }).flush({
+        id: 'M',
+        projectId: 'P',
+        title: 'Kick-off',
+        slots: [
+          {
+            id: 'S',
+            meetingId: 'M',
+            startsAtUtc: '2026-11-01T08:00:00Z',
+            endsAtUtc: '2026-11-01T09:00:00Z',
+            status: MeetingSlotStatus.Proposed,
+            proposedByEmployeeId: null,
+            proposedByContactId: 'K',
+          },
+        ],
+      });
+
+      expect(meeting?.slots).toEqual([
+        {
+          id: 'S',
+          meetingId: 'M',
+          startsAtUtc: '2026-11-01T08:00:00Z',
+          endsAtUtc: '2026-11-01T09:00:00Z',
+          status: MeetingSlotStatus.Proposed,
+          proposedByEmployeeId: null,
+          proposedByContactId: 'K',
+        },
+      ]);
     });
   });
 });

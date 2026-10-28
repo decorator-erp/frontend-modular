@@ -22,7 +22,7 @@ const TYPES = [MeetingType.InOffice, MeetingType.OnSite, MeetingType.Online] as 
 
 /**
  * The client scheduler (T052, FR-023) — **mobile-first**: grid → tap → type picker →
- * request sheet → Held with its expiry. No step opens a second overlay system; each is
+ * request sheet → Held (009b #19: no hold timestamp on the slot, so no expiry line). No step opens a second overlay system; each is
  * a stacked section on the SAME page, which is what keeps this usable at phone width
  * with no horizontal scrolling (US2 scenario 4) — the same reasoning that shaped
  * `CrmSlotGridComponent` itself (day pills + a vertical list, not a literal grid table).
@@ -39,14 +39,11 @@ const TYPES = [MeetingType.InOffice, MeetingType.OnSite, MeetingType.Online] as 
   host: { class: 'block max-w-full' },
   template: `
     <div class="flex flex-col gap-4">
-      @if (heldSlot(); as held) {
+      @if (heldSlot()) {
         <pera-card>
           <div class="flex flex-col gap-2 p-1">
             <div class="font-semibold text-text-primary">{{ catalog.t('sched.csHeldT') }}</div>
             <p class="fs-body-sm text-text-secondary m-0">{{ catalog.t('sched.csHeldB') }}</p>
-            <div class="fs-caption text-text-muted" dir="ltr">
-              {{ catalog.t('sched.holdExpires') }}: {{ whenLabel(held.holdExpiresAtUtc!) }}
-            </div>
             <pera-button variant="secondary" size="sm" (click)="reset()">{{
               catalog.t('common.dismiss')
             }}</pera-button>

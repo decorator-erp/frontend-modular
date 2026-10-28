@@ -37,10 +37,14 @@ const INITIAL: MeetingsState = {
   notFound: false,
 };
 
-/** True while `slot` is genuinely held — `Proposed` and its hold has not yet lapsed. */
+/**
+ * True while `slot` is genuinely held — `Proposed` and not yet started. 009b #19: the slot response
+ * carries no `holdExpiresAtUtc`; a proposed slot can be accepted until its start, after which accept
+ * is 409 `crm.meetings.SlotExpired` (`CrmMeetingSlot.Accept`).
+ */
 export function isSlotHeld(slot: CrmMeetingSlot, nowMs: number = Date.now()): boolean {
-  if (slot.status !== MeetingSlotStatus.Proposed || !slot.holdExpiresAtUtc) return false;
-  return new Date(slot.holdExpiresAtUtc).getTime() > nowMs;
+  if (slot.status !== MeetingSlotStatus.Proposed) return false;
+  return new Date(slot.startsAtUtc).getTime() > nowMs;
 }
 
 /**
@@ -49,8 +53,8 @@ export function isSlotHeld(slot: CrmMeetingSlot, nowMs: number = Date.now()): bo
  * hold-expired edge case, T054): tell the viewer the hold lapsed and to pick again.
  */
 export function isSlotHoldExpired(slot: CrmMeetingSlot, nowMs: number = Date.now()): boolean {
-  if (slot.status !== MeetingSlotStatus.Proposed || !slot.holdExpiresAtUtc) return false;
-  return new Date(slot.holdExpiresAtUtc).getTime() <= nowMs;
+  if (slot.status !== MeetingSlotStatus.Proposed) return false;
+  return new Date(slot.startsAtUtc).getTime() <= nowMs;
 }
 
 /**

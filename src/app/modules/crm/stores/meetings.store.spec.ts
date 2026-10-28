@@ -14,13 +14,11 @@ function slot(over: Partial<CrmMeetingSlot> = {}): CrmMeetingSlot {
   return {
     id: 'slot-1',
     meetingId: 'meeting-1',
-    employeeId: 'employee-1',
     startsAtUtc: '2026-07-20T10:00:00.000Z',
     endsAtUtc: '2026-07-20T11:00:00.000Z',
     status: MeetingSlotStatus.Proposed,
     proposedByEmployeeId: null,
     proposedByContactId: 'contact-1',
-    holdExpiresAtUtc: '2026-07-21T10:00:00.000Z',
     ...over,
   };
 }
@@ -252,13 +250,15 @@ describe('MeetingsStore', () => {
   });
 });
 
-describe('isSlotHeld / isSlotHoldExpired', () => {
+describe('isSlotHeld / isSlotHoldExpired (009b #19: the slot start is the expiry)', () => {
   afterEach(() => vi.useRealTimers());
 
-  it('a Proposed slot with a future hold is held, not expired', () => {
+  // The slot response has no holdExpiresAtUtc; a Proposed slot can be accepted until it starts
+  // (409 crm.meetings.SlotExpired after that — CrmMeetingSlot.Accept).
+  it('a Proposed slot that has not started is held, not expired', () => {
     const s = slot({
       status: MeetingSlotStatus.Proposed,
-      holdExpiresAtUtc: '2026-07-21T10:00:00.000Z',
+      startsAtUtc: '2026-07-20T11:00:00.000Z',
     });
     const now = new Date('2026-07-20T10:00:00.000Z').getTime();
 
@@ -266,10 +266,10 @@ describe('isSlotHeld / isSlotHoldExpired', () => {
     expect(isSlotHoldExpired(s, now)).toBe(false);
   });
 
-  it('a Proposed slot whose hold has lapsed is expired, not held — US2 scenario 5 / T054', () => {
+  it('a Proposed slot whose start has passed is expired, not held — US2 scenario 5 / T054', () => {
     const s = slot({
       status: MeetingSlotStatus.Proposed,
-      holdExpiresAtUtc: '2026-07-20T09:00:00.000Z',
+      startsAtUtc: '2026-07-20T10:00:00.000Z',
     });
     const now = new Date('2026-07-20T10:00:00.000Z').getTime();
 
@@ -277,10 +277,10 @@ describe('isSlotHeld / isSlotHoldExpired', () => {
     expect(isSlotHoldExpired(s, now)).toBe(true);
   });
 
-  it('an Accepted slot is never held or expired, regardless of holdExpiresAtUtc', () => {
+  it('an Accepted slot is never held or expired, whatever its start', () => {
     const s = slot({
       status: MeetingSlotStatus.Accepted,
-      holdExpiresAtUtc: '2026-07-20T09:00:00.000Z',
+      startsAtUtc: '2026-07-20T09:00:00.000Z',
     });
     const now = new Date('2026-07-20T10:00:00.000Z').getTime();
 
@@ -288,9 +288,10 @@ describe('isSlotHeld / isSlotHoldExpired', () => {
     expect(isSlotHoldExpired(s, now)).toBe(false);
   });
 
-  it('a slot with no holdExpiresAtUtc is neither held nor expired', () => {
-    const s = slot({ holdExpiresAtUtc: null });
-    expect(isSlotHeld(s)).toBe(false);
-    expect(isSlotHoldExpired(s)).toBe(false);
+  it('a Declined slot is neither held nor expired', () => {
+    const s = slot({ status: MeetingSlotStatus.Declined });
+    const now = new Date('2026-07-19T10:00:00.000Z').getTime();
+    expect(isSlotHeld(s, now)).toBe(false);
+    expect(isSlotHoldExpired(s, now)).toBe(false);
   });
 });

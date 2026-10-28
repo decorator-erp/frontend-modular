@@ -175,13 +175,11 @@ export class CrmMeetingService extends ApiService {
     return {
       id: this.field<string>(source, 'id') ?? '',
       meetingId: this.field<string>(source, 'meetingId') ?? '',
-      employeeId: this.field<string>(source, 'employeeId') ?? '',
       startsAtUtc: this.field<string>(source, 'startsAtUtc') ?? '',
       endsAtUtc: this.field<string>(source, 'endsAtUtc') ?? '',
       status: this.field<number>(source, 'status') ?? MeetingSlotStatus.Proposed,
       proposedByEmployeeId: this.field<string | null>(source, 'proposedByEmployeeId') ?? null,
       proposedByContactId: this.field<string | null>(source, 'proposedByContactId') ?? null,
-      holdExpiresAtUtc: this.field<string | null>(source, 'holdExpiresAtUtc') ?? null,
     };
   }
 

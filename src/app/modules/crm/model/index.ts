@@ -565,18 +565,16 @@ export interface SlotRequest {
   endsAtUtc: string;
 }
 
+/** `CrmMeetingSlotResponse` — no employee id and no hold timestamp (009b #19). */
 export interface CrmMeetingSlot {
   id: string;
   meetingId: string;
-  employeeId: string;
   startsAtUtc: string;
   endsAtUtc: string;
   status: MeetingSlotStatus;
   /** XOR-by-convention with `proposedByContactId` — whoever put this slot forward. */
   proposedByEmployeeId: string | null;
   proposedByContactId: string | null;
-  /** Set while `status = Proposed` and the hold has not yet lapsed. */
-  holdExpiresAtUtc: string | null;
 }
 
 export interface CrmMeeting {
@@ -623,7 +621,7 @@ export interface CancelMeetingRequest {
 /**
  * `POST /api/crm/portal/meetings/request` body — the client requests ONE specific
  * slot directly (picked from the free-slot grid), not a proposal list. Lands the
- * meeting `Requested`, with one `Proposed` slot held under `holdExpiresAtUtc`.
+ * meeting `Requested`, with one `Proposed` slot, acceptable until it starts (009b #19).
  */
 export interface RequestMeetingByClientRequest {
   projectId: string;

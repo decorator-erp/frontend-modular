@@ -9,10 +9,9 @@ import { isSlotHeld, isSlotHoldExpired } from '../../stores/meetings.store';
 
 /**
  * The employee incoming-requests table (T048, FR-022) — client-initiated meeting
- * requests awaiting accept/decline. Hold expiry renders as an ABSOLUTE timestamp chip
- * (amber), never a relative countdown — the prototype's copy is explicit about this
- * (`sched.holdExpires`). A hold that has lapsed while still visible (T054) is called
- * out rather than silently offered as if still live.
+ * requests awaiting accept/decline. 009b #19: the slot carries no hold timestamp, so the
+ * "hold expires" line is gone; a request whose slot has started (accept would be 409
+ * `crm.meetings.SlotExpired`) is still called out rather than silently offered as live.
  */
 @Component({
   selector: 'app-crm-incoming-requests',
@@ -47,12 +46,6 @@ import { isSlotHeld, isSlotHoldExpired } from '../../stores/meetings.store';
                     }
                   }
                 </div>
-                @if (heldSlot && !isExpired(heldSlot)) {
-                  <div class="fs-label text-text-muted" dir="ltr">
-                    {{ catalog.t('sched.holdExpires') }}:
-                    {{ whenLabel(heldSlot.holdExpiresAtUtc!) }}
-                  </div>
-                }
                 <div class="flex items-center gap-2" *peraCan="PERM.crm.meetings.respondSlot">
                   <pera-button
                     size="sm"
