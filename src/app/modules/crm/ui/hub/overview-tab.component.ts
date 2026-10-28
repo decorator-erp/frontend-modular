@@ -12,6 +12,7 @@ import { CrmNote, CrmNoteService } from '../../data/crm-note.service';
 import { CatalogService } from '@platform/i18n/catalog.service';
 import { formatCairoDate } from '@platform/i18n/intl-locale';
 import { ErrorHandlerService, friendly } from '@platform/http/error-handler.service';
+import { injectReloadOnConflict } from '@platform/http/concurrency';
 import { ToastService } from '@platform/feedback/toast.service';
 import {
   ColumnDef,
@@ -142,6 +143,7 @@ export class ClientHubOverviewTabComponent {
   protected readonly catalog = inject(CatalogService);
   protected readonly store = inject(ClientHubStore);
   protected readonly PERM = PERM;
+  private readonly reloadOnConflict = injectReloadOnConflict();
 
   private readonly nameTpl = viewChild.required<TemplateRef<unknown>>('nameTpl');
   private readonly contactTpl = viewChild.required<TemplateRef<unknown>>('contactTpl');
@@ -202,6 +204,8 @@ export class ClientHubOverviewTabComponent {
         this.store.reloadContacts();
       },
       error: (err) => {
+        // 409 crm.contacts.ConcurrentPrimaryChange: reload and say so (009b #32, X-3).
+        if (this.reloadOnConflict(err, () => this.store.reloadContacts())) return;
         const parsed = this.errorHandler.parse(err);
         this.toast.show({ tone: 'danger', message: friendly(parsed) });
       },

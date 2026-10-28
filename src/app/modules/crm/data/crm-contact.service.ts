@@ -4,7 +4,7 @@ import { map } from 'rxjs/operators';
 import { ApiService } from '@platform/http/api.service';
 import { ContactRole } from '../model/crm-enums';
 
-/** Mirrors `ContactResponse`. */
+/** Mirrors `CrmContactResponse` (`ContactContracts.cs:5-7`): no `createdAtUtc` (009b #32). */
 export interface CrmContact {
   id: string;
   clientId: string;
@@ -16,7 +16,6 @@ export interface CrmContact {
   role: ContactRole;
   isPrimary: boolean;
   notes: string | null;
-  createdAtUtc: string;
 }
 
 export interface AddContactRequest {
@@ -52,10 +51,13 @@ export interface UpdateContactRequest {
  */
 @Injectable({ providedIn: 'root' })
 export class CrmContactService extends ApiService {
-  /** `POST /` → `201` with a bare `Guid`. */
+  /**
+   * `POST /` → `201 { contactId }` (009b #32). A second primary racing this one is 409
+   * `crm.contacts.ConcurrentPrimaryChange`.
+   */
   add(clientId: string, request: AddContactRequest): Observable<string> {
     return this.post<unknown>(`/crm/clients/${clientId}/contacts`, request).pipe(
-      map((r) => this.unwrap<string>(r)),
+      map((r) => this.unwrapId(r, 'contactId')),
     );
   }
 
@@ -65,9 +67,9 @@ export class CrmContactService extends ApiService {
   }
 
   /**
-   * `PUT /{contactId}/primary` → `204`. `crm.contacts.CannotRemovePrimary` guards the
-   * inverse — a primary contact cannot be un-set directly, only replaced by promoting
-   * another one.
+   * `PUT /{contactId}/primary` → `204`. A primary contact cannot be un-set directly, only
+   * replaced by promoting another one. A concurrent primary change is 409
+   * `crm.contacts.ConcurrentPrimaryChange` (contract §1.4): the caller reloads (X-3).
    */
   setPrimary(clientId: string, contactId: string): Observable<void> {
     return this.put<void>(`/crm/clients/${clientId}/contacts/${contactId}/primary`, {});
@@ -92,7 +94,6 @@ export class CrmContactService extends ApiService {
       role: this.field<number>(source, 'role') ?? ContactRole.Other,
       isPrimary: this.field<boolean>(source, 'isPrimary') ?? false,
       notes: this.field<string | null>(source, 'notes') ?? null,
-      createdAtUtc: this.field<string>(source, 'createdAtUtc') ?? '',
     };
   }
 }
