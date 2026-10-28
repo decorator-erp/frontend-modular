@@ -42,14 +42,17 @@ export class CrmSpaceService extends ApiService {
     );
   }
 
-  /** `POST /api/crm/projects/{projectId}/spaces` → `201` bare `Guid` — `crm.spaces.manage`. */
+  /**
+   * `POST /api/crm/projects/{projectId}/spaces` → `201 { spaceId }` — `crm.spaces.manage`
+   * (009b #29). A duplicate name is 409 `crm.spaces.DuplicateName`.
+   */
   create(projectId: string, request: CreateSpaceRequest): Observable<string> {
     return this.post<unknown>(`/crm/projects/${projectId}/spaces`, {
       spaceTypeId: request.spaceTypeId,
       name: request.name,
       sortOrder: request.sortOrder ?? 0,
       description: request.description ?? null,
-    }).pipe(map((r) => this.unwrap<string>(r)));
+    }).pipe(map((r) => this.unwrapId(r, 'spaceId')));
   }
 
   /** `PUT /api/crm/projects/{projectId}/spaces/reorder` → `204` — `crm.spaces.manage`. */

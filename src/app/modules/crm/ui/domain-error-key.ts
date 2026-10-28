@@ -20,7 +20,7 @@ const CODE_TO_KEY: Readonly<Record<string, CatalogKey>> = {
   'crm.catalog.LeafCarriesBranchRule': 'cat.leafRule',
   'crm.catalog.NotABranch': 'cat.notABranch',
   // Spaces + board
-  'crm.spaces.NameTaken': 'space.nameTaken',
+  'crm.spaces.DuplicateName': 'space.nameTaken',
   'crm.spaces.SpaceInUse': 'space.inUse',
   'crm.spaces.ItemAlreadyRecorded': 'space.itemAlreadyRecorded',
   'crm.catalog.SingleRuleViolated': 'space.singleRuleViolated',

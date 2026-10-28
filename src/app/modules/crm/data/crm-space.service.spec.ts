@@ -115,6 +115,18 @@ describe('CrmSpaceService', () => {
     });
   });
 
+  describe('create (009b #29)', () => {
+    it('emits the id read off the one-property 201 body', () => {
+      let id: string | undefined;
+      service.create('P', { spaceTypeId: 'st-1', name: 'Kitchen' }).subscribe((v) => (id = v));
+
+      const req = http.expectOne({ method: 'POST', url: url('/crm/projects/P/spaces') });
+      req.flush({ spaceId: 'S' }, { status: 201, statusText: 'Created' });
+
+      expect(id).toBe('S');
+    });
+  });
+
   describe('description (F6b) — always sent, never inferred as "leave alone"', () => {
     it('normalizes description on list() from the wire field', () => {
       let spaces: CrmSpace[] = [];
