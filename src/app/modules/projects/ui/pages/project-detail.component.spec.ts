@@ -1,6 +1,12 @@
 import { NO_ERRORS_SCHEMA } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { ActivatedRoute, Router, convertToParamMap } from '@angular/router';
+import {
+  ActivatedRoute,
+  Router,
+  RouterLink,
+  convertToParamMap,
+  provideRouter,
+} from '@angular/router';
 import { of } from 'rxjs';
 import { ProjectDetailComponent } from './project-detail.component';
 import { ProjectService } from '../../data/project.service';
@@ -321,30 +327,49 @@ describe('ProjectDetailComponent', () => {
     expect(el.textContent).not.toContain('Requirement gathering');
   });
 
-  // sow #10 (specs/sow-scope-of-work.md §3): the scope-of-work entry point.
+  // sow #10 (specs/sow-scope-of-work.md §3): the scope-of-work entry point. FINDING-7-8: a
+  // RouterLink anchor, so these render with a real router and RouterLink kept.
+  function renderWithRouter() {
+    TestBed.configureTestingModule({
+      imports: [ProjectDetailComponent],
+      providers: [
+        ...providers().filter((p) => !('provide' in p) || p.provide !== Router),
+        provideRouter([]),
+      ],
+    });
+    TestBed.overrideComponent(ProjectDetailComponent, {
+      set: {
+        imports: [CanDirective, PeraEntityHeaderCardComponent, RouterLink],
+        schemas: [NO_ERRORS_SCHEMA],
+      },
+    });
+    const fixture = TestBed.createComponent(ProjectDetailComponent);
+    fixture.detectChanges();
+    fixture.detectChanges();
+    return fixture;
+  }
+
   const scopeLink = (el: HTMLElement) =>
-    Array.from(el.querySelectorAll<HTMLButtonElement>('button')).find(
-      (b) => b.textContent!.trim() === 'Scope of work',
+    Array.from(el.querySelectorAll<HTMLAnchorElement>('a')).find(
+      (a) => a.textContent!.trim() === 'Scope of work',
     );
 
   it('sow #10: links to the scope of work for a Stage project with scope.read', () => {
     granted = new Set([...ALL, PERM.scope.read]);
-    const fixture = render();
-    const link = scopeLink(fixture.nativeElement as HTMLElement);
+    const link = scopeLink(renderWithRouter().nativeElement as HTMLElement);
     expect(link).toBeDefined();
-    link!.click();
-    expect(navCalls).toContainEqual([['/projects', 'p1', 'scope-of-work']]);
+    expect(link!.getAttribute('href')).toBe('/projects/p1/scope-of-work');
   });
 
   it('sow #10: no scope-of-work link without scope.read', () => {
     granted = new Set(ALL);
-    expect(scopeLink(render().nativeElement as HTMLElement)).toBeUndefined();
+    expect(scopeLink(renderWithRouter().nativeElement as HTMLElement)).toBeUndefined();
   });
 
   it('sow #10: no scope-of-work link on a FreeStyle project', () => {
     granted = new Set([...ALL, PERM.scope.read]);
     data = { ...data, project: { ...data.project, workflowType: 'FreeStyle' } };
-    expect(scopeLink(render().nativeElement as HTMLElement)).toBeUndefined();
+    expect(scopeLink(renderWithRouter().nativeElement as HTMLElement)).toBeUndefined();
   });
 
   it('feeds both donuts from the task distribution helpers', () => {

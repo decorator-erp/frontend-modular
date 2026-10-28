@@ -81,16 +81,12 @@
             </svg>
             {{ catalog.t('nav.reqGathering') }}
           </button>
-          @if (isStage()) {
-            <button
-              type="button"
-              [class]="btnClass"
-              *peraCan="perm.scope"
-              (click)="openScopeOfWork()"
-            >
-              {{ catalog.t('sow.title') }}
-            </button>
-          }
+          <a
+            *peraCan="isStage() ? perm.scope : []"
+            [class]="btnClass"
+            [routerLink]="['/projects', proj.id, 'scope-of-work']"
+            >{{ catalog.t('sow.title') }}</a
+          >
           <button type="button" [class]="btnClass" *peraCan="perm.newStage" (click)="newStage()">
             <svg
               width="13"

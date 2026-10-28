@@ -6,7 +6,7 @@ import {
   inject,
   signal,
 } from '@angular/core';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { ProjectService } from '../../data/project.service';
@@ -121,6 +121,7 @@ const STL_GRID = 'grid grid-cols-[minmax(0,1fr)_9rem_8rem_6rem_9rem] gap-3 items
     PeraEntityHeaderCardComponent,
     PeraSkeletonComponent,
     PeraStatusBadgeComponent,
+    RouterLink,
     StageTimelineComponent,
     TasksGanttViewComponent,
     ActivityFeedComponent,
@@ -592,12 +593,6 @@ export class ProjectDetailComponent implements OnInit {
   openRequirementGathering(): void {
     const project = this.project();
     if (project) void this.router.navigate(['/crm/projects', project.id]);
-  }
-
-  /** sow #10: header → the project's scope of work (Stage projects with `scope.read`). */
-  openScopeOfWork(): void {
-    const project = this.project();
-    if (project) void this.router.navigate(['/projects', project.id, 'scope-of-work']);
   }
 
   /** Header → create a task on the active (or first) stage; reload on success. */
