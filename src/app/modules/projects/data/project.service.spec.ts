@@ -81,4 +81,33 @@ describe('ProjectService', () => {
       expect(ERROR_MESSAGES_AR['projects.ClientNotFound']).toBeTruthy();
     });
   });
+
+  describe('getByClient (008b #1) — GET /api/projects, filtered on clientId client-side', () => {
+    it("lists the first 100 visible projects and keeps only the client's", () => {
+      let ids: string[] = [];
+      service.getByClient('c1').subscribe((r) => (ids = r.map((p) => p.id)));
+
+      const call = http.expectOne(
+        (r) =>
+          r.method === 'GET' &&
+          r.url === `${environment.apiUrl}/projects` &&
+          r.params.get('pageNumber') === '1' &&
+          r.params.get('pageSize') === '100',
+      );
+      expect(call.request.params.has('clientId')).toBe(false);
+      call.flush({
+        items: [
+          { id: 'p1', clientId: 'c1' },
+          { id: 'p2', clientId: 'c2' },
+          { id: 'p3', clientId: 'c1' },
+        ],
+        pageNumber: 1,
+        pageSize: 100,
+        totalCount: 3,
+        totalPages: 1,
+      });
+
+      expect(ids).toEqual(['p1', 'p3']);
+    });
+  });
 });
