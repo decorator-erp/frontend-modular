@@ -116,6 +116,21 @@ describe('ERROR_MESSAGES / ERROR_MESSAGES_AR — contract §5 codes (009b X-2)',
     expect(ERROR_MESSAGES_AR[code]).not.toBe(ERROR_MESSAGES[code]);
   });
 
+  // FINDING-5-9: codes the CRM screens raise that X-2 left without Arabic.
+  it.each([
+    'crm.meetings.CancelReasonRequired',
+    'crm.periods.InvalidCloseTime',
+    'crm.items.ItemLocked',
+    'crm.items.NotPending',
+    'crm.items.OnlyLockedSuperseded',
+    'crm.items.InvalidSource',
+    'crm.meetings.NotFound',
+  ])('%s has EN and AR copy (FINDING-5-9)', (code) => {
+    expect(ERROR_MESSAGES[code]?.trim()).toBeTruthy();
+    expect(ERROR_MESSAGES_AR[code]?.trim()).toBeTruthy();
+    expect(ERROR_MESSAGES_AR[code]).not.toBe(ERROR_MESSAGES[code]);
+  });
+
   it('every AR entry has an EN entry of record', () => {
     for (const code of Object.keys(ERROR_MESSAGES_AR)) {
       expect(ERROR_MESSAGES[code], code).toBeTruthy();
