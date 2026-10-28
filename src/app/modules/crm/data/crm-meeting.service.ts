@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { ApiService } from '@platform/http/api.service';
+import type { PagedResult } from '@platform/types';
 import { MeetingSlotStatus, MeetingStatus, MeetingType } from '../model/crm-enums';
 import type {
   CancelMeetingRequest,
@@ -89,10 +90,27 @@ export class CrmMeetingService extends ApiService {
     );
   }
 
-  /** `GET /?projectId&skip&take` — a bare array, no `PagedResult` wrapper. */
-  search(projectId?: string, skip = 0, take = 50): Observable<CrmMeeting[]> {
-    return this.get<unknown>('/crm/meetings', { projectId, skip, take }).pipe(
-      map((r) => this.unwrapArray<unknown>(r).map((m) => this.normalizeMeeting(m))),
+  /**
+   * `GET /?projectId&pageNumber&pageSize` → `PagedResult<CrmMeetingResponse>`, newest first (009b #18).
+   * All three params are required by the route (`int`, not `int?`); `pageSize` is 1..200. A project
+   * outside the caller's scope is 404 `crm.meetings.NotFound`.
+   */
+  search(projectId: string, pageNumber = 1, pageSize = 50): Observable<PagedResult<CrmMeeting>> {
+    return this.get<unknown>('/crm/meetings', { projectId, pageNumber, pageSize }).pipe(
+      map((r) => {
+        const page = this.unwrap(r);
+        const items = this.unwrapArray<unknown>(page).map((m) => this.normalizeMeeting(m));
+        const size = this.field<number>(page, 'pageSize') ?? pageSize;
+        const totalCount = this.field<number>(page, 'totalCount') ?? items.length;
+        return {
+          items,
+          totalCount,
+          page: this.field<number>(page, 'pageNumber') ?? pageNumber,
+          pageSize: size,
+          totalPages:
+            this.field<number>(page, 'totalPages') ?? (size ? Math.ceil(totalCount / size) : 1),
+        };
+      }),
     );
   }
 

@@ -63,7 +63,10 @@ describe('CrmDashboardComponent', () => {
         { provide: ProjectService, useValue: projectsApi },
         { provide: CrmItemService, useValue: itemsApi },
         { provide: CrmPeriodService, useValue: { list: vi.fn().mockReturnValue(of(periods)) } },
-        { provide: CrmMeetingService, useValue: { search: vi.fn().mockReturnValue(of([])) } },
+        {
+          provide: CrmMeetingService,
+          useValue: { search: vi.fn().mockReturnValue(of({ items: [] })) },
+        },
         { provide: ModalService, useValue: { open: vi.fn() } },
       ],
     });

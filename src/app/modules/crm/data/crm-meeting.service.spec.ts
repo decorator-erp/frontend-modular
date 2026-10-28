@@ -1,0 +1,61 @@
+import { TestBed } from '@angular/core/testing';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { provideHttpClient } from '@angular/common/http';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import type { PagedResult } from '@platform/types';
+import { environment } from '../../../../environments/environment';
+import type { CrmMeeting } from '../model';
+import { CrmMeetingService } from './crm-meeting.service';
+
+describe('CrmMeetingService', () => {
+  let service: CrmMeetingService;
+  let http: HttpTestingController;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      providers: [CrmMeetingService, provideHttpClient(), provideHttpClientTesting()],
+    });
+    service = TestBed.inject(CrmMeetingService);
+    http = TestBed.inject(HttpTestingController);
+  });
+
+  afterEach(() => http.verify());
+
+  const url = (path: string) => `${environment.apiUrl}${path}`;
+
+  describe('search (009b #18)', () => {
+    it('sends projectId, pageNumber and pageSize and reads the PagedResult', () => {
+      let page: PagedResult<CrmMeeting> | undefined;
+      service.search('P').subscribe((p) => (page = p));
+
+      const req = http.expectOne((r) => r.url === url('/crm/meetings'));
+      expect(req.request.method).toBe('GET');
+      expect(req.request.params.get('projectId')).toBe('P');
+      expect(req.request.params.get('pageNumber')).toBe('1');
+      expect(req.request.params.get('pageSize')).toBe('50');
+      expect(req.request.params.has('skip')).toBe(false);
+      expect(req.request.params.has('take')).toBe(false);
+      req.flush({
+        items: [{ id: 'M', projectId: 'P', title: 'Kick-off', slots: [] }],
+        pageNumber: 2,
+        pageSize: 50,
+        totalCount: 51,
+        totalPages: 2,
+      });
+
+      expect(page?.items.map((m) => m.id)).toEqual(['M']);
+      expect(page?.page).toBe(2);
+      expect(page?.totalCount).toBe(51);
+      expect(page?.totalPages).toBe(2);
+    });
+
+    it('passes an explicit page', () => {
+      service.search('P', 3, 20).subscribe();
+
+      const req = http.expectOne((r) => r.url === url('/crm/meetings'));
+      expect(req.request.params.get('pageNumber')).toBe('3');
+      expect(req.request.params.get('pageSize')).toBe('20');
+      req.flush({ items: [], pageNumber: 3, pageSize: 20, totalCount: 0, totalPages: 0 });
+    });
+  });
+});

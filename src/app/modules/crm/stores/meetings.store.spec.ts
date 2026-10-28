@@ -1,8 +1,10 @@
 import { TestBed } from '@angular/core/testing';
+import { HttpErrorResponse } from '@angular/common/http';
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { NEVER, of, throwError } from 'rxjs';
 import { CrmMeetingService } from '../data/crm-meeting.service';
 import { MeetingSlotStatus, MeetingStatus, MeetingType } from '../model/crm-enums';
+import type { PagedResult } from '@platform/types';
 import type { CrmMeeting, CrmMeetingSlot } from '../model';
 import { isSlotHeld, isSlotHoldExpired, MeetingsStore } from './meetings.store';
 
@@ -44,9 +46,14 @@ function meeting(over: Partial<CrmMeeting> = {}): CrmMeeting {
   };
 }
 
+/** 009b #18: `search` reads a `PagedResult`. */
+function page(items: CrmMeeting[]): PagedResult<CrmMeeting> {
+  return { items, totalCount: items.length, page: 1, pageSize: 50, totalPages: 1 };
+}
+
 function apiMock() {
   return {
-    search: vi.fn().mockReturnValue(of([meeting()])),
+    search: vi.fn().mockReturnValue(of(page([meeting()]))),
     portalList: vi.fn().mockReturnValue(of([meeting()])),
     freeSlots: vi.fn().mockReturnValue(of([])),
     propose: vi.fn().mockReturnValue(of('new-id')),
@@ -99,6 +106,24 @@ describe('MeetingsStore', () => {
       expect(s.error()).toBe('Could not load meetings.');
       expect(s.loading()).toBe(false);
     });
+
+    it('maps the scope 404 crm.meetings.NotFound to notFound, not an error (009b #18)', () => {
+      api.search.mockReturnValue(
+        throwError(
+          () =>
+            new HttpErrorResponse({
+              status: 404,
+              error: { status: 404, title: 'crm.meetings.NotFound' },
+            }),
+        ),
+      );
+      const s = store();
+      s.load(PROJECT_ID);
+      expect(s.notFound()).toBe(true);
+      expect(s.error()).toBeNull();
+      expect(s.meetings()).toEqual([]);
+      expect(s.loading()).toBe(false);
+    });
   });
 
   describe('derived selectors', () => {
@@ -118,7 +143,7 @@ describe('MeetingsStore', () => {
         requestedByContactId: 'c2',
         status: MeetingStatus.Scheduled,
       });
-      api.search.mockReturnValue(of([clientRequested, employeeProposed, scheduled]));
+      api.search.mockReturnValue(of(page([clientRequested, employeeProposed, scheduled])));
       const s = store();
 
       s.load(PROJECT_ID);
@@ -134,7 +159,7 @@ describe('MeetingsStore', () => {
         scheduledAtUtc: null,
         createdAtUtc: '2026-07-19T00:00:00.000Z',
       });
-      api.search.mockReturnValue(of([later, sooner, unscheduled]));
+      api.search.mockReturnValue(of(page([later, sooner, unscheduled])));
       const s = store();
 
       s.load(PROJECT_ID);

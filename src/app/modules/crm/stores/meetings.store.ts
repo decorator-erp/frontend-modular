@@ -1,4 +1,5 @@
 import { computed, inject } from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
 import { patchState, signalStore, withComputed, withMethods, withState } from '@ngrx/signals';
 import { CrmMeetingService } from '../data/crm-meeting.service';
 import { MeetingSlotStatus, MeetingStatus } from '../model/crm-enums';
@@ -21,6 +22,8 @@ interface MeetingsState {
   loadingSlots: boolean;
   mutating: boolean;
   error: string | null;
+  /** 009b #18 (X-5): the project is outside the caller's scope — 404 `crm.meetings.NotFound`. */
+  notFound: boolean;
 }
 
 const INITIAL: MeetingsState = {
@@ -31,6 +34,7 @@ const INITIAL: MeetingsState = {
   loadingSlots: false,
   mutating: false,
   error: null,
+  notFound: false,
 };
 
 /** True while `slot` is genuinely held — `Proposed` and its hold has not yet lapsed. */
@@ -83,10 +87,13 @@ export const MeetingsStore = signalStore(
   withMethods((store, api = inject(CrmMeetingService)) => ({
     /** Load every meeting for the project (office side). */
     load(projectId: string): void {
-      patchState(store, { loading: true, error: null, projectId });
+      patchState(store, { loading: true, error: null, notFound: false, projectId });
       api.search(projectId).subscribe({
-        next: (meetings) => patchState(store, { meetings, loading: false }),
-        error: () => patchState(store, { loading: false, error: 'Could not load meetings.' }),
+        next: (page) => patchState(store, { meetings: page.items, loading: false }),
+        error: (err: unknown) =>
+          err instanceof HttpErrorResponse && err.status === 404
+            ? patchState(store, { meetings: [], loading: false, notFound: true })
+            : patchState(store, { loading: false, error: 'Could not load meetings.' }),
       });
     },
 

@@ -37,7 +37,10 @@ function make(data: CrmItemFormDialogData, api: Partial<CrmItemService>) {
     imports: [CrmItemFormComponent],
     providers: [
       { provide: CrmItemService, useValue: api },
-      { provide: CrmMeetingService, useValue: { search: vi.fn().mockReturnValue(of([])) } },
+      {
+        provide: CrmMeetingService,
+        useValue: { search: vi.fn().mockReturnValue(of({ items: [] })) },
+      },
       { provide: PERA_MODAL_DATA, useValue: data },
       { provide: PeraModalRef, useValue: { close } },
       { provide: ToastService, useValue: { show: vi.fn() } },

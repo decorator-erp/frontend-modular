@@ -964,6 +964,7 @@ export const AR: Partial<Record<CatalogKey, string>> = {
   'sched.meeting': 'الاجتماع',
   'sched.meetings': 'الاجتماعات',
   'sched.mon': 'اثنين',
+  'sched.notFound': 'لم يتم العثور على هذا المشروع.',
   'sched.onSite': 'في الموقع',
   'sched.online': 'أونلاين',
   'sched.proposeSlots': 'اقتراح مواعيد للعميل',

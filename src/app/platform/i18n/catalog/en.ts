@@ -1026,6 +1026,7 @@ export const EN = {
   'sched.meeting': 'Meeting',
   'sched.meetings': 'Meetings',
   'sched.mon': 'Mon',
+  'sched.notFound': 'This project was not found.',
   'sched.onSite': 'On site',
   'sched.online': 'Online',
   'sched.proposeSlots': 'Propose slots to client',

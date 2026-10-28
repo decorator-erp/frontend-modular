@@ -177,10 +177,10 @@ export class CrmItemFormComponent {
   }
 
   constructor() {
-    this.meetingService.search(this.data.projectId).subscribe((meetings: CrmMeeting[]) => {
+    this.meetingService.search(this.data.projectId).subscribe((page) => {
       this.meetingOptions.set([
         { value: '', label: '—' },
-        ...meetings.map((m) => ({ value: m.id, label: m.title })),
+        ...page.items.map((m: CrmMeeting) => ({ value: m.id, label: m.title })),
       ]);
     });
   }
