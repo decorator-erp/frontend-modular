@@ -676,6 +676,7 @@ export const EN = {
   'hub.kindSingle': 'Single choice',
   'hub.kindText': 'Text',
   'hub.loadError': 'Could not load this client.',
+  'hub.clientNotFound': 'Client not found.',
   // The client page reports project work and links out to it — it never edits it.
   'hub.gatheringSummary': 'Requirement gathering',
   'hub.manageInProject': 'Manage in project',

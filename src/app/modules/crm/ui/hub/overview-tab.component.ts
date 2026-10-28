@@ -175,7 +175,7 @@ export class ClientHubOverviewTabComponent {
     const ok = await this.modal
       .open<boolean>(CrmContactFormComponent, {
         size: 'md',
-        data: { clientId: client.id, clientName: `${client.firstName} ${client.lastName}` },
+        data: { clientId: client.id, clientName: this.store.clientName() },
       })
       .afterClosed();
     if (ok) this.store.reloadContacts();

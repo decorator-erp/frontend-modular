@@ -6,6 +6,7 @@ import { ApprovalState } from '../../model/crm-enums';
 import {
   ModalService,
   PeraButtonComponent,
+  PeraEmptyComponent,
   PeraPageHeaderComponent,
   PeraSkeletonComponent,
   PeraStatusBadgeComponent,
@@ -42,6 +43,7 @@ type HubTab = 'overview' | 'gathering' | 'meetings' | 'approvals';
   imports: [
     RouterLink,
     PeraButtonComponent,
+    PeraEmptyComponent,
     PeraPageHeaderComponent,
     PeraSkeletonComponent,
     PeraStatusBadgeComponent,
@@ -54,7 +56,7 @@ type HubTab = 'overview' | 'gathering' | 'meetings' | 'approvals';
   host: { class: 'block bg-bg min-h-full' },
   template: `
     @if (store.client(); as client) {
-      <pera-page-header [title]="client.firstName + ' ' + client.lastName">
+      <pera-page-header [title]="store.clientName()">
         <div toolbar class="fs-caption text-text-secondary flex items-center gap-2">
           @if (store.primaryContact(); as pc) {
             <span>{{ catalog.t('hub.primaryContact') }}: {{ pc.firstName }} {{ pc.lastName }}</span>
@@ -136,6 +138,8 @@ type HubTab = 'overview' | 'gathering' | 'meetings' | 'approvals';
           <app-client-hub-approvals-tab />
         }
       }
+    } @else if (store.error(); as error) {
+      <div class="p-6"><pera-empty [title]="catalog.t(error)" /></div>
     } @else {
       <div class="p-6"><pera-skeleton [height]="28" [width]="256" /></div>
     }

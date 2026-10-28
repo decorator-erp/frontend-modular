@@ -617,6 +617,7 @@ export const AR: Partial<Record<CatalogKey, string>> = {
   'hub.kindSingle': 'اختيار واحد',
   'hub.kindText': 'نص',
   'hub.loadError': 'تعذّر تحميل بيانات هذا العميل.',
+  'hub.clientNotFound': 'العميل غير موجود.',
   'hub.gatheringSummary': 'تجميع المتطلبات',
   'hub.manageInProject': 'الإدارة في المشروع',
   'hub.manageBrief': 'موجز التصميم',

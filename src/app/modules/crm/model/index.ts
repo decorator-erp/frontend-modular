@@ -119,6 +119,30 @@ export interface CrmClientOption {
 }
 
 /**
+ * `GET /api/clients/{id}` → `ClientResponse` (`ClientContracts.cs:12-21`), read by the CRM-side
+ * `CrmClientService.getClient` for the client hub (009b #30, D-b). It carries **no name, email
+ * or phone**: the hub's display name comes from the primary contact.
+ */
+export interface CrmClient {
+  id: string;
+  appUserId: string;
+  address: string;
+  notes: string | null;
+  jobTitle: string | null;
+  maritalStatus: string | null;
+  representativeName: string | null;
+  children: CrmClientChild[];
+  isActive: boolean;
+}
+
+/** `ClientChildResponse(Id, Gender, Age)`; `gender` is a one-character string. */
+export interface CrmClientChild {
+  id: string;
+  gender: string;
+  age: number;
+}
+
+/**
  * Anonymous public submission (`POST /api/crm/public/leads`) — creates the lead only.
  * `PublicLeadRequest(FirstName, LastName, Email?, Phone?, Notes?)` (`CrmPublicEndpoints.cs:80`):
  * no intake and no honeypot are bound (009b #8, D-a).
