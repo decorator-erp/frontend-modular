@@ -580,6 +580,11 @@ export const ERROR_MESSAGES_AR: Record<string, string> = {
   'crm.items.BriefProjectMismatch': 'هذا الموجز ليس ضمن مشروع البند.',
   'crm.items.NoteProjectMismatch': 'هذه الملاحظة ليست ضمن مشروع البند أو عميله.',
   'crm.meetings.SlotTooLong': 'لا يتجاوز الموعد 8 ساعات.',
+  // 009b #20: the propose form's codes.
+  'crm.meetings.InvalidSlotRange': 'يجب أن ينتهي الموعد بعد بدايته.',
+  'crm.meetings.NoSlotsProvided': 'اقترح موعدًا واحدًا على الأقل.',
+  'crm.periods.NotFound': 'فترة جمع المتطلبات غير موجودة.',
+  'crm.periods.NotOpen': 'فترة جمع المتطلبات ليست مفتوحة.',
   'crm.meetings.ConcurrentUpdate': 'عدّل شخص آخر الاجتماع. أعِد التحميل وحاول مرة أخرى.',
   'crm.meetings.SlotExpired': 'مضى وقت بدء هذا الموعد. اقترح وقتًا جديدًا.',
   'crm.notes.ProjectMismatch': 'مشروع الملاحظة لا يخص هذا العميل.',

@@ -596,7 +596,10 @@ export interface CrmMeeting {
   slots: CrmMeetingSlot[];
 }
 
-/** `POST /api/crm/meetings/propose` body. `targetEmployeeId` is always `project.productOwnerId`. */
+/**
+ * `POST /api/crm/meetings/propose` body — `ProposeMeetingRequest(ProjectId, Title, Type, Slots, PeriodId?,
+ * Location?, DurationMinutes?)`. The proposer is the caller's token (009b #20: no `targetEmployeeId`).
+ */
 export interface ProposeMeetingRequest {
   projectId: string;
   periodId?: string | null;
@@ -604,7 +607,6 @@ export interface ProposeMeetingRequest {
   type: MeetingType;
   location?: string | null;
   durationMinutes?: number | null;
-  targetEmployeeId: string;
   slots: SlotRequest[];
 }
 

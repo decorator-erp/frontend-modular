@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { ApiService } from '@platform/http/api.service';
+import { handled } from '@platform/http/handled-errors';
 import type { PagedResult } from '@platform/types';
 import { MeetingSlotStatus, MeetingStatus, MeetingType } from '../model/crm-enums';
 import type {
@@ -21,10 +22,8 @@ import type {
  * domain object, and the office `MeetingsStore` (T046) drives both sides.
  *
  * **The server computes availability; the client derives nothing.** ⚠️ There is NO
- * `employeeId` param anywhere in this domain — `GET /free-slots` and `propose`'s
- * `targetEmployeeId` both resolve to `project.CreatedById` (verified against the
- * backend working tree: `ProjectResponse.productOwnerId` is a read-model alias for
- * the SAME column, never an independent value). Callers pass `project.productOwnerId`.
+ * `employeeId` param anywhere in this domain — `GET /free-slots` takes only the project, and
+ * `propose` takes its proposer from the caller's token (009b #20).
  */
 @Injectable({ providedIn: 'root' })
 export class CrmMeetingService extends ApiService {
@@ -35,18 +34,26 @@ export class CrmMeetingService extends ApiService {
     );
   }
 
-  /** `POST /propose` → `201` with a bare `Guid`. Permission `crm.meetings.schedule`. */
+  /**
+   * `POST /propose` → `201 { meetingId }` (009b #20). Permission `crm.meetings.schedule`; the proposer
+   * is the caller's token. 400 `crm.meetings.SlotTooLong` / `InvalidSlotRange` / `NoSlotsProvided`,
+   * 404 `crm.periods.NotFound`, 409 `crm.periods.NotOpen`; 403 `crm.access.NotAnEmployee` is handled
+   * by the form (X-6), not the global toast.
+   */
   propose(request: ProposeMeetingRequest): Observable<string> {
-    return this.post<unknown>('/crm/meetings/propose', {
-      projectId: request.projectId,
-      periodId: request.periodId ?? null,
-      title: request.title,
-      type: request.type,
-      location: request.location ?? null,
-      durationMinutes: request.durationMinutes ?? null,
-      targetEmployeeId: request.targetEmployeeId,
-      slots: request.slots,
-    }).pipe(map((r) => this.unwrap<string>(r)));
+    return this.post<unknown>(
+      '/crm/meetings/propose',
+      {
+        projectId: request.projectId,
+        periodId: request.periodId ?? null,
+        title: request.title,
+        type: request.type,
+        location: request.location ?? null,
+        durationMinutes: request.durationMinutes ?? null,
+        slots: request.slots,
+      },
+      { context: handled(403) },
+    ).pipe(map((r) => this.unwrapId(r, 'meetingId')));
   }
 
   /** `PUT /slots/{slotId}/accept` → `204`. Permission `crm.meetings.respond_slot` (counterparty-checked server-side). */

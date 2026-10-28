@@ -4,7 +4,8 @@ import { provideHttpClient } from '@angular/common/http';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { PagedResult } from '@platform/types';
 import { environment } from '../../../../environments/environment';
-import { MeetingSlotStatus } from '../model/crm-enums';
+import { HANDLED_ERROR_STATUSES } from '@platform/http/handled-errors';
+import { MeetingSlotStatus, MeetingType } from '../model/crm-enums';
 import type { CrmMeeting } from '../model';
 import { CrmMeetingService } from './crm-meeting.service';
 
@@ -93,6 +94,38 @@ describe('CrmMeetingService', () => {
           proposedByContactId: 'K',
         },
       ]);
+    });
+  });
+
+  describe('propose (009b #20)', () => {
+    it('sends no targetEmployeeId, marks 403 handled and reads { meetingId }', () => {
+      let id: string | undefined;
+      service
+        .propose({
+          projectId: 'P',
+          periodId: 'Per',
+          title: 'Kick-off',
+          type: MeetingType.InOffice,
+          location: null,
+          durationMinutes: 60,
+          slots: [{ startsAtUtc: '2099-01-01T08:00:00Z', endsAtUtc: '2099-01-01T09:00:00Z' }],
+        })
+        .subscribe((v) => (id = v));
+
+      const req = http.expectOne({ method: 'POST', url: url('/crm/meetings/propose') });
+      expect(req.request.body).toEqual({
+        projectId: 'P',
+        periodId: 'Per',
+        title: 'Kick-off',
+        type: MeetingType.InOffice,
+        location: null,
+        durationMinutes: 60,
+        slots: [{ startsAtUtc: '2099-01-01T08:00:00Z', endsAtUtc: '2099-01-01T09:00:00Z' }],
+      });
+      expect(req.request.context.get(HANDLED_ERROR_STATUSES)).toEqual([403]);
+      req.flush({ meetingId: 'M' }, { status: 201, statusText: 'Created' });
+
+      expect(id).toBe('M');
     });
   });
 });

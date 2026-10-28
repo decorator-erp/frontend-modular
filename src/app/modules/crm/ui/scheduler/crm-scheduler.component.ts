@@ -108,14 +108,12 @@ export class CrmSchedulerComponent implements OnInit {
   }
 
   protected async openPropose(): Promise<void> {
-    const p = this.project();
-    if (!p) return;
+    if (!this.project()) return;
     const ok = await this.modal
       .open<boolean>(CrmProposeSlotsComponent, {
         size: 'lg',
         data: {
           projectId: this.projectId(),
-          targetEmployeeId: p.productOwnerId,
           periodId: this.period.openPeriod()?.id ?? null,
         },
       })

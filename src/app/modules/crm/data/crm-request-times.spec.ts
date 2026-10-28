@@ -46,7 +46,6 @@ describe('CRM request times end in Z (009b X-4)', () => {
       projectId: 'p1',
       title: 'Kick-off',
       type: MeetingType.InOffice,
-      targetEmployeeId: 'e1',
       slots: [first, second],
     };
     meetings.propose(request).subscribe();
