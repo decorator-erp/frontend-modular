@@ -38,7 +38,6 @@ function item(over: Partial<RequirementItem> = {}): RequirementItem {
 function apiMock() {
   return {
     listByProject: vi.fn().mockReturnValue(of([item()])),
-    portalSearch: vi.fn().mockReturnValue(of([item()])),
     create: vi.fn().mockReturnValue(of('new-id')),
     update: vi.fn().mockReturnValue(of(undefined)),
     send: vi.fn().mockReturnValue(of(undefined)),
@@ -177,7 +176,7 @@ describe('ItemsStore', () => {
   });
 
   describe('portal methods', () => {
-    it('portalCreate calls the api and reloads the portal list for that project', () => {
+    it('portalCreate calls the api and reloads nothing', () => {
       const s = store();
 
       s.portalCreate({
@@ -189,7 +188,12 @@ describe('ItemsStore', () => {
       });
 
       expect(api.portalCreate).toHaveBeenCalled();
-      expect(api.portalSearch).toHaveBeenCalledWith(PROJECT_ID);
+      expect(s.mutating()).toBe(false);
+    });
+
+    // 009b #N-3: no portal items read exists (EP/CrmPortalEndpoints.cs:36-153).
+    it('has no portal list load (009b #N-3)', () => {
+      expect((store() as unknown as Record<string, unknown>)['loadPortal']).toBeUndefined();
     });
   });
 

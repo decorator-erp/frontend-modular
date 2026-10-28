@@ -93,13 +93,6 @@ export class CrmItemService extends ApiService {
     }).pipe(map((r) => this.unwrapId(r, 'itemId')));
   }
 
-  /** `GET /portal/projects/{projectId}/requirement-items` — the client's own items for one project. */
-  portalSearch(projectId: string): Observable<RequirementItem[]> {
-    return this.get<unknown>(`/crm/portal/projects/${projectId}/requirement-items`).pipe(
-      map((r) => this.unwrapArray<unknown>(r).map((i) => this.normalize(i))),
-    );
-  }
-
   /**
    * `GET /api/crm/periods/{periodId}/items?pageNumber&pageSize` → `PagedResult`, newest first, with no
    * category/room/status filter (009b #23) — filtering is the caller's, client-side.

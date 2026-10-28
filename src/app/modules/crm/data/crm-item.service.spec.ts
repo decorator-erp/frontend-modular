@@ -230,4 +230,10 @@ describe('CrmItemService', () => {
       expect(id).toBe('I');
     });
   });
+
+  // 009b #N-3: GET /crm/portal/projects/{id}/requirement-items has no backend route
+  // (EP/CrmPortalEndpoints.cs:36-153; only POST /portal/requirement-items exists).
+  it('has no portal items read (009b #N-3)', () => {
+    expect((service as unknown as Record<string, unknown>)['portalSearch']).toBeUndefined();
+  });
 });

@@ -105,7 +105,12 @@ describe('CrmApprovalsInboxComponent — brief head diff (009b #16)', () => {
 
 // 009b #N-2: no portal approvals routes (EP/CrmPortalEndpoints.cs:36-153).
 describe('CrmApprovalsInboxComponent — not available (009b #N-2)', () => {
-  function render(error: string | null): ComponentFixture<CrmApprovalsInboxComponent> {
+  const portalSearch = vi.fn().mockReturnValue(of([]));
+
+  function render(
+    error: string | null,
+    pending: ClientApprovalTrailRow[] = [ROW],
+  ): ComponentFixture<CrmApprovalsInboxComponent> {
     TestBed.configureTestingModule({
       imports: [CrmApprovalsInboxComponent],
       providers: [
@@ -122,7 +127,7 @@ describe('CrmApprovalsInboxComponent — not available (009b #N-2)', () => {
             ),
           },
         },
-        { provide: CrmItemService, useValue: {} },
+        { provide: CrmItemService, useValue: { portalSearch } },
       ],
     });
     TestBed.overrideComponent(CrmApprovalsInboxComponent, {
@@ -134,9 +139,9 @@ describe('CrmApprovalsInboxComponent — not available (009b #N-2)', () => {
               load: vi.fn(),
               loading: signal(false),
               error: signal(error),
-              pending: signal([ROW]),
+              pending: signal(pending),
               decided: signal([]),
-              rows: signal([ROW]),
+              rows: signal(pending),
             },
           },
         ],
@@ -163,5 +168,14 @@ describe('CrmApprovalsInboxComponent — not available (009b #N-2)', () => {
     expect(el.querySelectorAll('pera-button')).toHaveLength(0);
     expect(text).not.toContain('Approve');
     expect(text).not.toContain('Reject');
+  });
+
+  it('shows an item row detail as not available, with no items read (009b #N-3)', () => {
+    const fixture = render(null, [{ ...ROW, subjectType: ApprovalSubjectType.RequirementItem }]);
+    const el = fixture.nativeElement as HTMLElement;
+    (el.querySelector('li button') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(el.textContent).toContain('Not available');
+    expect(portalSearch).not.toHaveBeenCalled();
   });
 });

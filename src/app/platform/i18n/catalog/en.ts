@@ -557,6 +557,7 @@ export const EN = {
   'client.primaryHint':
     'Only the primary contact can approve briefs and requirement items. Marking this person primary un-marks the current one.',
   'client.profileUnavailable': 'Your profile is not available right now. Please check back soon.',
+  'client.reqsNotAvailable': 'Your requirements list is not available yet.',
   'client.quickActions': 'Quick actions',
   'client.roleClient': 'Client · primary contact',
   'client.roleCoord': 'CRM coordinator',

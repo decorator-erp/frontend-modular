@@ -97,16 +97,6 @@ export const ItemsStore = signalStore(
           });
         },
 
-        /** Client portal — the client's own items for one project. */
-        loadPortal(projectId: string): void {
-          patchState(store, { loading: true, error: null, projectId });
-          api.portalSearch(projectId).subscribe({
-            next: (items) => patchState(store, { items, loading: false }),
-            error: () =>
-              patchState(store, { loading: false, error: 'Could not load your requirements.' }),
-          });
-        },
-
         setPage(page: number): void {
           patchState(store, { page });
         },
@@ -176,10 +166,8 @@ export const ItemsStore = signalStore(
         portalCreate(request: ClientAddRequirementItemRequest): void {
           patchState(store, { mutating: true, error: null });
           api.portalCreate(request).subscribe({
-            next: () => {
-              patchState(store, { mutating: false });
-              this.loadPortal(request.projectId);
-            },
+            // 009b #N-3: no portal items read exists, so there is no list to reload.
+            next: () => patchState(store, { mutating: false }),
             error: () =>
               patchState(store, { mutating: false, error: 'Could not add your requirement.' }),
           });

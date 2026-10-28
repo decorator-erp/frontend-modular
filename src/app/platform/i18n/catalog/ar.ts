@@ -507,6 +507,7 @@ export const AR: Partial<Record<CatalogKey, string>> = {
   'client.primaryHint':
     'جهة الاتصال الرئيسية وحدها تعتمد الموجز والبنود. تحديد هذا الشخص رئيسياً يلغي الرئيسي الحالي.',
   'client.profileUnavailable': 'ملفك الشخصي غير متاح الآن. يرجى المحاولة لاحقاً.',
+  'client.reqsNotAvailable': 'قائمة متطلباتك غير متاحة بعد.',
   'client.quickActions': 'إجراءات سريعة',
   'client.roleClient': 'العميل · جهة الاتصال الرئيسية',
   'client.roleCoord': 'منسقة CRM',

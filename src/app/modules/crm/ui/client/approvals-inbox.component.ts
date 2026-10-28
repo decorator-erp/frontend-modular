@@ -1,18 +1,12 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { CrmBriefService } from '../../data/crm-brief.service';
-import { CrmItemService } from '../../data/crm-item.service';
 import { CatalogService } from '@platform/i18n/catalog.service';
 import { ErrorHandlerService, friendly } from '@platform/http/error-handler.service';
 import type { CatalogKey } from '@platform/i18n/catalog/en';
 import { formatCairoDate } from '@platform/i18n/intl-locale';
 import { ApprovalDecision, ApprovalSubjectType } from '../../model/crm-enums';
-import type {
-  BriefHeadDiff,
-  BriefSpace,
-  ClientApprovalTrailRow,
-  RequirementItem,
-} from '../../model';
+import type { BriefHeadDiff, BriefSpace, ClientApprovalTrailRow } from '../../model';
 import {
   PeraAlertComponent,
   PeraCardComponent,
@@ -155,16 +149,8 @@ const SUBJECT_NOUN_KEYS: Record<ApprovalSubjectType, CatalogKey> = {
                               }
                             }
                             @case (SUBJECT_TYPE.RequirementItem) {
-                              @if (itemDetail(); as item) {
-                                <p class="fs-body-sm text-text-primary m-0">{{ item.title }}</p>
-                                @if (item.details) {
-                                  <p class="fs-body-sm text-text-secondary m-0">
-                                    {{ item.details }}
-                                  </p>
-                                }
-                              } @else {
-                                <pera-empty [title]="catalog.t('appr.subjectItem')" />
-                              }
+                              <!-- 009b #N-3: no portal items read exists on the backend. -->
+                              <pera-empty [title]="catalog.t('appr.labelNotAvailable')" />
                             }
                           }
                         }
@@ -219,7 +205,6 @@ const SUBJECT_NOUN_KEYS: Record<ApprovalSubjectType, CatalogKey> = {
 })
 export class CrmApprovalsInboxComponent {
   private readonly briefApi = inject(CrmBriefService);
-  private readonly itemsApi = inject(CrmItemService);
   private readonly errors = inject(ErrorHandlerService);
   protected readonly catalog = inject(CatalogService);
   protected readonly store = inject(ApprovalsInboxStore);
@@ -232,7 +217,6 @@ export class CrmApprovalsInboxComponent {
   /** A failed diff read: 404 `crm.briefs.RoundNotFound` / `crm.portal.NotFound` (009b #16). */
   protected readonly diffError = signal<string | null>(null);
   protected readonly spaceDetail = signal<BriefSpace | null>(null);
-  protected readonly itemDetail = signal<RequirementItem | null>(null);
 
   constructor() {
     this.store.load();
@@ -263,7 +247,6 @@ export class CrmApprovalsInboxComponent {
     this.headDiff.set(null);
     this.diffError.set(null);
     this.spaceDetail.set(null);
-    this.itemDetail.set(null);
     this.detailLoading.set(true);
 
     if (row.subjectType === ApprovalSubjectType.DesignBrief) {
@@ -283,14 +266,6 @@ export class CrmApprovalsInboxComponent {
       this.briefApi.getMyBrief(row.projectId).subscribe({
         next: (view) => {
           this.spaceDetail.set(view.spaces.find((s) => s.id === row.subjectId) ?? null);
-          this.detailLoading.set(false);
-        },
-        error: () => this.detailLoading.set(false),
-      });
-    } else if (row.subjectType === ApprovalSubjectType.RequirementItem) {
-      this.itemsApi.portalSearch(row.projectId).subscribe({
-        next: (items) => {
-          this.itemDetail.set(items.find((i) => i.id === row.subjectId) ?? null);
           this.detailLoading.set(false);
         },
         error: () => this.detailLoading.set(false),
