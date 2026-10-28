@@ -7,6 +7,7 @@ import {
 } from '@angular/forms';
 import { map } from 'rxjs/operators';
 import { CrmPeriodService } from '../../../data/crm-period.service';
+import { injectReloadOnConflict } from '@platform/http/concurrency';
 import { ErrorHandlerService, friendly } from '@platform/http/error-handler.service';
 import { CatalogService } from '@platform/i18n/catalog.service';
 import {
@@ -98,6 +99,7 @@ export class CrmPeriodFormComponent {
   private readonly periods = inject(CrmPeriodService);
   private readonly errorHandler = inject(ErrorHandlerService);
   private readonly toast = inject(ToastService);
+  private readonly reloadOnConflict = injectReloadOnConflict();
   private readonly modalRef = inject(PeraModalRef) as PeraModalRef<boolean>;
   protected readonly catalog = inject(CatalogService);
   readonly data = inject(PERA_MODAL_DATA) as PeriodFormDialogData;
@@ -147,6 +149,8 @@ export class CrmPeriodFormComponent {
         this.modalRef.close(true);
       },
       error: (err) => {
+        // 009b #26: 409 crm.periods.ConcurrentUpdate → close as done so the card reloads (X-3).
+        if (this.reloadOnConflict(err, () => this.modalRef.close(true))) return;
         const parsed = this.errorHandler.parse(err);
         this.serverError.set({ ...parsed, generalMessage: friendly(parsed) });
         this.submitting.set(false);

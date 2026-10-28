@@ -22,6 +22,22 @@ describe('CrmPeriodService', () => {
 
   const url = (path: string) => `${environment.apiUrl}${path}`;
 
+  describe('open (009b #26)', () => {
+    it('emits the id read off the one-property 201 body', () => {
+      let id: string | undefined;
+      service.open('P', '2026-07-20T18:00:00Z', 'S').subscribe((v) => (id = v));
+
+      const req = http.expectOne({ method: 'POST', url: url('/crm/projects/P/periods') });
+      expect(req.request.body).toEqual({
+        projectStageId: 'S',
+        closesAtUtc: '2026-07-20T18:00:00Z',
+      });
+      req.flush({ periodId: 'Per' }, { status: 201, statusText: 'Created' });
+
+      expect(id).toBe('Per');
+    });
+  });
+
   describe('list (009b #25)', () => {
     it('normalizes CrmRequirementPeriodResponse, which has no closeNotifiedAtUtc or createdAtUtc', () => {
       let periods: unknown[] = [];

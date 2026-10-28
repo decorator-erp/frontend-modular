@@ -380,7 +380,6 @@ export const ERROR_MESSAGES: Record<string, string> = {
 
   // Requirement periods.
   'crm.periods.NotFound': 'Requirement period not found.',
-  'crm.periods.OpenPeriodExists': 'An open requirement period already exists for this project.',
   'crm.periods.NotOpen': 'The requirement period is not open.',
   'crm.periods.InvalidCloseTime': 'The close time must be in the future.',
   'crm.periods.OpenFailed': 'Could not open the requirement period. Please try again.',

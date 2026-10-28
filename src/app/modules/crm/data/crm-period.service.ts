@@ -9,7 +9,7 @@ import { RequirementPeriodStatus } from '../model/crm-enums';
  * no `closeNotifiedAtUtc` and no `createdAtUtc` (009b #25).
  *
  * A project holds AT MOST ONE open period at a time — `POST /periods` returns
- * `crm.periods.OpenPeriodExists` if one is already open — so `GET /periods` returns
+ * `crm.periods.AlreadyOpen` if one is already open — so `GET /periods` returns
  * the project's full history (closed periods included), not a single record.
  */
 export interface CrmPeriod {
@@ -30,7 +30,7 @@ export interface CrmPeriod {
 @Injectable({ providedIn: 'root' })
 export class CrmPeriodService extends ApiService {
   /**
-   * `POST /api/crm/projects/{projectId}/periods` → `201` with a bare `Guid`.
+   * `POST /api/crm/projects/{projectId}/periods` → `201 { periodId }` (009b #26).
    * `projectStageId` is optional — a stage-based project's period may anchor to a
    * specific stage; a free-style project passes `null`.
    */
@@ -38,7 +38,7 @@ export class CrmPeriodService extends ApiService {
     return this.post<unknown>(`/crm/projects/${projectId}/periods`, {
       projectStageId: projectStageId ?? null,
       closesAtUtc,
-    }).pipe(map((r) => this.unwrap<string>(r)));
+    }).pipe(map((r) => this.unwrapId(r, 'periodId')));
   }
 
   /** `GET /api/crm/projects/{projectId}/periods` — the project's full period history. */
