@@ -76,18 +76,6 @@ export const crmRoutes: Routes = [
       import('./ui/items/items-board.component').then((m) => m.CrmItemsBoardComponent),
   },
   {
-    // Declared before the bare `spaces` and `spaces/provisioning` routes, same reasoning
-    // as `/provisioning` already being declared ahead of `spaces` — the more specific path
-    // first. A fresh `SpacesStore` per route, same as every other spaces sub-route; the
-    // storefront calls `load()` itself, same entry point `spaces-page.component.ts` uses.
-    path: 'projects/:projectId/spaces/:spaceId/record',
-    canActivate: [PermissionGuard],
-    data: { permission: PERM.crm.spaces.manage },
-    providers: [SpacesStore],
-    loadComponent: () =>
-      import('./ui/spaces/storefront-page.component').then((m) => m.CrmStorefrontPageComponent),
-  },
-  {
     path: 'projects/:projectId/spaces/provisioning',
     canActivate: [PermissionGuard],
     data: { permission: PERM.crm.spaces.read },

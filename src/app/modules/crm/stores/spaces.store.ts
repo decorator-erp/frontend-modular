@@ -1,48 +1,38 @@
-import { computed, inject } from '@angular/core';
+import { inject } from '@angular/core';
 import type { HttpErrorResponse } from '@angular/common/http';
-import { patchState, signalStore, withComputed, withMethods, withState } from '@ngrx/signals';
-import type { Observable } from 'rxjs';
+import { patchState, signalStore, withMethods, withState } from '@ngrx/signals';
 import { map, switchMap } from 'rxjs/operators';
 import { CrmSpaceService } from '../data/crm-space.service';
-import { CrmSpaceItemService } from '../data/crm-space-item.service';
 import { CrmBriefService } from '../data/crm-brief.service';
 import { CrmLookupService } from '../data/crm-lookup.service';
 import { ErrorHandlerService } from '@platform/http/error-handler.service';
 import type { CatalogKey } from '@platform/i18n/catalog/en';
-import type { ParsedApiError } from '@platform/types';
 import { ApprovalState, CrmProvisionStatus } from '../model/crm-enums';
 import type {
-  AddSpaceItemRequest,
   BriefSpace,
   CreateSpaceRequest,
   CrmSpace,
   CrmSpaceType,
   ProvisionGroup,
   ProvisionSummary,
-  SetSpaceItemAttributeValuesRequest,
-  SetSpaceItemStatusRequest,
-  SpaceCompleteness,
-  SpaceItem,
   UpdateSpaceRequest,
 } from '../model';
 import type { MutationHandlers } from './mutation-handlers';
 
 /**
- * Route-scoped state for a project's spaces page — the registry, each space's board,
- * completeness and provisioning, plus the project brief so the per-space brief note has
- * something to bind.
+ * Route-scoped state for a project's spaces page — the registry and provisioning, plus the
+ * project brief so the per-space brief note has something to bind. 009b #N-5: no space-item
+ * routes exist on the backend, so the per-space board and completeness are gone.
  *
  * The brief is loaded here (core is importable from any feature) and entries are indexed
  * by `spaceId`; the *current* entry for a space is the newest one not referenced by any
- * other entry's `supersedesSpaceId`. Board mutations refetch the affected space.
+ * other entry's `supersedesSpaceId`.
  */
 
 interface SpacesState {
   projectId: string | null;
   spaces: CrmSpace[];
   spaceTypes: CrmSpaceType[];
-  boardBySpace: Record<string, SpaceItem[]>;
-  completenessBySpace: Record<string, SpaceCompleteness>;
   provisioning: ProvisionGroup[];
   provisioningSummary: ProvisionSummary[];
   /** The current (newest, not-superseded) brief entry per space id. */
@@ -50,7 +40,6 @@ interface SpacesState {
   briefId: string | null;
   loading: boolean;
   savingSpace: boolean;
-  mutatingBySpace: Record<string, boolean>;
   /** A catalog KEY, never prose — every consumer renders `catalog.t(error()!)`. */
   error: CatalogKey | null;
 }
@@ -59,15 +48,12 @@ const INITIAL: SpacesState = {
   projectId: null,
   spaces: [],
   spaceTypes: [],
-  boardBySpace: {},
-  completenessBySpace: {},
   provisioning: [],
   provisioningSummary: [],
   currentEntryBySpace: {},
   briefId: null,
   loading: false,
   savingSpace: false,
-  mutatingBySpace: {},
   error: null,
 };
 
@@ -95,79 +81,17 @@ export function indexCurrentEntries(spaces: BriefSpace[]): Record<string, BriefS
 export const SpacesStore = signalStore(
   withState<SpacesState>(INITIAL),
 
-  withComputed((store) => ({
-    incompleteSpaceIds: computed(() => {
-      const map = store.completenessBySpace();
-      return new Set(
-        Object.values(map)
-          .filter((c) => !c.isComplete)
-          .map((c) => c.spaceId),
-      );
-    }),
-  })),
-
   withMethods(
     (
       store,
       spacesApi = inject(CrmSpaceService),
-      itemsApi = inject(CrmSpaceItemService),
       briefApi = inject(CrmBriefService),
       lookup = inject(CrmLookupService),
       errors = inject(ErrorHandlerService),
     ) => {
-      const setMutating = (spaceId: string, on: boolean): void =>
-        patchState(store, (s) => ({ mutatingBySpace: { ...s.mutatingBySpace, [spaceId]: on } }));
-
-      const loadBoard = (spaceId: string): void => {
-        itemsApi.list(spaceId).subscribe({
-          next: (items) =>
-            patchState(store, (s) => ({ boardBySpace: { ...s.boardBySpace, [spaceId]: items } })),
-          error: () => patchState(store, { error: 'space.boardLoadFailed' }),
-        });
-      };
-
-      const loadCompleteness = (spaceId: string): void => {
-        itemsApi.completeness(spaceId).subscribe({
-          next: (c) =>
-            patchState(store, (s) => ({
-              completenessBySpace: { ...s.completenessBySpace, [spaceId]: c },
-            })),
-          error: () => patchState(store, { error: 'space.completenessFailed' }),
-        });
-      };
-
-      /**
-       * Board mutation: flag the space, refetch its board + completeness on success.
-       *
-       * `handlers.onError` gets the PARSED server error so a caller can name the reason — the
-       * picker renders it per row, which per-space `mutatingBySpace` could never express.
-       */
-      const mutateBoard = (
-        spaceId: string,
-        obs: Observable<unknown>,
-        errorKey: CatalogKey,
-        handlers?: MutationHandlers,
-      ): void => {
-        setMutating(spaceId, true);
-        obs.subscribe({
-          next: () => {
-            setMutating(spaceId, false);
-            loadBoard(spaceId);
-            loadCompleteness(spaceId);
-            handlers?.onDone?.();
-          },
-          error: (err: HttpErrorResponse) => {
-            setMutating(spaceId, false);
-            patchState(store, { error: errorKey });
-            handlers?.onError?.(errors.parse(err), errorKey);
-          },
-        });
-      };
-
       return {
         /**
-         * The full spaces-page load: registry + every space's board and completeness, the
-         * project brief, and the space-type lookup. Expensive by design — a screen that
+         * The full spaces-page load: the registry, the project brief, and the space-type lookup. Expensive by design — a screen that
          * only needs one slice should set the project with `setProject()` and call just
          * the loader it needs (see the provisioning page).
          */
@@ -191,13 +115,7 @@ export const SpacesStore = signalStore(
           if (!projectId) return;
           patchState(store, { loading: true });
           spacesApi.list(projectId).subscribe({
-            next: (spaces) => {
-              patchState(store, { spaces, loading: false });
-              for (const space of spaces) {
-                loadBoard(space.id);
-                loadCompleteness(space.id);
-              }
-            },
+            next: (spaces) => patchState(store, { spaces, loading: false }),
             error: () => patchState(store, { loading: false, error: 'space.loadFailed' }),
           });
         },
@@ -239,14 +157,6 @@ export const SpacesStore = signalStore(
             next: (provisioningSummary) => patchState(store, { provisioningSummary }),
             error: () => patchState(store, { error: 'space.provLoadFailed' }),
           });
-        },
-
-        board(spaceId: string): SpaceItem[] {
-          return store.boardBySpace()[spaceId] ?? [];
-        },
-
-        completeness(spaceId: string): SpaceCompleteness | undefined {
-          return store.completenessBySpace()[spaceId];
         },
 
         currentEntryFor(spaceId: string): BriefSpace | undefined {
@@ -330,90 +240,6 @@ export const SpacesStore = signalStore(
             next: () => this.loadSpaces(),
             error: () => patchState(store, { error: 'space.inUse' }),
           });
-        },
-
-        // ── Board mutations ───────────────────────────────────────────────
-        /** Either a catalog item or a custom entry — see {@link AddSpaceItemRequest}. */
-        addItem(spaceId: string, request: AddSpaceItemRequest, handlers?: MutationHandlers): void {
-          mutateBoard(spaceId, itemsApi.add(spaceId, request), 'space.itemSaveFailed', handlers);
-        },
-        /**
-         * The custom-entry path, named for what it does at the call site rather than
-         * making every caller assemble the union's custom variant by hand.
-         */
-        addCustomItem(
-          spaceId: string,
-          categoryId: string,
-          name: string,
-          handlers?: MutationHandlers,
-        ): void {
-          mutateBoard(
-            spaceId,
-            itemsApi.add(spaceId, { customName: name, customCategoryId: categoryId }),
-            'space.itemSaveFailed',
-            handlers,
-          );
-        },
-        /**
-         * Turn a custom row into a reference to a real catalog item. `crm.catalog.manage`,
-         * not `crm.spaces.manage` — gate the affordance accordingly.
-         */
-        promoteItem(
-          spaceId: string,
-          itemId: string,
-          catalogItemId: string,
-          handlers?: MutationHandlers,
-        ): void {
-          mutateBoard(
-            spaceId,
-            itemsApi.promote(spaceId, itemId, { catalogItemId }),
-            'space.itemSaveFailed',
-            handlers,
-          );
-        },
-        setItemStatus(spaceId: string, itemId: string, request: SetSpaceItemStatusRequest): void {
-          mutateBoard(
-            spaceId,
-            itemsApi.setStatus(spaceId, itemId, request),
-            'space.itemSaveFailed',
-          );
-        },
-        /**
-         * The pencil is hidden for a custom row (it inherits no catalog attributes), but
-         * this guards the path anyway rather than trusting the UI alone: a custom item
-         * short-circuits here, surfaced through the SAME `AttributeNotApplicable` key a
-         * 409 from this same call would map to via `domainErrorKey`, with no network
-         * round trip and no board refetch — nothing changed, so nothing to reload.
-         */
-        setItemAttributes(
-          spaceId: string,
-          itemId: string,
-          request: SetSpaceItemAttributeValuesRequest,
-          handlers?: MutationHandlers,
-        ): void {
-          const item = store.boardBySpace()[spaceId]?.find((i) => i.id === itemId);
-          if (item?.isCustom) {
-            const errorKey: CatalogKey = 'space.attrNotApplicable';
-            const parsed: ParsedApiError = {
-              status: 0,
-              generalMessage: '',
-              fieldErrors: {},
-              code: 'crm.catalog.AttributeNotApplicable',
-              raw: null,
-            };
-            patchState(store, { error: errorKey });
-            handlers?.onError?.(parsed, errorKey);
-            return;
-          }
-          mutateBoard(
-            spaceId,
-            itemsApi.setAttributes(spaceId, itemId, request),
-            'space.itemSaveFailed',
-            handlers,
-          );
-        },
-        removeItem(spaceId: string, itemId: string): void {
-          mutateBoard(spaceId, itemsApi.remove(spaceId, itemId), 'space.itemRemoveFailed');
         },
 
         // ── Brief note (routes through the existing brief commands) ────────

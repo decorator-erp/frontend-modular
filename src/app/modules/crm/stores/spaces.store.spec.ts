@@ -4,7 +4,6 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { of, throwError } from 'rxjs';
 import { CrmBriefService } from '../data/crm-brief.service';
 import { CrmLookupService } from '../data/crm-lookup.service';
-import { CrmSpaceItemService } from '../data/crm-space-item.service';
 import { CrmSpaceService } from '../data/crm-space.service';
 import { ApprovalState } from '../model/crm-enums';
 import type { BriefSpace, BriefSpaceRef, CrmSpace, CrmSpaceType } from '../model';
@@ -105,18 +104,6 @@ function spacesApiMock() {
   };
 }
 
-function itemsApiMock() {
-  return {
-    list: vi.fn().mockReturnValue(of([])),
-    completeness: vi.fn().mockReturnValue(of({ spaceId: SPACE.id, isComplete: true })),
-    add: vi.fn().mockReturnValue(of('id')),
-    promote: vi.fn().mockReturnValue(of(undefined)),
-    setStatus: vi.fn().mockReturnValue(of(undefined)),
-    setAttributes: vi.fn().mockReturnValue(of(undefined)),
-    remove: vi.fn().mockReturnValue(of(undefined)),
-  };
-}
-
 function briefApiMock() {
   return {
     getBrief: vi.fn().mockReturnValue(of({ id: 'brief-1' })),
@@ -128,18 +115,15 @@ function briefApiMock() {
 
 describe('SpacesStore', () => {
   let spacesApi: ReturnType<typeof spacesApiMock>;
-  let itemsApi: ReturnType<typeof itemsApiMock>;
   let briefApi: ReturnType<typeof briefApiMock>;
 
   beforeEach(() => {
     spacesApi = spacesApiMock();
-    itemsApi = itemsApiMock();
     briefApi = briefApiMock();
     TestBed.configureTestingModule({
       providers: [
         SpacesStore,
         { provide: CrmSpaceService, useValue: spacesApi },
-        { provide: CrmSpaceItemService, useValue: itemsApi },
         { provide: CrmBriefService, useValue: briefApi },
         { provide: CrmLookupService, useValue: { spaceTypes: vi.fn().mockReturnValue(of([])) } },
       ],
@@ -155,13 +139,6 @@ describe('SpacesStore', () => {
       s.load(PROJECT_ID);
       expect(s.error()).toBe('space.loadFailed');
     });
-
-    it('reports a failed board read against its own key', () => {
-      itemsApi.list.mockReturnValue(throwError(() => new Error('boom')));
-      const s = store();
-      s.load(PROJECT_ID);
-      expect(s.error()).toBe('space.boardLoadFailed');
-    });
   });
 
   describe('setProject() (B1)', () => {
@@ -170,7 +147,6 @@ describe('SpacesStore', () => {
       s.setProject(PROJECT_ID);
       expect(spacesApi.list).not.toHaveBeenCalled();
       expect(briefApi.getBrief).not.toHaveBeenCalled();
-      expect(itemsApi.list).not.toHaveBeenCalled();
     });
 
     it('is enough for loadProvisioning to work', () => {
@@ -269,161 +245,35 @@ describe('SpacesStore', () => {
       );
       expect(s.savingSpace()).toBe(false);
     });
+  });
 
-    it('refetches the board and reports done after an item is added', () => {
-      const s = store();
-      s.setProject(PROJECT_ID);
-      itemsApi.list.mockClear();
-      const onDone = vi.fn();
-
-      s.addItem(SPACE.id, { catalogNodeId: 'node-1' }, { onDone });
-
-      expect(onDone).toHaveBeenCalledOnce();
-      expect(itemsApi.list).toHaveBeenCalledWith(SPACE.id);
-      expect(itemsApi.completeness).toHaveBeenCalledWith(SPACE.id);
-      expect(s.mutatingBySpace()[SPACE.id]).toBe(false);
+  // 009b #N-5: no /crm/spaces/{id}/items* or /completeness route exists on the backend.
+  describe('space board (009b #N-5)', () => {
+    it('has no board, completeness or board mutation', () => {
+      const s = store() as unknown as Record<string, unknown>;
+      for (const name of [
+        'board',
+        'completeness',
+        'incompleteSpaceIds',
+        'boardBySpace',
+        'completenessBySpace',
+        'mutatingBySpace',
+        'addItem',
+        'addCustomItem',
+        'promoteItem',
+        'setItemStatus',
+        'setItemAttributes',
+        'removeItem',
+      ]) {
+        expect(s[name], name).toBeUndefined();
+      }
     });
 
-    it('gives the picker a per-row reason instead of swallowing the error', () => {
-      // `mutateBoard` used to discard `err` entirely, so a row could only ever say
-      // "something failed" — the picker needs the code to name which rule was broken.
-      itemsApi.add.mockReturnValue(throwError(() => domainError('crm.spaces.ItemAlreadyRecorded')));
-      const s = store();
-      const onError = vi.fn();
-
-      s.addItem(SPACE.id, { catalogNodeId: 'node-1' }, { onError });
-
-      expect(onError).toHaveBeenCalledWith(
-        expect.objectContaining({ code: 'crm.spaces.ItemAlreadyRecorded' }),
-        'space.itemSaveFailed',
-      );
-      expect(s.error()).toBe('space.itemSaveFailed');
-      expect(s.mutatingBySpace()[SPACE.id]).toBe(false);
-    });
-
-    it('threads handlers through setItemAttributes', () => {
-      const s = store();
-      const onDone = vi.fn();
-      s.setItemAttributes(SPACE.id, 'item-1', { values: [] }, { onDone });
-      expect(itemsApi.setAttributes).toHaveBeenCalledWith(SPACE.id, 'item-1', { values: [] });
-      expect(onDone).toHaveBeenCalledOnce();
-    });
-
-    it('addItem on the CUSTOM path calls the api with customName/customCategoryId, no catalogNodeId', () => {
-      const s = store();
-      const onDone = vi.fn();
-
-      s.addItem(
-        SPACE.id,
-        { customName: 'Vintage lamp', customCategoryId: 'cat-lighting' },
-        { onDone },
-      );
-
-      expect(itemsApi.add).toHaveBeenCalledWith(SPACE.id, {
-        customName: 'Vintage lamp',
-        customCategoryId: 'cat-lighting',
-      });
-      expect(onDone).toHaveBeenCalledOnce();
-    });
-
-    it('addCustomItem assembles the union for the caller and refetches the board', () => {
-      const s = store();
-      s.setProject(PROJECT_ID);
-      itemsApi.list.mockClear();
-      const onDone = vi.fn();
-
-      s.addCustomItem(SPACE.id, 'cat-lighting', 'Vintage lamp', { onDone });
-
-      expect(itemsApi.add).toHaveBeenCalledWith(SPACE.id, {
-        customName: 'Vintage lamp',
-        customCategoryId: 'cat-lighting',
-      });
-      expect(itemsApi.list).toHaveBeenCalledWith(SPACE.id);
-      expect(onDone).toHaveBeenCalledOnce();
-    });
-
-    it('addCustomItem surfaces CustomNameRequired to the caller via onError', () => {
-      itemsApi.add.mockReturnValue(throwError(() => domainError('crm.catalog.CustomNameRequired')));
-      const s = store();
-      const onError = vi.fn();
-
-      s.addCustomItem(SPACE.id, 'cat-lighting', '', { onError });
-
-      expect(onError).toHaveBeenCalledWith(
-        expect.objectContaining({ code: 'crm.catalog.CustomNameRequired' }),
-        'space.itemSaveFailed',
-      );
-      expect(s.mutatingBySpace()[SPACE.id]).toBe(false);
-    });
-
-    it('promoteItem calls promote with the target catalogItemId and refetches on success', () => {
-      const s = store();
-      s.setProject(PROJECT_ID);
-      itemsApi.list.mockClear();
-      const onDone = vi.fn();
-
-      s.promoteItem(SPACE.id, 'row-1', 'item-9', { onDone });
-
-      expect(itemsApi.promote).toHaveBeenCalledWith(SPACE.id, 'row-1', { catalogItemId: 'item-9' });
-      expect(itemsApi.list).toHaveBeenCalledWith(SPACE.id);
-      expect(itemsApi.completeness).toHaveBeenCalledWith(SPACE.id);
-      expect(onDone).toHaveBeenCalledOnce();
-    });
-
-    it('promoteItem surfaces PromotionCategoryMismatch on failure, without refetching', () => {
-      itemsApi.promote.mockReturnValue(
-        throwError(() => domainError('crm.catalog.PromotionCategoryMismatch')),
-      );
-      const s = store();
-      itemsApi.list.mockClear();
-      const onError = vi.fn();
-
-      s.promoteItem(SPACE.id, 'row-1', 'item-9', { onError });
-
-      expect(onError).toHaveBeenCalledWith(
-        expect.objectContaining({ code: 'crm.catalog.PromotionCategoryMismatch' }),
-        'space.itemSaveFailed',
-      );
-      expect(itemsApi.list).not.toHaveBeenCalled();
-      expect(s.mutatingBySpace()[SPACE.id]).toBe(false);
-    });
-
-    it('setItemAttributes on a CUSTOM row short-circuits with AttributeNotApplicable, no network call', () => {
-      itemsApi.list.mockReturnValue(
-        of([
-          {
-            id: 'row-1',
-            spaceId: SPACE.id,
-            catalogItemId: null,
-            nodeNameEn: 'Vintage lamp',
-            nodeNameAr: 'Vintage lamp',
-            imageUri: null,
-            isPurchasable: true,
-            path: [],
-            status: 1,
-            note: null,
-            sourceBriefSpaceId: null,
-            attributes: [],
-            isCustom: true,
-            customName: 'Vintage lamp',
-            customCategoryId: 'cat-lighting',
-            trackKey: 'row-1',
-          },
-        ]),
-      );
+    it('loads the registry without reading any board', () => {
       const s = store();
       s.load(PROJECT_ID);
-      itemsApi.setAttributes.mockClear();
-      const onError = vi.fn();
-
-      s.setItemAttributes(SPACE.id, 'row-1', { values: [] }, { onError });
-
-      expect(itemsApi.setAttributes).not.toHaveBeenCalled();
-      expect(onError).toHaveBeenCalledWith(
-        expect.objectContaining({ code: 'crm.catalog.AttributeNotApplicable' }),
-        'space.attrNotApplicable',
-      );
-      expect(s.error()).toBe('space.attrNotApplicable');
+      expect(s.spaces()).toEqual([SPACE]);
+      expect(s.loading()).toBe(false);
     });
   });
 });

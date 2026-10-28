@@ -7,7 +7,7 @@ import {
   Injector,
   signal,
 } from '@angular/core';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { CatalogService } from '@platform/i18n/catalog.service';
 import { CanDirective, PERM } from '@platform/permissions';
 import type { CrmSpace } from '../../model';
@@ -20,15 +20,15 @@ import {
   PeraPageHeaderComponent,
 } from '@ds';
 import { SpacesStore } from '../../stores/spaces.store';
-import { CrmSpaceBoardComponent } from './space-board.component';
 import { CrmSpaceBriefNoteComponent } from './space-brief-note.component';
-import { CrmSpaceCompletenessComponent } from './space-completeness.component';
 import { AddSpaceDialogData, CrmAddSpaceDialogComponent } from './add-space-dialog.component';
 
 /**
- * `/crm/projects/:projectId/spaces` — the project's rooms and their boards. Three
- * columns: a spaces rail, the selected space's brief note + board, and a completeness
- * rail. Two spaces of one type ("Kids room 1" / "Kids room 2") is the whole point.
+ * `/crm/projects/:projectId/spaces` — the project's rooms. A spaces rail and the selected
+ * space's brief note. Two spaces of one type ("Kids room 1" / "Kids room 2") is the whole point.
+ *
+ * 009b #N-5: no space-item routes exist on the backend, so the board and completeness panels
+ * and the storefront route are gone.
  */
 @Component({
   selector: 'app-crm-spaces-page',
@@ -41,9 +41,7 @@ import { AddSpaceDialogData, CrmAddSpaceDialogComponent } from './add-space-dial
     PeraPageHeaderComponent,
     PeraButtonComponent,
     PeraIconComponent,
-    CrmSpaceBoardComponent,
     CrmSpaceBriefNoteComponent,
-    CrmSpaceCompletenessComponent,
   ],
   template: `
     <pera-page-header [title]="catalog.t('space.title')" [count]="store.spaces().length">
@@ -69,9 +67,7 @@ import { AddSpaceDialogData, CrmAddSpaceDialogComponent } from './add-space-dial
       </div>
     }
 
-    <div
-      class="p-6 grid grid-cols-1 lg:grid-cols-[var(--w-rail)_minmax(0,1fr)_var(--w-rail)] gap-6 items-start"
-    >
+    <div class="p-6 grid grid-cols-1 lg:grid-cols-[var(--w-rail)_minmax(0,1fr)] gap-6 items-start">
       <!--
         Spaces rail. A row is NOT one wrapping <button> — the actions beside it would then
         be nested buttons, which is invalid. Same shape as the catalog children list: a
@@ -94,21 +90,9 @@ import { AddSpaceDialogData, CrmAddSpaceDialogComponent } from './add-space-dial
                 <span class="fs-body font-medium text-text truncate" dir="auto">{{
                   space.name
                 }}</span>
-                @if (store.incompleteSpaceIds().has(space.id)) {
-                  <pera-icon
-                    name="alert-triangle"
-                    [size]="14"
-                    class="text-warning ms-auto shrink-0"
-                    [attr.aria-label]="catalog.t('space.incomplete')"
-                  />
-                }
               </div>
               <div class="flex items-center gap-2 fs-caption text-text-muted">
                 <span>{{ typeName(space) }}</span>
-                <span>·</span>
-                <span>{{
-                  catalog.t('space.itemCount', { count: store.board(space.id).length })
-                }}</span>
               </div>
               @if (space.description) {
                 <p class="fs-caption text-text-secondary m-0 line-clamp-3" dir="auto">
@@ -176,24 +160,15 @@ import { AddSpaceDialogData, CrmAddSpaceDialogComponent } from './add-space-dial
       <div class="min-w-0 flex flex-col gap-4">
         @if (selectedSpace(); as space) {
           <app-crm-space-brief-note [space]="space" [projectId]="projectId()" />
-          <app-crm-space-board [space]="space" (record)="openStorefront(space)" />
         } @else {
           <p class="fs-caption text-text-muted p-4 m-0">{{ catalog.t('space.selectPrompt') }}</p>
         }
       </div>
-
-      <!-- Completeness rail -->
-      <aside>
-        @if (selectedSpace(); as space) {
-          <app-crm-space-completeness [space]="space" (record)="openStorefront(space)" />
-        }
-      </aside>
     </div>
   `,
 })
 export class CrmSpacesPageComponent {
   private readonly route = inject(ActivatedRoute);
-  private readonly router = inject(Router);
   protected readonly store = inject(SpacesStore);
   protected readonly catalog = inject(CatalogService);
   private readonly modal = inject(ModalService);
@@ -276,14 +251,5 @@ export class CrmSpacesPageComponent {
       data,
       injector: this.injector,
     });
-  }
-
-  /**
-   * F5: a full page, not a modal — three columns don't fit a dialog. Absolute, because
-   * this route (`.../spaces`) carries no `:spaceId` segment of its own — selection here is
-   * a local signal, not routing — so there is nothing to navigate relative TO.
-   */
-  openStorefront(space: CrmSpace): void {
-    void this.router.navigate(['/crm/projects', this.projectId(), 'spaces', space.id, 'record']);
   }
 }
