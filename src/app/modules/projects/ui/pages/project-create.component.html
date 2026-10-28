@@ -92,7 +92,7 @@
       <section id="client" class="flex flex-col gap-3">
         <div class="flex flex-col gap-1">
           <h2 class="m-0 text-sm font-semibold uppercase tracking-[0.04em]">Client &amp; Owner</h2>
-          <p class="m-0 text-xs text-text-muted">Who the project is for and its budget.</p>
+          <p class="m-0 text-xs text-text-muted">Who the project is for.</p>
         </div>
         <pera-card padding="lg">
           <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -102,25 +102,6 @@
                 [options]="clientOptions()"
                 placeholder="Select a client"
                 [error]="errorOf('clientId')"
-              />
-            </pera-form-field>
-            <pera-form-field label="Status" [required]="true" [error]="errorOf('status')">
-              <pera-select
-                formControlName="status"
-                [options]="statusOptions"
-                [error]="errorOf('status')"
-              />
-            </pera-form-field>
-            <pera-form-field
-              label="Estimated budget (EGP)"
-              [required]="true"
-              [error]="errorOf('estimatedBudget')"
-            >
-              <pera-input
-                type="number"
-                formControlName="estimatedBudget"
-                placeholder="1500000"
-                [error]="errorOf('estimatedBudget')"
               />
             </pera-form-field>
           </div>
