@@ -75,9 +75,11 @@ export class CrmItemService extends ApiService {
   }
 
   /**
-   * `POST /portal/requirement-items` → `201` `Guid`. Gated `crm.portal`. The client's own
+   * `POST /portal/requirement-items` → `201 { itemId }` (009b #46). Gated `requirements.submit_own`,
+   * which is not in the client baseline (the entry is hidden without it). The client's own
    * item lands `NotRequired` (Trusted on arrival) — no source fields exist on this body at
-   * all (FR-012): a client-authored item never cites a meeting/brief/note.
+   * all (FR-012): a client-authored item never cites a meeting/brief/note. 404 `crm.portal.NotFound`,
+   * 409 `crm.periods.NotOpen`, 400 `crm.items.UnknownSpaceType` show their catalog message in the form.
    */
   portalCreate(request: ClientAddRequirementItemRequest): Observable<string> {
     return this.post<unknown>('/crm/portal/requirement-items', {
@@ -88,7 +90,7 @@ export class CrmItemService extends ApiService {
       priority: request.priority,
       room: request.room ?? null,
       description: request.description ?? null,
-    }).pipe(map((r) => this.unwrap<string>(r)));
+    }).pipe(map((r) => this.unwrapId(r, 'itemId')));
   }
 
   /** `GET /portal/projects/{projectId}/requirement-items` — the client's own items for one project. */

@@ -14,6 +14,7 @@ import { MeetingsStore } from '../../stores/meetings.store';
 import { CatalogService } from '@platform/i18n/catalog.service';
 import type { CatalogKey } from '@platform/i18n/catalog/en';
 import { formatCairoDateTime } from '@platform/i18n/intl-locale';
+import { CanDirective, PERM } from '@platform/permissions';
 import { ApprovalState, RequirementCategory, RequirementPriority } from '../../model/crm-enums';
 import type { ClientProfileProject } from '../../model';
 import { isUnconfirmed, trustChip } from '../trust/trust-chip';
@@ -77,6 +78,7 @@ const PRIORITY_LABEL_KEYS: Record<RequirementPriority, CatalogKey> = {
     PeraSpinnerComponent,
     PeraStatusBadgeComponent,
     CrmIdentityCardComponent,
+    CanDirective,
   ],
   host: { class: 'flex flex-col gap-4' },
   template: `
@@ -193,9 +195,14 @@ const PRIORITY_LABEL_KEYS: Record<RequirementPriority, CatalogKey> = {
                     <pera-button variant="secondary" size="sm" (click)="requestMeeting(project)">{{
                       catalog.t('nav.cSched')
                     }}</pera-button>
-                    <pera-button variant="secondary" size="sm" (click)="addRequirement(project)">{{
-                      catalog.t('nav.cAdd')
-                    }}</pera-button>
+                    <!-- 009b #46: the portal item route needs requirements.submit_own. -->
+                    <pera-button
+                      *peraCan="PERM.requirements.submitOwn"
+                      variant="secondary"
+                      size="sm"
+                      (click)="addRequirement(project)"
+                      >{{ catalog.t('nav.cAdd') }}</pera-button
+                    >
                   </div>
                 }
                 @case ('brief') {
@@ -293,6 +300,7 @@ export class CrmClientProfileComponent {
   protected readonly meetings = inject(MeetingsStore);
   protected readonly MEETING_TYPE_KEYS = MEETING_TYPE_KEYS;
   protected readonly MEETING_STATUS_CHIP = MEETING_STATUS_CHIP;
+  protected readonly PERM = PERM;
 
   protected readonly tabs: ProfileTab[] = ['overview', 'brief', 'requirements', 'meetings'];
   protected readonly selectedProjectId = signal<string | null>(null);

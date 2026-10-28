@@ -206,4 +206,28 @@ describe('CrmItemService', () => {
       expect(id).toBe('I2');
     });
   });
+
+  describe('portalCreate (009b #46)', () => {
+    it('posts the client item and reads the 201 { itemId }', () => {
+      let id: string | undefined;
+      service
+        .portalCreate({ projectId: 'P', periodId: 'Per', category: 1, title: 'Sofa', priority: 2 })
+        .subscribe((v) => (id = v));
+
+      const req = http.expectOne(url('/crm/portal/requirement-items'));
+      expect(req.request.method).toBe('POST');
+      expect(req.request.body).toEqual({
+        projectId: 'P',
+        periodId: 'Per',
+        category: 1,
+        title: 'Sofa',
+        priority: 2,
+        room: null,
+        description: null,
+      });
+      req.flush({ itemId: 'I' }, { status: 201, statusText: 'Created' });
+
+      expect(id).toBe('I');
+    });
+  });
 });

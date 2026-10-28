@@ -1,8 +1,9 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthStore } from '@platform/auth/auth.store';
 import { CatalogService } from '@platform/i18n/catalog.service';
 import { LocaleService } from '@platform/i18n/locale.service';
+import { PERM, PermissionsService } from '@platform/permissions';
 import { ThemeService } from '@platform/theme';
 import { PeraIconComponent, PeraTooltipDirective } from '@ds';
 
@@ -10,12 +11,21 @@ interface ClientNavItem {
   path: string;
   icon: string;
   labelKey: 'nav.cProfile' | 'nav.cSched' | 'nav.cAdd' | 'nav.appr';
+  /** Shown only to a caller holding this claim (009b #46). */
+  permission?: string;
 }
 
 const NAV_ITEMS: ClientNavItem[] = [
   { path: '/portal', icon: 'user', labelKey: 'nav.cProfile' },
   { path: '/portal/schedule', icon: 'calendar', labelKey: 'nav.cSched' },
-  { path: '/portal/add-requirement', icon: 'plus', labelKey: 'nav.cAdd' },
+  // 009b #46: the portal item route needs `requirements.submit_own`, which is not in the client
+  // baseline — a client without it gets no entry rather than a 403.
+  {
+    path: '/portal/add-requirement',
+    icon: 'plus',
+    labelKey: 'nav.cAdd',
+    permission: PERM.requirements.submitOwn,
+  },
   { path: '/portal/approvals', icon: 'inbox', labelKey: 'nav.appr' },
 ];
 
@@ -75,9 +85,11 @@ const NAV_ITEMS: ClientNavItem[] = [
       </main>
 
       <nav
-        class="shrink-0 fixed inset-x-0 bottom-0 border-t border-border bg-surface grid grid-cols-4"
+        class="shrink-0 fixed inset-x-0 bottom-0 border-t border-border bg-surface grid"
+        [class.grid-cols-4]="navItems().length === 4"
+        [class.grid-cols-3]="navItems().length === 3"
       >
-        @for (item of navItems; track item.path) {
+        @for (item of navItems(); track item.path) {
           <a
             [routerLink]="item.path"
             routerLinkActive="text-accent"
@@ -98,7 +110,10 @@ export class ClientShellComponent {
   protected readonly catalog = inject(CatalogService);
   protected readonly locale = inject(LocaleService);
   protected readonly theme = inject(ThemeService);
-  protected readonly navItems = NAV_ITEMS;
+  private readonly permissions = inject(PermissionsService);
+  protected readonly navItems = computed(() =>
+    NAV_ITEMS.filter((item) => !item.permission || this.permissions.can(item.permission)),
+  );
 
   protected async logout(): Promise<void> {
     await this.auth.logout();
