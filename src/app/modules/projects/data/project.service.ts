@@ -391,6 +391,10 @@ export class ProjectService extends ApiService {
     3: 'Approval',
     4: 'ManualCheck',
     5: 'Attachment',
+    6: 'Budget',
+    7: 'CrmPeriodClosed',
+    8: 'CrmBriefApproved',
+    9: 'CrmItemsResolved',
   };
   private readonly APPROVAL: Record<number, string> = { 1: 'ManagerApproval', 2: 'ClientReview' };
 
