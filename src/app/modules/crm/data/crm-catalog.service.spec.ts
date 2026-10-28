@@ -391,11 +391,12 @@ describe('CrmCatalogService', () => {
       req.flush(null);
     });
 
+    // 009b #37: CrmCatalogEndpoints.cs:42-47 takes the space type in the path, binds no body.
     it('mapCategorySpaceType() / unmapCategorySpaceType() hit the space-types sub-route', () => {
       service.mapCategorySpaceType('cat-1', 'st-1').subscribe();
-      const mapReq = http.expectOne(url('/crm/catalog/categories/cat-1/space-types'));
+      const mapReq = http.expectOne(url('/crm/catalog/categories/cat-1/space-types/st-1'));
       expect(mapReq.request.method).toBe('POST');
-      expect(mapReq.request.body).toEqual({ spaceTypeId: 'st-1' });
+      expect(mapReq.request.body).toBeNull();
       mapReq.flush(null);
 
       service.unmapCategorySpaceType('cat-1', 'st-1').subscribe();

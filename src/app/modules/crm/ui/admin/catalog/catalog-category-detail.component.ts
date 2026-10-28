@@ -589,7 +589,7 @@ export class CrmCatalogCategoryDetailComponent {
   readonly targetType = signal<string>('');
 
   /**
-   * Only space types NOT already mapped — mapping the same one twice is `MappingExists` —
+   * Only space types NOT already mapped — mapping the same one twice is `DuplicateMapping` —
    * and active (009b #27). `spaceTypeName` still names an inactive type on a mapping.
    */
   readonly unmappedSpaceTypeOptions = computed<SelectOption[]>(() => {

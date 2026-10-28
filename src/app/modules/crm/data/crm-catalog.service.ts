@@ -210,11 +210,15 @@ export class CrmCatalogService extends ApiService {
   }
 
   /**
-   * `POST /api/crm/catalog/categories/{categoryId}/space-types` → `204` (not `201`, even
-   * though it's a POST) — `crm.catalog.manage`. `409 crm.catalog.MappingExists`.
+   * `POST /api/crm/catalog/categories/{categoryId}/space-types/{spaceTypeId}`, **no body** →
+   * `204` (not `201`, even though it's a POST) — `crm.catalog.manage`.
+   * `409 crm.catalog.DuplicateMapping` (009b #37).
    */
   mapCategorySpaceType(categoryId: string, spaceTypeId: string): Observable<void> {
-    return this.post<void>(`/crm/catalog/categories/${categoryId}/space-types`, { spaceTypeId });
+    return this.post<void>(
+      `/crm/catalog/categories/${categoryId}/space-types/${spaceTypeId}`,
+      null,
+    );
   }
 
   /**
