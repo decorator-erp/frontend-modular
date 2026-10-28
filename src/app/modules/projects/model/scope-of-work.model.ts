@@ -69,3 +69,9 @@ export interface UpdateScopeOfWorkItemRequest {
 export interface ConfirmScopeOfWorkResponse {
   createdStageIds: string[];
 }
+
+/** A stage template as a picker pill: `GET /api/stage-templates` carries no fee (008b audit). */
+export interface SowTemplateOption {
+  id: string;
+  name: string;
+}

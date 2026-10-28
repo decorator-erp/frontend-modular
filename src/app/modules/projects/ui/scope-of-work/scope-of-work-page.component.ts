@@ -1,9 +1,18 @@
-import { ChangeDetectionStrategy, Component, OnInit, computed, inject, input } from '@angular/core';
-import { PeraAlertComponent, PeraPageHeaderComponent } from '@ds';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  OnInit,
+  computed,
+  inject,
+  input,
+  signal,
+} from '@angular/core';
+import { PeraAlertComponent, PeraButtonComponent, PeraPageHeaderComponent } from '@ds';
 import { CatalogService } from '@platform/i18n/catalog.service';
 import { PERM, PermissionsService } from '@platform/permissions';
 import { ScopeOfWorkStore } from '../../stores/scope-of-work.store';
 import { SowItemsTableComponent, SowItemUpdate } from './sow-items-table.component';
+import { SowTemplatePickerComponent } from './sow-template-picker.component';
 
 /**
  * The project's scope of work (نطاق العمل) — NEW-FEATURE-1, specs/sow-scope-of-work.md.
@@ -13,7 +22,13 @@ import { SowItemsTableComponent, SowItemUpdate } from './sow-items-table.compone
 @Component({
   selector: 'app-scope-of-work-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [PeraAlertComponent, PeraPageHeaderComponent, SowItemsTableComponent],
+  imports: [
+    PeraAlertComponent,
+    PeraButtonComponent,
+    PeraPageHeaderComponent,
+    SowItemsTableComponent,
+    SowTemplatePickerComponent,
+  ],
   providers: [ScopeOfWorkStore],
   host: { class: 'block' },
   template: `
@@ -32,7 +47,30 @@ import { SowItemsTableComponent, SowItemUpdate } from './sow-items-table.compone
               {{ catalog.t('sow.items') }}
               <span class="text-text-muted font-medium">· {{ store.items().length }}</span>
             </h2>
+            @if (editable()) {
+              <pera-button
+                iconStart="plus"
+                [attr.aria-expanded]="pickerOpen()"
+                (click)="togglePicker()"
+              >
+                {{ catalog.t(pickerOpen() ? 'sow.closeTemplates' : 'sow.addFromTemplates') }}
+              </pera-button>
+            }
           </div>
+          @if (editable() && pickerOpen()) {
+            <app-sow-template-picker
+              [templates]="store.templates()"
+              [selectedTemplateId]="store.selectedTemplateId()"
+              [stages]="store.templateStages()"
+              [pickedStageIds]="store.pickedStageIds()"
+              [loading]="store.templatesLoading()"
+              [busy]="store.saving()"
+              (selectTemplate)="store.selectTemplate($event)"
+              (addStage)="store.addStage($event)"
+              (removeStage)="store.removeStage($event)"
+              (addTemplate)="store.addTemplate($event)"
+            />
+          }
           <app-sow-items-table
             [items]="store.items()"
             [editable]="editable()"
@@ -66,8 +104,17 @@ export class ScopeOfWorkPageComponent implements OnInit {
       this.store.project()?.workflowType !== 'FreeStyle',
   );
 
+  /** B6: the template picker is open; templates are read on first open. */
+  protected readonly pickerOpen = signal(false);
+
   ngOnInit(): void {
     this.store.load(this.id());
+  }
+
+  protected togglePicker(): void {
+    const open = !this.pickerOpen();
+    this.pickerOpen.set(open);
+    if (open && this.store.templates().length === 0) this.store.loadTemplates();
   }
 
   protected onUpdateItem(update: SowItemUpdate): void {

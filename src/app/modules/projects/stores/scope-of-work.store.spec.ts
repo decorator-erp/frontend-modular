@@ -5,6 +5,7 @@ import { of, throwError } from 'rxjs';
 import { ToastService } from '@platform/feedback/toast.service';
 import { ScopeOfWorkService } from '../data/scope-of-work.service';
 import { ProjectService } from '../data/project.service';
+import { StageTemplatesService } from '@modules/library';
 import { ScopeOfWork, ScopeOfWorkItem, ScopeOfWorkStatus } from '../model/scope-of-work.model';
 import { ScopeOfWorkStore } from './scope-of-work.store';
 
@@ -78,6 +79,7 @@ describe('ScopeOfWorkStore (sow #3)', () => {
         { provide: ScopeOfWorkService, useValue: api },
         { provide: ProjectService, useValue: projects },
         { provide: ToastService, useValue: toast },
+        { provide: StageTemplatesService, useValue: { list: vi.fn(), stages: vi.fn() } },
       ],
     });
   });
@@ -151,5 +153,121 @@ describe('ScopeOfWorkStore (sow #3)', () => {
     expect(s.error()).toBeTruthy();
     expect(s.error()).not.toContain('projects.scope.Confirmed');
     expect(api['getScope']).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('ScopeOfWorkStore — template picker (sow #4)', () => {
+  let api: Record<string, ReturnType<typeof vi.fn>>;
+  let templates: { list: ReturnType<typeof vi.fn>; stages: ReturnType<typeof vi.fn> };
+
+  const items = [
+    sowItem({ id: 'i1', sourceStageId: 's1', order: 1 }),
+    sowItem({ id: 'i2', sourceStageId: 's2', order: 2 }),
+  ];
+
+  beforeEach(() => {
+    api = {
+      getScope: vi.fn().mockReturnValue(of(sowScope({ items }))),
+      addItems: vi.fn().mockReturnValue(of([])),
+      addFromTemplate: vi.fn().mockReturnValue(of([])),
+      removeItem: vi.fn().mockReturnValue(of(undefined)),
+    };
+    templates = {
+      list: vi.fn().mockReturnValue(
+        of([
+          {
+            id: 't1',
+            name: 'Residential',
+            description: null,
+            isDefault: true,
+            isActive: true,
+            type: null,
+          },
+          {
+            id: 't2',
+            name: 'Medical',
+            description: null,
+            isDefault: false,
+            isActive: true,
+            type: null,
+          },
+        ]),
+      ),
+      stages: vi
+        .fn()
+        .mockReturnValue(of([{ id: 's1', name: 'Concept', taskCount: 3, defaultFee: 1 }])),
+    };
+    TestBed.configureTestingModule({
+      providers: [
+        ScopeOfWorkStore,
+        { provide: ScopeOfWorkService, useValue: api },
+        {
+          provide: ProjectService,
+          useValue: { getById: vi.fn().mockReturnValue(of({ id: 'p1' })) },
+        },
+        { provide: StageTemplatesService, useValue: templates },
+        { provide: ToastService, useValue: { show: vi.fn() } },
+      ],
+    });
+  });
+
+  const store = () => TestBed.inject(ScopeOfWorkStore);
+
+  it("loadTemplates lists the templates and opens the first one's stages (B6)", () => {
+    const s = store();
+    s.load('p1');
+    s.loadTemplates();
+    expect(templates.list).toHaveBeenCalled();
+    expect(s.templates()).toEqual([
+      { id: 't1', name: 'Residential' },
+      { id: 't2', name: 'Medical' },
+    ]);
+    expect(s.selectedTemplateId()).toBe('t1');
+    expect(templates.stages).toHaveBeenCalledWith('t1');
+    expect(s.templateStages()).toHaveLength(1);
+  });
+
+  it("selectTemplate reads that template's stages", () => {
+    const s = store();
+    s.load('p1');
+    s.selectTemplate('t2');
+    expect(s.selectedTemplateId()).toBe('t2');
+    expect(templates.stages).toHaveBeenCalledWith('t2');
+  });
+
+  it("pickedStageIds are the items' sourceStageIds", () => {
+    const s = store();
+    s.load('p1');
+    expect(s.pickedStageIds()).toEqual(['s1', 's2']);
+  });
+
+  it('addStage posts { sourceStageIds: [id] } then reloads', () => {
+    const s = store();
+    s.load('p1');
+    s.addStage('s9');
+    expect(api['addItems']).toHaveBeenCalledWith('p1', ['s9']);
+    expect(api['getScope']).toHaveBeenCalledTimes(2);
+  });
+
+  it('removeStage deletes the item whose sourceStageId matches', () => {
+    const s = store();
+    s.load('p1');
+    s.removeStage('s2');
+    expect(api['removeItem']).toHaveBeenCalledWith('p1', 'i2');
+  });
+
+  it('removeStage of a stage not in the scope sends nothing', () => {
+    const s = store();
+    s.load('p1');
+    s.removeStage('s9');
+    expect(api['removeItem']).not.toHaveBeenCalled();
+  });
+
+  it('addTemplate posts items/from-template/{id} then reloads', () => {
+    const s = store();
+    s.load('p1');
+    s.addTemplate('t1');
+    expect(api['addFromTemplate']).toHaveBeenCalledWith('p1', 't1');
+    expect(api['getScope']).toHaveBeenCalledTimes(2);
   });
 });

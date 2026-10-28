@@ -2,6 +2,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { computed, inject } from '@angular/core';
 import { patchState, signalStore, withComputed, withMethods, withState } from '@ngrx/signals';
 import { forkJoin, Observable } from 'rxjs';
+import { StageTemplatesService, TemplateStage } from '@modules/library';
 import { injectReloadOnConflict } from '@platform/http/concurrency';
 import {
   ErrorHandlerService,
@@ -15,6 +16,7 @@ import { Project } from '../model/project.model';
 import {
   ScopeOfWork,
   ScopeOfWorkStatus,
+  SowTemplateOption,
   UpdateScopeOfWorkItemRequest,
 } from '../model/scope-of-work.model';
 
@@ -29,6 +31,12 @@ interface ScopeOfWorkState {
   saving: boolean;
   /** The last failed action's message, already localized (B14), or null. */
   error: string | null;
+  /** B6 picker: `GET /api/stage-templates`, read when the picker first opens. */
+  templates: SowTemplateOption[];
+  selectedTemplateId: string | null;
+  /** The selected template's stages (`GET /api/stage-templates/{id}/stages`). */
+  templateStages: TemplateStage[];
+  templatesLoading: boolean;
 }
 
 const INITIAL: ScopeOfWorkState = {
@@ -39,6 +47,10 @@ const INITIAL: ScopeOfWorkState = {
   notFound: false,
   saving: false,
   error: null,
+  templates: [],
+  selectedTemplateId: null,
+  templateStages: [],
+  templatesLoading: false,
 };
 
 /**
@@ -55,6 +67,8 @@ export const ScopeOfWorkStore = signalStore(
     /** The items in server order. */
     items: computed(() => store.scope()?.items ?? []),
     isConfirmed: computed(() => store.scope()?.status === ScopeOfWorkStatus.Confirmed),
+    /** `sourceStageId` of every item: the picker's "Added · remove" state (B6). */
+    pickedStageIds: computed(() => (store.scope()?.items ?? []).map((i) => i.sourceStageId)),
   })),
 
   withMethods(
@@ -62,6 +76,7 @@ export const ScopeOfWorkStore = signalStore(
       store,
       api = inject(ScopeOfWorkService),
       projects = inject(ProjectService),
+      stageTemplates = inject(StageTemplatesService),
       errors = inject(ErrorHandlerService),
       catalog = inject(CatalogService),
       reloadOnConflict = injectReloadOnConflict(),
@@ -133,6 +148,54 @@ export const ScopeOfWorkStore = signalStore(
         /** B5 `DELETE …/items/{itemId}`, then reload (the server renumbers). */
         removeItem(itemId: string): void {
           write((projectId) => api.removeItem(projectId, itemId));
+        },
+
+        /** B6: the template pills; opens the first template's stages. */
+        loadTemplates(): void {
+          patchState(store, { templatesLoading: true });
+          stageTemplates.list().subscribe({
+            next: (list) => {
+              const templates = list.map((t) => ({ id: t.id, name: t.name }));
+              patchState(store, { templates, templatesLoading: false });
+              const first = templates[0]?.id ?? null;
+              if (first && !store.selectedTemplateId()) this.selectTemplate(first);
+            },
+            error: () =>
+              patchState(store, { templatesLoading: false, error: catalog.t('sow.loadFailed') }),
+          });
+        },
+
+        /** B6: the selected template's stages, with default fee and task count. */
+        selectTemplate(templateId: string): void {
+          patchState(store, {
+            selectedTemplateId: templateId,
+            templateStages: [],
+            templatesLoading: true,
+          });
+          stageTemplates.stages(templateId).subscribe({
+            next: (templateStages) => {
+              if (store.selectedTemplateId() !== templateId) return;
+              patchState(store, { templateStages, templatesLoading: false });
+            },
+            error: () =>
+              patchState(store, { templatesLoading: false, error: catalog.t('sow.loadFailed') }),
+          });
+        },
+
+        /** B6 "Add": `POST …/items { sourceStageIds: [stageId] }`. */
+        addStage(stageId: string): void {
+          write((projectId) => api.addItems(projectId, [stageId]));
+        },
+
+        /** B6 "Added · remove": deletes the item whose `sourceStageId` matches (C §8.4.3). */
+        removeStage(stageId: string): void {
+          const item = store.scope()?.items.find((i) => i.sourceStageId === stageId);
+          if (item) this.removeItem(item.id);
+        },
+
+        /** B6 "Add whole template": the server skips stages already picked; `[]` is a no-op. */
+        addTemplate(templateId: string): void {
+          write((projectId) => api.addFromTemplate(projectId, templateId));
         },
       };
     },

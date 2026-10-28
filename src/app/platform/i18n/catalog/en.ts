@@ -1182,6 +1182,17 @@ export const EN = {
   'sow.feeInvalid': 'Enter a fee from 0 to 1,000,000,000,000.',
   'sow.loadFailed': "Couldn't load the scope of work.",
   'sow.saveFailed': "Couldn't save the change. Try again.",
+  'sow.addFromTemplates': 'Add from templates',
+  'sow.closeTemplates': 'Close templates',
+  'sow.stageTemplates': 'Stage templates',
+  'sow.templates': 'Templates',
+  'sow.addWholeTemplate': 'Add whole template',
+  'sow.stageTasks': '{count} tasks',
+  'sow.defaultFee': 'default fee',
+  'sow.add': 'Add',
+  'sow.addedRemove': 'Added · remove',
+  'sow.noTemplates': 'No stage templates yet.',
+  'sow.noStages': 'This template has no stages.',
 } as const;
 
 /** The key set of record. Every catalog lookup is typed against this. */
