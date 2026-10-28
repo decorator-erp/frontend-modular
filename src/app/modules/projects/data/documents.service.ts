@@ -3,14 +3,15 @@ import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { ApiService } from '@platform/http/api.service';
 
-/** Mirrors DocumentFolderResponse (api-docs/09). */
+/** Mirrors DocumentFolderResponse (Documents.Contracts/Folders/FolderContracts.cs:8-15; 008b #6). */
 export interface DocumentFolder {
   id: string;
   projectId: string;
   name: string;
   parentFolderId: string | null;
-  createdAtUtc: string;
-  updatedAtUtc: string | null;
+  projectStageId: string | null;
+  projectTaskId: string | null;
+  isDefault: boolean;
 }
 
 /** Mirrors ProjectDocumentListResponse / ProjectDocumentResponse (api-docs/09). */
@@ -42,9 +43,9 @@ export class DocumentFoldersService extends ApiService {
     }).pipe(map((r) => this.unwrap<string>(r)));
   }
 
-  /** GET /by-project/{projectId} — root-level folders. */
+  /** `GET /api/projects/{projectId}/document-folders` — ALL active folders of the project, by name (008b #6). */
   getByProject(projectId: string): Observable<DocumentFolder[]> {
-    return this.get<unknown>(`/document-folders/by-project/${projectId}`).pipe(
+    return this.get<unknown>(`/projects/${projectId}/document-folders`).pipe(
       map((r) => this.unwrapArray(r).map((f) => this.normalizeFolder(f))),
     );
   }
@@ -77,8 +78,9 @@ export class DocumentFoldersService extends ApiService {
       projectId: this.field<string>(source, 'projectId') ?? '',
       name: this.field<string>(source, 'name') ?? '',
       parentFolderId: this.field<string | null>(source, 'parentFolderId') ?? null,
-      createdAtUtc: this.field<string>(source, 'createdAtUtc') ?? '',
-      updatedAtUtc: this.field<string | null>(source, 'updatedAtUtc') ?? null,
+      projectStageId: this.field<string | null>(source, 'projectStageId') ?? null,
+      projectTaskId: this.field<string | null>(source, 'projectTaskId') ?? null,
+      isDefault: this.field<boolean>(source, 'isDefault') ?? false,
     };
   }
 }
