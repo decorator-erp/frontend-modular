@@ -159,6 +159,8 @@ export class ProjectDetailComponent implements OnInit {
     // Mirrors the guard on the CRM dashboard route itself (`crm.routes.ts`), so the
     // affordance is absent rather than a click that lands on a 403.
     crmDashboard: PERM.crm.periods.read,
+    // sow #10: mirrors the scope-of-work route's guard (`projects.routes.ts`).
+    scope: PERM.scope.read,
   };
 
   readonly loading = signal(true);
@@ -590,6 +592,12 @@ export class ProjectDetailComponent implements OnInit {
   openRequirementGathering(): void {
     const project = this.project();
     if (project) void this.router.navigate(['/crm/projects', project.id]);
+  }
+
+  /** sow #10: header → the project's scope of work (Stage projects with `scope.read`). */
+  openScopeOfWork(): void {
+    const project = this.project();
+    if (project) void this.router.navigate(['/projects', project.id, 'scope-of-work']);
   }
 
   /** Header → create a task on the active (or first) stage; reload on success. */

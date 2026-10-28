@@ -321,6 +321,32 @@ describe('ProjectDetailComponent', () => {
     expect(el.textContent).not.toContain('Requirement gathering');
   });
 
+  // sow #10 (specs/sow-scope-of-work.md §3): the scope-of-work entry point.
+  const scopeLink = (el: HTMLElement) =>
+    Array.from(el.querySelectorAll<HTMLButtonElement>('button')).find(
+      (b) => b.textContent!.trim() === 'Scope of work',
+    );
+
+  it('sow #10: links to the scope of work for a Stage project with scope.read', () => {
+    granted = new Set([...ALL, PERM.scope.read]);
+    const fixture = render();
+    const link = scopeLink(fixture.nativeElement as HTMLElement);
+    expect(link).toBeDefined();
+    link!.click();
+    expect(navCalls).toContainEqual([['/projects', 'p1', 'scope-of-work']]);
+  });
+
+  it('sow #10: no scope-of-work link without scope.read', () => {
+    granted = new Set(ALL);
+    expect(scopeLink(render().nativeElement as HTMLElement)).toBeUndefined();
+  });
+
+  it('sow #10: no scope-of-work link on a FreeStyle project', () => {
+    granted = new Set([...ALL, PERM.scope.read]);
+    data = { ...data, project: { ...data.project, workflowType: 'FreeStyle' } };
+    expect(scopeLink(render().nativeElement as HTMLElement)).toBeUndefined();
+  });
+
   it('feeds both donuts from the task distribution helpers', () => {
     granted = new Set(ALL);
     const c = render().componentInstance;
