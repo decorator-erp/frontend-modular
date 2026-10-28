@@ -106,6 +106,7 @@ function details(): ProjectDetails {
       actualStartDate: null,
       actualEndDate: null,
       stageCount: 1,
+      isActive: true,
     },
     stages: [stage],
     unstagedTasks: [],

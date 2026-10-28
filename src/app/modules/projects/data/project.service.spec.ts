@@ -27,4 +27,14 @@ describe('ProjectService', () => {
       expect(service.normalizeProject({ id: 'p' }).stageCount).toBe(0);
     });
   });
+
+  describe('normalizeProject — isActive (008b #4)', () => {
+    it('reads ProjectResponse.IsActive = false (an inactive project is still returned by GET /projects/{id})', () => {
+      expect(service.normalizeProject({ id: 'p', isActive: false }).isActive).toBe(false);
+    });
+
+    it('defaults to true when the field is absent', () => {
+      expect(service.normalizeProject({ id: 'p' }).isActive).toBe(true);
+    });
+  });
 });
