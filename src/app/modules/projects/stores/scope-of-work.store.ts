@@ -139,16 +139,23 @@ export const ScopeOfWorkStore = signalStore(
 
       /**
        * A failed write: a concurrency 409 reloads and says so, anything else shows its message
-       * (and reloads on a 409 or 404). The failed body's draft is dropped by the caller, so its
-       * input shows the stored value again.
+       * (and reloads on a 409 or 404, or always when `reload`). The failed body's draft is
+       * dropped by the caller, so its input shows the stored value again.
        */
-      const fail = (err: unknown, errorField: 'error' | 'confirmError' = 'error'): void => {
+      const fail = (
+        err: unknown,
+        errorField: 'error' | 'confirmError' = 'error',
+        reload = false,
+      ): void => {
         if (reloadOnConflict(err, refresh)) return;
         patchState(store, {
           [errorField]: codedMessage(err, errors) ?? catalog.t('sow.saveFailed'),
         });
         // FINDING-7-4: a 409 or 404 says the stored scope moved on: re-read it.
-        if (err instanceof HttpErrorResponse && (err.status === 409 || err.status === 404)) {
+        if (
+          reload ||
+          (err instanceof HttpErrorResponse && (err.status === 409 || err.status === 404))
+        ) {
           refresh();
         }
       };
@@ -156,7 +163,7 @@ export const ScopeOfWorkStore = signalStore(
       /**
        * FINDING-7-1: one write in flight per `key`. A body sent meanwhile waits, replacing any
        * older waiting one (each body already carries every earlier edit), so the last edit
-       * lands last; the reload runs once the key drains. A failure drops what waits.
+       * lands last; the reload runs once the key drains. A failure drops what waits and reloads.
        */
       const lanes = new Map<string, ((projectId: string) => Observable<unknown>) | null>();
       const serial = (
@@ -185,7 +192,8 @@ export const ScopeOfWorkStore = signalStore(
             lanes.delete(key);
             patchState(store, { saving: false });
             settled(false);
-            fail(err);
+            // FINDING-7-11: an earlier body in this lane may have landed: always re-read.
+            fail(err, 'error', true);
           },
         });
       };

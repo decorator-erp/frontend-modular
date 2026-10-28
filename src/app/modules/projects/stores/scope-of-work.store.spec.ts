@@ -242,6 +242,25 @@ describe('ScopeOfWorkStore — header (sow #5)', () => {
     expect(s.headerDraft()).toBeNull();
   });
 
+  it('FINDING-7-11: a queued save that fails (400) after an earlier one landed reloads', () => {
+    const first = new Subject<void>();
+    api['updateHeader']
+      .mockReturnValueOnce(first)
+      .mockReturnValueOnce(throwError(() => conflict('Validation.General', 400)));
+    const s = store();
+    s.load('p1');
+    s.updateHeader(header);
+    s.updateHeader({ ...header, plannedStartDate: '2026-12-01' });
+    api['getScope'].mockReturnValue(of(sowScope({ durationDays: 90 })));
+    first.next();
+    first.complete();
+    expect(api['updateHeader']).toHaveBeenCalledTimes(2);
+    expect(api['getScope']).toHaveBeenCalledTimes(2);
+    expect(s.scope()?.durationDays).toBe(90);
+    expect(s.headerDraft()).toBeNull();
+    expect(s.error()).toBeTruthy();
+  });
+
   it('a failed header save drops the status and shows the coded message (B14)', () => {
     api['updateHeader'].mockReturnValue(throwError(() => conflict('projects.scope.Confirmed')));
     const s = store();
