@@ -10,14 +10,11 @@ import type {
   CatalogAttributeOption,
   CatalogCategory,
   CatalogItem,
-  CatalogReorderRequest,
   CreateCatalogCategoryRequest,
   CreateCatalogItemRequest,
   ItemAttributeValue,
   ItemAttributeValueRequest,
   MoveCatalogCategoryRequest,
-  UpdateCatalogAttributeOptionRequest,
-  UpdateCatalogAttributeRequest,
 } from '../model';
 
 /**
@@ -53,7 +50,8 @@ import type {
  * `searchCategories`/`getItem` are gone; ancestors and search derive from `/tree`.
  * 009b #N-8: nor is there a category update, reorder, activate, clone, delete or unmap
  * route; only create, move and map remain. 009b #N-9: nor an item update, move, activate
- * or delete; items are created and their attribute values written.
+ * or delete; items are created and their attribute values written. 009b #N-10: nor an
+ * attribute or option update, delete or reorder; attributes and options are added only.
  */
 @Injectable({ providedIn: 'root' })
 export class CrmCatalogService extends ApiService {
@@ -237,25 +235,6 @@ export class CrmCatalogService extends ApiService {
     }).pipe(map((r) => this.unwrapId(r, 'attributeId')));
   }
 
-  /** `PUT /api/crm/catalog/attributes/{attributeId}` → `204` — `crm.catalog.manage`. */
-  updateAttribute(attributeId: string, request: UpdateCatalogAttributeRequest): Observable<void> {
-    return this.put<void>(`/crm/catalog/attributes/${attributeId}`, {
-      code: request.code,
-      nameEn: request.nameEn,
-      nameAr: request.nameAr,
-      unit: request.unit ?? null,
-      isRequired: request.isRequired,
-    });
-  }
-
-  /** `DELETE /api/crm/catalog/attributes/{attributeId}` → `204` — `crm.catalog.manage`. */
-  deleteAttribute(attributeId: string): Observable<void> {
-    return this.delete<void>(`/crm/catalog/attributes/${attributeId}`);
-  }
-
-  // NOTE — `PUT /nodes/{id}/attributes/reorder` is not wrapped: attributes render in server
-  // order and no screen reorders them. Options DO reorder (see `reorderOptions`).
-
   /** `POST /api/crm/catalog/attributes/{attributeId}/options` → `201 { optionId }` — `crm.catalog.manage` (009b #40). */
   addOption(attributeId: string, request: AddCatalogAttributeOptionRequest): Observable<string> {
     return this.post<unknown>(`/crm/catalog/attributes/${attributeId}/options`, {
@@ -265,26 +244,6 @@ export class CrmCatalogService extends ApiService {
       imageUri: request.imageUri ?? null,
       sortOrder: request.sortOrder ?? 0,
     }).pipe(map((r) => this.unwrapId(r, 'optionId')));
-  }
-
-  /** `PUT /api/crm/catalog/options/{optionId}` → `204` — `crm.catalog.manage`. */
-  updateOption(optionId: string, request: UpdateCatalogAttributeOptionRequest): Observable<void> {
-    return this.put<void>(`/crm/catalog/options/${optionId}`, {
-      code: request.code,
-      nameEn: request.nameEn,
-      nameAr: request.nameAr,
-      imageUri: request.imageUri ?? null,
-    });
-  }
-
-  /** `DELETE /api/crm/catalog/options/{optionId}` → `204` — `crm.catalog.manage`. */
-  deleteOption(optionId: string): Observable<void> {
-    return this.delete<void>(`/crm/catalog/options/${optionId}`);
-  }
-
-  /** `PUT /api/crm/catalog/attributes/{attributeId}/options/reorder` → `204` — `crm.catalog.manage`. */
-  reorderOptions(attributeId: string, request: CatalogReorderRequest): Observable<void> {
-    return this.put<void>(`/crm/catalog/attributes/${attributeId}/options/reorder`, request);
   }
 
   // `setNodeSpecs()` — REMOVED (Run A, F2), not merely deprecated. `PUT /nodes/{id}/specs`

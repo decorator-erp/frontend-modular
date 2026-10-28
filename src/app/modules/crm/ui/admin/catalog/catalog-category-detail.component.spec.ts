@@ -6,7 +6,7 @@ import { PermissionsService } from '@platform/permissions/permissions.service';
 import { CrmLookupService } from '../../../data/crm-lookup.service';
 import { CatalogAdminStore } from '../../../stores/catalog-admin.store';
 import { CrmCatalogService } from '../../../data/crm-catalog.service';
-import { CatalogSelectionMode } from '../../../model/crm-enums';
+import { CatalogAttributeType, CatalogSelectionMode } from '../../../model/crm-enums';
 import type { CatalogCategory, CrmSpaceType } from '../../../model';
 import { CrmCatalogCategoryDetailComponent } from './catalog-category-detail.component';
 
@@ -173,5 +173,56 @@ describe('CrmCatalogCategoryDetailComponent — write actions without a route', 
     expect(labels).not.toContain('Edit');
     expect(labels).not.toContain('Deactivate');
     expect(labels).not.toContain('Delete');
+  });
+
+  it('keeps Add attribute and Add option but no attribute or option edit, delete or reorder (009b #N-10)', () => {
+    const el = render({
+      effectiveAttributes: signal([
+        {
+          id: 'A',
+          categoryId: 'C',
+          code: 'style',
+          nameEn: 'Style',
+          nameAr: 'Style',
+          dataType: CatalogAttributeType.Select,
+          unit: null,
+          isRequired: false,
+          sortOrder: 0,
+          isActive: true,
+          options: [
+            {
+              id: 'O1',
+              code: 'o1',
+              nameEn: 'Modern',
+              nameAr: 'Modern',
+              imageUri: null,
+              sortOrder: 0,
+              isActive: true,
+            },
+            {
+              id: 'O2',
+              code: 'o2',
+              nameEn: 'Classic',
+              nameAr: 'Classic',
+              imageUri: null,
+              sortOrder: 1,
+              isActive: true,
+            },
+          ],
+        },
+      ]),
+    });
+    const buttons = [...el.querySelectorAll('button')];
+    const texts = buttons.map((b) => b.textContent?.trim());
+    const labels = buttons.map((b) => b.getAttribute('aria-label'));
+
+    expect(el.textContent).toContain('Modern');
+    expect(texts).toContain('Add attribute');
+    expect(texts).toContain('Add option');
+    expect(texts).not.toContain('Edit');
+    expect(texts).not.toContain('Delete');
+    for (const label of ['Edit', 'Move up', 'Move down', 'Delete']) {
+      expect(labels).not.toContain(label);
+    }
   });
 });

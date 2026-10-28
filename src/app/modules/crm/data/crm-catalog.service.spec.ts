@@ -396,4 +396,18 @@ describe('CrmCatalogService', () => {
       expect(methods[name], name).toBeUndefined();
     }
   });
+
+  // 009b #N-10: CrmCatalogEndpoints.cs:64-81 maps attribute and option add only (C §2.11).
+  it('has no attribute or option update, delete or reorder (009b #N-10)', () => {
+    const methods = service as unknown as Record<string, unknown>;
+    for (const name of [
+      'updateAttribute',
+      'deleteAttribute',
+      'updateOption',
+      'deleteOption',
+      'reorderOptions',
+    ]) {
+      expect(methods[name], name).toBeUndefined();
+    }
+  });
 });

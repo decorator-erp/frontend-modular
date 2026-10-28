@@ -12,8 +12,6 @@ import type {
   CatalogCategory,
   CatalogItem,
   CreateCatalogCategoryRequest,
-  UpdateCatalogAttributeOptionRequest,
-  UpdateCatalogAttributeRequest,
 } from '../model';
 import { CatalogStore } from './catalog.store';
 import type { MutationHandlers } from './mutation-handlers';
@@ -37,7 +35,8 @@ export type { MutationHandlers };
  *
  * Every mutation refetches. This store is deliberately URL-agnostic — it never imports the
  * Router. 009b #N-8: no category update, reorder, activate, clone, delete or unmap route
- * exists, so those mutations are gone; create, move and map remain.
+ * exists, so those mutations are gone; create, move and map remain. 009b #N-10: attributes
+ * and options are add-only.
  */
 
 interface CatalogAdminState {
@@ -193,16 +192,6 @@ export const CatalogAdminStore = signalStore(
         ): void {
           run(api.addAttribute(categoryId, request), 'cat.attrSaveFailed', refresh, handlers);
         },
-        updateAttribute(
-          attributeId: string,
-          request: UpdateCatalogAttributeRequest,
-          handlers?: MutationHandlers,
-        ): void {
-          run(api.updateAttribute(attributeId, request), 'cat.attrSaveFailed', refresh, handlers);
-        },
-        deleteAttribute(attributeId: string, handlers?: MutationHandlers): void {
-          run(api.deleteAttribute(attributeId), 'cat.attrRemoveFailed', refresh, handlers);
-        },
         addOption(
           attributeId: string,
           request: AddCatalogAttributeOptionRequest,
@@ -210,42 +199,6 @@ export const CatalogAdminStore = signalStore(
         ): void {
           run(api.addOption(attributeId, request), 'cat.optionSaveFailed', refresh, handlers);
         },
-        updateOption(
-          optionId: string,
-          request: UpdateCatalogAttributeOptionRequest,
-          handlers?: MutationHandlers,
-        ): void {
-          run(api.updateOption(optionId, request), 'cat.optionSaveFailed', refresh, handlers);
-        },
-        deleteOption(optionId: string, handlers?: MutationHandlers): void {
-          run(api.deleteOption(optionId), 'cat.optionRemoveFailed', refresh, handlers);
-        },
-        /**
-         * Move one option within its attribute. Options live on the category's effective
-         * attributes (a cache read), not in `categories`, so there is nothing to patch
-         * optimistically — send the new order and let the refetch settle it.
-         */
-        reorderOption(
-          attribute: CatalogAttribute,
-          optionId: string,
-          direction: -1 | 1,
-          handlers?: MutationHandlers,
-        ): void {
-          const ordered = [...attribute.options].sort((a, b) => a.sortOrder - b.sortOrder);
-          const index = ordered.findIndex((o) => o.id === optionId);
-          const target = index + direction;
-          if (index < 0 || target < 0 || target >= ordered.length) return;
-
-          [ordered[index], ordered[target]] = [ordered[target], ordered[index]];
-          const items = ordered.map((o, i) => ({ id: o.id, sortOrder: i }));
-          run(
-            api.reorderOptions(attribute.id, { items }),
-            'cat.optionSaveFailed',
-            refresh,
-            handlers,
-          );
-        },
-
         // ── Space-type targeting (write-only: no mappings read, 009b #N-7) ──
         mapSpaceType(categoryId: string, spaceTypeId: string, handlers?: MutationHandlers): void {
           run(

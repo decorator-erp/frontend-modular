@@ -21,12 +21,10 @@ import type {
   CrmSpaceType,
 } from '../../../model';
 import {
-  ConfirmService,
   ModalService,
   PeraButtonComponent,
   PeraCheckboxComponent,
   PeraFormFieldComponent,
-  PeraIconComponent,
   PeraInputComponent,
   PeraSelectComponent,
   PeraStatusBadgeComponent,
@@ -67,7 +65,6 @@ import {
     PeraButtonComponent,
     PeraCheckboxComponent,
     PeraFormFieldComponent,
-    PeraIconComponent,
     PeraInputComponent,
     PeraSelectComponent,
     PeraTextareaComponent,
@@ -163,116 +160,20 @@ import {
                     />
                   }
                   <span class="fs-micro text-text-muted ms-auto">{{ origin(attr, c) }}</span>
-                  @if (attr.categoryId === c.id) {
-                    <ng-container *peraCan="PERM.crm.catalog.manage">
-                      <button
-                        type="button"
-                        class="fs-micro text-accent hover:underline"
-                        (click)="toggleEditAttr(attr)"
-                      >
-                        {{ catalog.t('common.edit') }}
-                      </button>
-                      <button
-                        type="button"
-                        class="fs-micro text-danger hover:underline"
-                        (click)="removeAttr(attr)"
-                      >
-                        {{ catalog.t('cat.delete') }}
-                      </button>
-                    </ng-container>
-                  }
                 </div>
-
-                <!-- The data type is absent by design: immutable once any value exists. -->
-                @if (editingAttrId() === attr.id) {
-                  <div [formGroup]="attrEditForm" class="flex flex-col gap-2">
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      <pera-input
-                        formControlName="code"
-                        [placeholder]="catalog.t('cat.codeL')"
-                        dir="ltr"
-                      />
-                      <pera-input
-                        formControlName="unit"
-                        [placeholder]="catalog.t('cat.attrUnit')"
-                        dir="ltr"
-                      />
-                      <pera-input
-                        formControlName="nameEn"
-                        [placeholder]="catalog.t('cat.nameEnL')"
-                        dir="ltr"
-                      />
-                      <pera-input
-                        formControlName="nameAr"
-                        [placeholder]="catalog.t('cat.nameArL')"
-                        dir="rtl"
-                      />
-                    </div>
-                    <div class="flex items-center gap-2">
-                      <pera-checkbox formControlName="isRequired">{{
-                        catalog.t('cat.attrRequired')
-                      }}</pera-checkbox>
-                      <pera-button
-                        variant="primary"
-                        size="xs"
-                        class="ms-auto"
-                        [loading]="store.saving()"
-                        (click)="submitEditAttr(attr)"
-                        >{{ catalog.t('cat.save') }}</pera-button
-                      >
-                    </div>
-                  </div>
-                }
 
                 <!--
                   A Select attribute is unusable without options — the picker would offer a
-                  dropdown with nothing in it. Only the DEFINING category may edit them.
+                  dropdown with nothing in it. Only the DEFINING category may add them.
                 -->
                 @if (attr.dataType === ATTR_TYPE.Select) {
                   <div class="flex flex-col gap-1 ps-3 border-s border-border">
                     <div class="flex items-center gap-1.5 flex-wrap">
-                      @for (opt of sortedOptions(attr); track opt.id; let oi = $index) {
+                      @for (opt of sortedOptions(attr); track opt.id) {
                         <span
                           class="inline-flex items-center gap-1 fs-micro px-1.5 py-0.5 rounded bg-surface-muted text-text-secondary"
                         >
                           <span dir="auto">{{ name(opt) }}</span>
-                          @if (attr.categoryId === c.id) {
-                            <ng-container *peraCan="PERM.crm.catalog.manage">
-                              <button
-                                type="button"
-                                [attr.aria-label]="catalog.t('common.edit')"
-                                (click)="toggleEditOption(opt)"
-                              >
-                                <pera-icon name="pencil" [size]="12" />
-                              </button>
-                              <button
-                                type="button"
-                                class="disabled:opacity-30"
-                                [disabled]="oi === 0"
-                                [attr.aria-label]="catalog.t('cat.moveUp')"
-                                (click)="store.reorderOption(attr, opt.id, -1)"
-                              >
-                                <pera-icon name="chevron-up" [size]="12" />
-                              </button>
-                              <button
-                                type="button"
-                                class="disabled:opacity-30"
-                                [disabled]="oi === attr.options.length - 1"
-                                [attr.aria-label]="catalog.t('cat.moveDown')"
-                                (click)="store.reorderOption(attr, opt.id, 1)"
-                              >
-                                <pera-icon name="chevron-down" [size]="12" />
-                              </button>
-                              <button
-                                type="button"
-                                class="text-danger"
-                                [attr.aria-label]="catalog.t('cat.delete')"
-                                (click)="removeOption(opt)"
-                              >
-                                <pera-icon name="x" [size]="12" />
-                              </button>
-                            </ng-container>
-                          }
                         </span>
                       } @empty {
                         <!-- 009b #36: no route reads an attribute's options. -->
@@ -292,36 +193,6 @@ import {
                         </button>
                       }
                     </div>
-
-                    @if (editingOptionOf(attr); as editing) {
-                      <div
-                        [formGroup]="optionEditForm"
-                        class="grid grid-cols-1 sm:grid-cols-3 gap-2"
-                      >
-                        <pera-input
-                          formControlName="code"
-                          [placeholder]="catalog.t('cat.codeL')"
-                          dir="ltr"
-                        />
-                        <pera-input
-                          formControlName="nameEn"
-                          [placeholder]="catalog.t('cat.nameEnL')"
-                          dir="ltr"
-                        />
-                        <pera-input
-                          formControlName="nameAr"
-                          [placeholder]="catalog.t('cat.nameArL')"
-                          dir="rtl"
-                        />
-                        <pera-button
-                          variant="primary"
-                          size="xs"
-                          [loading]="store.saving()"
-                          (click)="submitEditOption(editing)"
-                          >{{ catalog.t('cat.save') }}</pera-button
-                        >
-                      </div>
-                    }
 
                     @if (addingOptionFor() === attr.id) {
                       <div [formGroup]="optionForm" class="grid grid-cols-1 sm:grid-cols-3 gap-2">
@@ -508,7 +379,6 @@ export class CrmCatalogCategoryDetailComponent {
   protected readonly store = inject(CatalogAdminStore);
   private readonly cache = inject(CatalogStore);
   protected readonly catalog = inject(CatalogService);
-  private readonly confirm = inject(ConfirmService);
   private readonly lookup = inject(CrmLookupService);
   private readonly toast = inject(ToastService);
   private readonly fb = inject(FormBuilder);
@@ -526,14 +396,11 @@ export class CrmCatalogCategoryDetailComponent {
 
   protected readonly ATTR_TYPE = CatalogAttributeType;
 
-  // Four inline panels share one open slot — see `closePanels()`.
+  // Two inline panels share one open slot — see `closePanels()`. 009b #N-10: no attribute
+  // or option update/delete/reorder route exists, so only the add panels remain.
   readonly addingAttr = signal(false);
   /** The attribute id whose "add option" row is open, or `null`. */
   readonly addingOptionFor = signal<string | null>(null);
-  /** The attribute id whose inline edit panel is open, or `null`. */
-  readonly editingAttrId = signal<string | null>(null);
-  /** The option id whose inline edit row is open, or `null`. */
-  readonly editingOptionId = signal<string | null>(null);
   /** The space type selected in the targeting card's "add" row. */
   readonly targetType = signal<string>('');
 
@@ -555,18 +422,6 @@ export class CrmCatalogCategoryDetailComponent {
     code: ['', [Validators.required]],
     nameEn: ['', [Validators.required]],
     nameAr: ['', [Validators.required]],
-  });
-  readonly optionEditForm = this.fb.nonNullable.group({
-    code: ['', [Validators.required]],
-    nameEn: ['', [Validators.required]],
-    nameAr: ['', [Validators.required]],
-  });
-  readonly attrEditForm = this.fb.nonNullable.group({
-    code: ['', [Validators.required]],
-    nameEn: ['', [Validators.required]],
-    nameAr: ['', [Validators.required]],
-    unit: [''],
-    isRequired: [false],
   });
   readonly moving = signal(false);
   readonly moveTarget = signal<string>('');
@@ -717,12 +572,10 @@ export class CrmCatalogCategoryDetailComponent {
     this.targetType.set('');
   }
 
-  /** Only one inline panel is open at a time — four stacked forms would be unreadable. */
+  /** Only one inline panel is open at a time — stacked forms would be unreadable. */
   private closePanels(): void {
     this.addingAttr.set(false);
     this.addingOptionFor.set(null);
-    this.editingAttrId.set(null);
-    this.editingOptionId.set(null);
   }
 
   toggleAddAttr(): void {
@@ -738,79 +591,6 @@ export class CrmCatalogCategoryDetailComponent {
     this.optionForm.reset();
   }
 
-  toggleEditAttr(attr: CatalogAttribute): void {
-    const open = this.editingAttrId() === attr.id;
-    this.closePanels();
-    if (open) return;
-    this.editingAttrId.set(attr.id);
-    this.attrEditForm.reset({
-      code: attr.code,
-      nameEn: attr.nameEn,
-      nameAr: attr.nameAr,
-      unit: attr.unit ?? '',
-      isRequired: attr.isRequired,
-    });
-  }
-
-  submitEditAttr(attr: CatalogAttribute): void {
-    if (this.attrEditForm.invalid) {
-      this.attrEditForm.markAllAsTouched();
-      return;
-    }
-    const v = this.attrEditForm.getRawValue();
-    this.store.updateAttribute(
-      attr.id,
-      {
-        code: v.code.trim(),
-        nameEn: v.nameEn.trim(),
-        nameAr: v.nameAr.trim(),
-        unit: v.unit.trim() || null,
-        isRequired: v.isRequired,
-      },
-      this.toastOn('cat.attrSaved'),
-    );
-    this.editingAttrId.set(null);
-  }
-
-  toggleEditOption(option: CatalogAttributeOption): void {
-    const open = this.editingOptionId() === option.id;
-    this.closePanels();
-    if (open) return;
-    this.editingOptionId.set(option.id);
-    this.optionEditForm.reset({
-      code: option.code,
-      nameEn: option.nameEn,
-      nameAr: option.nameAr,
-    });
-  }
-
-  /** The option under edit within THIS attribute, so the row renders in the right block. */
-  editingOptionOf(attr: CatalogAttribute): CatalogAttributeOption | null {
-    const id = this.editingOptionId();
-    return id ? (attr.options.find((o) => o.id === id) ?? null) : null;
-  }
-
-  submitEditOption(option: CatalogAttributeOption): void {
-    if (this.optionEditForm.invalid) {
-      this.optionEditForm.markAllAsTouched();
-      return;
-    }
-    const v = this.optionEditForm.getRawValue();
-    this.store.updateOption(
-      option.id,
-      {
-        code: v.code.trim(),
-        nameEn: v.nameEn.trim(),
-        nameAr: v.nameAr.trim(),
-        // The wire layer sends `imageUri ?? null`, so omitting it would CLEAR a persisted
-        // image. This form does not edit it — resend what the option already carries.
-        imageUri: option.imageUri,
-      },
-      this.toastOn('cat.attrSaved'),
-    );
-    this.editingOptionId.set(null);
-  }
-
   submitOption(attributeId: string): void {
     if (this.optionForm.invalid) {
       this.optionForm.markAllAsTouched();
@@ -824,18 +604,6 @@ export class CrmCatalogCategoryDetailComponent {
     );
     this.optionForm.reset();
     this.addingOptionFor.set(null);
-  }
-
-  removeOption(option: CatalogAttributeOption): void {
-    void this.confirm
-      .open({ title: this.catalog.t('cat.delete'), body: this.name(option), tone: 'danger' })
-      .then((ok) => ok && this.store.deleteOption(option.id, this.toastOn('cat.attrSaved')));
-  }
-
-  removeAttr(attr: CatalogAttribute): void {
-    void this.confirm
-      .open({ title: this.catalog.t('cat.delete'), body: attr.nameEn, tone: 'danger' })
-      .then((ok) => ok && this.store.deleteAttribute(attr.id));
   }
 
   doMove(category: CatalogCategory): void {

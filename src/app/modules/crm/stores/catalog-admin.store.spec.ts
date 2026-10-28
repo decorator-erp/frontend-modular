@@ -43,12 +43,7 @@ function apiMock() {
     effectiveAttributes: vi.fn().mockReturnValue(of([])),
     itemsByCategory: vi.fn().mockReturnValue(of([])),
     addAttribute: vi.fn().mockReturnValue(of('attr-id')),
-    updateAttribute: vi.fn().mockReturnValue(of(undefined)),
-    deleteAttribute: vi.fn().mockReturnValue(of(undefined)),
     addOption: vi.fn().mockReturnValue(of('opt-id')),
-    updateOption: vi.fn().mockReturnValue(of(undefined)),
-    deleteOption: vi.fn().mockReturnValue(of(undefined)),
-    reorderOptions: vi.fn().mockReturnValue(of(undefined)),
   };
 }
 
@@ -139,5 +134,19 @@ describe('CatalogAdminStore', () => {
     const s = store() as unknown as Record<string, unknown>;
     expect(s['setItemActive']).toBeUndefined();
     expect(s['deleteItem']).toBeUndefined();
+  });
+
+  // 009b #N-10: attributes and options are add-only (C §2.11).
+  it('has no attribute or option update, delete or reorder (009b #N-10)', () => {
+    const s = store() as unknown as Record<string, unknown>;
+    for (const name of [
+      'updateAttribute',
+      'deleteAttribute',
+      'updateOption',
+      'deleteOption',
+      'reorderOption',
+    ]) {
+      expect(s[name], name).toBeUndefined();
+    }
   });
 });
