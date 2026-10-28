@@ -115,12 +115,21 @@ export const ScopeOfWorkStore = signalStore(
         });
       };
 
+      /**
+       * FINDING-7-12: the newest reload issued. Only its response is applied, so an older or
+       * out-of-order one never lands over a later write (whose lane issued a newer reload on
+       * draining), and a draft is cleared only by a reload issued after its lane drained.
+       */
+      let lastReload = 0;
+
       /** Re-read the scope only (the project does not change under these writes). */
       const refresh = (): void => {
         const projectId = store.projectId();
         if (!projectId) return;
+        const seq = ++lastReload;
         api.getScope(projectId).subscribe({
           next: (scope) => {
+            if (seq !== lastReload) return;
             patchState(store, {
               scope,
               headerDraft: lanes.has('header') ? store.headerDraft() : null,
@@ -130,10 +139,14 @@ export const ScopeOfWorkStore = signalStore(
             });
             resolveConfirmer(scope);
           },
-          error: (err: unknown) =>
-            err instanceof HttpErrorResponse && err.status === 404
-              ? patchState(store, { scope: null, notFound: true })
-              : patchState(store, { error: catalog.t('sow.loadFailed') }),
+          error: (err: unknown) => {
+            if (seq !== lastReload) return;
+            if (err instanceof HttpErrorResponse && err.status === 404) {
+              patchState(store, { scope: null, notFound: true });
+            } else {
+              patchState(store, { error: catalog.t('sow.loadFailed') });
+            }
+          },
         });
       };
 
@@ -228,6 +241,7 @@ export const ScopeOfWorkStore = signalStore(
          */
         load(projectId: string): void {
           confirmerId = null;
+          lastReload++; // a reload of the previous load never lands
           patchState(store, { ...INITIAL, projectId, loading: true });
           api.getScope(projectId).subscribe({
             next: (scope) => {

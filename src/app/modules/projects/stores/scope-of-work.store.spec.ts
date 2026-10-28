@@ -117,6 +117,17 @@ describe('ScopeOfWorkStore (sow #3)', () => {
     expect(api['getScope']).toHaveBeenCalledTimes(2);
   });
 
+  it('FINDING-7-12: a reload that lands while an item save is pending keeps its draft', () => {
+    api['updateItem'].mockReturnValue(new Subject<void>());
+    const s = store();
+    s.load('p1');
+    const body = { name: 'Concept', description: 'Mood boards', fee: 10 };
+    s.updateItem('i1', body);
+    s.reload();
+    expect(api['getScope']).toHaveBeenCalledTimes(2);
+    expect(s.itemDrafts()).toEqual({ i1: body });
+  });
+
   it('reorder sends every item id then reloads (B4)', () => {
     const s = store();
     s.load('p1');
@@ -259,6 +270,50 @@ describe('ScopeOfWorkStore — header (sow #5)', () => {
     expect(s.scope()?.durationDays).toBe(90);
     expect(s.headerDraft()).toBeNull();
     expect(s.error()).toBeTruthy();
+  });
+
+  it('FINDING-7-12: a reload that lands while the header save is pending keeps the draft', () => {
+    const pending = new Subject<void>();
+    api['updateHeader'].mockReturnValue(pending);
+    const s = store();
+    s.load('p1');
+    s.updateHeader(header);
+    s.reload();
+    expect(api['getScope']).toHaveBeenCalledTimes(2);
+    expect(s.headerDraft()).toEqual(header);
+  });
+
+  it('FINDING-7-12: a reload issued before the save drained cannot land over it', () => {
+    const save = new Subject<void>();
+    const early = new Subject<ReturnType<typeof sowScope>>();
+    const late = new Subject<ReturnType<typeof sowScope>>();
+    api['updateHeader'].mockReturnValue(save);
+    const s = store();
+    s.load('p1');
+    s.updateHeader(header);
+    api['getScope'].mockReturnValueOnce(early).mockReturnValueOnce(late);
+    s.reload(); // issued while the save is in flight
+    save.next();
+    save.complete(); // the lane drains and issues its own reload
+    early.next(sowScope({ notes: 'stale' })); // the older reload lands last-but-one
+    expect(s.headerDraft()).toEqual(header);
+    expect(s.scope()?.notes).toBeNull();
+    late.next(sowScope({ durationDays: 90 }));
+    expect(s.headerDraft()).toBeNull();
+    expect(s.scope()?.durationDays).toBe(90);
+  });
+
+  it('FINDING-7-12: out-of-order reloads leave the newest state', () => {
+    const older = new Subject<ReturnType<typeof sowScope>>();
+    const newer = new Subject<ReturnType<typeof sowScope>>();
+    const s = store();
+    s.load('p1');
+    api['getScope'].mockReturnValueOnce(older).mockReturnValueOnce(newer);
+    s.reload();
+    s.reload();
+    newer.next(sowScope({ notes: 'new' }));
+    older.next(sowScope({ notes: 'old' }));
+    expect(s.scope()?.notes).toBe('new');
   });
 
   it('a failed header save drops the status and shows the coded message (B14)', () => {
