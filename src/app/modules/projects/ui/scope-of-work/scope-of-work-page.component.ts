@@ -7,8 +7,15 @@ import {
   input,
   signal,
 } from '@angular/core';
-import { PeraAlertComponent, PeraButtonComponent, PeraPageHeaderComponent } from '@ds';
+import {
+  ConfirmService,
+  PeraAlertComponent,
+  PeraButtonComponent,
+  PeraPageHeaderComponent,
+  PeraStatusBadgeComponent,
+} from '@ds';
 import { CatalogService } from '@platform/i18n/catalog.service';
+import { formatCairoDate, intlLocale } from '@platform/i18n/intl-locale';
 import { PERM, PermissionsService } from '@platform/permissions';
 import { ScopeOfWorkStore } from '../../stores/scope-of-work.store';
 import { SowItemsTableComponent, SowItemUpdate } from './sow-items-table.component';
@@ -27,6 +34,7 @@ import { SowTemplatePickerComponent } from './sow-template-picker.component';
     PeraAlertComponent,
     PeraButtonComponent,
     PeraPageHeaderComponent,
+    PeraStatusBadgeComponent,
     SowItemsTableComponent,
     SowSummaryComponent,
     SowTemplatePickerComponent,
@@ -40,6 +48,19 @@ import { SowTemplatePickerComponent } from './sow-template-picker.component';
         <pera-alert tone="danger">{{ error }}</pera-alert>
       }
       @if (store.scope(); as scope) {
+        <div class="flex items-center gap-3 flex-wrap">
+          <pera-status-badge
+            data-status
+            [tone]="store.isConfirmed() ? 'success' : 'neutral'"
+            [label]="catalog.t(store.isConfirmed() ? 'sow.statusConfirmed' : 'sow.statusDraft')"
+          />
+        </div>
+        @if (store.isConfirmed()) {
+          <pera-alert tone="success" data-confirmed-banner>
+            <strong>{{ confirmedOn() }}</strong>
+            {{ confirmedSummary() }}
+          </pera-alert>
+        }
         <div class="grid gap-5 items-start lg:grid-cols-3">
           <section
             class="bg-surface border border-border p-5 flex flex-col gap-4 min-w-0 lg:col-span-2"
@@ -88,7 +109,10 @@ import { SowTemplatePickerComponent } from './sow-template-picker.component';
             [scope]="scope"
             [editable]="editable()"
             [saveStatus]="store.headerStatus()"
+            [confirmPermitted]="canConfirm()"
+            [busy]="store.saving()"
             (headerChange)="store.updateHeader($event)"
+            (confirm)="onConfirm()"
           />
         </div>
       }
@@ -99,12 +123,40 @@ export class ScopeOfWorkPageComponent implements OnInit {
   protected readonly catalog = inject(CatalogService);
   protected readonly store = inject(ScopeOfWorkStore);
   private readonly permissions = inject(PermissionsService);
+  private readonly confirmDialog = inject(ConfirmService);
 
   /** The project id (`:id`). */
   readonly id = input('');
 
   /** B15 `scope.manage`. */
   protected readonly canManage = computed(() => this.permissions.can(PERM.scope.manage));
+
+  /** B10/B15 `scope.confirm`. */
+  protected readonly canConfirm = computed(() => this.permissions.can(PERM.scope.confirm));
+
+  /** B11: "Confirmed on {date, Africa/Cairo} by {employee name}." */
+  protected readonly confirmedOn = computed(() => {
+    const at = this.store.scope()?.confirmedAtUtc;
+    return this.catalog.t('sow.confirmedOn', {
+      date: at ? formatCairoDate(at, this.catalog.locale()) : '—',
+      name: this.store.confirmedByName() ?? '—',
+    });
+  });
+
+  /** B11: "{n} stages created · total {total} EGP · ends {end}." */
+  protected readonly confirmedSummary = computed(() => {
+    const scope = this.store.scope();
+    if (!scope) return '';
+    const locale = this.catalog.locale();
+    const total = new Intl.NumberFormat(intlLocale(locale), {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 4,
+    }).format(scope.total);
+    const end = scope.estimatedEndDate
+      ? formatCairoDate(`${scope.estimatedEndDate}T00:00:00Z`, locale)
+      : '—';
+    return this.catalog.t('sow.confirmedSummary', { n: scope.items.length, total, end });
+  });
 
   /** Edit controls render only with `scope.manage`, on a Draft of a Stage-workflow project. */
   protected readonly editable = computed(
@@ -125,6 +177,18 @@ export class ScopeOfWorkPageComponent implements OnInit {
     const open = !this.pickerOpen();
     this.pickerOpen.set(open);
     if (open && this.store.templates().length === 0) this.store.loadTemplates();
+  }
+
+  /** B10: asks through the design system's dialog, then `POST …/confirm` → reload. */
+  protected async onConfirm(): Promise<void> {
+    const n = this.store.items().length;
+    const ok = await this.confirmDialog.open({
+      title: this.catalog.t('sow.confirmTitle'),
+      body: this.catalog.t('sow.confirmCopy', { n }),
+      confirmLabel: this.catalog.t('sow.confirmScope'),
+      cancelLabel: this.catalog.t('common.cancel'),
+    });
+    if (ok) this.store.confirm();
   }
 
   protected onUpdateItem(update: SowItemUpdate): void {

@@ -6,6 +6,7 @@ import { ToastService } from '@platform/feedback/toast.service';
 import { ScopeOfWorkService } from '../data/scope-of-work.service';
 import { ProjectService } from '../data/project.service';
 import { StageTemplatesService } from '@modules/library';
+import { EmployeeService } from '@modules/people';
 import { ScopeOfWork, ScopeOfWorkItem, ScopeOfWorkStatus } from '../model/scope-of-work.model';
 import { ScopeOfWorkStore } from './scope-of-work.store';
 
@@ -80,6 +81,7 @@ describe('ScopeOfWorkStore (sow #3)', () => {
         { provide: ProjectService, useValue: projects },
         { provide: ToastService, useValue: toast },
         { provide: StageTemplatesService, useValue: { list: vi.fn(), stages: vi.fn() } },
+        { provide: EmployeeService, useValue: { getById: vi.fn() } },
       ],
     });
   });
@@ -176,6 +178,7 @@ describe('ScopeOfWorkStore — header (sow #5)', () => {
         },
         { provide: ToastService, useValue: toast },
         { provide: StageTemplatesService, useValue: { list: vi.fn(), stages: vi.fn() } },
+        { provide: EmployeeService, useValue: { getById: vi.fn() } },
       ],
     });
   });
@@ -272,6 +275,7 @@ describe('ScopeOfWorkStore — template picker (sow #4)', () => {
           useValue: { getById: vi.fn().mockReturnValue(of({ id: 'p1' })) },
         },
         { provide: StageTemplatesService, useValue: templates },
+        { provide: EmployeeService, useValue: { getById: vi.fn() } },
         { provide: ToastService, useValue: { show: vi.fn() } },
       ],
     });
@@ -335,5 +339,76 @@ describe('ScopeOfWorkStore — template picker (sow #4)', () => {
     s.addTemplate('t1');
     expect(api['addFromTemplate']).toHaveBeenCalledWith('p1', 't1');
     expect(api['getScope']).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('ScopeOfWorkStore — confirm (sow #7)', () => {
+  let api: Record<string, ReturnType<typeof vi.fn>>;
+  let employees: { getById: ReturnType<typeof vi.fn> };
+
+  const confirmed = sowScope({
+    status: ScopeOfWorkStatus.Confirmed,
+    confirmedAtUtc: '2026-10-27T09:30:00Z',
+    confirmedById: 'e1',
+    items: [sowItem({ createdStageId: 'st1' })],
+    blockingReason: 'projects.scope.Confirmed',
+  });
+
+  beforeEach(() => {
+    api = {
+      getScope: vi.fn().mockReturnValue(of(sowScope({ items: [sowItem()], canConfirm: true }))),
+      confirm: vi.fn().mockReturnValue(of({ createdStageIds: ['st1'] })),
+    };
+    employees = { getById: vi.fn().mockReturnValue(of({ id: 'e1', fullName: 'Mona Adel' })) };
+    TestBed.configureTestingModule({
+      providers: [
+        ScopeOfWorkStore,
+        { provide: ScopeOfWorkService, useValue: api },
+        {
+          provide: ProjectService,
+          useValue: { getById: vi.fn().mockReturnValue(of({ id: 'p1' })) },
+        },
+        { provide: ToastService, useValue: { show: vi.fn() } },
+        { provide: StageTemplatesService, useValue: { list: vi.fn(), stages: vi.fn() } },
+        { provide: EmployeeService, useValue: employees },
+      ],
+    });
+  });
+
+  const store = () => TestBed.inject(ScopeOfWorkStore);
+
+  it('confirm posts, then reloads the scope as Confirmed (B10)', () => {
+    const s = store();
+    s.load('p1');
+    api['getScope'].mockReturnValue(of(confirmed));
+    s.confirm();
+    expect(api['confirm']).toHaveBeenCalledWith('p1');
+    expect(api['getScope']).toHaveBeenCalledTimes(2);
+    expect(s.isConfirmed()).toBe(true);
+  });
+
+  it("resolves the confirmer's name through HR, once (B11)", () => {
+    api['getScope'].mockReturnValue(of(confirmed));
+    const s = store();
+    s.load('p1');
+    expect(employees.getById).toHaveBeenCalledWith('e1');
+    expect(s.confirmedByName()).toBe('Mona Adel');
+    s.reload();
+    expect(employees.getById).toHaveBeenCalledTimes(1);
+  });
+
+  it('the name is "—" when HR fails (B11)', () => {
+    api['getScope'].mockReturnValue(of(confirmed));
+    employees.getById.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 404 })));
+    const s = store();
+    s.load('p1');
+    expect(s.confirmedByName()).toBe('—');
+  });
+
+  it('a Draft resolves no name', () => {
+    const s = store();
+    s.load('p1');
+    expect(employees.getById).not.toHaveBeenCalled();
+    expect(s.confirmedByName()).toBeNull();
   });
 });

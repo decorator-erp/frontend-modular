@@ -3,6 +3,7 @@ import { computed, inject } from '@angular/core';
 import { patchState, signalStore, withComputed, withMethods, withState } from '@ngrx/signals';
 import { forkJoin, Observable } from 'rxjs';
 import { StageTemplatesService, TemplateStage } from '@modules/library';
+import { EmployeeService } from '@modules/people';
 import { injectReloadOnConflict } from '@platform/http/concurrency';
 import {
   ErrorHandlerService,
@@ -43,6 +44,8 @@ interface ScopeOfWorkState {
   templatesLoading: boolean;
   /** B9: the last header save: in flight, done, or nothing to say. */
   headerStatus: SowHeaderStatus;
+  /** B11: the confirmer's name, resolved through HR from `confirmedById` ("—" on failure). */
+  confirmedByName: string | null;
 }
 
 const INITIAL: ScopeOfWorkState = {
@@ -58,6 +61,7 @@ const INITIAL: ScopeOfWorkState = {
   templateStages: [],
   templatesLoading: false,
   headerStatus: 'idle',
+  confirmedByName: null,
 };
 
 /**
@@ -84,16 +88,32 @@ export const ScopeOfWorkStore = signalStore(
       api = inject(ScopeOfWorkService),
       projects = inject(ProjectService),
       stageTemplates = inject(StageTemplatesService),
+      employees = inject(EmployeeService),
       errors = inject(ErrorHandlerService),
       catalog = inject(CatalogService),
       reloadOnConflict = injectReloadOnConflict(),
     ) => {
+      /** B11: resolves the confirmer's name once per `confirmedById`; "—" when HR can't say. */
+      let confirmerId: string | null = null;
+      const resolveConfirmer = (scope: ScopeOfWork): void => {
+        const id = scope.confirmedById;
+        if (!id || id === confirmerId) return;
+        confirmerId = id;
+        employees.getById(id).subscribe({
+          next: (e) => patchState(store, { confirmedByName: e.fullName || '—' }),
+          error: () => patchState(store, { confirmedByName: '—' }),
+        });
+      };
+
       /** Re-read the scope only (the project does not change under these writes). */
       const refresh = (): void => {
         const projectId = store.projectId();
         if (!projectId) return;
         api.getScope(projectId).subscribe({
-          next: (scope) => patchState(store, { scope }),
+          next: (scope) => {
+            patchState(store, { scope });
+            resolveConfirmer(scope);
+          },
           error: (err: unknown) =>
             err instanceof HttpErrorResponse && err.status === 404
               ? patchState(store, { scope: null, notFound: true })
@@ -127,12 +147,16 @@ export const ScopeOfWorkStore = signalStore(
       return {
         /** B1: the scope and the project. `id: null` is an empty Draft, not an error. */
         load(projectId: string): void {
+          confirmerId = null;
           patchState(store, { ...INITIAL, projectId, loading: true });
           forkJoin({
             scope: api.getScope(projectId),
             project: projects.getById(projectId),
           }).subscribe({
-            next: ({ scope, project }) => patchState(store, { scope, project, loading: false }),
+            next: ({ scope, project }) => {
+              patchState(store, { scope, project, loading: false });
+              resolveConfirmer(scope);
+            },
             error: (err: unknown) =>
               err instanceof HttpErrorResponse && err.status === 404
                 ? patchState(store, { loading: false, notFound: true })
@@ -172,6 +196,14 @@ export const ScopeOfWorkStore = signalStore(
         /** B5 `DELETE …/items/{itemId}`, then reload (the server renumbers). */
         removeItem(itemId: string): void {
           write((projectId) => api.removeItem(projectId, itemId));
+        },
+
+        /**
+         * B10 `POST …/confirm`, then reload: the scope comes back Confirmed with each item's
+         * `createdStageId`.
+         */
+        confirm(): void {
+          write((projectId) => api.confirm(projectId));
         },
 
         /** B6: the template pills; opens the first template's stages. */

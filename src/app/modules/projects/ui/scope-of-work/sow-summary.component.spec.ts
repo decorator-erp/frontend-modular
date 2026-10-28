@@ -1,5 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { describe, expect, it, beforeEach } from 'vitest';
+import { friendlyMessage } from '@platform/errors/error-catalog';
 import { EN } from '@platform/i18n/catalog/en';
 import { formatCairoDate } from '@platform/i18n/intl-locale';
 import {
@@ -279,3 +280,85 @@ describe('SowSummaryComponent — fees and adjustment (sow #6)', () => {
     expect(notesInput().disabled).toBe(true);
   });
 });
+
+describe('SowSummaryComponent — confirm block (sow #7)', () => {
+  let fixture: ComponentFixture<SowSummaryComponent>;
+  let el: HTMLElement;
+  let confirms: number;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({ imports: [SowSummaryComponent] });
+  });
+
+  function render(s: ScopeOfWork, confirmPermitted = true, editable = true) {
+    fixture = TestBed.createComponent(SowSummaryComponent);
+    fixture.componentRef.setInput('scope', s);
+    fixture.componentRef.setInput('editable', editable);
+    fixture.componentRef.setInput('confirmPermitted', confirmPermitted);
+    confirms = 0;
+    fixture.componentInstance.confirm.subscribe(() => confirms++);
+    fixture.detectChanges();
+    el = fixture.nativeElement;
+  }
+
+  const button = () =>
+    Array.from(el.querySelectorAll<HTMLButtonElement>('pera-button button')).find(
+      (b) => b.textContent!.trim() === EN['sow.confirmScope'],
+    );
+  const reason = () => el.querySelector('[data-blocking-reason]')?.textContent?.trim() ?? null;
+
+  it('enabled when canConfirm and scope.confirm; emits on click; copy names the stage count', () => {
+    render(scope({ items: [sowItemLike('i1'), sowItemLike('i2')] }));
+    expect(button()!.disabled).toBe(false);
+    expect(reason()).toBeNull();
+    expect(el.textContent).toContain(
+      "Confirming creates 2 stages with their tasks, teams and cost, in this order. It can't be undone.",
+    );
+    button()!.click();
+    expect(confirms).toBe(1);
+  });
+
+  it("disabled with the blocking reason's catalog message when canConfirm is false (B10)", () => {
+    render(scope({ canConfirm: false, blockingReason: 'projects.scope.DurationRequired' }));
+    expect(button()!.disabled).toBe(true);
+    expect(reason()).toBe(friendlyMessage('projects.scope.DurationRequired', '', 'en'));
+    button()!.click();
+    expect(confirms).toBe(0);
+  });
+
+  it('disabled without scope.confirm, even when the server could confirm (B10, B15)', () => {
+    render(scope({ canConfirm: true, blockingReason: null }), false);
+    expect(button()!.disabled).toBe(true);
+    expect(reason()).toBe(EN['sow.confirmNoPermission']);
+  });
+
+  it('confirmed: no confirm block, the read-only footer, inputs disabled (B11)', () => {
+    render(
+      scope({ status: ScopeOfWorkStatus.Confirmed, blockingReason: 'projects.scope.Confirmed' }),
+      true,
+      false,
+    );
+    expect(el.querySelector('[data-confirm-block]')).toBeNull();
+    expect(button()).toBeUndefined();
+    expect(el.querySelector('[data-read-only-footer]')!.textContent!.trim()).toBe(
+      EN['sow.readOnlyFooter'],
+    );
+    const inputs = Array.from(el.querySelectorAll<HTMLInputElement>('input, textarea'));
+    expect(inputs.length).toBeGreaterThan(0);
+    expect(inputs.every((i) => i.disabled)).toBe(true);
+  });
+});
+
+function sowItemLike(id: string) {
+  return {
+    id,
+    sourceStageId: `s-${id}`,
+    sourceTemplateName: 'Residential',
+    name: id,
+    description: null,
+    order: 1,
+    fee: 1,
+    createdStageId: null,
+    sourceMissing: false,
+  };
+}

@@ -1139,4 +1139,15 @@ export const AR: Partial<Record<CatalogKey, string>> = {
   'sow.adjustmentInvalid': 'أدخل مبلغًا من -1,000,000,000,000 إلى 1,000,000,000,000.',
   'sow.adjustmentNoteInvalid': 'اجعل السبب 500 حرف أو أقل.',
   'sow.notesInvalid': 'اجعل الملاحظات 2,000 حرف أو أقل.',
+  'sow.statusDraft': 'مسودة',
+  'sow.statusConfirmed': 'مؤكَّد',
+  'sow.confirmScope': 'تأكيد النطاق',
+  'sow.confirmTitle': 'تأكيد نطاق العمل؟',
+  'sow.confirmCopy':
+    'يُنشئ التأكيد {n} مراحل بمهامها وفرقها وتكلفتها، بهذا الترتيب. لا يمكن التراجع عنه.',
+  'sow.confirmBlocked': 'لا يمكن تأكيد نطاق العمل بعد.',
+  'sow.confirmNoPermission': 'ليست لديك صلاحية تأكيد نطاق العمل.',
+  'sow.confirmedOn': 'أُكِّد في {date} بواسطة {name}.',
+  'sow.confirmedSummary': 'أُنشئت {n} مراحل · الإجمالي {total} ج.م · ينتهي {end}.',
+  'sow.readOnlyFooter': 'للقراءة فقط. لإضافة بنود أو تغييرها بعد التأكيد، اطلب تعديلًا.',
 };

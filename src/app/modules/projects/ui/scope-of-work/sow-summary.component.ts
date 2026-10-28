@@ -10,6 +10,7 @@ import {
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import {
+  PeraButtonComponent,
   PeraCurrencyComponent,
   PeraDateInputComponent,
   PeraFormFieldComponent,
@@ -17,10 +18,15 @@ import {
   PeraMoneyInputComponent,
   PeraTextareaComponent,
 } from '@ds';
+import { friendlyMessage } from '@platform/errors/error-catalog';
 import type { CatalogKey } from '@platform/i18n/catalog/en';
 import { CatalogService } from '@platform/i18n/catalog.service';
 import { formatCairoDate } from '@platform/i18n/intl-locale';
-import { ScopeOfWork, UpdateScopeOfWorkHeaderRequest } from '../../model/scope-of-work.model';
+import {
+  ScopeOfWork,
+  ScopeOfWorkStatus,
+  UpdateScopeOfWorkHeaderRequest,
+} from '../../model/scope-of-work.model';
 import type { SowHeaderStatus } from '../../stores/scope-of-work.store';
 import { InnerInputLabelDirective } from './inner-input-label.directive';
 
@@ -41,7 +47,7 @@ type HeaderField = 'duration' | 'start' | 'adjustment' | 'adjustmentNote' | 'not
 /**
  * The scope-of-work header (B7-B9): duration, planned start and the server's estimated end;
  * the server's subtotal and total, the adjustment (negative = discount) with its reason, and
- * the notes.
+ * the notes; and the confirm block (B10) or, once confirmed, the read-only footer (B11).
  * Presentational: every change emits ONE full header (all five fields, `adjustmentAmount`
  * always), built from the stored values plus the change, and the page calls the store. There
  * is no "Save draft": each change saves itself and the quiet status says so (C §8.4.6-7).
@@ -52,6 +58,7 @@ type HeaderField = 'duration' | 'start' | 'adjustment' | 'adjustmentNote' | 'not
   imports: [
     FormsModule,
     InnerInputLabelDirective,
+    PeraButtonComponent,
     PeraCurrencyComponent,
     PeraDateInputComponent,
     PeraFormFieldComponent,
@@ -146,6 +153,32 @@ type HeaderField = 'duration' | 'start' | 'adjustment' | 'adjustmentNote' | 'not
         />
       </pera-form-field>
     </section>
+
+    @if (confirmed()) {
+      <div class="${CARD}">
+        <p class="m-0 text-text-secondary" data-read-only-footer>
+          {{ catalog.t('sow.readOnlyFooter') }}
+        </p>
+      </div>
+    } @else {
+      <div class="${CARD}" data-confirm-block>
+        @if (blockingText(); as reason) {
+          <p class="m-0 fs-body-sm text-warning" data-blocking-reason>{{ reason }}</p>
+        }
+        <p class="m-0 fs-body-sm text-text-secondary">
+          {{ catalog.t('sow.confirmCopy', { n: scope().items.length }) }}
+        </p>
+        <div class="flex gap-2 flex-wrap">
+          <pera-button
+            variant="primary"
+            [disabled]="!confirmEnabled() || busy()"
+            (click)="confirm.emit()"
+          >
+            {{ catalog.t('sow.confirmScope') }}
+          </pera-button>
+        </div>
+      </div>
+    }
   `,
 })
 export class SowSummaryComponent {
@@ -156,9 +189,15 @@ export class SowSummaryComponent {
   readonly editable = input(false);
   /** B9: the store's header save status. */
   readonly saveStatus = input<SowHeaderStatus>('idle');
+  /** B10: the user holds `scope.confirm`. */
+  readonly confirmPermitted = input(false);
+  /** A write is in flight. */
+  readonly busy = input(false);
 
   /** One full header, ready for `PUT …/scope-of-work` (B9). */
   readonly headerChange = output<UpdateScopeOfWorkHeaderRequest>();
+  /** B10: "Confirm scope" was pressed (the page asks before it calls). */
+  readonly confirm = output<void>();
 
   protected readonly startMin = START_MIN;
   protected readonly startMax = START_MAX;
@@ -171,6 +210,23 @@ export class SowSummaryComponent {
    * as soon as the adjustment is ≠ 0.
    */
   protected readonly adjustment = linkedSignal(() => this.scope().adjustmentAmount);
+
+  protected readonly confirmed = computed(
+    () => this.scope().status === ScopeOfWorkStatus.Confirmed,
+  );
+
+  /** B10: the server's `canConfirm` and the user's `scope.confirm`, both. */
+  protected readonly confirmEnabled = computed(
+    () => this.scope().canConfirm && this.confirmPermitted(),
+  );
+
+  /** B10: why confirm is disabled: the catalog message for `blockingReason` (EN/AR). */
+  protected readonly blockingText = computed(() => {
+    const code = this.scope().blockingReason;
+    if (code)
+      return friendlyMessage(code, this.catalog.t('sow.confirmBlocked'), this.catalog.locale());
+    return this.confirmPermitted() ? null : this.catalog.t('sow.confirmNoPermission');
+  });
 
   protected readonly statusText = computed(() => {
     const status = this.saveStatus();

@@ -1,14 +1,17 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { of } from 'rxjs';
+import { of, throwError } from 'rxjs';
 import { PermissionsService, PERM } from '@platform/permissions';
 import { ProjectService } from '../../data/project.service';
 import { ScopeOfWorkService } from '../../data/scope-of-work.service';
 import { ScopeOfWork, ScopeOfWorkItem, ScopeOfWorkStatus } from '../../model/scope-of-work.model';
 import { ScopeOfWorkPageComponent } from './scope-of-work-page.component';
 import { StageTemplatesService } from '@modules/library';
+import { EmployeeService } from '@modules/people';
+import { ConfirmService } from '@ds';
 import { EN } from '@platform/i18n/catalog/en';
+import { formatCairoDate } from '@platform/i18n/intl-locale';
 
 function item(over: Partial<ScopeOfWorkItem> = {}): ScopeOfWorkItem {
   return {
@@ -54,9 +57,13 @@ describe('ScopeOfWorkPageComponent — items (sow #3)', () => {
   let api: Record<string, ReturnType<typeof vi.fn>>;
   let granted: Set<string>;
   let templates: { list: ReturnType<typeof vi.fn>; stages: ReturnType<typeof vi.fn> };
+  let employees: { getById: ReturnType<typeof vi.fn> };
+  let dialog: { open: ReturnType<typeof vi.fn> };
 
   beforeEach(() => {
-    granted = new Set([PERM.scope.read, PERM.scope.manage]);
+    granted = new Set([PERM.scope.read, PERM.scope.manage, PERM.scope.confirm]);
+    employees = { getById: vi.fn().mockReturnValue(of({ id: 'e1', fullName: 'Mona Adel' })) };
+    dialog = { open: vi.fn().mockResolvedValue(true) };
     api = {
       getScope: vi.fn().mockReturnValue(of(scope())),
       updateItem: vi.fn().mockReturnValue(of(undefined)),
@@ -65,6 +72,7 @@ describe('ScopeOfWorkPageComponent — items (sow #3)', () => {
       addItems: vi.fn().mockReturnValue(of([])),
       addFromTemplate: vi.fn().mockReturnValue(of([])),
       updateHeader: vi.fn().mockReturnValue(of(undefined)),
+      confirm: vi.fn().mockReturnValue(of({ createdStageIds: ['st1', 'st2'] })),
     };
     const templateStage = (id: string, name: string, order: number, defaultFee: number | null) => ({
       id,
@@ -102,6 +110,8 @@ describe('ScopeOfWorkPageComponent — items (sow #3)', () => {
         },
         { provide: PermissionsService, useValue: { can: (p: string) => granted.has(p) } },
         { provide: StageTemplatesService, useValue: templates },
+        { provide: EmployeeService, useValue: employees },
+        { provide: ConfirmService, useValue: dialog },
       ],
     });
   });
@@ -216,5 +226,127 @@ describe('ScopeOfWorkPageComponent — items (sow #3)', () => {
       notes: null,
     });
     expect(api['getScope']).toHaveBeenCalledTimes(2);
+  });
+
+  const confirmButton = () =>
+    Array.from(el.querySelectorAll<HTMLButtonElement>('app-sow-summary pera-button button')).find(
+      (b) => b.textContent!.trim() === EN['sow.confirmScope'],
+    );
+
+  const confirmedScope = () =>
+    scope({
+      status: ScopeOfWorkStatus.Confirmed,
+      durationDays: 120,
+      plannedStartDate: '2026-11-01',
+      estimatedEndDate: '2027-03-01',
+      total: 50000,
+      confirmedAtUtc: '2026-10-27T09:30:00Z',
+      confirmedById: 'e1',
+      items: [
+        item({ createdStageId: 'st1' }),
+        item({ id: 'i2', sourceStageId: 's2', order: 2, name: 'Drawings', createdStageId: 'st2' }),
+      ],
+      canConfirm: false,
+      blockingReason: 'projects.scope.Confirmed',
+    });
+
+  it('sow #7: Confirm asks through ConfirmService, then posts and reloads (B10)', async () => {
+    api['getScope'].mockReturnValue(of(scope({ canConfirm: true })));
+    render();
+    confirmButton()!.click();
+    await fixture.whenStable();
+    expect(dialog.open).toHaveBeenCalledWith(
+      expect.objectContaining({
+        body: "Confirming creates 2 stages with their tasks, teams and cost, in this order. It can't be undone.",
+        confirmLabel: EN['sow.confirmScope'],
+      }),
+    );
+    expect(api['confirm']).toHaveBeenCalledWith('p1');
+    expect(api['getScope']).toHaveBeenCalledTimes(2);
+  });
+
+  it('sow #7: a declined dialog posts nothing', async () => {
+    api['getScope'].mockReturnValue(of(scope({ canConfirm: true })));
+    dialog.open.mockResolvedValue(false);
+    render();
+    confirmButton()!.click();
+    await fixture.whenStable();
+    expect(api['confirm']).not.toHaveBeenCalled();
+  });
+
+  it('sow #7: confirm is disabled with the reason when canConfirm is false (B10)', () => {
+    api['getScope'].mockReturnValue(
+      of(scope({ canConfirm: false, blockingReason: 'projects.scope.DurationRequired' })),
+    );
+    render();
+    expect(confirmButton()!.disabled).toBe(true);
+    expect(el.querySelector('[data-blocking-reason]')!.textContent!.trim()).toBe(
+      'Set the duration before confirming the scope of work.',
+    );
+  });
+
+  it('sow #7: confirm is disabled without scope.confirm (B10, B15)', () => {
+    granted.delete(PERM.scope.confirm);
+    api['getScope'].mockReturnValue(of(scope({ canConfirm: true })));
+    render();
+    expect(confirmButton()!.disabled).toBe(true);
+    expect(el.querySelector('[data-blocking-reason]')!.textContent!.trim()).toBe(
+      EN['sow.confirmNoPermission'],
+    );
+  });
+
+  it('sow #7: Draft chip; no banner on a Draft', () => {
+    render();
+    expect(el.querySelector('[data-status]')!.textContent).toContain(EN['sow.statusDraft']);
+    expect(el.querySelector('[data-confirmed-banner]')).toBeNull();
+  });
+
+  it('sow #7: confirmed: chip, banner with date and HR name, read-only, stage links (B11)', async () => {
+    api['getScope'].mockReturnValue(of(confirmedScope()));
+    render();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(el.querySelector('[data-status]')!.textContent).toContain(EN['sow.statusConfirmed']);
+    const banner = el.querySelector('[data-confirmed-banner]')!.textContent!.replace(/\s+/g, ' ');
+    expect(employees.getById).toHaveBeenCalledWith('e1');
+    expect(banner).toContain(
+      `Confirmed on ${formatCairoDate('2026-10-27T09:30:00Z', 'en')} by Mona Adel.`,
+    );
+    expect(banner).toContain(
+      `2 stages created · total 50,000.00 EGP · ends ${formatCairoDate('2027-03-01T00:00:00Z', 'en')}.`,
+    );
+    // Every input disabled; no picker toggle, no row actions, no confirm button.
+    const inputs = Array.from(el.querySelectorAll<HTMLInputElement>('input, textarea'));
+    expect(inputs.length).toBeGreaterThan(0);
+    expect(inputs.every((i) => i.disabled)).toBe(true);
+    expect(toggle()).toBeUndefined();
+    expect(el.querySelectorAll('tbody button')).toHaveLength(0);
+    expect(confirmButton()).toBeUndefined();
+    expect(el.textContent).toContain(EN['sow.readOnlyFooter']);
+    const links = Array.from(el.querySelectorAll<HTMLAnchorElement>('tbody a'));
+    expect(links.map((a) => a.getAttribute('href'))).toEqual([
+      '/projects/p1/stages/st1',
+      '/projects/p1/stages/st2',
+    ]);
+    expect(links[0].textContent!.trim()).toBe('Stage 1 created · open');
+  });
+
+  it('sow #7: the confirmer name is "—" when HR fails (B11)', async () => {
+    api['getScope'].mockReturnValue(of(confirmedScope()));
+    employees.getById.mockReturnValue(throwError(() => new Error('hr down')));
+    render();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(el.querySelector('[data-confirmed-banner]')!.textContent).toContain('by —.');
+  });
+
+  it('sow #7: without scope.manage a Draft is read-only, with no banner (B15)', async () => {
+    granted.delete(PERM.scope.manage);
+    render();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const inputs = Array.from(el.querySelectorAll<HTMLInputElement>('input, textarea'));
+    expect(inputs.every((i) => i.disabled)).toBe(true);
+    expect(el.querySelector('[data-confirmed-banner]')).toBeNull();
   });
 });
