@@ -90,4 +90,118 @@ describe('CrmItemFormComponent (009b #24)', () => {
     expect(close).toHaveBeenCalledWith(true);
     expect(c.serverError()).toBeNull();
   });
+
+  describe("FINDING-5-1: keeps the item's stored source references", () => {
+    const sourced: RequirementItem = {
+      ...existing,
+      sourceType: 2, // Brief
+      briefId: 'B',
+      projectTaskId: 'Tk',
+    };
+
+    it('edit sends the stored briefId, noteId, projectTaskId and sourceType', () => {
+      const update = vi.fn().mockReturnValue(of(undefined));
+      const { c } = make(
+        { projectId: 'P', periodId: 'Per', mode: 'edit', existing: sourced },
+        { update },
+      );
+
+      c.submit();
+
+      expect(update).toHaveBeenCalledWith('I', {
+        category: 1,
+        title: 'Sofa',
+        priority: 2,
+        spaceTypeId: 'T',
+        room: 'Living',
+        description: null,
+        sourceType: 2,
+        meetingId: null,
+        briefId: 'B',
+        noteId: null,
+        projectTaskId: 'Tk',
+      });
+    });
+
+    it('supersede sends the stored note source and task', () => {
+      const supersede = vi.fn().mockReturnValue(of('I2'));
+      const { c } = make(
+        {
+          projectId: 'P',
+          periodId: 'Per',
+          mode: 'supersede',
+          existing: { ...existing, sourceType: 3, noteId: 'N', projectTaskId: 'Tk' },
+        },
+        { supersede },
+      );
+
+      c.submit();
+
+      expect(supersede).toHaveBeenCalledWith(
+        'I',
+        expect.objectContaining({
+          sourceType: 3,
+          meetingId: null,
+          briefId: null,
+          noteId: 'N',
+          projectTaskId: 'Tk',
+        }),
+      );
+    });
+
+    it('keeps a ClientDirect source with no ids', () => {
+      const update = vi.fn().mockReturnValue(of(undefined));
+      const { c } = make(
+        { projectId: 'P', periodId: 'Per', mode: 'edit', existing: { ...existing, sourceType: 4 } },
+        { update },
+      );
+
+      c.submit();
+
+      expect(update).toHaveBeenCalledWith('I', expect.objectContaining({ sourceType: 4 }));
+    });
+
+    it('picking a meeting replaces the single source but keeps projectTaskId', () => {
+      const update = vi.fn().mockReturnValue(of(undefined));
+      const { c } = make(
+        { projectId: 'P', periodId: 'Per', mode: 'edit', existing: sourced },
+        { update },
+      );
+      c.form.controls.meetingId.setValue('M');
+
+      c.submit();
+
+      expect(update).toHaveBeenCalledWith(
+        'I',
+        expect.objectContaining({
+          sourceType: 1,
+          meetingId: 'M',
+          briefId: null,
+          noteId: null,
+          projectTaskId: 'Tk',
+        }),
+      );
+    });
+
+    it('clearing the stored meeting clears the source', () => {
+      const update = vi.fn().mockReturnValue(of(undefined));
+      const { c } = make(
+        {
+          projectId: 'P',
+          periodId: 'Per',
+          mode: 'edit',
+          existing: { ...existing, sourceType: 1, meetingId: 'M', projectTaskId: 'Tk' },
+        },
+        { update },
+      );
+      c.form.controls.meetingId.setValue('');
+
+      c.submit();
+
+      expect(update).toHaveBeenCalledWith(
+        'I',
+        expect.objectContaining({ sourceType: null, meetingId: null, projectTaskId: 'Tk' }),
+      );
+    });
+  });
 });

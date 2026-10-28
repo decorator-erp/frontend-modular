@@ -194,6 +194,38 @@ export class CrmItemFormComponent {
     this.modalRef.close(false);
   }
 
+  /**
+   * FINDING-5-1: update/supersede bind every source field positionally, so an omitted one is
+   * cleared. The form edits only the meeting: while it is unchanged the item's stored source
+   * (type + its one id) travels as is; a new meeting replaces the single source (the backend allows
+   * exactly one); clearing the stored meeting clears it. `projectTaskId` is never edited here and is
+   * always the stored value. `add` has no stored item, so this is the old meeting-only body.
+   */
+  private sourceFields(
+    meetingId: string,
+  ): Pick<
+    UpdateRequirementItemRequest,
+    'sourceType' | 'meetingId' | 'briefId' | 'noteId' | 'projectTaskId'
+  > {
+    const stored = this.data.existing;
+    if (stored && meetingId === (stored.meetingId ?? '')) {
+      return {
+        sourceType: stored.sourceType,
+        meetingId: stored.meetingId,
+        briefId: stored.briefId,
+        noteId: stored.noteId,
+        projectTaskId: stored.projectTaskId,
+      };
+    }
+    return {
+      sourceType: meetingId ? RequirementSource.Meeting : null,
+      meetingId: meetingId || null,
+      briefId: null,
+      noteId: null,
+      projectTaskId: stored?.projectTaskId ?? null,
+    };
+  }
+
   submit(): void {
     if (this.form.invalid) {
       this.form.markAllAsTouched();
@@ -211,8 +243,7 @@ export class CrmItemFormComponent {
       spaceTypeId: this.data.existing?.spaceTypeId ?? null,
       room: v.room.trim() || null,
       description: v.details.trim() || null,
-      sourceType: v.meetingId ? RequirementSource.Meeting : null,
-      meetingId: v.meetingId || null,
+      ...this.sourceFields(v.meetingId),
     };
 
     let call: Observable<unknown>;
