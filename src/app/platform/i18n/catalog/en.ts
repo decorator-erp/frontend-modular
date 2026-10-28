@@ -901,6 +901,7 @@ export const EN = {
   'dash.wAttnTitle': 'Needs attention',
   'dash.viewAll': 'View all',
   'dash.tasksEmpty': 'No gathering tasks assigned to you.',
+  'dash.tasksNotAvailable': 'Gathering tasks are not available yet.',
   'dash.attnEmpty': 'Nothing waiting on your review.',
   'dash.loadError': 'Couldn’t load — please retry.',
   'dash.taskCounts': '{entries} entries · {unresolved} unresolved',

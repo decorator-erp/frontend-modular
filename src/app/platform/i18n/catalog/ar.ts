@@ -842,6 +842,7 @@ export const AR: Partial<Record<CatalogKey, string>> = {
   'dash.wAttnTitle': 'بحاجة إلى انتباه',
   'dash.viewAll': 'عرض الكل',
   'dash.tasksEmpty': 'لا مهام جمع مُسندة إليك.',
+  'dash.tasksNotAvailable': 'مهام الجمع غير متاحة بعد.',
   'dash.attnEmpty': 'لا شيء بانتظار مراجعتك.',
   'dash.loadError': 'تعذّر التحميل — يرجى إعادة المحاولة.',
   'dash.taskCounts': '{entries} قيد · {unresolved} غير محسوم',
