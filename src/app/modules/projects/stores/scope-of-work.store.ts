@@ -142,12 +142,20 @@ export const ScopeOfWorkStore = signalStore(
         });
       };
 
-      /** A failed write: a concurrency 409 reloads and says so, anything else shows its message. */
+      /**
+       * A failed write: a concurrency 409 reloads and says so, anything else shows its message
+       * (and reloads on a 409 or 404). The failed body's draft is dropped by the caller, so its
+       * input shows the stored value again.
+       */
       const fail = (err: unknown, errorField: 'error' | 'confirmError' = 'error'): void => {
         if (reloadOnConflict(err, refresh)) return;
         patchState(store, {
           [errorField]: codedMessage(err, errors) ?? catalog.t('sow.saveFailed'),
         });
+        // FINDING-7-4: a 409 or 404 says the stored scope moved on: re-read it.
+        if (err instanceof HttpErrorResponse && (err.status === 409 || err.status === 404)) {
+          refresh();
+        }
       };
 
       /**

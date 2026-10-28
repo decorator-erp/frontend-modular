@@ -423,6 +423,7 @@ describe('ScopeOfWorkPageComponent — errors (sow #8)', () => {
     api = {
       getScope: vi.fn().mockReturnValue(of(scope({ canConfirm: true }))),
       updateHeader: vi.fn().mockReturnValue(of(undefined)),
+      updateItem: vi.fn().mockReturnValue(of(undefined)),
       confirm: vi.fn().mockReturnValue(of({ createdStageIds: [] })),
     };
     project = {
@@ -485,6 +486,49 @@ describe('ScopeOfWorkPageComponent — errors (sow #8)', () => {
       message: 'Changed by someone else — reloaded.',
     });
     expect(el.querySelector('pera-alert[tone="danger"]')).toBeNull();
+  });
+
+  it('FINDING-7-4: a failed header save (409) reloads and puts the stored value back', async () => {
+    const save = new Subject<void>();
+    api['updateHeader'].mockReturnValue(save);
+    render();
+    await fixture.whenStable();
+    const input = el.querySelector<HTMLInputElement>('app-sow-summary pera-input input')!;
+    // As typed: `input` events, then `change` on commit.
+    input.value = '30';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+    fixture.detectChanges();
+    await fixture.whenStable();
+    save.error(coded('projects.scope.Confirmed', 409));
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(api['getScope']).toHaveBeenCalledTimes(2);
+    expect(input.value).toBe('');
+    expect(el.querySelector('pera-alert[tone="danger"]')!.textContent).toContain(
+      'The scope of work is confirmed and can no longer be changed.',
+    );
+  });
+
+  it('FINDING-7-4: a failed item save (404) reloads and puts the stored name back', async () => {
+    const save = new Subject<void>();
+    api['updateItem'].mockReturnValue(save);
+    render();
+    await fixture.whenStable();
+    const input = el.querySelector<HTMLInputElement>('tbody tr pera-input input')!;
+    // As typed: `input` events, then `change` on commit.
+    input.value = 'Renamed';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+    fixture.detectChanges();
+    await fixture.whenStable();
+    save.error(coded('projects.scope.ItemNotFound', 404));
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(api['getScope']).toHaveBeenCalledTimes(2);
+    expect(input.value).toBe('Concept design');
   });
 
   it('FreeStyle: read-only with the WorkflowNotSupported message; confirm disabled (B12)', () => {

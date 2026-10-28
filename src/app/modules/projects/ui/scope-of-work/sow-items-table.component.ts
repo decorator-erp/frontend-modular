@@ -74,7 +74,7 @@ const HEAD = 'px-3 py-2 fs-caption font-semibold text-text-muted text-start bg-s
                 <td class="${CELL} min-w-56">
                   <pera-input
                     [appInnerInputLabel]="catalog.t('sow.nameOf', { n: item.order })"
-                    [ngModel]="item.name"
+                    [ngModel]="current(item).name"
                     [disabled]="!editable()"
                     [error]="errors()[item.id + ':name'] ? 'invalid' : undefined"
                     (change)="onName(item, $event)"
@@ -102,7 +102,7 @@ const HEAD = 'px-3 py-2 fs-caption font-semibold text-text-muted text-start bg-s
                 <td class="${CELL}">
                   <pera-money-input
                     [appInnerInputLabel]="catalog.t('sow.feeOf', { n: item.order })"
-                    [ngModel]="item.fee"
+                    [ngModel]="current(item).fee"
                     [disabled]="!editable()"
                     [error]="errors()[item.id + ':fee'] ? 'invalid' : undefined"
                     (change)="onFee(item, $event)"
@@ -200,8 +200,11 @@ export class SowItemsTableComponent {
     this.reorder.emit(ids);
   }
 
-  /** FINDING-7-2: the item's latest body: its unsaved draft, else the stored values. */
-  private current(item: ScopeOfWorkItem): UpdateScopeOfWorkItemRequest {
+  /**
+   * FINDING-7-2: the item's latest body: its unsaved draft, else the stored values.
+   * FINDING-7-4: the inputs show it too, so a failed save (draft dropped) reverts its input.
+   */
+  protected current(item: ScopeOfWorkItem): UpdateScopeOfWorkItemRequest {
     return (
       this.drafts()[item.id] ?? { name: item.name, description: item.description, fee: item.fee }
     );

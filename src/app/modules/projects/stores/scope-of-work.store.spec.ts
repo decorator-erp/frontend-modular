@@ -154,7 +154,9 @@ describe('ScopeOfWorkStore (sow #3)', () => {
     s.updateItem('i1', { name: 'x', description: null, fee: 1 });
     expect(s.error()).toBeTruthy();
     expect(s.error()).not.toContain('projects.scope.Confirmed');
-    expect(api['getScope']).toHaveBeenCalledTimes(1);
+    // FINDING-7-4: a 409 also re-reads the scope (it was 1 before: no reload).
+    expect(api['getScope']).toHaveBeenCalledTimes(2);
+    expect(s.error()).toBeTruthy();
   });
 });
 

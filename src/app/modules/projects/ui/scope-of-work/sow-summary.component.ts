@@ -79,7 +79,7 @@ type HeaderField = 'duration' | 'start' | 'adjustment' | 'adjustmentNote' | 'not
           <pera-input
             type="number"
             [appInnerInputLabel]="catalog.t('sow.durationDays')"
-            [ngModel]="scope().durationDays ?? ''"
+            [ngModel]="header().durationDays ?? ''"
             [disabled]="!editable()"
             [error]="errors()['duration'] ? 'invalid' : undefined"
             (change)="onDuration($event)"
@@ -90,7 +90,7 @@ type HeaderField = 'duration' | 'start' | 'adjustment' | 'adjustmentNote' | 'not
             [appInnerInputLabel]="catalog.t('sow.plannedStart')"
             [min]="startMin"
             [max]="startMax"
-            [ngModel]="scope().plannedStartDate ?? ''"
+            [ngModel]="header().plannedStartDate ?? ''"
             [disabled]="!editable()"
             [error]="errors()['start'] ? 'invalid' : undefined"
             (change)="onStart($event)"
@@ -113,7 +113,7 @@ type HeaderField = 'duration' | 'start' | 'adjustment' | 'adjustmentNote' | 'not
         <pera-money-input
           [appInnerInputLabel]="catalog.t('sow.adjustment')"
           [allowNegative]="true"
-          [ngModel]="scope().adjustmentAmount"
+          [ngModel]="header().adjustmentAmount"
           [disabled]="!editable()"
           [error]="errors()['adjustment'] ? 'invalid' : undefined"
           (change)="onAdjustment($event)"
@@ -128,7 +128,7 @@ type HeaderField = 'duration' | 'start' | 'adjustment' | 'adjustmentNote' | 'not
           <pera-input
             [appInnerInputLabel]="catalog.t('sow.adjustmentNote')"
             [placeholder]="catalog.t('sow.adjustmentNotePlaceholder')"
-            [ngModel]="scope().adjustmentNote ?? ''"
+            [ngModel]="header().adjustmentNote ?? ''"
             [disabled]="!editable()"
             [error]="errors()['adjustmentNote'] ? 'invalid' : undefined"
             (change)="onAdjustmentNote($event)"
@@ -146,7 +146,7 @@ type HeaderField = 'duration' | 'start' | 'adjustment' | 'adjustmentNote' | 'not
         <pera-textarea
           [appInnerInputLabel]="catalog.t('sow.notes')"
           [rows]="3"
-          [ngModel]="scope().notes ?? ''"
+          [ngModel]="header().notes ?? ''"
           [disabled]="!editable()"
           [error]="errors()['notes'] ? 'invalid' : undefined"
           (change)="onNotes($event)"
@@ -216,7 +216,9 @@ export class SowSummaryComponent {
    * B8: the adjustment as last entered (the stored one until then), so the reason field shows
    * as soon as the adjustment is ≠ 0.
    */
-  protected readonly adjustment = linkedSignal(() => this.scope().adjustmentAmount);
+  // FINDING-7-4: inputs show `header()` (the draft, else the stored value), so a failed save,
+  // which drops the draft, puts the stored value back in its input.
+  protected readonly adjustment = linkedSignal(() => this.header().adjustmentAmount);
 
   /** FINDING-7-1: the latest header: the unsaved draft, else the stored one. */
   protected readonly header = computed<UpdateScopeOfWorkHeaderRequest>(() => {
