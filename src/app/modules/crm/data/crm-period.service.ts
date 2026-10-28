@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { ApiService } from '@platform/http/api.service';
+import { handled } from '@platform/http/handled-errors';
 import { RequirementPeriodStatus } from '../model/crm-enums';
 
 /**
@@ -35,10 +36,11 @@ export class CrmPeriodService extends ApiService {
    * specific stage; a free-style project passes `null`.
    */
   open(projectId: string, closesAtUtc: string, projectStageId?: string | null): Observable<string> {
-    return this.post<unknown>(`/crm/projects/${projectId}/periods`, {
-      projectStageId: projectStageId ?? null,
-      closesAtUtc,
-    }).pipe(map((r) => this.unwrapId(r, 'periodId')));
+    return this.post<unknown>(
+      `/crm/projects/${projectId}/periods`,
+      { projectStageId: projectStageId ?? null, closesAtUtc },
+      { context: handled(403) }, // FINDING-5-7: the form shows the 403's catalog message.
+    ).pipe(map((r) => this.unwrapId(r, 'periodId')));
   }
 
   /** `GET /api/crm/projects/{projectId}/periods` — the project's full period history. */

@@ -304,8 +304,11 @@ export const BriefStore = signalStore(
             patchState(store, { mutatingSpace: false });
             this.reload();
           },
-          error: () =>
-            patchState(store, { mutatingSpace: false, error: 'Could not add the entry.' }),
+          error: (err: unknown) =>
+            patchState(store, {
+              mutatingSpace: false,
+              error: codedOr(err, errors, 'Could not add the entry.'),
+            }),
         });
       },
 
@@ -349,10 +352,19 @@ export const BriefStore = signalStore(
             patchState(store, { mutatingSpace: false });
             this.reload();
           },
-          error: () =>
-            patchState(store, { mutatingSpace: false, error: 'Could not add the new version.' }),
+          error: (err: unknown) =>
+            patchState(store, {
+              mutatingSpace: false,
+              error: codedOr(err, errors, 'Could not add the new version.'),
+            }),
         });
       },
     }),
   ),
 );
+
+/** FINDING-5-7: a coded failure (e.g. a handled 403) shows its catalog message, else `fallback`. */
+function codedOr(err: unknown, errors: ErrorHandlerService, fallback: string): string {
+  const parsed = err instanceof HttpErrorResponse ? errors.parse(err) : null;
+  return parsed?.code ? friendly(parsed) : fallback;
+}

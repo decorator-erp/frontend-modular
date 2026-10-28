@@ -173,14 +173,20 @@ export class CrmMeetingService extends ApiService {
 
   /** `PUT /portal/meetings/{meetingId}/reschedule` → `204` — no reason, an offer. */
   portalReschedule(meetingId: string, slot: SlotRequest): Observable<void> {
-    return this.put<void>(`/crm/portal/meetings/${meetingId}/reschedule`, slot);
+    // FINDING-5-7: the modal shows the 403's catalog message (`friendly()`).
+    return this.put<void>(`/crm/portal/meetings/${meetingId}/reschedule`, slot, {
+      context: handled(403),
+    });
   }
 
   /** `PUT /portal/meetings/{meetingId}/cancel` → `204` — reason mandatory. */
   portalCancel(meetingId: string, reason: string): Observable<void> {
-    return this.put<void>(`/crm/portal/meetings/${meetingId}/cancel`, {
-      reason,
-    } satisfies CancelMeetingRequest);
+    // FINDING-5-7: the modal shows the 403's catalog message (`friendly()`).
+    return this.put<void>(
+      `/crm/portal/meetings/${meetingId}/cancel`,
+      { reason } satisfies CancelMeetingRequest,
+      { context: handled(403) },
+    );
   }
 
   /**
@@ -188,7 +194,12 @@ export class CrmMeetingService extends ApiService {
    * `crm.meetings.view_own` (009b #44). The rows carry no type and no slots: `portalGetById` reads those.
    */
   portalList(pageNumber = 1, pageSize = 50): Observable<PagedResult<PortalMeeting>> {
-    return this.get<unknown>('/crm/portal/meetings', { pageNumber, pageSize }).pipe(
+    // FINDING-5-7: `MeetingsStore.loadPortal` shows the 403's catalog message (`friendly()`).
+    return this.get<unknown>(
+      '/crm/portal/meetings',
+      { pageNumber, pageSize },
+      { context: handled(403) },
+    ).pipe(
       map((r) => {
         const page = this.unwrap(r);
         const items = this.unwrapArray<unknown>(page).map((m) => this.normalizePortalMeeting(m));
@@ -212,7 +223,10 @@ export class CrmMeetingService extends ApiService {
    * 404 for another client's meeting or an unknown one.
    */
   portalGetById(meetingId: string): Observable<PortalMeetingDetail> {
-    return this.get<unknown>(`/crm/portal/meetings/${meetingId}`).pipe(
+    // FINDING-5-7: `MeetingsStore.loadPortal` falls back to the bare list row on any failure.
+    return this.get<unknown>(`/crm/portal/meetings/${meetingId}`, undefined, {
+      context: handled(403),
+    }).pipe(
       map((r) => {
         const source = this.unwrap(r);
         return {

@@ -155,9 +155,10 @@ export class CrmBriefService extends ApiService {
 
   /** `POST /briefs/{briefId}/spaces` → `201 { briefSpaceId }` (009b #15). Add a gathering entry. */
   addSpace(briefId: string, request: BriefSpaceRequest): Observable<string> {
-    return this.post<unknown>(`/crm/briefs/${briefId}/spaces`, this.toSpaceBody(request)).pipe(
-      map((r) => this.unwrapId(r, 'briefSpaceId')),
-    );
+    // FINDING-5-7: the caller shows the 403's catalog message (`friendly()`).
+    return this.post<unknown>(`/crm/briefs/${briefId}/spaces`, this.toSpaceBody(request), {
+      context: handled(403),
+    }).pipe(map((r) => this.unwrapId(r, 'briefSpaceId')));
   }
 
   /** `PUT /brief-spaces/{spaceId}` → `204`. A replace-all on selections; blocked once decided. */
@@ -180,6 +181,7 @@ export class CrmBriefService extends ApiService {
     return this.post<unknown>(
       `/crm/brief-spaces/${spaceId}/supersede`,
       this.toSpaceBody(request),
+      { context: handled(403) }, // FINDING-5-7: the modal shows the 403's catalog message.
     ).pipe(map((r) => this.unwrapId(r, 'briefSpaceId')));
   }
 

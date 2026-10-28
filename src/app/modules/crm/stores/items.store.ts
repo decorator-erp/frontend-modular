@@ -114,7 +114,12 @@ export const ItemsStore = signalStore(
               patchState(store, { mutating: false });
               this.load(request.projectId);
             },
-            error: () => patchState(store, { mutating: false, error: 'Could not add the item.' }),
+            // FINDING-5-7: a coded failure (e.g. a handled 403) shows its catalog message.
+            error: (err: unknown) =>
+              patchState(store, {
+                mutating: false,
+                error: failure(err, null, 'Could not add the item.'),
+              }),
           });
         },
 
@@ -173,8 +178,11 @@ export const ItemsStore = signalStore(
           api.portalCreate(request).subscribe({
             // 009b #N-3: no portal items read exists, so there is no list to reload.
             next: () => patchState(store, { mutating: false }),
-            error: () =>
-              patchState(store, { mutating: false, error: 'Could not add your requirement.' }),
+            error: (err: unknown) =>
+              patchState(store, {
+                mutating: false,
+                error: failure(err, null, 'Could not add your requirement.'),
+              }),
           });
         },
       };

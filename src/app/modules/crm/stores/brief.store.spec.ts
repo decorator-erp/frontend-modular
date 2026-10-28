@@ -531,6 +531,26 @@ describe('BriefStore', () => {
       expect(api.supersedeSpace).toHaveBeenCalledWith('old-space', expect.anything());
     });
 
+    it('a handled 403 shows its catalog message (FINDING-5-7)', () => {
+      const noStanding = new HttpErrorResponse({
+        status: 403,
+        error: {
+          status: 403,
+          title: 'crm.access.NoStanding',
+          errors: { 'crm.access.NoStanding': ['x'] },
+        },
+      });
+      api.addSpace.mockReturnValue(throwError(() => noStanding));
+      api.supersedeSpace.mockReturnValue(throwError(() => noStanding));
+      const s = store();
+      s.load(PROJECT_ID);
+
+      s.addSpace({ spaceId: RECEPTION.id, requirements: 'x' });
+      expect(s.error()).toBe('Your account has no active access to this area.');
+      s.supersedeSpace('space-1', { spaceId: RECEPTION.id, requirements: 'y' });
+      expect(s.error()).toBe('Your account has no active access to this area.');
+    });
+
     it('surfaces a friendly error and does not reload on failure', () => {
       api.addSpace.mockReturnValue(throwError(() => new Error('boom')));
       const s = store();

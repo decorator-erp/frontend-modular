@@ -226,8 +226,15 @@ export const MeetingsStore = signalStore(
             )
             .subscribe({
               next: (meetings) => patchState(store, { meetings, loading: false }),
-              error: () =>
-                patchState(store, { loading: false, error: 'Could not load your meetings.' }),
+              // FINDING-5-7: a coded failure (a handled 403 `crm.portal.NotAClient`, …) shows its
+              // catalog message.
+              error: (err: unknown) => {
+                const parsed = err instanceof HttpErrorResponse ? errors.parse(err) : null;
+                patchState(store, {
+                  loading: false,
+                  error: parsed?.code ? friendly(parsed) : 'Could not load your meetings.',
+                });
+              },
             });
         },
 

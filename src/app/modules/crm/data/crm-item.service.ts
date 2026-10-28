@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable, forkJoin, of } from 'rxjs';
 import { map, switchMap } from 'rxjs/operators';
 import { ApiService } from '@platform/http/api.service';
+import { handled } from '@platform/http/handled-errors';
 import type { PagedResult } from '@platform/types';
 import { ApprovalState } from '../model/crm-enums';
 import type {
@@ -30,20 +31,25 @@ export class CrmItemService extends ApiService {
    * `crm.projects.Inactive`; 400 `crm.items.ProjectMismatch` / `UnknownSpaceType` / `InvalidSource`.
    */
   create(periodId: string, request: AddRequirementItemRequest): Observable<string> {
-    return this.post<unknown>(`/crm/periods/${periodId}/items`, {
-      projectId: request.projectId,
-      category: request.category,
-      title: request.title,
-      priority: request.priority,
-      spaceTypeId: request.spaceTypeId ?? null,
-      room: request.room ?? null,
-      description: request.description ?? null,
-      sourceType: request.sourceType ?? null,
-      meetingId: request.meetingId ?? null,
-      briefId: request.briefId ?? null,
-      noteId: request.noteId ?? null,
-      projectTaskId: request.projectTaskId ?? null,
-    } satisfies Record<string, unknown>).pipe(map((r) => this.unwrapId(r, 'itemId')));
+    return this.post<unknown>(
+      `/crm/periods/${periodId}/items`,
+      {
+        projectId: request.projectId,
+        category: request.category,
+        title: request.title,
+        priority: request.priority,
+        spaceTypeId: request.spaceTypeId ?? null,
+        room: request.room ?? null,
+        description: request.description ?? null,
+        sourceType: request.sourceType ?? null,
+        meetingId: request.meetingId ?? null,
+        briefId: request.briefId ?? null,
+        noteId: request.noteId ?? null,
+        projectTaskId: request.projectTaskId ?? null,
+      } satisfies Record<string, unknown>,
+      // FINDING-5-7: the form shows the 403's catalog message (`friendly()`).
+      { context: handled(403) },
+    ).pipe(map((r) => this.unwrapId(r, 'itemId')));
   }
 
   /**
@@ -71,6 +77,7 @@ export class CrmItemService extends ApiService {
     return this.post<unknown>(
       `/crm/requirement-items/${itemId}/supersede`,
       this.toBody(request),
+      { context: handled(403) }, // FINDING-5-7: the caller shows the 403's catalog message.
     ).pipe(map((r) => this.unwrapId(r, 'itemId')));
   }
 
@@ -82,15 +89,19 @@ export class CrmItemService extends ApiService {
    * 409 `crm.periods.NotOpen`, 400 `crm.items.UnknownSpaceType` show their catalog message in the form.
    */
   portalCreate(request: ClientAddRequirementItemRequest): Observable<string> {
-    return this.post<unknown>('/crm/portal/requirement-items', {
-      projectId: request.projectId,
-      periodId: request.periodId,
-      category: request.category,
-      title: request.title,
-      priority: request.priority,
-      room: request.room ?? null,
-      description: request.description ?? null,
-    }).pipe(map((r) => this.unwrapId(r, 'itemId')));
+    return this.post<unknown>(
+      '/crm/portal/requirement-items',
+      {
+        projectId: request.projectId,
+        periodId: request.periodId,
+        category: request.category,
+        title: request.title,
+        priority: request.priority,
+        room: request.room ?? null,
+        description: request.description ?? null,
+      },
+      { context: handled(403) }, // FINDING-5-7: the form shows the 403's catalog message.
+    ).pipe(map((r) => this.unwrapId(r, 'itemId')));
   }
 
   /**

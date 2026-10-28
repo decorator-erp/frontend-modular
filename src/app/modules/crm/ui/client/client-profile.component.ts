@@ -210,7 +210,10 @@ type ProfileTab = 'overview' | 'brief' | 'requirements' | 'meetings';
                   <pera-alert tone="info">{{ catalog.t('client.reqsNotAvailable') }}</pera-alert>
                 }
                 @case ('meetings') {
-                  @if (meetings.agenda().length) {
+                  @if (meetings.error(); as message) {
+                    <!-- FINDING-5-7: a handled 403 on the portal meetings read shows its message. -->
+                    <pera-alert tone="warning">{{ message }}</pera-alert>
+                  } @else if (meetings.agenda().length) {
                     <ul class="flex flex-col gap-2 m-0 p-0 list-none">
                       @for (m of meetings.agenda(); track m.id) {
                         <li

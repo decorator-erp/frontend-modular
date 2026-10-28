@@ -116,6 +116,43 @@ describe('ItemsStore', () => {
     });
   });
 
+  describe('a handled 403 shows its catalog message (FINDING-5-7)', () => {
+    const noStanding = () =>
+      new HttpErrorResponse({
+        status: 403,
+        error: {
+          status: 403,
+          title: 'crm.access.NoStanding',
+          errors: { 'crm.access.NoStanding': ['x'] },
+        },
+      });
+
+    it('create', () => {
+      api.create.mockReturnValue(throwError(noStanding));
+      const s = store();
+      s.create('period-1', {
+        projectId: PROJECT_ID,
+        category: RequirementCategory.SpaceLayout,
+        title: 'T',
+        priority: RequirementPriority.Medium,
+      });
+      expect(s.error()).toBe('Your account has no active access to this area.');
+    });
+
+    it('portalCreate', () => {
+      api.portalCreate.mockReturnValue(throwError(noStanding));
+      const s = store();
+      s.portalCreate({
+        projectId: PROJECT_ID,
+        periodId: 'period-1',
+        category: RequirementCategory.SpaceLayout,
+        title: 'T',
+        priority: RequirementPriority.Medium,
+      });
+      expect(s.error()).toBe('Your account has no active access to this area.');
+    });
+  });
+
   describe('FR-012 — the client-authored asymmetry', () => {
     it('a client-authored item lands NotRequired and is recognized as client-authored', () => {
       const clientItem = item({

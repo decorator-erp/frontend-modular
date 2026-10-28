@@ -358,6 +358,16 @@ describe('MeetingsStore mutation errors (009b #21)', () => {
     });
   }
 
+  it('loadPortal: a handled 403 shows its catalog message (FINDING-5-7)', () => {
+    api.portalList.mockReturnValue(throwError(() => coded(403, 'crm.portal.NotAClient')));
+    const s = store();
+
+    s.loadPortal(PROJECT_ID);
+
+    expect(s.error()).toBe(ERROR_MESSAGES['crm.portal.NotAClient']);
+    expect(s.loading()).toBe(false);
+  });
+
   it('acceptSlot: 409 crm.meetings.ConcurrentUpdate reloads the list (X-3), no error', () => {
     api.acceptSlot.mockReturnValue(throwError(() => coded(409, 'crm.meetings.ConcurrentUpdate')));
     const s = store();
