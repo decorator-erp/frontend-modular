@@ -119,6 +119,12 @@ export const PERM = {
     decideApproval: 'stage_tasks.decide_approval',
     manageGates: 'stage_tasks.manage_gates',
   },
+  /** Scope of work — office only; the client role holds none (ProjectsPermissions.Scope). */
+  scope: {
+    read: 'scope.read',
+    manage: 'scope.manage',
+    confirm: 'scope.confirm',
+  },
   documents: {
     read: 'documents.read',
     upload: 'documents.upload',
@@ -348,6 +354,9 @@ export const ALL_PERMISSIONS: { group: string; key: string; displayName: string 
     displayName: 'Decide Task Approval',
   },
   { group: 'Stage Tasks', key: PERM.stageTasks.manageGates, displayName: 'Manage Task Gates' },
+  { group: 'Scope of Work', key: PERM.scope.read, displayName: 'Read Scope of Work' },
+  { group: 'Scope of Work', key: PERM.scope.manage, displayName: 'Manage Scope of Work' },
+  { group: 'Scope of Work', key: PERM.scope.confirm, displayName: 'Confirm Scope of Work' },
   { group: 'Documents', key: PERM.documents.read, displayName: 'Read Documents' },
   { group: 'Documents', key: PERM.documents.upload, displayName: 'Upload Documents' },
   { group: 'Documents', key: PERM.documents.update, displayName: 'Update Documents' },

@@ -29,6 +29,14 @@ describe('PERM catalog', () => {
     expect(collectPermStrings(PERM)).not.toContain('crm.clients.read_all');
   });
 
+  it('has the scope-of-work group (008b #11, ProjectsPermissions.Scope)', () => {
+    expect(PERM.scope).toEqual({
+      read: 'scope.read',
+      manage: 'scope.manage',
+      confirm: 'scope.confirm',
+    });
+  });
+
   it('exposes the UI-only DMS task-detail gate in its live claim spelling', () => {
     expect(PERM.dms.taskDetail.view).toBe('dms.task_detail.view');
   });
@@ -37,6 +45,11 @@ describe('PERM catalog', () => {
 describe('ALL_PERMISSIONS matrix', () => {
   it('lists the DMS gate', () => {
     expect(ALL_PERMISSIONS.some((p) => p.key === PERM.dms.taskDetail.view)).toBe(true);
+  });
+
+  it('lists the three scope-of-work permissions (008b #11)', () => {
+    const keys = ALL_PERMISSIONS.map((p) => p.key);
+    expect(keys).toEqual(expect.arrayContaining(['scope.read', 'scope.manage', 'scope.confirm']));
   });
 
   it('has no duplicate keys', () => {
