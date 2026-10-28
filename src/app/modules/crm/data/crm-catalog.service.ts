@@ -127,7 +127,10 @@ export class CrmCatalogService extends ApiService {
 
   // ── v2 category writes ─────────────────────────────────────────────────
 
-  /** `POST /api/crm/catalog/categories` → `201` bare `Guid` — `crm.catalog.manage`. */
+  /**
+   * `POST /api/crm/catalog/categories` → `201 { categoryId }` — `crm.catalog.manage` (009b #40).
+   * `404 crm.catalog.CategoryNotFound` (parent), `400 MaxDepthExceeded` / `InvalidData`.
+   */
   createCategory(request: CreateCatalogCategoryRequest): Observable<string> {
     return this.post<unknown>('/crm/catalog/categories', {
       parentId: request.parentId ?? null,
@@ -140,7 +143,7 @@ export class CrmCatalogService extends ApiService {
       descriptionEn: request.descriptionEn ?? null,
       descriptionAr: request.descriptionAr ?? null,
       imageUri: request.imageUri ?? null,
-    }).pipe(map((r) => this.unwrap<string>(r)));
+    }).pipe(map((r) => this.unwrapId(r, 'categoryId')));
   }
 
   /**
@@ -163,7 +166,7 @@ export class CrmCatalogService extends ApiService {
 
   /**
    * `PUT /api/crm/catalog/categories/{categoryId}/parent` → `204` — `crm.catalog.manage`.
-   * `409 crm.catalog.CycleDetected` / `crm.catalog.InactiveAncestor`,
+   * `400 crm.catalog.CyclicMove` (009b #40; was `CycleDetected`) / `crm.catalog.InactiveAncestor`,
    * `400 crm.catalog.MaxDepthExceeded` (cap applies to the deepest descendant, not the
    * moved category itself).
    */
@@ -389,7 +392,7 @@ export class CrmCatalogService extends ApiService {
   // NOTE — `PUT /nodes/{id}/attributes/reorder` is not wrapped: attributes render in server
   // order and no screen reorders them. Options DO reorder (see `reorderOptions`).
 
-  /** `POST /api/crm/catalog/attributes/{attributeId}/options` → `201` bare `Guid` — `crm.catalog.manage`. */
+  /** `POST /api/crm/catalog/attributes/{attributeId}/options` → `201 { optionId }` — `crm.catalog.manage` (009b #40). */
   addOption(attributeId: string, request: AddCatalogAttributeOptionRequest): Observable<string> {
     return this.post<unknown>(`/crm/catalog/attributes/${attributeId}/options`, {
       code: request.code,
@@ -397,7 +400,7 @@ export class CrmCatalogService extends ApiService {
       nameAr: request.nameAr,
       imageUri: request.imageUri ?? null,
       sortOrder: request.sortOrder ?? 0,
-    }).pipe(map((r) => this.unwrap<string>(r)));
+    }).pipe(map((r) => this.unwrapId(r, 'optionId')));
   }
 
   /** `PUT /api/crm/catalog/options/{optionId}` → `204` — `crm.catalog.manage`. */

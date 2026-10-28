@@ -15,7 +15,7 @@ import type { CatalogKey } from '@platform/i18n/catalog/en';
 const CODE_TO_KEY: Readonly<Record<string, CatalogKey>> = {
   // Catalog
   'crm.catalog.CodeTaken': 'cat.codeTaken',
-  'crm.catalog.CycleDetected': 'cat.cycleDetected',
+  'crm.catalog.CyclicMove': 'cat.cycleDetected', // 009b #40: was CycleDetected
   'crm.catalog.NodeInUse': 'cat.nodeInUse',
   'crm.catalog.LeafCarriesBranchRule': 'cat.leafRule',
   'crm.catalog.NotABranch': 'cat.notABranch',

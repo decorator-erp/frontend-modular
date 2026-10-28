@@ -10,3 +10,13 @@ describe('domainErrorKey — spaces (009b #29)', () => {
     expect(domainErrorKey('crm.spaces.NameTaken', 'space.saveFailed')).toBe('space.saveFailed');
   });
 });
+
+describe('domainErrorKey — catalog (009b #40)', () => {
+  it('maps the live crm.catalog.CyclicMove to cat.cycleDetected', () => {
+    expect(domainErrorKey('crm.catalog.CyclicMove', 'cat.moveFailed')).toBe('cat.cycleDetected');
+  });
+
+  it('no longer maps the dead crm.catalog.CycleDetected', () => {
+    expect(domainErrorKey('crm.catalog.CycleDetected', 'cat.moveFailed')).toBe('cat.moveFailed');
+  });
+});

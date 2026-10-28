@@ -359,8 +359,11 @@ describe('CrmCatalogService', () => {
   });
 
   describe('v2 category writes (F6)', () => {
-    it('createCategory() POSTs with defaults filled in', () => {
-      service.createCategory({ code: 'lighting', nameEn: 'Lighting', nameAr: 'إضاءة' }).subscribe();
+    it('createCategory() POSTs with defaults filled in and reads the 201 { categoryId } (009b #40)', () => {
+      let id: string | undefined;
+      service
+        .createCategory({ code: 'lighting', nameEn: 'Lighting', nameAr: 'إضاءة' })
+        .subscribe((r) => (id = r));
 
       const req = http.expectOne(url('/crm/catalog/categories'));
       expect(req.request.method).toBe('POST');
@@ -376,7 +379,29 @@ describe('CrmCatalogService', () => {
         descriptionAr: null,
         imageUri: null,
       });
-      req.flush('new-id');
+      req.flush({ categoryId: 'new-id' });
+
+      expect(id).toBe('new-id');
+    });
+
+    it('addOption() POSTs the option and reads the 201 { optionId } (009b #40)', () => {
+      let id: string | undefined;
+      service
+        .addOption('A', { code: 'oak', nameEn: 'Oak', nameAr: 'بلوط' })
+        .subscribe((r) => (id = r));
+
+      const req = http.expectOne(url('/crm/catalog/attributes/A/options'));
+      expect(req.request.method).toBe('POST');
+      expect(req.request.body).toEqual({
+        code: 'oak',
+        nameEn: 'Oak',
+        nameAr: 'بلوط',
+        imageUri: null,
+        sortOrder: 0,
+      });
+      req.flush({ optionId: 'O' });
+
+      expect(id).toBe('O');
     });
 
     it('updateCategory() PUTs the full replacement — selectionMode/isRequired always sent', () => {
