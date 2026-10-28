@@ -19,8 +19,6 @@ export interface CrmLead {
   notes: string | null;
   convertedClientId: string | null;
   convertedAtUtc: string | null;
-  /** The 1:1 qualification intake, or `null` when none has been saved yet. */
-  intake?: LeadIntakeResponse | null;
 }
 
 /**
@@ -104,6 +102,17 @@ export class CrmLeadService extends ApiService {
     });
   }
 
+  /**
+   * `GET /{id}/intake` → `{ leadId, data }` (`CrmLeadEndpoints.cs:79-84`); `data` is empty when
+   * no intake is saved yet. `CrmLeadResponse` carries no intake (009b #5).
+   */
+  getIntake(id: string): Observable<LeadIntakeResponse> {
+    return this.get<unknown>(`/crm/leads/${id}/intake`).pipe(
+      // The intake round-trips as-is (its own nullable fields); no per-field normalization.
+      map((r) => this.field<LeadIntakeResponse | null>(this.unwrap(r), 'data') ?? {}),
+    );
+  }
+
   /** `GET /{id}` — the full record. */
   getById(id: string): Observable<CrmLead> {
     return this.get<unknown>(`/crm/leads/${id}`).pipe(
@@ -179,8 +188,6 @@ export class CrmLeadService extends ApiService {
       notes: this.field<string | null>(source, 'notes') ?? null,
       convertedClientId: this.field<string | null>(source, 'convertedClientId') ?? null,
       convertedAtUtc: this.field<string | null>(source, 'convertedAtUtc') ?? null,
-      // The intake round-trips as-is (its own nullable fields); no per-field normalization.
-      intake: this.field<LeadIntakeResponse | null>(source, 'intake') ?? null,
     };
   }
 }

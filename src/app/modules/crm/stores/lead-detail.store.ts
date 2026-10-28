@@ -1,12 +1,15 @@
 import { computed, inject } from '@angular/core';
 import { patchState, signalStore, withComputed, withMethods, withState } from '@ngrx/signals';
+import { forkJoin } from 'rxjs';
 import { CrmLeadService, type CrmLead } from '../data/crm-lead.service';
 import { LeadStatus } from '../model/crm-enums';
-import type { LeadIntakeRequest } from '../model';
+import type { LeadIntakeRequest, LeadIntakeResponse } from '../model';
 
 interface LeadDetailState {
   leadId: string | null;
   lead: CrmLead | null;
+  /** From `GET /leads/{id}/intake` (009b #5); `{}` when none is saved yet. */
+  intakeData: LeadIntakeResponse | null;
   loading: boolean;
   savingIntake: boolean;
   error: string | null;
@@ -15,6 +18,7 @@ interface LeadDetailState {
 const INITIAL: LeadDetailState = {
   leadId: null,
   lead: null,
+  intakeData: null,
   loading: false,
   savingIntake: false,
   error: null,
@@ -29,8 +33,8 @@ export const LeadDetailStore = signalStore(
   withState<LeadDetailState>(INITIAL),
 
   withComputed((store) => ({
-    /** Intake lives on the lead; expose it directly for the form. */
-    intake: computed(() => store.lead()?.intake ?? null),
+    /** The intake, read from its own route; exposed directly for the form. */
+    intake: computed(() => store.intakeData()),
     /** Converted ⇒ the intake is locked (read-only). */
     isConverted: computed(() => store.lead()?.status === LeadStatus.Converted),
   })),
@@ -38,8 +42,8 @@ export const LeadDetailStore = signalStore(
   withMethods((store, api = inject(CrmLeadService)) => ({
     load(id: string): void {
       patchState(store, { loading: true, error: null, leadId: id });
-      api.getById(id).subscribe({
-        next: (lead) => patchState(store, { lead, loading: false }),
+      forkJoin({ lead: api.getById(id), intake: api.getIntake(id) }).subscribe({
+        next: ({ lead, intake }) => patchState(store, { lead, intakeData: intake, loading: false }),
         error: () => patchState(store, { loading: false, error: 'Could not load the lead.' }),
       });
     },
