@@ -22,7 +22,6 @@ import {
   MeetingType,
   PastExperience,
   ProjectSector,
-  RequirementCategory,
   RequirementPeriodStatus,
   UnitCondition,
   UnitType,
@@ -704,125 +703,20 @@ export interface ClientProfileProject {
 }
 
 // ---------------------------------------------------------------------------
-// The designer profile (T120–T127, FR-018/FR-019/FR-030) — mirrors
-// `ClientDesignProfileResponse`. **The server has already done the two things
-// that make this surface safe**: it structurally excludes money (`BriefHeadBlock`
-// carries no `ExpectedBudget` property at all; Budget-category items are filtered
-// out server-side) and unconfirmed content (only an Approved head; only
-// Approved, un-superseded spaces; only Approved/NotRequired, un-superseded
-// items — verified against `GetClientDesignProfileQueryHandler`). The client
-// MUST NOT re-derive either exclusion (T125/T126) — it renders exactly what
-// arrives, read-only throughout.
+// The designer profile (T120–T127, FR-030) — mirrors `ClientDesignProfileResponse`
+// (`DesignProfileContracts.cs:8-10`, 009b #17): the latest brief's design preferences only.
+// The server excludes money (`ExpectedBudget` is never on it). Client metadata, the primary
+// contact, the rest of the head, spaces, items and attachments are no longer served.
 // ---------------------------------------------------------------------------
 
-export interface DesignProfileChild {
-  gender: string;
-  age: number;
-}
-
-/** No `notes` field exists here either — same FR-016 shape as `ClientIdentity`. */
-export interface DesignProfileClient {
-  clientId: string;
-  fullName: string | null;
-  jobTitle: string | null;
-  maritalStatus: string | null;
-  address: string | null;
-  children: DesignProfileChild[];
-}
-
-export interface DesignProfilePrimaryContact {
-  id: string;
-  firstName: string;
-  lastName: string;
-  email: string | null;
-  phone: string | null;
-  mobile: string | null;
-  role: ContactRole;
-}
-
-/**
- * The confirmed brief head, money-free. **Deliberately no `expectedBudget` field
- * — never add one**; the wire has none to normalize (FR-018). `null` overall ⇒
- * no head has been Approved yet (T124's empty-profile edge case).
- */
-export interface DesignProfileBriefHead {
-  id: string;
-  unitType: number;
-  unitCondition: number;
-  address: string | null;
-  floorNo: number | null;
-  unitsPerFloor: number | null;
-  areaSqm: number | null;
-  buildingKind: number | null;
-  isLicensed: boolean | null;
-  position: number | null;
-  elevatorStatus: number | null;
-  utilityMetersNote: string | null;
-  receivesFrequentVisitors: boolean | null;
-  visitorsNote: string | null;
-  parentsHobbies: string | null;
-  childrenHobbies: string | null;
-  hobbiesInDesign: boolean | null;
-  usedDesignerBefore: boolean | null;
-  designerExperience: number | null;
-  designerExperienceReason: string | null;
-  hiringReasons: number;
+/** `GET /api/crm/projects/{projectId}/design-profile` — 404 `crm.briefs.NotFound` when there is no brief. */
+export interface ClientDesignProfile {
+  projectId: string;
   preferredStyle: string | null;
   preferredColors: string | null;
   furnitureStatus: number | null;
-  timelinePressure: number | null;
+  /** `[Flags]` — bitwise AND, never `===`. */
+  hiringReasons: number;
   architecturalRequests: string | null;
   otherNeeds: string | null;
-  /** Sector-aware head fields (mirror the office head block); `sector` is read-only. */
-  sector: number | null;
-  isRented: boolean | null;
-  finishingPurpose: number | null;
-}
-
-/** Already Approved, un-superseded — no `approvalStatus` field exists on the wire. */
-export interface DesignProfileSpace {
-  id: string;
-  /** The referenced space — `null` = a general, project-wide entry (feature 006). */
-  space: BriefSpaceRef | null;
-  countOrPieces: number | null;
-  requirements: string | null;
-  meetingId: string | null;
-  projectTaskId: string | null;
-}
-
-export interface DesignProfileItem {
-  id: string;
-  room: string | null;
-  title: string;
-  description: string | null;
-  priority: number;
-  approvalStatus: ApprovalState;
-  projectTaskId: string | null;
-}
-
-export interface DesignProfileAttachment {
-  linkId: string;
-  documentId: string;
-  fileName: string;
-  contentType: string;
-  fileSizeBytes: number;
-  subjectKind: 'Brief' | 'BriefSpace' | 'RequirementItem' | 'Meeting';
-  subjectId: string;
-}
-
-/**
- * `GET /api/crm/projects/{projectId}/design-profile` — permission
- * `crm.design_profile.read`. `itemsByCategory` arrives as a JSON OBJECT (a
- * serialized C# `Dictionary<RequirementCategory, ...>`), its keys bare-integer
- * STRINGS — normalized here into a `RequirementCategory`-keyed map, never left
- * as string keys for a component to re-parse.
- */
-export interface ClientDesignProfile {
-  projectId: string;
-  client: DesignProfileClient;
-  primaryContact: DesignProfilePrimaryContact | null;
-  briefHead: DesignProfileBriefHead | null;
-  spaces: DesignProfileSpace[];
-  itemsByCategory: Partial<Record<RequirementCategory, DesignProfileItem[]>>;
-  attachments: DesignProfileAttachment[];
 }

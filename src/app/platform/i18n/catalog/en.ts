@@ -643,6 +643,7 @@ export const EN = {
   'dp.hiddenT': 'Not shown here:',
   'dp.itemsSub': 'by category & room',
   'dp.itemsT': 'Approved requirement items',
+  'dp.notAvailable': 'Not available yet.',
   'dp.openB':
     '— closes 20 Jul 18:00. Data may still change; new approvals appear here automatically.',
   'dp.openBanner':
