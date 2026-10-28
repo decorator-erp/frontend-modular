@@ -388,4 +388,12 @@ describe('CrmCatalogService', () => {
       expect(methods[name], name).toBeUndefined();
     }
   });
+
+  // 009b #N-9: CrmCatalogEndpoints.cs:49-62 maps item create and attribute-values only (C §2.11).
+  it('has no item update, move, activate or delete (009b #N-9)', () => {
+    const methods = service as unknown as Record<string, unknown>;
+    for (const name of ['updateItem', 'moveItemToCategory', 'setItemActive', 'deleteItem']) {
+      expect(methods[name], name).toBeUndefined();
+    }
+  });
 });

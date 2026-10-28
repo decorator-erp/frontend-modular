@@ -18,7 +18,6 @@ import type {
   CatalogAttribute,
   CatalogAttributeOption,
   CatalogCategory,
-  CatalogItem,
   CrmSpaceType,
 } from '../../../model';
 import {
@@ -415,7 +414,7 @@ import {
               type="button"
               class="ms-auto fs-caption text-accent hover:underline"
               *peraCan="PERM.crm.catalog.manage"
-              (click)="openItemDialog(c, null)"
+              (click)="openItemDialog(c)"
             >
               {{ catalog.t('cat.addItem') }}
             </button>
@@ -436,35 +435,6 @@ import {
                     [dot]="false"
                   />
                 }
-                <button
-                  type="button"
-                  class="p-1 rounded hover:bg-surface-muted"
-                  *peraCan="PERM.crm.catalog.manage"
-                  [attr.aria-label]="catalog.t('common.edit')"
-                  (click)="openItemDialog(c, item)"
-                >
-                  <pera-icon name="pencil" [size]="14" />
-                </button>
-                <button
-                  type="button"
-                  class="p-1 rounded hover:bg-surface-muted"
-                  *peraCan="PERM.crm.catalog.manage"
-                  [attr.aria-label]="
-                    item.isActive ? catalog.t('cat.deactivate') : catalog.t('cat.activate')
-                  "
-                  (click)="store.setItemActive(item.id, !item.isActive)"
-                >
-                  <pera-icon [name]="item.isActive ? 'eye-off' : 'eye'" [size]="14" />
-                </button>
-                <button
-                  type="button"
-                  class="p-1 rounded hover:bg-surface-muted text-danger"
-                  *peraCan="PERM.crm.catalog.manage"
-                  [attr.aria-label]="catalog.t('cat.delete')"
-                  (click)="removeItem(item)"
-                >
-                  <pera-icon name="x" [size]="14" />
-                </button>
               </div>
             } @empty {
               <p class="fs-caption text-text-muted m-0 p-2">{{ catalog.t('cat.noItems') }}</p>
@@ -875,18 +845,13 @@ export class CrmCatalogCategoryDetailComponent {
 
   // ── Items ────────────────────────────────────────────────────────────
 
-  openItemDialog(category: CatalogCategory, item: CatalogItem | null): void {
-    const data: CatalogItemDialogData = { categoryId: category.id, item };
+  /** Create-only (009b #N-9: no item update route). */
+  openItemDialog(category: CatalogCategory): void {
+    const data: CatalogItemDialogData = { categoryId: category.id };
     this.modal.open<string | null>(CrmCatalogItemDialogComponent, {
       size: 'md',
       data,
       injector: this.injector,
     });
-  }
-
-  removeItem(item: CatalogItem): void {
-    void this.confirm
-      .open({ title: this.catalog.t('cat.delete'), body: this.name(item), tone: 'danger' })
-      .then((ok) => ok && this.store.deleteItem(item.id, this.toastOn('cat.nodeSaved')));
   }
 }

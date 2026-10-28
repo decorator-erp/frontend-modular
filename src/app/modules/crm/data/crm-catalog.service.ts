@@ -18,7 +18,6 @@ import type {
   MoveCatalogCategoryRequest,
   UpdateCatalogAttributeOptionRequest,
   UpdateCatalogAttributeRequest,
-  UpdateCatalogItemRequest,
 } from '../model';
 
 /**
@@ -53,7 +52,8 @@ import type {
  * read have no route (C §2.11), so `getCategorySpaceTypes`/`categoryAncestors`/
  * `searchCategories`/`getItem` are gone; ancestors and search derive from `/tree`.
  * 009b #N-8: nor is there a category update, reorder, activate, clone, delete or unmap
- * route; only create, move and map remain.
+ * route; only create, move and map remain. 009b #N-9: nor an item update, move, activate
+ * or delete; items are created and their attribute values written.
  */
 @Injectable({ providedIn: 'root' })
 export class CrmCatalogService extends ApiService {
@@ -165,41 +165,6 @@ export class CrmCatalogService extends ApiService {
       isPurchasable: request.isPurchasable ?? true,
       sortOrder: request.sortOrder ?? 0,
     }).pipe(map((r) => this.unwrapId(r, 'itemId')));
-  }
-
-  /** `PUT /api/crm/catalog/items/{itemId}` → `204` — `crm.catalog.manage`. */
-  updateItem(itemId: string, request: UpdateCatalogItemRequest): Observable<void> {
-    return this.put<void>(`/crm/catalog/items/${itemId}`, {
-      code: request.code,
-      nameEn: request.nameEn,
-      nameAr: request.nameAr,
-      isPurchasable: request.isPurchasable,
-      descriptionEn: request.descriptionEn ?? null,
-      descriptionAr: request.descriptionAr ?? null,
-      imageUri: request.imageUri ?? null,
-    });
-  }
-
-  /**
-   * `PUT /api/crm/catalog/items/{itemId}/category` → `204` — `crm.catalog.manage`.
-   * Re-files an item. Separate from {@link updateItem} because the update body has no
-   * `categoryId` — moving is its own operation on the backend, not a field edit.
-   */
-  moveItemToCategory(itemId: string, categoryId: string): Observable<void> {
-    return this.put<void>(`/crm/catalog/items/${itemId}/category`, { categoryId });
-  }
-
-  /** `PUT /api/crm/catalog/items/{itemId}/active` → `204` — `crm.catalog.manage`. */
-  setItemActive(itemId: string, isActive: boolean): Observable<void> {
-    return this.put<void>(`/crm/catalog/items/${itemId}/active`, { isActive });
-  }
-
-  /**
-   * `DELETE /api/crm/catalog/items/{itemId}` → `204` — `crm.catalog.manage`.
-   * `409 crm.catalog.ItemInUse` when a board already records it.
-   */
-  deleteItem(itemId: string): Observable<void> {
-    return this.delete<void>(`/crm/catalog/items/${itemId}`);
   }
 
   /**

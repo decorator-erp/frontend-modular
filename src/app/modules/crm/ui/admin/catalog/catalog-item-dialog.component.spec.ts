@@ -100,4 +100,19 @@ describe('CrmCatalogItemDialogComponent (009b #36, #38)', () => {
     expect(specs.request.method).toBe('PUT');
     specs.flush(null);
   });
+
+  // 009b #N-9: no item update route — the dialog only creates, whatever it is handed.
+  it('is create-only, even when handed an item (009b #N-9)', () => {
+    const fixture = render({ categoryId: 'C', item: { id: 'OLD' } } as CatalogItemDialogData);
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.textContent).toContain('New item');
+    expect(el.textContent).not.toContain('Edit item');
+
+    const dialog = fixture.componentInstance;
+    dialog.form.patchValue({ code: 'oak', nameEn: 'Oak', nameAr: 'بلوط' });
+    dialog.submit();
+
+    http.expectOne(url('/crm/catalog/items')).flush({ itemId: 'I' });
+    http.expectOne(url('/crm/catalog/items/I/attribute-values')).flush(null);
+  });
 });

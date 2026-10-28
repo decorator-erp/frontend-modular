@@ -255,21 +255,6 @@ export const CatalogAdminStore = signalStore(
             handlers,
           );
         },
-        // ── Items (v2 — new in F6) ─────────────────────────────────────────
-        //
-        // Create/update + the attribute-values write are a TWO-STEP chain (create needs
-        // the new id back before the spec can be written), which this store's `run()`
-        // helper doesn't expose — it discards the response body. `catalog-item-dialog`
-        // calls `CrmCatalogService` directly for that pair, the same precedent
-        // `new-node-dialog.component.ts` already set for category creation, and calls
-        // `reload()` below once both steps finish. Only the single-step mutations live
-        // here.
-        setItemActive(itemId: string, isActive: boolean, handlers?: MutationHandlers): void {
-          run(api.setItemActive(itemId, isActive), 'cat.statusFailed', refresh, handlers);
-        },
-        deleteItem(itemId: string, handlers?: MutationHandlers): void {
-          run(api.deleteItem(itemId), 'cat.nodeInUse', refresh, handlers);
-        },
       };
     },
   ),

@@ -19,7 +19,7 @@ import { CrmCatalogService } from '../../../data/crm-catalog.service';
 import { ErrorHandlerService, friendly } from '@platform/http/error-handler.service';
 import { ToastService } from '@platform/feedback/toast.service';
 import { CatalogAttributeType } from '../../../model/crm-enums';
-import type { CatalogAttribute, CatalogItem } from '../../../model';
+import type { CatalogAttribute } from '../../../model';
 import {
   PERA_MODAL_DATA,
   PeraCheckboxComponent,
@@ -36,8 +36,6 @@ import { CatalogStore } from '../../../stores/catalog.store';
 
 export interface CatalogItemDialogData {
   categoryId: string;
-  /** `null`/absent = create. */
-  item?: CatalogItem | null;
   /**
    * The promote flow's pre-fill: a custom board row's typed name, seeded into `nameEn`
    * and slugified into a starting `code` the admin can still edit.
@@ -46,7 +44,7 @@ export interface CatalogItemDialogData {
 }
 
 /**
- * Create or edit a catalog item (F6). Identity fields are fixed (name, purchasable — no
+ * Create a catalog item (F6). 009b #N-9: create-only — there is no item update route. Identity fields are fixed (name, purchasable — no
  * description or image since 009b #38); the SPEC fields below them are GENERATED from the
  * category's inherited attribute chain — the behavior that makes the category/attribute/item split
  * visible to an admin for the first time. One control per effective attribute:
@@ -75,8 +73,8 @@ export interface CatalogItemDialogData {
   ],
   template: `
     <pera-form-modal
-      [eyebrow]="data.item ? 'PUT /api/crm/catalog/items/{itemId}' : 'POST /api/crm/catalog/items'"
-      [title]="data.item ? catalog.t('cat.editItem') : catalog.t('cat.newItem')"
+      eyebrow="POST /api/crm/catalog/items"
+      [title]="catalog.t('cat.newItem')"
       size="md"
       permission="crm.catalog.manage"
       [submitLabel]="catalog.t('cat.save')"
@@ -187,15 +185,7 @@ export class CrmCatalogItemDialogComponent {
   constructor() {
     this.cache.loadEffectiveAttributes(this.data.categoryId);
 
-    const item = this.data.item;
-    if (item) {
-      this.form.reset({
-        code: item.code,
-        nameEn: item.nameEn,
-        nameAr: item.nameAr,
-        isPurchasable: item.isPurchasable,
-      });
-    } else if (this.data.prefillName) {
+    if (this.data.prefillName) {
       this.form.patchValue({
         nameEn: this.data.prefillName,
         code: slugify(this.data.prefillName),
@@ -207,28 +197,9 @@ export class CrmCatalogItemDialogComponent {
       if (!defs || this.built) return;
       this.built = true;
       for (const def of defs) {
-        this.specForm.addControl(def.id, new FormControl(this.seed(def), { nonNullable: true }));
+        this.specForm.addControl(def.id, new FormControl('', { nonNullable: true }));
       }
     });
-  }
-
-  /** The recorded value as form text — the inverse of `valueFor`. */
-  private seed(def: CatalogAttribute): string {
-    const item = this.data.item;
-    const v = item?.attributes.find((a) => a.attributeId === def.id);
-    if (!v) return '';
-    switch (def.dataType) {
-      case CatalogAttributeType.Number:
-        return v.valueNumber != null ? String(v.valueNumber) : '';
-      case CatalogAttributeType.Boolean:
-        return v.valueBool == null ? '' : String(v.valueBool);
-      case CatalogAttributeType.Date:
-        return v.valueDate ?? '';
-      case CatalogAttributeType.Select:
-        return v.optionId ?? '';
-      default:
-        return v.valueText ?? '';
-    }
   }
 
   protected specLabel(def: CatalogAttribute): string {
@@ -255,18 +226,10 @@ export class CrmCatalogItemDialogComponent {
       isPurchasable: v.isPurchasable,
     };
 
-    const existing = this.data.item;
-    if (existing) {
-      this.api.updateItem(existing.id, body).subscribe({
-        next: () => this.writeSpecValues(existing.id),
-        error: (err: HttpErrorResponse) => this.fail(err),
-      });
-    } else {
-      this.api.createItem({ ...body, categoryId: this.data.categoryId }).subscribe({
-        next: (itemId) => this.writeSpecValues(itemId),
-        error: (err: HttpErrorResponse) => this.fail(err),
-      });
-    }
+    this.api.createItem({ ...body, categoryId: this.data.categoryId }).subscribe({
+      next: (itemId) => this.writeSpecValues(itemId),
+      error: (err: HttpErrorResponse) => this.fail(err),
+    });
   }
 
   /** Replace-all: every attribute is sent, including blanks — a blank IS the clear gesture. */

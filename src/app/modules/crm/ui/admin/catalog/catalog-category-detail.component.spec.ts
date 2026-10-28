@@ -145,4 +145,33 @@ describe('CrmCatalogCategoryDetailComponent — write actions without a route', 
     expect(texts).not.toContain('Deactivate');
     expect(texts).not.toContain('Delete');
   });
+
+  it('lists items with no edit, activate or delete action, keeping Add item (009b #N-9)', () => {
+    const el = render({
+      items: signal([
+        {
+          id: 'I',
+          categoryId: 'C',
+          code: 'oak',
+          nameEn: 'Oak',
+          nameAr: 'Oak',
+          descriptionEn: null,
+          descriptionAr: null,
+          imageUri: null,
+          isPurchasable: true,
+          sortOrder: 0,
+          isActive: true,
+          attributes: [],
+          trackKey: 'I',
+        },
+      ]),
+    });
+    const labels = [...el.querySelectorAll('button')].map((b) => b.getAttribute('aria-label'));
+
+    expect(el.textContent).toContain('Oak');
+    expect(el.textContent).toContain('Add item');
+    expect(labels).not.toContain('Edit');
+    expect(labels).not.toContain('Deactivate');
+    expect(labels).not.toContain('Delete');
+  });
 });

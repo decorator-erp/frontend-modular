@@ -40,8 +40,6 @@ function apiMock() {
     createCategory: vi.fn().mockReturnValue(of('new-id')),
     moveCategory: vi.fn().mockReturnValue(of(undefined)),
     mapCategorySpaceType: vi.fn().mockReturnValue(of(undefined)),
-    setItemActive: vi.fn().mockReturnValue(of(undefined)),
-    deleteItem: vi.fn().mockReturnValue(of(undefined)),
     effectiveAttributes: vi.fn().mockReturnValue(of([])),
     itemsByCategory: vi.fn().mockReturnValue(of([])),
     addAttribute: vi.fn().mockReturnValue(of('attr-id')),
@@ -134,5 +132,12 @@ describe('CatalogAdminStore', () => {
     ]) {
       expect(s[name], name).toBeUndefined();
     }
+  });
+
+  // 009b #N-9: no item activate or delete route (C §2.11).
+  it('has no item activate or delete (009b #N-9)', () => {
+    const s = store() as unknown as Record<string, unknown>;
+    expect(s['setItemActive']).toBeUndefined();
+    expect(s['deleteItem']).toBeUndefined();
   });
 });
