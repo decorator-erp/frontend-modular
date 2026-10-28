@@ -17,7 +17,13 @@ interface ClientNavItem {
 
 const NAV_ITEMS: ClientNavItem[] = [
   { path: '/portal', icon: 'user', labelKey: 'nav.cProfile' },
-  { path: '/portal/schedule', icon: 'calendar', labelKey: 'nav.cSched' },
+  // FINDING-5-14: the route requires `crm.meetings.view_own` (app.routes.ts) — no entry without it.
+  {
+    path: '/portal/schedule',
+    icon: 'calendar',
+    labelKey: 'nav.cSched',
+    permission: PERM.crm.meetings.viewOwn,
+  },
   // 009b #46: the portal item route needs `requirements.submit_own`, which is not in the client
   // baseline — a client without it gets no entry rather than a 403.
   {
