@@ -1,9 +1,7 @@
 import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { ApprovalService } from '@modules/approvals';
-// TODO(009): CrmMeetingService lands with modules/crm. Restore the import, its inject below and
-// the Meeting case then; until it does, a Meeting notification takes the default FALLBACK.
-// import { CrmMeetingService } from '@modules/crm';
+import { CrmMeetingService } from '@modules/crm';
 import { InvoiceService } from '@modules/finance';
 import { VariationService } from '@modules/finance';
 import { ProjectStageService } from '@modules/projects';
@@ -32,8 +30,7 @@ export class NotificationDeepLink {
   private readonly invoices = inject(InvoiceService);
   private readonly variations = inject(VariationService);
   private readonly approvals = inject(ApprovalService);
-  // TODO(009): see the imports above.
-  // private readonly meetings = inject(CrmMeetingService);
+  private readonly meetings = inject(CrmMeetingService);
 
   async resolve(view: NotificationView): Promise<RouteCommands> {
     const id = view.entityId;
@@ -83,13 +80,12 @@ export class NotificationDeepLink {
           return this.routeForCrmSubject(match.projectId, match.subjectType ?? null);
         }
 
-        // TODO(009): see the imports above.
-        // case NotificationEntityType.Meeting: {
-        //   // Live and working: every CrmMeeting* notification (500–508) carries the meeting's own
-        //   // id as entityId (verified against the backend working tree).
-        //   const meeting = await firstValueFrom(this.meetings.getById(id));
-        //   return meeting.projectId ? ['/crm/projects', meeting.projectId, 'scheduler'] : FALLBACK;
-        // }
+        case NotificationEntityType.Meeting: {
+          // Live and working: every CrmMeeting* notification (500–508) carries the meeting's own
+          // id as entityId (verified against the backend working tree).
+          const meeting = await firstValueFrom(this.meetings.getById(id));
+          return meeting.projectId ? ['/crm/projects', meeting.projectId, 'scheduler'] : FALLBACK;
+        }
 
         case NotificationEntityType.DesignBrief:
         case NotificationEntityType.RequirementItem:

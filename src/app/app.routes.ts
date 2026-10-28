@@ -5,12 +5,8 @@ import { peopleRoutes } from '@modules/people';
 import { libraryRoutes } from '@modules/library';
 import { projectsRoutes } from '@modules/projects';
 import { PermissionGuard } from '@platform/auth/permission.guard';
-// TODO(009): PERM is still unused — 005's routes carry raw permission strings, as in the old
-// app; the first PERM-citing stub is a 009 route (crm, approvals, portal, admin/catalog).
-// import { PERM } from '@platform/permissions';
-// TODO(009): CatalogAdminStore lands with modules/crm at spec 009 — the
-// `admin/catalog` stub below cites it but cannot import it yet.
-// import { CatalogAdminStore } from '@modules/crm';
+import { PERM } from '@platform/permissions';
+import { CatalogAdminStore, crmPages } from '@modules/crm';
 
 export const routes: Routes = [
   {
@@ -27,21 +23,13 @@ export const routes: Routes = [
   // Anonymous public lead intake (`POST /api/crm/public/leads`) — a top-level sibling
   // OUTSIDE both shells with NO guard, so a logged-out prospect can submit. `:lang`
   // seeds the initial locale. Two routes: Angular has no single-segment optional param.
-  // TODO(009): replace PlaceholderPageComponent with the real
-  // features/crm/public/intake-page.component -> IntakePageComponent.
   {
     path: 'intake',
-    loadComponent: () =>
-      import('./layouts/placeholder/placeholder-page.component').then(
-        (m) => m.PlaceholderPageComponent,
-      ),
+    loadComponent: crmPages.intake,
   },
   {
     path: 'intake/:lang',
-    loadComponent: () =>
-      import('./layouts/placeholder/placeholder-page.component').then(
-        (m) => m.PlaceholderPageComponent,
-      ),
+    loadComponent: crmPages.intake,
   },
   // The client shell (FR-038) — a SIBLING top-level route, declared BEFORE the office
   // shell below: the office shell's own children carry a `**` catch-all, and a
@@ -52,20 +40,30 @@ export const routes: Routes = [
     loadComponent: () =>
       import('./layouts/client-shell/client-shell.component').then((m) => m.ClientShellComponent),
     children: [
-      // TODO(009): '' -> PermissionGuard, data.permission = PERM.portal.profileViewOwn,
-      // loadComponent -> features/crm/client/client-profile.component -> CrmClientProfileComponent
-      //
-      // TODO(009): 'schedule' -> PermissionGuard, data.permission = PERM.crm.meetings.viewOwn,
-      // loadComponent -> features/crm/client/client-schedule-page.component
-      //   -> CrmClientSchedulePageComponent
-      //
-      // TODO(009): 'add-requirement' -> PermissionGuard, data.permission = PERM.requirements.submitOwn,
-      // loadComponent -> features/crm/client/client-add-requirement-page.component
-      //   -> CrmClientAddRequirementPageComponent
-      //
-      // TODO(009): 'approvals' -> PermissionGuard, data.permission = PERM.crm.approvals.viewOwn,
-      // loadComponent -> features/crm/client/client-approvals-page.component
-      //   -> CrmClientApprovalsPageComponent
+      {
+        path: '',
+        canActivate: [PermissionGuard],
+        data: { permission: PERM.portal.profileViewOwn },
+        loadComponent: crmPages.clientProfile,
+      },
+      {
+        path: 'schedule',
+        canActivate: [PermissionGuard],
+        data: { permission: PERM.crm.meetings.viewOwn },
+        loadComponent: crmPages.clientSchedule,
+      },
+      {
+        path: 'add-requirement',
+        canActivate: [PermissionGuard],
+        data: { permission: PERM.requirements.submitOwn },
+        loadComponent: crmPages.clientAddRequirement,
+      },
+      {
+        path: 'approvals',
+        canActivate: [PermissionGuard],
+        data: { permission: PERM.crm.approvals.viewOwn },
+        loadComponent: crmPages.clientApprovals,
+      },
     ],
   },
   {
@@ -97,15 +95,18 @@ export const routes: Routes = [
         loadComponent: () => import('@modules/clients').then((m) => m.ClientsListComponent),
       },
       //
-      // TODO(009): 'admin/catalog' -> PermissionGuard. Gated on manage, not read — this page
-      //   is a full CRUD editor (create, move, clone, delete categories and items), and
-      //   crm.catalog.read is also granted to the Client role so the portal can render item
-      //   names on a brief. Gating an editor on the read permission would offer this screen to a
-      //   role that 403s on every button rather than simply not seeing it.
-      //   data = { permission: PERM.crm.catalog.manage, breadcrumb: 'Catalog' },
-      //   providers: [CatalogAdminStore],
-      //   loadComponent: features/crm/admin/catalog/catalog-admin-page.component
-      //   -> CrmCatalogAdminPageComponent
+      {
+        path: 'admin/catalog',
+        canActivate: [PermissionGuard],
+        // Gated on `manage`, not `read` — this page is a full CRUD editor (create, move,
+        // clone, delete categories and items), and `crm.catalog.read` is also granted to
+        // the Client role so the portal can render item names on a brief. Gating an editor
+        // on the read permission would offer this screen to a role that 403s on every
+        // button rather than simply not seeing it.
+        data: { permission: PERM.crm.catalog.manage, breadcrumb: 'Catalog' },
+        providers: [CatalogAdminStore],
+        loadComponent: crmPages.catalogAdmin,
+      },
       //
       // Library (spec 005): stage-templates, boq-catalog, materials, materials/:id. Spread here,
       // at the first of the old positions; the two materials routes sat further down the old list,
@@ -121,24 +122,29 @@ export const routes: Routes = [
       // CRM — client requirement gathering. Lazy, per the finance precedent. The
       // old single broad CRM read parent gate is gone (that permission was retired in
       // the granularity refactor); each child in crm.routes.ts now carries its own
-      // granular read guard (crm.periods.read, crm.meetings.read, etc.), so a caller
+      // granular read guard (`crm.periods.read`, `crm.meetings.read`, …), so a caller
       // holding only one sub-permission is no longer 403'd at the parent.
-      // TODO(009): 'crm' -> data = { breadcrumb: 'CRM' },
-      //   loadChildren: features/crm/crm.routes -> crmRoutes
-      //
+      {
+        path: 'crm',
+        data: { breadcrumb: 'CRM' },
+        loadChildren: () => import('@modules/crm').then((m) => m.crmRoutes),
+      },
       // Office "my approvals" inbox — the dashboard "Needs attention" widget's "View all" target.
-      // TODO(009): 'approvals' -> PermissionGuard, data = { permission: PERM.approvals.read,
-      //   breadcrumb: 'Approvals' }, loadComponent: features/approvals/approvals-list.component
-      //   -> ApprovalsListComponent
-      //
-      // The designer profile — a SIBLING of the crm entry above, not nested inside
-      // crm.routes.ts: crm.design_profile.read is its own permission and a
+      {
+        path: 'approvals',
+        canActivate: [PermissionGuard],
+        data: { permission: PERM.approvals.read, breadcrumb: 'Approvals' },
+        loadComponent: crmPages.officeApprovals,
+      },
+      // The designer profile — a SIBLING of the `crm` entry above, not nested inside
+      // `crm.routes.ts`: `crm.design_profile.read` is its own permission and a
       // "designer" grant may hold only that one.
-      // TODO(009): 'crm/designer/projects/:projectId' -> PermissionGuard,
-      //   data = { permission: PERM.crm.designProfile.read, breadcrumb: 'Client design profile' },
-      //   loadComponent: features/crm/designer/design-profile.component
-      //   -> CrmDesignProfileComponent
-      //
+      {
+        path: 'crm/designer/projects/:projectId',
+        canActivate: [PermissionGuard],
+        data: { permission: PERM.crm.designProfile.read, breadcrumb: 'Client design profile' },
+        loadComponent: crmPages.designProfile,
+      },
       {
         path: 'audit',
         canActivate: [PermissionGuard],

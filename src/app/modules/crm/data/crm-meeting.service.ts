@@ -1,0 +1,189 @@
+import { Injectable } from '@angular/core';
+import { Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
+import { ApiService } from '@platform/http/api.service';
+import { MeetingSlotStatus, MeetingStatus, MeetingType } from '../model/crm-enums';
+import type {
+  CancelMeetingRequest,
+  CrmMeeting,
+  CrmMeetingSlot,
+  DeclineSlotRequest,
+  FreeSlot,
+  ProposeMeetingRequest,
+  RequestMeetingByClientRequest,
+  SlotRequest,
+} from '../model';
+
+/**
+ * Meetings — `/api/crm/meetings/*` (office) and `/api/crm/portal/meetings/*` (client).
+ * T045 folds both into ONE service, per tasks.md — the portal variants are the same
+ * domain object, and the office `MeetingsStore` (T046) drives both sides.
+ *
+ * **The server computes availability; the client derives nothing.** ⚠️ There is NO
+ * `employeeId` param anywhere in this domain — `GET /free-slots` and `propose`'s
+ * `targetEmployeeId` both resolve to `project.CreatedById` (verified against the
+ * backend working tree: `ProjectResponse.productOwnerId` is a read-model alias for
+ * the SAME column, never an independent value). Callers pass `project.productOwnerId`.
+ */
+@Injectable({ providedIn: 'root' })
+export class CrmMeetingService extends ApiService {
+  /** `GET /free-slots?projectId&fromUtc&toUtc` — flat free UTC windows. Permission `crm.meetings.read`. */
+  freeSlots(projectId: string, fromUtc: string, toUtc: string): Observable<FreeSlot[]> {
+    return this.get<unknown>('/crm/meetings/free-slots', { projectId, fromUtc, toUtc }).pipe(
+      map((r) => this.unwrapArray<unknown>(r).map((s) => this.normalizeFreeSlot(s))),
+    );
+  }
+
+  /** `POST /propose` → `201` with a bare `Guid`. Permission `crm.meetings.schedule`. */
+  propose(request: ProposeMeetingRequest): Observable<string> {
+    return this.post<unknown>('/crm/meetings/propose', {
+      projectId: request.projectId,
+      periodId: request.periodId ?? null,
+      title: request.title,
+      type: request.type,
+      location: request.location ?? null,
+      durationMinutes: request.durationMinutes ?? null,
+      targetEmployeeId: request.targetEmployeeId,
+      slots: request.slots,
+    }).pipe(map((r) => this.unwrap<string>(r)));
+  }
+
+  /** `PUT /slots/{slotId}/accept` → `204`. Permission `crm.meetings.respond_slot` (counterparty-checked server-side). */
+  acceptSlot(slotId: string): Observable<void> {
+    return this.put<void>(`/crm/meetings/slots/${slotId}/accept`, {});
+  }
+
+  /** `PUT /slots/{slotId}/decline` → `204` — an optional counter-proposal, never a reason. */
+  declineSlot(slotId: string, request?: DeclineSlotRequest): Observable<void> {
+    return this.put<void>(`/crm/meetings/slots/${slotId}/decline`, {
+      counterSlots: request?.counterSlots ?? null,
+    });
+  }
+
+  /** `PUT /{meetingId}/reschedule` → `204` — a NEW slot proposal, an offer, no reason (FR-023 amended). */
+  reschedule(meetingId: string, slot: SlotRequest): Observable<void> {
+    return this.put<void>(`/crm/meetings/${meetingId}/reschedule`, slot);
+  }
+
+  /** `PUT /{meetingId}/cancel` → `204` — the reason is MANDATORY, the one exception. */
+  cancel(meetingId: string, reason: string): Observable<void> {
+    return this.put<void>(`/crm/meetings/${meetingId}/cancel`, {
+      reason,
+    } satisfies CancelMeetingRequest);
+  }
+
+  /** `PUT /{meetingId}/complete` → `204`. Permission `crm.meetings.complete`. */
+  complete(meetingId: string): Observable<void> {
+    return this.put<void>(`/crm/meetings/${meetingId}/complete`, {});
+  }
+
+  /** `PUT /{meetingId}/no-show` → `204`. Permission `crm.meetings.mark_no_show`. */
+  noShow(meetingId: string): Observable<void> {
+    return this.put<void>(`/crm/meetings/${meetingId}/no-show`, {});
+  }
+
+  /** `GET /{meetingId}` — the full record with its slots. */
+  getById(meetingId: string): Observable<CrmMeeting> {
+    return this.get<unknown>(`/crm/meetings/${meetingId}`).pipe(
+      map((r) => this.normalizeMeeting(this.unwrap(r))),
+    );
+  }
+
+  /** `GET /?projectId&skip&take` — a bare array, no `PagedResult` wrapper. */
+  search(projectId?: string, skip = 0, take = 50): Observable<CrmMeeting[]> {
+    return this.get<unknown>('/crm/meetings', { projectId, skip, take }).pipe(
+      map((r) => this.unwrapArray<unknown>(r).map((m) => this.normalizeMeeting(m))),
+    );
+  }
+
+  // ── Client portal — gated on `crm.portal`, not the office `crm.meetings.*` ──
+
+  /**
+   * `POST /portal/meetings/request` → `201` `Guid`. The client requests ONE specific
+   * slot directly (from the free-slot grid) — not a proposal list. Lands `Requested`
+   * with a single held slot (FR-023).
+   */
+  portalRequest(request: RequestMeetingByClientRequest): Observable<string> {
+    return this.post<unknown>('/crm/portal/meetings/request', {
+      projectId: request.projectId,
+      periodId: request.periodId ?? null,
+      title: request.title,
+      type: request.type,
+      startsAtUtc: request.startsAtUtc,
+      endsAtUtc: request.endsAtUtc,
+      location: request.location ?? null,
+    }).pipe(map((r) => this.unwrap<string>(r)));
+  }
+
+  /** `PUT /portal/meetings/slots/{slotId}/accept` → `204` — the client accepts a proposed slot. */
+  portalAcceptSlot(slotId: string): Observable<void> {
+    return this.put<void>(`/crm/portal/meetings/slots/${slotId}/accept`, {});
+  }
+
+  /** `PUT /portal/meetings/slots/{slotId}/decline` → `204` — optional counter-proposal. */
+  portalDeclineSlot(slotId: string, request?: DeclineSlotRequest): Observable<void> {
+    return this.put<void>(`/crm/portal/meetings/slots/${slotId}/decline`, {
+      counterSlots: request?.counterSlots ?? null,
+    });
+  }
+
+  /** `PUT /portal/meetings/{meetingId}/reschedule` → `204` — no reason, an offer. */
+  portalReschedule(meetingId: string, slot: SlotRequest): Observable<void> {
+    return this.put<void>(`/crm/portal/meetings/${meetingId}/reschedule`, slot);
+  }
+
+  /** `PUT /portal/meetings/{meetingId}/cancel` → `204` — reason mandatory. */
+  portalCancel(meetingId: string, reason: string): Observable<void> {
+    return this.put<void>(`/crm/portal/meetings/${meetingId}/cancel`, {
+      reason,
+    } satisfies CancelMeetingRequest);
+  }
+
+  /** `GET /portal/meetings` — the client's own meetings, every status. */
+  portalList(): Observable<CrmMeeting[]> {
+    return this.get<unknown>('/crm/portal/meetings').pipe(
+      map((r) => this.unwrapArray<unknown>(r).map((m) => this.normalizeMeeting(m))),
+    );
+  }
+
+  private normalizeFreeSlot(source: unknown): FreeSlot {
+    return {
+      startsAtUtc: this.field<string>(source, 'startsAtUtc') ?? '',
+      endsAtUtc: this.field<string>(source, 'endsAtUtc') ?? '',
+    };
+  }
+
+  private normalizeSlot(source: unknown): CrmMeetingSlot {
+    return {
+      id: this.field<string>(source, 'id') ?? '',
+      meetingId: this.field<string>(source, 'meetingId') ?? '',
+      employeeId: this.field<string>(source, 'employeeId') ?? '',
+      startsAtUtc: this.field<string>(source, 'startsAtUtc') ?? '',
+      endsAtUtc: this.field<string>(source, 'endsAtUtc') ?? '',
+      status: this.field<number>(source, 'status') ?? MeetingSlotStatus.Proposed,
+      proposedByEmployeeId: this.field<string | null>(source, 'proposedByEmployeeId') ?? null,
+      proposedByContactId: this.field<string | null>(source, 'proposedByContactId') ?? null,
+      holdExpiresAtUtc: this.field<string | null>(source, 'holdExpiresAtUtc') ?? null,
+    };
+  }
+
+  private normalizeMeeting(source: unknown): CrmMeeting {
+    return {
+      id: this.field<string>(source, 'id') ?? '',
+      projectId: this.field<string>(source, 'projectId') ?? '',
+      periodId: this.field<string | null>(source, 'periodId') ?? null,
+      title: this.field<string>(source, 'title') ?? '',
+      type: this.field<number>(source, 'type') ?? MeetingType.InOffice,
+      status: this.field<number>(source, 'status') ?? MeetingStatus.Requested,
+      scheduledAtUtc: this.field<string | null>(source, 'scheduledAtUtc') ?? null,
+      durationMinutes: this.field<number | null>(source, 'durationMinutes') ?? null,
+      location: this.field<string | null>(source, 'location') ?? null,
+      requestedByEmployeeId: this.field<string | null>(source, 'requestedByEmployeeId') ?? null,
+      requestedByContactId: this.field<string | null>(source, 'requestedByContactId') ?? null,
+      canceledAtUtc: this.field<string | null>(source, 'canceledAtUtc') ?? null,
+      cancelReason: this.field<string | null>(source, 'cancelReason') ?? null,
+      createdAtUtc: this.field<string>(source, 'createdAtUtc') ?? '',
+      slots: (this.field<unknown[]>(source, 'slots') ?? []).map((s) => this.normalizeSlot(s)),
+    };
+  }
+}

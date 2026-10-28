@@ -1,11 +1,8 @@
 import { TestBed } from '@angular/core/testing';
 import { of, throwError } from 'rxjs';
 import { ApprovalService } from '@modules/approvals';
-// TODO(009): CrmBriefService and CrmMeetingService land with modules/crm. 009 restores their
-// imports, the matching mocks and providers in beforeEach, and the cases commented out below — they
-// exercise the deep-link arm notification-deep-link.ts stubs until then.
-// import { CrmBriefService } from '@modules/crm';
-// import { CrmMeetingService } from '@modules/crm';
+import { CrmBriefService } from '@modules/crm';
+import { CrmMeetingService } from '@modules/crm';
 import { InvoiceService } from '@modules/finance';
 import { ProjectStageService } from '@modules/projects';
 import { ProjectTaskService } from '@modules/projects';
@@ -41,8 +38,8 @@ describe('NotificationDeepLink', () => {
   let invoices: { getById: ReturnType<typeof vi.fn> };
   let variations: { getById: ReturnType<typeof vi.fn> };
   let approvals: { listPending: ReturnType<typeof vi.fn> };
-  // let meetings: { getById: ReturnType<typeof vi.fn> };
-  // let briefs: { getBrief: ReturnType<typeof vi.fn> };
+  let meetings: { getById: ReturnType<typeof vi.fn> };
+  let briefs: { getBrief: ReturnType<typeof vi.fn> };
   let resolver: NotificationDeepLink;
 
   beforeEach(() => {
@@ -51,8 +48,8 @@ describe('NotificationDeepLink', () => {
     invoices = { getById: vi.fn().mockReturnValue(of({ projectId: 'p3' })) };
     variations = { getById: vi.fn().mockReturnValue(of({ projectId: 'p4' })) };
     approvals = { listPending: vi.fn().mockReturnValue(of([{ id: 'e1', projectId: 'p5' }])) };
-    // meetings = { getById: vi.fn().mockReturnValue(of({ projectId: 'p6' })) };
-    // briefs = { getBrief: vi.fn().mockReturnValue(of({ head: {}, spaces: [] })) };
+    meetings = { getById: vi.fn().mockReturnValue(of({ projectId: 'p6' })) };
+    briefs = { getBrief: vi.fn().mockReturnValue(of({ head: {}, spaces: [] })) };
     TestBed.configureTestingModule({
       providers: [
         NotificationDeepLink,
@@ -61,8 +58,8 @@ describe('NotificationDeepLink', () => {
         { provide: InvoiceService, useValue: invoices },
         { provide: VariationService, useValue: variations },
         { provide: ApprovalService, useValue: approvals },
-        // { provide: CrmMeetingService, useValue: meetings },
-        // { provide: CrmBriefService, useValue: briefs },
+        { provide: CrmMeetingService, useValue: meetings },
+        { provide: CrmBriefService, useValue: briefs },
       ],
     });
     resolver = TestBed.inject(NotificationDeepLink);
@@ -140,23 +137,21 @@ describe('NotificationDeepLink', () => {
 
   // T128 — the CRM entity types, moved out of the default fallback into real case arms.
 
-  // TODO(009): see the imports above.
-  // it('Meeting fetches the meeting and lands on its project scheduler', async () => {
-  //   expect(await resolver.resolve(view(NotificationEntityType.Meeting, 'm1'))).toEqual([
-  //     '/crm/projects',
-  //     'p6',
-  //     'scheduler',
-  //   ]);
-  //   expect(meetings.getById).toHaveBeenCalledWith('m1');
-  // });
+  it('Meeting fetches the meeting and lands on its project scheduler', async () => {
+    expect(await resolver.resolve(view(NotificationEntityType.Meeting, 'm1'))).toEqual([
+      '/crm/projects',
+      'p6',
+      'scheduler',
+    ]);
+    expect(meetings.getById).toHaveBeenCalledWith('m1');
+  });
 
-  // TODO(009): see the imports above.
-  // it('Meeting with no projectId on the fetched entity falls back', async () => {
-  //   meetings.getById.mockReturnValue(of({ projectId: null }));
-  //   expect(await resolver.resolve(view(NotificationEntityType.Meeting, 'm1'))).toEqual([
-  //     '/notifications',
-  //   ]);
-  // });
+  it('Meeting with no projectId on the fetched entity falls back', async () => {
+    meetings.getById.mockReturnValue(of({ projectId: null }));
+    expect(await resolver.resolve(view(NotificationEntityType.Meeting, 'm1'))).toEqual([
+      '/notifications',
+    ]);
+  });
 
   // The band that ACTUALLY carries brief/item/entry approval traffic (verified against the
   // backend working tree): every one of these notifications arrives as the generic `Approval`
