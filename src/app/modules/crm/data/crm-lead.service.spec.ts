@@ -143,4 +143,42 @@ describe('CrmLeadService', () => {
       expect(result).toEqual({ clientId: 'C' });
     });
   });
+
+  describe('searchClients (009b #31) — the convert picker reads GET /api/clients', () => {
+    it('sends pageNumber/pageSize/search/isActive=true and maps the list rows', () => {
+      let result: { items: unknown[]; totalCount: number } | undefined;
+      service.searchClients({ search: 'x' }).subscribe((r) => (result = r));
+
+      const req = http.expectOne(
+        (r) =>
+          r.url === url('/clients') &&
+          r.params.get('search') === 'x' &&
+          r.params.get('isActive') === 'true' &&
+          r.params.get('pageNumber') === '1' &&
+          r.params.get('pageSize') === '50',
+      );
+      expect(req.request.method).toBe('GET');
+      req.flush({
+        items: [
+          {
+            id: 'C1',
+            displayName: 'Mona Adel',
+            email: 'm@x.io',
+            address: 'Cairo',
+            jobTitle: null,
+            representativeName: null,
+            isActive: true,
+            createdAtUtc: '2026-01-01T00:00:00Z',
+          },
+        ],
+        pageNumber: 1,
+        pageSize: 50,
+        totalCount: 1,
+        totalPages: 1,
+      });
+
+      expect(result?.totalCount).toBe(1);
+      expect(result?.items[0]).toEqual({ id: 'C1', displayName: 'Mona Adel', email: 'm@x.io' });
+    });
+  });
 });

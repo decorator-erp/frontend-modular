@@ -1,12 +1,13 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { catchError, of } from 'rxjs';
+import { emptyPage } from '@platform/types';
 import { CrmLeadService, type CrmLead } from '../../data/crm-lead.service';
+import type { CrmClientOption } from '../../model';
 import { ErrorHandlerService, friendly } from '@platform/http/error-handler.service';
 import { CatalogService } from '@platform/i18n/catalog.service';
 import { ToastService } from '@platform/feedback/toast.service';
 import { ParsedApiError } from '@platform/types';
-import { ClientSearchService } from '@modules/clients';
 import { ServerErrorsDirective, firstErrorMessage } from '@shared/forms';
 import {
   PERA_MODAL_DATA,
@@ -113,7 +114,6 @@ export interface ConvertLeadDialogData {
 export class CrmConvertLeadComponent {
   private readonly fb = inject(FormBuilder);
   private readonly leads = inject(CrmLeadService);
-  private readonly clientSearch = inject(ClientSearchService);
   private readonly errorHandler = inject(ErrorHandlerService);
   private readonly toast = inject(ToastService);
   private readonly modalRef = inject(PeraModalRef) as PeraModalRef<boolean>;
@@ -124,7 +124,7 @@ export class CrmConvertLeadComponent {
     ? `${this.data.lead.firstName} ${this.data.lead.lastName}`.trim()
     : '';
 
-  protected readonly clients = signal<SelectOption[]>([]);
+  readonly clients = signal<SelectOption[]>([]);
   readonly serverError = signal<ParsedApiError | null>(null);
   readonly submitting = signal(false);
 
@@ -133,15 +133,13 @@ export class CrmConvertLeadComponent {
   });
 
   constructor() {
-    this.clientSearch
-      .search({ pageSize: 200, isActive: true })
-      .pipe(catchError(() => of({ items: [], totalCount: 0, pageIndex: 1, totalPages: 1 })))
+    // 009b #31: GET /api/clients (active, visible to the caller), 200 = the backend's max page.
+    this.leads
+      .searchClients({ pageSize: 200 })
+      .pipe(catchError(() => of(emptyPage<CrmClientOption>())))
       .subscribe((paged) =>
         this.clients.set(
-          paged.items.map((c) => ({
-            value: c.id,
-            label: [c.firstName, c.lastName].filter(Boolean).join(' ') || (c.email ?? c.id),
-          })),
+          paged.items.map((c) => ({ value: c.id, label: c.displayName ?? c.email ?? c.id })),
         ),
       );
   }

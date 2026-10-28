@@ -4,7 +4,12 @@ import { map } from 'rxjs/operators';
 import { ApiService } from '@platform/http/api.service';
 import type { PagedResult } from '@platform/types';
 import { LeadSource, LeadStatus } from '../model/crm-enums';
-import type { CrmLeadStatusCounts, LeadIntakeRequest, LeadIntakeResponse } from '../model';
+import type {
+  CrmClientOption,
+  CrmLeadStatusCounts,
+  LeadIntakeRequest,
+  LeadIntakeResponse,
+} from '../model';
 
 /** Mirrors `LeadResponse` — the full lead record. */
 export interface CrmLead {
@@ -160,9 +165,44 @@ export class CrmLeadService extends ApiService {
     );
   }
 
+  /**
+   * The convert picker's client list (009b #31, D-c): `GET /api/clients?pageNumber&pageSize&search
+   * &isActive=true` → `PagedResult<ClientListItemResponse>` (`ClientEndpoints.cs:126-156`). Only
+   * clients the caller can see are listed; `search` matches address and representative name.
+   * CRM-side so `modules/clients`' `ClientSearchService` (four consumers) stays untouched.
+   */
+  searchClients(options?: {
+    pageNumber?: number;
+    pageSize?: number;
+    search?: string;
+  }): Observable<PagedResult<CrmClientOption>> {
+    const pageSize = options?.pageSize ?? 50;
+    return this.get<unknown>('/clients', {
+      pageNumber: options?.pageNumber ?? 1,
+      pageSize,
+      search: options?.search?.trim(),
+      isActive: true,
+    }).pipe(
+      map((r) => {
+        const page = this.unwrap(r);
+        const items = this.unwrapArray<unknown>(page).map((c) => ({
+          id: this.field<string>(c, 'id') ?? '',
+          displayName: this.field<string | null>(c, 'displayName') ?? null,
+          email: this.field<string | null>(c, 'email') ?? null,
+        }));
+        return this.pageOf(page, items, pageSize);
+      }),
+    );
+  }
+
   private normalizePage(response: unknown, requestedPageSize: number): PagedResult<CrmLead> {
     const page = this.unwrap(response);
     const items = this.unwrapArray<unknown>(page).map((l) => this.normalizeLead(l));
+    return this.pageOf(page, items, requestedPageSize);
+  }
+
+  /** The `PagedResult` envelope (`pageNumber` on the wire, `page` in the app) around `items`. */
+  private pageOf<T>(page: unknown, items: T[], requestedPageSize: number): PagedResult<T> {
     const pageSize = this.field<number>(page, 'pageSize') ?? requestedPageSize;
     const totalCount = this.field<number>(page, 'totalCount') ?? items.length;
     return {

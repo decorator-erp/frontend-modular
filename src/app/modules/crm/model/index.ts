@@ -108,6 +108,17 @@ export interface CrmLeadStatusCounts {
 }
 
 /**
+ * The convert picker's slice of `ClientListItemResponse` (`ClientContracts.cs:85-87`), read by
+ * the CRM-side `CrmLeadService.searchClients` (009b #31, D-c). `displayName`/`email` come from
+ * the portal login and may be absent.
+ */
+export interface CrmClientOption {
+  id: string;
+  displayName: string | null;
+  email: string | null;
+}
+
+/**
  * Anonymous public submission (`POST /api/crm/public/leads`) — creates the lead +
  * intake in one transaction. `website` is a HONEYPOT: always leave empty/hidden and
  * never render it as a real field.
