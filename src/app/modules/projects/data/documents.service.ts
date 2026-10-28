@@ -92,8 +92,9 @@ export class DocumentFoldersService extends ApiService {
 @Injectable({ providedIn: 'root' })
 export class ProjectDocumentsService extends ApiService {
   /**
-   * `POST /api/project-documents` — `multipart/form-data`, permission
-   * `projects.manage_documents`. Returns `201` with a bare `Guid` body.
+   * `POST /api/projects/{projectId}/documents` — `multipart/form-data` (`file`, `folderId?`,
+   * `description?`), permission `documents.upload`. Returns `200 { documentId }`; an empty file
+   * is a 400 (008b #8).
    *
    * ⚠️ **The file part must be named exactly `file`.** The endpoint binds by part name,
    * so `files`, `upload` or `document` bind to nothing and the request fails as an empty
@@ -114,12 +115,13 @@ export class ProjectDocumentsService extends ApiService {
     description?: string | null,
   ): Observable<string> {
     const form = new FormData();
-    form.append('projectId', projectId);
     form.append('file', file);
     if (folderId) form.append('folderId', folderId);
     if (description) form.append('description', description);
 
-    return this.post<unknown>('/project-documents', form).pipe(map((r) => this.unwrap<string>(r)));
+    return this.post<unknown>(`/projects/${projectId}/documents`, form).pipe(
+      map((r) => this.unwrapId(r, 'documentId')),
+    );
   }
 
   getByProject(projectId: string): Observable<ProjectDocument[]> {

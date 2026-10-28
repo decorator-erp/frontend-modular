@@ -70,4 +70,27 @@ describe('documents.service', () => {
       expect(count).toBe(1);
     });
   });
+
+  describe('ProjectDocumentsService.upload (008b #8)', () => {
+    it('POSTs multipart to /api/projects/{projectId}/documents without a projectId part and emits documentId', () => {
+      let id: unknown;
+      const file = new File(['x'], 'plan.pdf', { type: 'application/pdf' });
+      TestBed.inject(ProjectDocumentsService)
+        .upload('p1', file, 'f1', 'Site plan')
+        .subscribe((r) => (id = r));
+
+      const req = http.expectOne({
+        method: 'POST',
+        url: `${environment.apiUrl}/projects/p1/documents`,
+      });
+      const form = req.request.body as FormData;
+      expect(form.get('file')).toBeInstanceOf(File);
+      expect(form.get('folderId')).toBe('f1');
+      expect(form.get('description')).toBe('Site plan');
+      expect(form.has('projectId')).toBe(false);
+      req.flush({ documentId: 'd1' });
+
+      expect(id).toBe('d1');
+    });
+  });
 });
