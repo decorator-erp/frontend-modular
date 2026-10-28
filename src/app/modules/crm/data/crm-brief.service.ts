@@ -135,10 +135,10 @@ export class CrmBriefService extends ApiService {
     return this.put<void>(`/crm/briefs/${briefId}/send`, {});
   }
 
-  /** `POST /briefs/{briefId}/spaces` → `201` with a bare `Guid`. Add a gathering entry. */
+  /** `POST /briefs/{briefId}/spaces` → `201 { briefSpaceId }` (009b #15). Add a gathering entry. */
   addSpace(briefId: string, request: BriefSpaceRequest): Observable<string> {
     return this.post<unknown>(`/crm/briefs/${briefId}/spaces`, this.toSpaceBody(request)).pipe(
-      map((r) => this.unwrap<string>(r)),
+      map((r) => this.unwrapId(r, 'briefSpaceId')),
     );
   }
 
@@ -153,15 +153,16 @@ export class CrmBriefService extends ApiService {
   }
 
   /**
-   * `POST /brief-spaces/{spaceId}/supersede` → `201` with a bare `Guid` — the NEW entry's id.
-   * The server reports nothing about what carried over; the pre-fill and old→new mapping
-   * are entirely client-derived (`supersede-mapper.ts`).
+   * `POST /brief-spaces/{spaceId}/supersede` → `201 { briefSpaceId }` — the NEW entry's id (009b #15).
+   * Only an Approved entry, only once (409 `OnlyLockedSuperseded` / `AlreadySuperseded`), and the
+   * body must repeat the original's `spaceId` (400 `SupersedeSpaceMismatch`). The server reports
+   * nothing about what carried over; the pre-fill is client-derived.
    */
   supersedeSpace(spaceId: string, request: BriefSpaceRequest): Observable<string> {
     return this.post<unknown>(
       `/crm/brief-spaces/${spaceId}/supersede`,
       this.toSpaceBody(request),
-    ).pipe(map((r) => this.unwrap<string>(r)));
+    ).pipe(map((r) => this.unwrapId(r, 'briefSpaceId')));
   }
 
   /**

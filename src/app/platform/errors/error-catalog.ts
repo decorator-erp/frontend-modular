@@ -539,6 +539,8 @@ export const ERROR_MESSAGES_AR: Record<string, string> = {
   'crm.briefs.AlreadyExists': 'لهذه المرحلة موجز تصميم بالفعل.',
   'crm.briefs.NotPending': 'الموجز ليس بانتظار الاعتماد.',
   'approvals.OpenApprovalExists': 'يوجد بالفعل اعتماد لم يُبتّ فيه لهذا العنصر.',
+  'crm.briefs.OnlyLockedSuperseded':
+    'لا يُستبدل إلا قيد مؤكَّد — القيود غير المؤكدة تُعدَّل في مكانها.',
   'crm.briefs.UnitDetailsRequired':
     'نوع الوحدة وحالتها مطلوبان ما لم تكن بيانات العميل المحتمل تتضمّنهما.',
   'crm.briefs.HeadLockedPendingApproval': 'لا يمكن تعديل رأس الموجز وهو بانتظار قرار العميل.',

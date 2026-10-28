@@ -152,6 +152,29 @@ describe('CrmBriefService', () => {
     });
   });
 
+  describe('addSpace / supersedeSpace (009b #15) — 201 { briefSpaceId }', () => {
+    it('addSpace emits the id read off the one-property 201 body', () => {
+      let id: string | undefined;
+      service.addSpace('B', { spaceId: 'SP1', requirements: 'x' }).subscribe((v) => (id = v));
+      const req = http.expectOne(url('/crm/briefs/B/spaces'));
+      expect(req.request.method).toBe('POST');
+      req.flush({ briefSpaceId: 'E' }, { status: 201, statusText: 'Created' });
+      expect(id).toBe('E');
+    });
+
+    it('supersedeSpace posts to the original entry and emits the new id', () => {
+      let id: string | undefined;
+      service
+        .supersedeSpace('E1', { spaceId: 'SP1', requirements: 'fixed' })
+        .subscribe((v) => (id = v));
+      const req = http.expectOne(url('/crm/brief-spaces/E1/supersede'));
+      expect(req.request.method).toBe('POST');
+      expect(req.request.body.spaceId).toBe('SP1');
+      req.flush({ briefSpaceId: 'E2' }, { status: 201, statusText: 'Created' });
+      expect(id).toBe('E2');
+    });
+  });
+
   describe('getBrief (N-11, the obsolete project fallback)', () => {
     it('reads the same flattened CrmDesignBriefResponse off the project route', () => {
       let head: BriefHead | undefined;

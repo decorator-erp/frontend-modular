@@ -24,8 +24,8 @@ export interface SupersedeEntryDialogData {
 /**
  * "New version…" (T076) — the ONLY path offered on a locked entry (FR-010). Since feature
  * 006 an entry is a thin wrapper (a space reference + free text), so a correction is a
- * plain pre-filled form; the new entry keeps its `supersedesSpaceId` trail. The server
- * reports nothing back on supersede (a bare `Guid`).
+ * plain pre-filled form; the new entry keeps its `supersedesSpaceId` trail and the original's
+ * `spaceId`. The server reports back only the new id (`{ briefSpaceId }`).
  */
 @Component({
   selector: 'app-crm-supersede-entry',
@@ -114,7 +114,8 @@ export class CrmSupersedeEntryModalComponent {
     const v = this.form.getRawValue();
 
     const request: BriefSpaceRequest = {
-      spaceId: this.data.entry.space?.id ?? null,
+      // The correction must stay on the original's space (400 SupersedeSpaceMismatch, 009b #15).
+      spaceId: this.data.entry.spaceId,
       requirements: v.requirements.trim(),
       countOrPieces: v.countOrPieces.trim() ? Number(v.countOrPieces) : null,
       projectTaskId: this.data.entry.projectTaskId,
