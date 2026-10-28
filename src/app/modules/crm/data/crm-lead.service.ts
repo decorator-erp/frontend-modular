@@ -49,13 +49,19 @@ export interface CreateLeadRequest {
   ownerId: string;
 }
 
+/**
+ * `UpdateLeadRequest(FirstName, LastName, Source, OwnerId, Email, Phone, Notes)`
+ * (`CrmLeadEndpoints.cs:103-105`): a full replace — an omitted email/phone/notes is cleared.
+ */
 export interface UpdateLeadRequest {
   firstName: string;
   lastName: string;
+  source: LeadSource;
+  /** Required: an active HR employee (400 `crm.leads.OwnerNotFound` when it changes). */
+  ownerId: string;
   email?: string | null;
   phone?: string | null;
   notes?: string | null;
-  ownerId?: string | null;
 }
 
 /**
@@ -77,9 +83,21 @@ export class CrmLeadService extends ApiService {
     return this.post<unknown>('/crm/leads', request).pipe(map((r) => this.unwrapId(r, 'leadId')));
   }
 
-  /** `PUT /{id}` → `204`. */
+  /**
+   * `PUT /{id}` → `204` (`CrmLeadEndpoints.cs:33-40`). A full replace, so all 7 fields always
+   * travel. 409 `crm.leads.AlreadyConverted` / `crm.leads.ConcurrentUpdate` (C §1.4) belong to
+   * the caller: route a concurrency 409 through `injectReloadOnConflict()`.
+   */
   update(id: string, request: UpdateLeadRequest): Observable<void> {
-    return this.put<void>(`/crm/leads/${id}`, request);
+    return this.put<void>(`/crm/leads/${id}`, {
+      firstName: request.firstName,
+      lastName: request.lastName,
+      source: request.source,
+      ownerId: request.ownerId,
+      email: request.email ?? null,
+      phone: request.phone ?? null,
+      notes: request.notes ?? null,
+    });
   }
 
   /** `PUT /{id}/status` → `204`. */

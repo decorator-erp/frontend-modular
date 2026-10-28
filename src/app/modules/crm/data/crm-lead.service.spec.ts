@@ -181,4 +181,31 @@ describe('CrmLeadService', () => {
       expect(result?.items[0]).toEqual({ id: 'C1', displayName: 'Mona Adel', email: 'm@x.io' });
     });
   });
+
+  describe('update (009b #4) — UpdateLeadRequest is a full replace', () => {
+    it('always sends all 7 fields, source and ownerId included', () => {
+      service
+        .update('L1', {
+          firstName: 'Mona',
+          lastName: 'Adel',
+          source: LeadSource.Referral,
+          ownerId: 'E1',
+          phone: '0100',
+        })
+        .subscribe();
+
+      const req = http.expectOne(url('/crm/leads/L1'));
+      expect(req.request.method).toBe('PUT');
+      expect(req.request.body).toEqual({
+        firstName: 'Mona',
+        lastName: 'Adel',
+        source: LeadSource.Referral,
+        ownerId: 'E1',
+        email: null,
+        phone: '0100',
+        notes: null,
+      });
+      req.flush(null, { status: 204, statusText: 'No Content' });
+    });
+  });
 });
