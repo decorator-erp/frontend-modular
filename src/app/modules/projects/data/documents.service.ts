@@ -151,6 +151,7 @@ export class ProjectDocumentsService extends ApiService {
     return this.delete(`/project-documents/${id}`);
   }
 
+  /** ProjectDocumentResponse names first, the old ones as fallbacks (008b #9). */
   private normalizeDocument(source: unknown): ProjectDocument {
     return {
       id: this.field<string>(source, 'id') ?? '',
@@ -158,10 +159,10 @@ export class ProjectDocumentsService extends ApiService {
       folderId: this.field<string | null>(source, 'folderId') ?? null,
       fileName: this.field<string>(source, 'fileName') ?? '',
       contentType: this.field<string>(source, 'contentType') ?? '',
-      sizeBytes: this.field<number>(source, 'sizeBytes') ?? 0,
+      sizeBytes: this.field<number>(source, 'fileSizeBytes', 'sizeBytes') ?? 0,
       description: this.field<string | null>(source, 'description') ?? null,
-      uploadedByUserId: this.field<string>(source, 'uploadedByUserId') ?? '',
-      createdAtUtc: this.field<string>(source, 'createdAtUtc') ?? '',
+      uploadedByUserId: this.field<string>(source, 'uploadedById', 'uploadedByUserId') ?? '',
+      createdAtUtc: this.field<string>(source, 'uploadedOnUtc', 'createdAtUtc') ?? '',
     };
   }
 }

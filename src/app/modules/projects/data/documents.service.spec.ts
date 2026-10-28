@@ -6,6 +6,7 @@ import { environment } from '../../../../environments/environment';
 import {
   DocumentFolder,
   DocumentFoldersService,
+  ProjectDocument,
   ProjectDocumentsService,
 } from './documents.service';
 
@@ -91,6 +92,41 @@ describe('documents.service', () => {
       req.flush({ documentId: 'd1' });
 
       expect(id).toBe('d1');
+    });
+  });
+
+  describe('normalizeDocument (008b #9) — ProjectDocumentResponse field names', () => {
+    function read(row: Record<string, unknown>): ProjectDocument {
+      let docs: ProjectDocument[] = [];
+      TestBed.inject(ProjectDocumentsService)
+        .getByFolder('f1')
+        .subscribe((r) => (docs = r));
+      http.expectOne(`${environment.apiUrl}/document-folders/f1/documents`).flush([row]);
+      return docs[0];
+    }
+
+    it('reads fileSizeBytes, uploadedById and uploadedOnUtc', () => {
+      const doc = read({
+        id: 'd',
+        fileSizeBytes: 2048,
+        uploadedById: 'e1',
+        uploadedOnUtc: '2026-10-01T10:00:00Z',
+      });
+      expect(doc.sizeBytes).toBe(2048);
+      expect(doc.uploadedByUserId).toBe('e1');
+      expect(doc.createdAtUtc).toBe('2026-10-01T10:00:00Z');
+    });
+
+    it('still reads the old names as fallbacks', () => {
+      const doc = read({
+        id: 'd',
+        sizeBytes: 512,
+        uploadedByUserId: 'u1',
+        createdAtUtc: '2026-09-01T10:00:00Z',
+      });
+      expect(doc.sizeBytes).toBe(512);
+      expect(doc.uploadedByUserId).toBe('u1');
+      expect(doc.createdAtUtc).toBe('2026-09-01T10:00:00Z');
     });
   });
 });
