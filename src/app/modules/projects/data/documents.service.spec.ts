@@ -3,7 +3,11 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { provideHttpClient } from '@angular/common/http';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { environment } from '../../../../environments/environment';
-import { DocumentFolder, DocumentFoldersService } from './documents.service';
+import {
+  DocumentFolder,
+  DocumentFoldersService,
+  ProjectDocumentsService,
+} from './documents.service';
 
 describe('documents.service', () => {
   let http: HttpTestingController;
@@ -49,6 +53,21 @@ describe('documents.service', () => {
           isDefault: true,
         },
       ]);
+    });
+  });
+
+  describe('ProjectDocumentsService.getByFolder (008b #7)', () => {
+    it('calls GET /api/document-folders/{folderId}/documents', () => {
+      let count = -1;
+      TestBed.inject(ProjectDocumentsService)
+        .getByFolder('f1')
+        .subscribe((r) => (count = r.length));
+
+      const req = http.expectOne(`${environment.apiUrl}/document-folders/f1/documents`);
+      expect(req.request.method).toBe('GET');
+      req.flush([{ id: 'd1', projectId: 'p1', folderId: 'f1', fileName: 'plan.pdf' }]);
+
+      expect(count).toBe(1);
     });
   });
 });

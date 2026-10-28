@@ -128,8 +128,9 @@ export class ProjectDocumentsService extends ApiService {
     );
   }
 
+  /** `GET /api/document-folders/{folderId}/documents` (008b #7). */
   getByFolder(folderId: string): Observable<ProjectDocument[]> {
-    return this.get<unknown>(`/project-documents/by-folder/${folderId}`).pipe(
+    return this.get<unknown>(`/document-folders/${folderId}/documents`).pipe(
       map((r) => this.unwrapArray(r).map((d) => this.normalizeDocument(d))),
     );
   }
