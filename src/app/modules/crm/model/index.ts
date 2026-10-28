@@ -390,7 +390,9 @@ export interface RequirementItem {
   projectId: string;
   periodId: string;
   category: number;
-  /** Free text — NOT a `CrmSpaceType` FK (that abstraction does not exist here). */
+  /** The item's `CrmSpaceType`, when set (009b #23); `room` stays free text beside it. */
+  spaceTypeId: string | null;
+  /** Free text. */
   room: string | null;
   title: string;
   details: string | null;
@@ -405,8 +407,8 @@ export interface RequirementItem {
   /** Author is XOR — exactly one of these two is set. */
   createdByEmployeeId: string | null;
   createdByContactId: string | null;
+  /** No `createdAtUtc` (009b #23): the server order is newest first. */
   projectTaskId: string | null;
-  createdAtUtc: string;
 }
 
 /**

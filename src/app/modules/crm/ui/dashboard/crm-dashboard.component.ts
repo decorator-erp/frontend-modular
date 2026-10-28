@@ -224,14 +224,17 @@ export class CrmDashboardComponent implements OnInit {
       }
       return events;
     });
+    // 009b #23: items carry no createdAtUtc — they arrive newest first and follow the dated
+    // period events, undated.
     const itemEvents: CrmActivityEntry[] = this.allItems().map((i) => ({
       id: i.id,
-      timestampUtc: i.createdAtUtc,
+      timestampUtc: '',
       label: this.catalog.t('activity.itemAdded', { title: i.title }),
     }));
-    return [...periodEvents, ...itemEvents]
-      .sort((a, b) => b.timestampUtc.localeCompare(a.timestampUtc))
-      .slice(0, 8);
+    return [
+      ...periodEvents.sort((a, b) => b.timestampUtc.localeCompare(a.timestampUtc)),
+      ...itemEvents,
+    ].slice(0, 8);
   });
 
   ngOnInit(): void {
@@ -239,7 +242,7 @@ export class CrmDashboardComponent implements OnInit {
     this.projectId.set(id);
     this.store.load(id);
     this.projects.getById(id).subscribe((p) => this.project.set(p));
-    this.itemService.search(id, { take: 100 }).subscribe((items) => this.allItems.set(items));
+    this.itemService.listByProject(id).subscribe((items) => this.allItems.set(items));
     this.meetings.load(id);
   }
 
@@ -294,7 +297,7 @@ export class CrmDashboardComponent implements OnInit {
       .afterClosed();
     if (ok)
       this.itemService
-        .search(this.projectId(), { take: 100 })
+        .listByProject(this.projectId())
         .subscribe((items) => this.allItems.set(items));
   }
 }

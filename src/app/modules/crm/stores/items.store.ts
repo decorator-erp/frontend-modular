@@ -65,10 +65,13 @@ export const ItemsStore = signalStore(
   })),
 
   withMethods((store, api = inject(CrmItemService)) => ({
-    /** Office load — every item for the project (client authorship included, per the ledger). */
+    /**
+     * Office load — every item for the project (client authorship included, per the ledger):
+     * the project's periods, then each period's items (009b #23).
+     */
     load(projectId: string): void {
       patchState(store, { loading: true, error: null, projectId });
-      api.search(projectId, { take: 500 }).subscribe({
+      api.listByProject(projectId).subscribe({
         next: (items) => patchState(store, { items, loading: false }),
         error: () =>
           patchState(store, { loading: false, error: 'Could not load requirement items.' }),
@@ -89,12 +92,13 @@ export const ItemsStore = signalStore(
       patchState(store, { page });
     },
 
-    create(projectId: string, request: AddRequirementItemRequest): void {
+    /** `POST /periods/{periodId}/items` (009b #22): the project rides in the request. */
+    create(periodId: string, request: AddRequirementItemRequest): void {
       patchState(store, { mutating: true, error: null });
-      api.create(projectId, request).subscribe({
+      api.create(periodId, request).subscribe({
         next: () => {
           patchState(store, { mutating: false });
-          this.load(projectId);
+          this.load(request.projectId);
         },
         error: () => patchState(store, { mutating: false, error: 'Could not add the item.' }),
       });

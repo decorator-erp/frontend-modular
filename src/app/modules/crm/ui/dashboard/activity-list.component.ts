@@ -5,6 +5,7 @@ import { PeraEmptyComponent } from '@ds';
 
 export interface CrmActivityEntry {
   id: string;
+  /** `''` for an undated entry (a requirement item has no `createdAtUtc`, 009b #23). */
   timestampUtc: string;
   /** Pre-composed, catalog-resolved text — this component renders, never composes. */
   label: string;
@@ -50,6 +51,6 @@ export class CrmActivityListComponent {
   readonly entries = input<CrmActivityEntry[]>([]);
 
   protected formatDate(iso: string): string {
-    return formatCairoDate(iso, this.catalog.locale());
+    return iso ? formatCairoDate(iso, this.catalog.locale()) : '';
   }
 }

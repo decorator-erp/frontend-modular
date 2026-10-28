@@ -3,7 +3,6 @@ import { ActivatedRoute } from '@angular/router';
 import { CanDirective, PERM } from '@platform/permissions';
 import { isClientAuthoredItem } from '../../data/crm-item.service';
 import { CatalogService } from '@platform/i18n/catalog.service';
-import { formatCairoDate } from '@platform/i18n/intl-locale';
 import {
   ApprovalState,
   RequirementCategory,
@@ -114,9 +113,6 @@ const SOURCE_LABEL_KEYS: Record<RequirementSource, CatalogKey> = {
                             catalog.t(sourceLabel(item.sourceType))
                           }}</span>
                         }
-                        <span class="fs-label text-text-muted" dir="ltr">{{
-                          dateLabel(item)
-                        }}</span>
                       </div>
                     </div>
                     <div class="flex items-center gap-2 shrink-0">
@@ -193,10 +189,6 @@ export class CrmItemsBoardComponent implements OnInit {
   }
   protected sourceLabel(s: number): CatalogKey {
     return SOURCE_LABEL_KEYS[s as RequirementSource] ?? 'item.source';
-  }
-
-  protected dateLabel(item: RequirementItem): string {
-    return formatCairoDate(item.createdAtUtc, this.catalog.locale());
   }
 
   protected isClientAuthored(item: RequirementItem): boolean {

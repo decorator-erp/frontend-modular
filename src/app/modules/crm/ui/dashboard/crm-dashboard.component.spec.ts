@@ -38,21 +38,19 @@ describe('CrmDashboardComponent', () => {
 
   beforeEach(() => {
     projectsApi = {
-      getById: vi
-        .fn()
-        .mockReturnValue(
-          of({
-            id: 'P',
-            code: 'PRJ-1',
-            name: 'Villa',
-            clientId: 'C',
-            clientName: '',
-            productOwnerName: '',
-          }),
-        ),
+      getById: vi.fn().mockReturnValue(
+        of({
+          id: 'P',
+          code: 'PRJ-1',
+          name: 'Villa',
+          clientId: 'C',
+          clientName: '',
+          productOwnerName: '',
+        }),
+      ),
     };
     itemsApi = {
-      search: vi.fn().mockReturnValue(of([])),
+      listByProject: vi.fn().mockReturnValue(of([])),
     };
     TestBed.configureTestingModule({
       imports: [CrmDashboardComponent],
@@ -87,6 +85,29 @@ describe('CrmDashboardComponent', () => {
         ['Old-opened', '2026-06-10T18:00:00Z'],
         ['Old-closed', '2026-06-09T10:00:00Z'],
       ]);
+    });
+  });
+
+  describe('items (009b #23)', () => {
+    it("loads the project's items through listByProject and lists them undated after the periods", () => {
+      itemsApi['listByProject'].mockReturnValue(
+        of([
+          { id: 'I2', title: 'Sofa', periodId: 'Cur' },
+          { id: 'I1', title: 'Desk', periodId: 'Old' },
+        ]),
+      );
+      const fixture = create();
+      const activity = (fixture.componentInstance['activity'] as () => CrmActivityEntry[])();
+
+      expect(itemsApi['listByProject']).toHaveBeenCalledWith('P');
+      expect(activity.map((e) => [e.id, e.timestampUtc])).toEqual([
+        ['Cur-opened', '2026-07-20T18:00:00Z'],
+        ['Old-opened', '2026-06-10T18:00:00Z'],
+        ['Old-closed', '2026-06-09T10:00:00Z'],
+        ['I2', ''],
+        ['I1', ''],
+      ]);
+      expect((fixture.nativeElement as HTMLElement).textContent).not.toContain('Invalid');
     });
   });
 });

@@ -15,6 +15,7 @@ function item(over: Partial<RequirementItem> = {}): RequirementItem {
     projectId: PROJECT_ID,
     periodId: 'period-1',
     category: RequirementCategory.SpaceLayout,
+    spaceTypeId: null,
     room: 'Kitchen',
     title: 'Open kitchen',
     details: null,
@@ -28,14 +29,13 @@ function item(over: Partial<RequirementItem> = {}): RequirementItem {
     createdByEmployeeId: 'employee-1',
     createdByContactId: null,
     projectTaskId: null,
-    createdAtUtc: '2026-07-10T00:00:00.000Z',
     ...over,
   };
 }
 
 function apiMock() {
   return {
-    search: vi.fn().mockReturnValue(of([item()])),
+    listByProject: vi.fn().mockReturnValue(of([item()])),
     portalSearch: vi.fn().mockReturnValue(of([item()])),
     create: vi.fn().mockReturnValue(of('new-id')),
     update: vi.fn().mockReturnValue(of(undefined)),
@@ -61,19 +61,19 @@ describe('ItemsStore', () => {
     it('fetches items for the project', () => {
       const s = store();
       s.load(PROJECT_ID);
-      expect(api.search).toHaveBeenCalledWith(PROJECT_ID, { take: 500 });
+      expect(api.listByProject).toHaveBeenCalledWith(PROJECT_ID);
       expect(s.items()).toHaveLength(1);
     });
 
     it('sets loading true while in flight', () => {
-      api.search.mockReturnValueOnce(NEVER);
+      api.listByProject.mockReturnValueOnce(NEVER);
       const s = store();
       s.load(PROJECT_ID);
       expect(s.loading()).toBe(true);
     });
 
     it('surfaces a friendly error on failure', () => {
-      api.search.mockReturnValue(throwError(() => new Error('boom')));
+      api.listByProject.mockReturnValue(throwError(() => new Error('boom')));
       const s = store();
       s.load(PROJECT_ID);
       expect(s.error()).toBe('Could not load requirement items.');
@@ -118,7 +118,7 @@ describe('ItemsStore', () => {
         category: RequirementCategory.SpaceLayout,
         supersedesItemId: 's3',
       });
-      api.search.mockReturnValue(of([layout, style, supersededLayout, newLayout]));
+      api.listByProject.mockReturnValue(of([layout, style, supersededLayout, newLayout]));
       const s = store();
 
       s.load(PROJECT_ID);
@@ -135,7 +135,7 @@ describe('ItemsStore', () => {
     it('a locked item is corrected via supersede, which reloads on success', () => {
       const s = store();
       s.load(PROJECT_ID);
-      api.search.mockClear();
+      api.listByProject.mockClear();
 
       s.supersede('item-1', {
         category: RequirementCategory.SpaceLayout,
@@ -147,7 +147,26 @@ describe('ItemsStore', () => {
         'item-1',
         expect.objectContaining({ title: 'Open kitchen (revised)' }),
       );
-      expect(api.search).toHaveBeenCalledWith(PROJECT_ID, { take: 500 });
+      expect(api.listByProject).toHaveBeenCalledWith(PROJECT_ID);
+    });
+  });
+
+  describe('create() (009b #22)', () => {
+    it('creates on the period and reloads the project carried by the request', () => {
+      const s = store();
+
+      s.create('period-1', {
+        projectId: PROJECT_ID,
+        category: RequirementCategory.Furniture,
+        title: 'Reading nook',
+        priority: RequirementPriority.Low,
+      });
+
+      expect(api.create).toHaveBeenCalledWith(
+        'period-1',
+        expect.objectContaining({ projectId: PROJECT_ID }),
+      );
+      expect(api.listByProject).toHaveBeenCalledWith(PROJECT_ID);
     });
   });
 
