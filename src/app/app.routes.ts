@@ -111,9 +111,12 @@ export const routes: Routes = [
       // but every path is a distinct literal, so the move changes no match ('**' stays last).
       ...libraryRoutes,
       //
-      // TODO(007): 'finance' -> PermissionGuard, data = { permission: 'finance.read',
-      //   breadcrumb: 'Finance' }, loadChildren: features/finance/finance.routes -> financeRoutes
-      //
+      {
+        path: 'finance',
+        canActivate: [PermissionGuard],
+        data: { permission: 'finance.read', breadcrumb: 'Finance' },
+        loadChildren: () => import('@modules/finance').then((m) => m.financeRoutes),
+      },
       // CRM — client requirement gathering. Lazy, per the finance precedent. The
       // old single broad CRM read parent gate is gone (that permission was retired in
       // the granularity refactor); each child in crm.routes.ts now carries its own

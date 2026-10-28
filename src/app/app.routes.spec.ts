@@ -9,6 +9,7 @@ import { PermissionGuard } from '@platform/auth/permission.guard';
 import { ClientsListComponent } from '@modules/clients';
 import { AuditLogComponent } from '@modules/audit';
 import { libraryRoutes } from '@modules/library';
+import { financeRoutes } from '@modules/finance';
 import { NotificationsPageComponent } from '@modules/notifications';
 
 /** Flatten the shell's children — the stub routes live under the app-shell route. */
@@ -96,11 +97,11 @@ describe('app.routes — the 004 shell skeleton', () => {
   // that un-stubs a route into this array should bump the constant (and rename it to _AT_0XX)
   // alongside its own app.routes.spec.ts additions — see spec 005's recipe step 4.
   // 004: '' -> dashboard redirect, 403, 500, ** (4). 006: +6 people routes. 005: +1 clients,
-  // +1 audit, +4 library, +1 notifications.
-  const EXPECTED_SHELL_CHILDREN_AT_005 = 17;
+  // +1 audit, +4 library, +1 notifications. 007: +1 finance.
+  const EXPECTED_SHELL_CHILDREN_AT_007 = 18;
 
   it('has exactly the expected number of real (non-stub) shell children', () => {
-    expect(shellChildren()).toHaveLength(EXPECTED_SHELL_CHILDREN_AT_005);
+    expect(shellChildren()).toHaveLength(EXPECTED_SHELL_CHILDREN_AT_007);
   });
 
   it("keeps '**' as the shell's last child", () => {
@@ -169,5 +170,15 @@ describe('app.routes — the 005 leaf-module routes', () => {
     for (const r of libraryRoutes) {
       expect(children).toContain(r);
     }
+  });
+});
+
+describe('app.routes — the 007 finance route', () => {
+  it('finance: PermissionGuard, finance.read, breadcrumb Finance → financeRoutes (lazy)', async () => {
+    const r = shellChildren().find((c) => c.path === 'finance');
+    expect(r).toBeTruthy();
+    expect(r!.canActivate).toEqual([PermissionGuard]);
+    expect(r!.data).toEqual({ permission: 'finance.read', breadcrumb: 'Finance' });
+    expect(await r!.loadChildren!()).toBe(financeRoutes);
   });
 });
