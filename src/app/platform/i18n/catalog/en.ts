@@ -53,6 +53,7 @@ export const EN = {
   'appr.apDiff1': 'Kitchen: standard layout, appliances visible',
   'appr.apDiff2': 'Kitchen: island + hidden appliances',
   'appr.apDiff3': 'Colors: warm neutrals — beige, olive, walnut · Budget 1,800,000 EGP confirmed',
+  'appr.initialValues': 'Initial values (round 1):',
   'appr.apDiffT': 'Changed head fields (since round 2, from "Style & preferences review"):',
   'appr.apLeft': 'awaiting your decision.',
   'appr.apLockedB':

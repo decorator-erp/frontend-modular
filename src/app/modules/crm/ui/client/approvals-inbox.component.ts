@@ -1,9 +1,11 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import { CrmBriefService } from '../../data/crm-brief.service';
 import { APPROVAL_COMMENT_MAX } from '../../data/crm-approvals.service';
 import { CrmItemService } from '../../data/crm-item.service';
 import { CatalogService } from '@platform/i18n/catalog.service';
+import { ErrorHandlerService, friendly } from '@platform/http/error-handler.service';
 import type { CatalogKey } from '@platform/i18n/catalog/en';
 import { formatCairoDate } from '@platform/i18n/intl-locale';
 import { ApprovalDecision, ApprovalSubjectType } from '../../model/crm-enums';
@@ -101,10 +103,23 @@ const SUBJECT_NOUN_KEYS: Record<ApprovalSubjectType, CatalogKey> = {
                           @switch (row.subjectType) {
                             @case (SUBJECT_TYPE.DesignBrief) {
                               @if (headDiff(); as diff) {
-                                @if (diff.previousRound === null) {
+                                @if (diff.previousRound === null && diff.changes.length) {
+                                  <!-- Round 1 (009b #16): every field with a value, no "before". -->
                                   <p class="fs-caption text-text-secondary m-0">
-                                    {{ catalog.t('appr.apDiffT') }}
+                                    {{ catalog.t('appr.initialValues') }}
                                   </p>
+                                  <ul class="flex flex-col gap-1 m-0 p-0 list-none">
+                                    @for (c of diff.changes; track c.field) {
+                                      <li class="fs-body-sm">
+                                        <span class="text-text-secondary"
+                                          >{{ fieldLabel(c.field) }}:</span
+                                        >
+                                        <span class="text-text-primary" dir="ltr">{{
+                                          fieldValue(c.field, c.currentValue)
+                                        }}</span>
+                                      </li>
+                                    }
+                                  </ul>
                                 } @else if (diff.changes.length) {
                                   <ul class="flex flex-col gap-1 m-0 p-0 list-none">
                                     @for (c of diff.changes; track c.field) {
@@ -125,6 +140,8 @@ const SUBJECT_NOUN_KEYS: Record<ApprovalSubjectType, CatalogKey> = {
                                 } @else {
                                   <pera-empty [title]="catalog.t('client.tabBrief')" />
                                 }
+                              } @else if (diffError(); as message) {
+                                <pera-alert tone="warning">{{ message }}</pera-alert>
                               }
                             }
                             @case (SUBJECT_TYPE.BriefSpace) {
@@ -252,6 +269,7 @@ const SUBJECT_NOUN_KEYS: Record<ApprovalSubjectType, CatalogKey> = {
 export class CrmApprovalsInboxComponent {
   private readonly briefApi = inject(CrmBriefService);
   private readonly itemsApi = inject(CrmItemService);
+  private readonly errors = inject(ErrorHandlerService);
   protected readonly catalog = inject(CatalogService);
   protected readonly store = inject(ApprovalsInboxStore);
   protected readonly SUBJECT_TYPE = ApprovalSubjectType;
@@ -261,6 +279,8 @@ export class CrmApprovalsInboxComponent {
   protected readonly expandedId = signal<string | null>(null);
   protected readonly detailLoading = signal(false);
   protected readonly headDiff = signal<BriefHeadDiff | null>(null);
+  /** A failed diff read: 404 `crm.briefs.RoundNotFound` / `crm.portal.NotFound` (009b #16). */
+  protected readonly diffError = signal<string | null>(null);
   protected readonly spaceDetail = signal<BriefSpace | null>(null);
   protected readonly itemDetail = signal<RequirementItem | null>(null);
 
@@ -295,6 +315,7 @@ export class CrmApprovalsInboxComponent {
     this.expandedId.set(row.id);
     this.rejectingId.set(null);
     this.headDiff.set(null);
+    this.diffError.set(null);
     this.spaceDetail.set(null);
     this.itemDetail.set(null);
     this.detailLoading.set(true);
@@ -305,7 +326,12 @@ export class CrmApprovalsInboxComponent {
           this.headDiff.set(diff);
           this.detailLoading.set(false);
         },
-        error: () => this.detailLoading.set(false),
+        error: (err: unknown) => {
+          this.diffError.set(
+            err instanceof HttpErrorResponse ? friendly(this.errors.parse(err)) : null,
+          );
+          this.detailLoading.set(false);
+        },
       });
     } else if (row.subjectType === ApprovalSubjectType.BriefSpace) {
       this.briefApi.getMyBrief(row.projectId).subscribe({

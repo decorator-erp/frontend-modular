@@ -26,12 +26,8 @@ describe('headDiffFieldLabel / formatHeadDiffValue', () => {
         'IsLicensed',
         'Position',
         'ElevatorStatus',
-        'UtilityMetersNote',
         'ReceivesFrequentVisitors',
         'VisitorsNote',
-        'ParentsHobbies',
-        'ChildrenHobbies',
-        'HobbiesInDesign',
         'UsedDesignerBefore',
         'DesignerExperience',
         'DesignerExperienceReason',
@@ -44,10 +40,25 @@ describe('headDiffFieldLabel / formatHeadDiffValue', () => {
         'ArchitecturalRequests',
         'OtherNeeds',
         'LastMeetingId',
+        'Sector',
+        'IsRented',
+        'FinishingPurpose',
       ];
       for (const field of fields) {
         expect(HEAD_DIFF_FIELD_KEYS[field]).toBeDefined();
         expect(headDiffFieldLabel(field, catalog)).toBe(catalog.t(HEAD_DIFF_FIELD_KEYS[field]));
+      }
+    });
+
+    it('labels Sector and drops the four retired fields (009b #16)', () => {
+      expect(HEAD_DIFF_FIELD_KEYS['Sector']).toBe('brief.sectorBadge');
+      for (const gone of [
+        'UtilityMetersNote',
+        'ParentsHobbies',
+        'ChildrenHobbies',
+        'HobbiesInDesign',
+      ]) {
+        expect(HEAD_DIFF_FIELD_KEYS[gone]).toBeUndefined();
       }
     });
 
@@ -99,6 +110,8 @@ describe('headDiffFieldLabel / formatHeadDiffValue', () => {
     it('renders IsRented through the tenure labels — not Yes/No', () => {
       expect(formatHeadDiffValue('IsRented', 'true', catalog)).toBe(catalog.t('tenure.rent'));
       expect(formatHeadDiffValue('IsRented', 'false', catalog)).toBe(catalog.t('tenure.own'));
+      // 009b #16: Sector is a ProjectSector integer.
+      expect(formatHeadDiffValue('Sector', '1', catalog)).toBe(catalog.t('sector.residential'));
     });
   });
 });
