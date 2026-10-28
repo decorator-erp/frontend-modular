@@ -2,7 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { HttpErrorResponse } from '@angular/common/http';
 import { provideRouter } from '@angular/router';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { of, throwError } from 'rxjs';
+import { of, Subject, throwError } from 'rxjs';
 import { PermissionsService, PERM } from '@platform/permissions';
 import { ToastService } from '@platform/feedback/toast.service';
 import { ProjectService } from '../../data/project.service';
@@ -227,6 +227,35 @@ describe('ScopeOfWorkPageComponent — items (sow #3)', () => {
       adjustmentNote: null,
       notes: null,
     });
+    expect(api['getScope']).toHaveBeenCalledTimes(2);
+  });
+
+  it('FINDING-7-1: a header edit made while the last save is in flight keeps that edit', () => {
+    const first = new Subject<void>();
+    api['updateHeader'].mockReturnValueOnce(first);
+    render();
+    const duration = el.querySelector<HTMLInputElement>('app-sow-summary pera-input input')!;
+    duration.value = '45';
+    duration.dispatchEvent(new Event('change', { bubbles: true }));
+    fixture.detectChanges();
+    const start = el.querySelector<HTMLInputElement>('app-sow-summary pera-date-input input')!;
+    start.value = '2026-12-15';
+    start.dispatchEvent(new Event('change', { bubbles: true }));
+    fixture.detectChanges();
+    // The second save waits for the first, so the server sees them in order.
+    expect(api['updateHeader']).toHaveBeenCalledTimes(1);
+    first.next();
+    first.complete();
+    fixture.detectChanges();
+    expect(api['updateHeader']).toHaveBeenCalledTimes(2);
+    expect(api['updateHeader']).toHaveBeenLastCalledWith('p1', {
+      durationDays: 45,
+      plannedStartDate: '2026-12-15',
+      adjustmentAmount: 0,
+      adjustmentNote: null,
+      notes: null,
+    });
+    // One reload, once both saves are done.
     expect(api['getScope']).toHaveBeenCalledTimes(2);
   });
 

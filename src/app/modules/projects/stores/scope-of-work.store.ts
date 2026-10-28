@@ -51,6 +51,11 @@ interface ScopeOfWorkState {
   headerStatus: SowHeaderStatus;
   /** B11: the confirmer's name, resolved through HR from `confirmedById` ("—" on failure). */
   confirmedByName: string | null;
+  /**
+   * FINDING-7-1: the header as last sent, until a reload after its write lands (null: the
+   * stored header is current). The next header edit builds on it, never on a stale read.
+   */
+  headerDraft: UpdateScopeOfWorkHeaderRequest | null;
 }
 
 const INITIAL: ScopeOfWorkState = {
@@ -68,6 +73,7 @@ const INITIAL: ScopeOfWorkState = {
   templatesLoading: false,
   headerStatus: 'idle',
   confirmedByName: null,
+  headerDraft: null,
 };
 
 /**
@@ -117,13 +123,61 @@ export const ScopeOfWorkStore = signalStore(
         if (!projectId) return;
         api.getScope(projectId).subscribe({
           next: (scope) => {
-            patchState(store, { scope });
+            patchState(store, {
+              scope,
+              headerDraft: lanes.has('header') ? store.headerDraft() : null,
+            });
             resolveConfirmer(scope);
           },
           error: (err: unknown) =>
             err instanceof HttpErrorResponse && err.status === 404
               ? patchState(store, { scope: null, notFound: true })
               : patchState(store, { error: catalog.t('sow.loadFailed') }),
+        });
+      };
+
+      /** A failed write: a concurrency 409 reloads and says so, anything else shows its message. */
+      const fail = (err: unknown, errorField: 'error' | 'confirmError' = 'error'): void => {
+        if (reloadOnConflict(err, refresh)) return;
+        patchState(store, {
+          [errorField]: codedMessage(err, errors) ?? catalog.t('sow.saveFailed'),
+        });
+      };
+
+      /**
+       * FINDING-7-1: one write in flight per `key`. A body sent meanwhile waits, replacing any
+       * older waiting one (each body already carries every earlier edit), so the last edit
+       * lands last; the reload runs once the key drains. A failure drops what waits.
+       */
+      const lanes = new Map<string, ((projectId: string) => Observable<unknown>) | null>();
+      const serial = (
+        key: string,
+        call: (projectId: string) => Observable<unknown>,
+        settled: (ok: boolean) => void,
+      ): void => {
+        if (lanes.has(key)) {
+          lanes.set(key, call);
+          return;
+        }
+        const projectId = store.projectId();
+        if (!projectId) return;
+        lanes.set(key, null);
+        patchState(store, { saving: true, error: null, confirmError: null });
+        call(projectId).subscribe({
+          next: () => {
+            const queued = lanes.get(key);
+            lanes.delete(key);
+            if (queued) return serial(key, queued, settled);
+            patchState(store, { saving: false });
+            settled(true);
+            refresh();
+          },
+          error: (err: unknown) => {
+            lanes.delete(key);
+            patchState(store, { saving: false });
+            settled(false);
+            fail(err);
+          },
         });
       };
 
@@ -145,10 +199,7 @@ export const ScopeOfWorkStore = signalStore(
           error: (err: unknown) => {
             patchState(store, { saving: false });
             settled?.(false);
-            if (reloadOnConflict(err, refresh)) return;
-            patchState(store, {
-              [errorField]: codedMessage(err, errors) ?? catalog.t('sow.saveFailed'),
-            });
+            fail(err, errorField);
           },
         });
       };
@@ -182,13 +233,19 @@ export const ScopeOfWorkStore = signalStore(
 
         /**
          * B9 `PUT …/scope-of-work`: one call carrying all five header fields (a full replace),
-         * with the quiet "Saving…" / "Saved" status.
+         * with the quiet "Saving…" / "Saved" status. FINDING-7-1: header writes are serialized
+         * and `headerDraft` holds the body until the reload lands.
          */
         updateHeader(req: UpdateScopeOfWorkHeaderRequest): void {
-          patchState(store, { headerStatus: 'saving' });
-          write(
+          patchState(store, { headerStatus: 'saving', headerDraft: req });
+          serial(
+            'header',
             (projectId) => api.updateHeader(projectId, req),
-            (ok) => patchState(store, { headerStatus: ok ? 'saved' : 'idle' }),
+            (ok) =>
+              patchState(
+                store,
+                ok ? { headerStatus: 'saved' } : { headerStatus: 'idle', headerDraft: null },
+              ),
           );
         },
 

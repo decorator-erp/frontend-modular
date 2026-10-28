@@ -198,6 +198,8 @@ export class SowSummaryComponent {
   readonly busy = input(false);
   /** B14: confirm's failure message, already localized, shown inline at the button. */
   readonly confirmError = input<string | null>(null);
+  /** FINDING-7-1: the header as last sent and not yet reloaded (the store's `headerDraft`). */
+  readonly draft = input<UpdateScopeOfWorkHeaderRequest | null>(null);
 
   /** One full header, ready for `PUT …/scope-of-work` (B9). */
   readonly headerChange = output<UpdateScopeOfWorkHeaderRequest>();
@@ -215,6 +217,20 @@ export class SowSummaryComponent {
    * as soon as the adjustment is ≠ 0.
    */
   protected readonly adjustment = linkedSignal(() => this.scope().adjustmentAmount);
+
+  /** FINDING-7-1: the latest header: the unsaved draft, else the stored one. */
+  protected readonly header = computed<UpdateScopeOfWorkHeaderRequest>(() => {
+    const s = this.scope();
+    return (
+      this.draft() ?? {
+        durationDays: s.durationDays,
+        plannedStartDate: s.plannedStartDate,
+        adjustmentAmount: s.adjustmentAmount,
+        adjustmentNote: s.adjustmentNote,
+        notes: s.notes,
+      }
+    );
+  });
 
   protected readonly confirmed = computed(
     () => this.scope().status === ScopeOfWorkStatus.Confirmed,
@@ -263,7 +279,7 @@ export class SowSummaryComponent {
       return;
     }
     this.setError('duration', null);
-    if (days !== this.scope().durationDays) this.emit({ durationDays: days });
+    if (days !== this.header().durationDays) this.emit({ durationDays: days });
   }
 
   protected onStart(event: Event): void {
@@ -278,7 +294,7 @@ export class SowSummaryComponent {
       return;
     }
     this.setError('start', null);
-    if (date !== this.scope().plannedStartDate) this.emit({ plannedStartDate: date });
+    if (date !== this.header().plannedStartDate) this.emit({ plannedStartDate: date });
   }
 
   /** B8: negative allowed (a discount), ±1e12. */
@@ -292,7 +308,7 @@ export class SowSummaryComponent {
     }
     this.setError('adjustment', null);
     this.adjustment.set(amount);
-    if (amount !== this.scope().adjustmentAmount) this.emit({ adjustmentAmount: amount });
+    if (amount !== this.header().adjustmentAmount) this.emit({ adjustmentAmount: amount });
   }
 
   /** B8: the reason for the adjustment, ≤500. */
@@ -318,20 +334,16 @@ export class SowSummaryComponent {
       return;
     }
     this.setError(field, null);
-    if (text !== this.scope()[field]) this.emit({ [field]: text });
+    if (text !== this.header()[field]) this.emit({ [field]: text });
   }
 
-  /** The stored header plus `change`: all five fields, every time (a full replace, C §8.4.6). */
+  /**
+   * The latest header plus `change`: all five fields, every time (a full replace, C §8.4.6).
+   * FINDING-7-1: built on the unsaved draft, so an edit made before the last save reloads
+   * keeps that save's change.
+   */
   private emit(change: Partial<UpdateScopeOfWorkHeaderRequest>): void {
-    const s = this.scope();
-    this.headerChange.emit({
-      durationDays: s.durationDays,
-      plannedStartDate: s.plannedStartDate,
-      adjustmentAmount: s.adjustmentAmount,
-      adjustmentNote: s.adjustmentNote,
-      notes: s.notes,
-      ...change,
-    });
+    this.headerChange.emit({ ...this.header(), ...change });
   }
 
   private setError(field: HeaderField, key: CatalogKey | null): void {

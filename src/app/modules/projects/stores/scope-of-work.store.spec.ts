@@ -215,6 +215,32 @@ describe('ScopeOfWorkStore — header (sow #5)', () => {
     expect(s.headerStatus()).toBe('saved');
   });
 
+  it('FINDING-7-1: headerDraft holds the body until the reload; a second write waits', () => {
+    const first = new Subject<void>();
+    api['updateHeader'].mockReturnValueOnce(first);
+    const s = store();
+    s.load('p1');
+    s.updateHeader(header);
+    expect(s.headerDraft()).toEqual(header);
+    const second = { ...header, notes: 'n' };
+    s.updateHeader(second);
+    expect(api['updateHeader']).toHaveBeenCalledTimes(1);
+    expect(s.headerDraft()).toEqual(second);
+    first.next();
+    first.complete();
+    expect(api['updateHeader']).toHaveBeenLastCalledWith('p1', second);
+    expect(s.headerDraft()).toBeNull();
+    expect(s.headerStatus()).toBe('saved');
+  });
+
+  it('FINDING-7-1: a failed header save drops the draft', () => {
+    api['updateHeader'].mockReturnValue(throwError(() => conflict('Validation.General', 400)));
+    const s = store();
+    s.load('p1');
+    s.updateHeader(header);
+    expect(s.headerDraft()).toBeNull();
+  });
+
   it('a failed header save drops the status and shows the coded message (B14)', () => {
     api['updateHeader'].mockReturnValue(throwError(() => conflict('projects.scope.Confirmed')));
     const s = store();

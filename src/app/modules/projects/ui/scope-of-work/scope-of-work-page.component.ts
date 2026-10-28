@@ -126,6 +126,7 @@ import { SowTemplatePickerComponent } from './sow-template-picker.component';
             [confirmPermitted]="canConfirm()"
             [busy]="store.saving()"
             [confirmError]="store.confirmError()"
+            [draft]="store.headerDraft()"
             (headerChange)="store.updateHeader($event)"
             (confirm)="onConfirm()"
           />
