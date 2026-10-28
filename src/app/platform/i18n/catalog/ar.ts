@@ -69,6 +69,8 @@ export const AR: Partial<Record<CatalogKey, string>> = {
   'appr.roundLabel': 'الجولة {round}',
   'appr.sendConfirm': 'إرسال للاعتماد',
   'appr.subjectEntry': 'قيد جمع',
+  // 009b #42: ApprovalSubjectType.ProjectDocument = 5.
+  'appr.subjectDocument': 'مستند المشروع',
   'appr.subjectItem': 'بند متطلب',
   'appr.yourApprovals': 'بانتظارك',
   'brief.addEntry': 'إضافة قيد',

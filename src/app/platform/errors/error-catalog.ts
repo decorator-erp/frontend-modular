@@ -283,12 +283,11 @@ export const ERROR_MESSAGES: Record<string, string> = {
 
   // Approvals (shared with the office decide flow; reused by the client portal).
   'approvals.AlreadyDecided': 'This approval has already been decided.',
-  'approvals.CommentRequired': 'A comment is required when rejecting.',
+  'approvals.CommentRequired': 'A comment is required to reject or request changes.',
   'approvals.NotFound': 'Approval not found.',
   'approvals.OpenApprovalExists': 'An undecided approval already exists for this subject.',
   'approvals.NotAssignedApprover': 'Only the assigned approver can decide this.',
   'approvals.InvalidSubject': 'Exactly one subject and one approver must be provided.',
-  'approvals.DecisionFailed': 'The decision could not be processed. Please try again.',
 
   'crm.access.AccessDenied': 'You do not have access to this resource.',
 
@@ -598,6 +597,7 @@ export const ERROR_MESSAGES_AR: Record<string, string> = {
   'crm.artifacts.DocumentNotFound': 'المستند غير موجود في هذا المشروع.',
   'crm.projects.Inactive': 'هذا المشروع غير مفعّل ولا يقبل عملًا جديدًا.',
   'approvals.ApprovalIdInUse': 'هذا الاعتماد يخص عنصرًا آخر.',
+  'approvals.CommentRequired': 'يلزم تعليق للرفض أو لطلب تعديلات.',
   'approvals.Unauthenticated': 'تعذّر التعرّف عليك. يرجى تسجيل الدخول مرة أخرى.',
 
   // CRM-API-CONTRACT §5.2 — scope of work and projects

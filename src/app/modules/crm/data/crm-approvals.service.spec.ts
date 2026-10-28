@@ -4,6 +4,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { describe, expect, it, beforeEach, afterEach } from 'vitest';
 import { ApprovalDecision, ApprovalSubjectType } from '../model/crm-enums';
 import { environment } from '../../../../environments/environment';
+import { ERROR_MESSAGES, ERROR_MESSAGES_AR } from '@platform/errors/error-catalog';
 import { CrmApprovalsService } from './crm-approvals.service';
 
 describe('CrmApprovalsService', () => {
@@ -48,34 +49,6 @@ describe('CrmApprovalsService', () => {
 
       expect(subjectType).toBe(ApprovalSubjectType.DesignBrief);
       expect(typeof subjectType).toBe('number');
-    });
-
-    it('maps ApprovalTrailItemResponse.Decision from its STRING name to the enum', () => {
-      let decisions: (ApprovalDecision | null)[] = [];
-      service
-        .bySubject(ApprovalSubjectType.DesignBrief, 'brief-1')
-        .subscribe((r) => (decisions = r.map((t) => t.decision)));
-
-      http.expectOne(url('/approvals/by-subject/2/brief-1')).flush([
-        { id: 't1', round: 1, decision: 'Approved', comment: null },
-        { id: 't2', round: 2, decision: 'Rejected', comment: 'Wrong floor.' },
-      ]);
-
-      expect(decisions).toEqual([ApprovalDecision.Approved, ApprovalDecision.Rejected]);
-    });
-
-    // `null` is a STATE (the approval is undecided), not a parse failure.
-    it('preserves a null decision as undecided', () => {
-      let decision: ApprovalDecision | null | undefined;
-      service
-        .bySubject(ApprovalSubjectType.DesignBrief, 'brief-1')
-        .subscribe((r) => (decision = r[0].decision));
-
-      http
-        .expectOne(url('/approvals/by-subject/2/brief-1'))
-        .flush([{ id: 't3', round: 3, decision: null, comment: null }]);
-
-      expect(decision).toBeNull();
     });
 
     // Defensive: if the backend ever fixes the quirk and starts sending integers, the
@@ -276,6 +249,59 @@ describe('CrmApprovalsService', () => {
       const req = http.expectOne(url('/approvals/a1/decide'));
       expect(req.request.body).toEqual({ decision: ApprovalDecision.Approved, comment: null });
       req.flush(null);
+    });
+  });
+
+  // 009b #42: Approvals.Contracts/Enums.cs:8-15,47-52 adds ProjectDocument = 5 and
+  // ChangesRequested = 3; ApprovalContracts.cs:24-28 requires a comment for Rejected AND
+  // ChangesRequested.
+  describe('ChangesRequested and ProjectDocument (009b #42)', () => {
+    it('refuses ChangesRequested with a whitespace-only comment', () => {
+      expect(() =>
+        service.decide('a1', { decision: ApprovalDecision.ChangesRequested, comment: ' ' }),
+      ).toThrow(/comment is required/i);
+    });
+
+    it('sends ChangesRequested (3) with its trimmed comment', () => {
+      service
+        .decide('a1', { decision: ApprovalDecision.ChangesRequested, comment: ' Move the door. ' })
+        .subscribe();
+
+      const req = http.expectOne(url('/approvals/a1/decide'));
+      expect(req.request.body).toEqual({ decision: 3, comment: 'Move the door.' });
+      req.flush(null);
+    });
+
+    it('maps a decision of 3 (or its name) to ChangesRequested and subject 5 to ProjectDocument', () => {
+      let rows: import('../model').ClientApprovalTrailRow[] = [];
+      service.portalPending().subscribe((r) => (rows = r));
+
+      http.expectOne(url('/crm/portal/approvals')).flush([
+        { id: 'a1', subjectType: 'ProjectDocument', subjectId: 'd1', decision: 3 },
+        { id: 'a2', subjectType: 5, subjectId: 'd2', decision: 'ChangesRequested' },
+      ]);
+
+      expect(rows.map((r) => r.decision)).toEqual([
+        ApprovalDecision.ChangesRequested,
+        ApprovalDecision.ChangesRequested,
+      ]);
+      expect(rows.map((r) => r.subjectType)).toEqual([
+        ApprovalSubjectType.ProjectDocument,
+        ApprovalSubjectType.ProjectDocument,
+      ]);
+    });
+
+    it('carries the approvals codes the backend has, in EN and AR, and not DecisionFailed', () => {
+      for (const code of [
+        'approvals.CommentRequired',
+        'approvals.ApprovalIdInUse',
+        'approvals.Unauthenticated',
+      ]) {
+        expect(ERROR_MESSAGES[code]).toBeTruthy();
+        expect(ERROR_MESSAGES_AR[code]).toBeTruthy();
+      }
+      expect(ERROR_MESSAGES['approvals.CommentRequired']).toMatch(/request changes/);
+      expect(ERROR_MESSAGES['approvals.DecisionFailed']).toBeUndefined();
     });
   });
 

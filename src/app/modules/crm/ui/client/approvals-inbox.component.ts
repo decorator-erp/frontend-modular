@@ -32,6 +32,7 @@ const SUBJECT_NOUN_KEYS: Record<ApprovalSubjectType, CatalogKey> = {
   [ApprovalSubjectType.DesignBrief]: 'client.tabBrief',
   [ApprovalSubjectType.RequirementItem]: 'appr.subjectItem',
   [ApprovalSubjectType.BriefSpace]: 'appr.subjectEntry',
+  [ApprovalSubjectType.ProjectDocument]: 'appr.subjectDocument', // 009b #42
 };
 
 /**

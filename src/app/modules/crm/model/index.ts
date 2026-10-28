@@ -500,17 +500,7 @@ export interface PendingApproval {
   trackKey: string;
 }
 
-export interface ApprovalTrailItem {
-  id: string;
-  round: number;
-  /** `null` ⇒ undecided. */
-  decision: ApprovalDecision | null;
-  comment: string | null;
-  decidedAtUtc: string | null;
-  decidedById: string | null;
-}
-
-/** Reject comment is mandatory; whitespace-only counts as empty; max 2000. */
+/** Reject and ChangesRequested comments are mandatory; whitespace-only counts as empty; max 2000. */
 export interface DecideApprovalRequest {
   decision: ApprovalDecision;
   comment: string | null;

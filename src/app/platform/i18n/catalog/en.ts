@@ -85,6 +85,8 @@ export const EN = {
   'appr.roundLabel': 'round {round}',
   'appr.sendConfirm': 'Send for confirmation',
   'appr.subjectEntry': 'Gathering entry',
+  // 009b #42: ApprovalSubjectType.ProjectDocument = 5.
+  'appr.subjectDocument': 'Project document',
   'appr.subjectItem': 'Requirement item',
   'appr.yourApprovals': 'Waiting for you',
   // ⚠️ B3 exception (brief-head.component.ts) — AUTHORED, not harvested, same reasoning

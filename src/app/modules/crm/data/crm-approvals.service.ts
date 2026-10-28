@@ -4,12 +4,7 @@ import { map } from 'rxjs/operators';
 import { ApiService } from '@platform/http/api.service';
 import { ApprovalDecision, ApprovalSubjectType } from '../model/crm-enums';
 import type { PagedResult } from '@platform/types';
-import type {
-  ApprovalTrailItem,
-  ClientApprovalTrailRow,
-  DecideApprovalRequest,
-  PendingApproval,
-} from '../model';
+import type { ClientApprovalTrailRow, DecideApprovalRequest, PendingApproval } from '../model';
 
 /**
  * Approvals — the office decide flow, reused by the client portal (Dependency 12).
@@ -37,13 +32,6 @@ export class CrmApprovalsService extends ApiService {
   pending(page = 1, pageSize = 20): Observable<PagedResult<PendingApproval>> {
     return this.get<unknown>('/approvals/pending', { pageNumber: page, pageSize }).pipe(
       map((r) => this.normalizePage(r, page, pageSize)),
-    );
-  }
-
-  /** `GET /api/approvals/by-subject/{type}/{id}` — the decision trail for one subject. */
-  bySubject(subjectType: ApprovalSubjectType, subjectId: string): Observable<ApprovalTrailItem[]> {
-    return this.get<unknown>(`/approvals/by-subject/${subjectType}/${subjectId}`).pipe(
-      map((r) => this.unwrapArray<unknown>(r).map((t) => this.normalizeTrailItem(t))),
     );
   }
 
@@ -79,7 +67,8 @@ export class CrmApprovalsService extends ApiService {
   }
 
   /**
-   * A rejection MUST carry a comment. Whitespace-only counts as empty — which is exactly
+   * A rejection or a changes request MUST carry a comment (009b #42,
+   * `ApprovalContracts.cs:24-28`). Whitespace-only counts as empty — which is exactly
    * the spec's edge case, and exactly what the domain entity checks
    * (`string.IsNullOrWhiteSpace`). Mirrored here so the UI never lets the user reach the
    * `approvals.CommentRequired` error.
@@ -87,8 +76,12 @@ export class CrmApprovalsService extends ApiService {
   private decideBody(request: DecideApprovalRequest): DecideApprovalRequest {
     const comment = request.comment?.trim() ? request.comment.trim() : null;
 
-    if (request.decision === ApprovalDecision.Rejected && !comment) {
-      throw new Error('A comment is required when rejecting an approval.');
+    if (
+      (request.decision === ApprovalDecision.Rejected ||
+        request.decision === ApprovalDecision.ChangesRequested) &&
+      !comment
+    ) {
+      throw new Error('A comment is required when rejecting or requesting changes.');
     }
 
     return {
@@ -132,18 +125,6 @@ export class CrmApprovalsService extends ApiService {
       comment: this.field<string | null>(source, 'comment') ?? null,
       responseDueAtUtc: this.field<string | null>(source, 'responseDueAtUtc') ?? null,
       trackKey: this.trackKeyFor(source, 'ClientApprovalTrailRow.id', 'id'),
-    };
-  }
-
-  /** Quirk 1b: `Decision` arrives as a STRING, or `null` when the approval is undecided. */
-  private normalizeTrailItem(source: unknown): ApprovalTrailItem {
-    return {
-      id: this.field<string>(source, 'id') ?? '',
-      round: this.field<number>(source, 'round') ?? 0,
-      decision: this.toDecision(this.field<unknown>(source, 'decision')),
-      comment: this.field<string | null>(source, 'comment') ?? null,
-      decidedAtUtc: this.field<string | null>(source, 'decidedAtUtc') ?? null,
-      decidedById: this.field<string | null>(source, 'decidedById') ?? null,
     };
   }
 
