@@ -1,7 +1,7 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { NEVER, of, throwError } from 'rxjs';
+import { NEVER, Subject, of, throwError } from 'rxjs';
 import { CrmApprovalsService } from '../data/crm-approvals.service';
 import { CrmBriefService } from '../data/crm-brief.service';
 import { ApprovalState } from '../model/crm-enums';
@@ -200,6 +200,50 @@ describe('BriefStore', () => {
       s.load(PROJECT_ID);
       expect(s.head()?.id).toBe('brief-1');
       expect(s.spaces()).toEqual([]);
+    });
+
+    it('a stage pick cancels the fallback load: a late fallback head never replaces it (FINDING-5-5)', () => {
+      const fallback$ = new Subject<BriefHead>();
+      const stage$ = new Subject<BriefHead>();
+      api.getBrief.mockReturnValue(fallback$);
+      api.getBriefByStage.mockReturnValue(stage$);
+      const s = store();
+      s.load(PROJECT_ID);
+      s.load(PROJECT_ID, 'stage-B');
+
+      stage$.next(head({ id: 'brief-B', projectStageId: 'stage-B' }));
+      fallback$.next(head({ id: 'brief-C', projectStageId: 'stage-C' }));
+
+      expect(s.head()?.id).toBe('brief-B');
+      expect(api.listSpaces).not.toHaveBeenCalledWith('brief-C', expect.anything());
+    });
+
+    it("drops a superseded load's late spaces and rounds (FINDING-5-5)", () => {
+      const spacesA$ = new Subject<BriefSpace[]>();
+      const roundsA$ = new Subject<BriefRound[]>();
+      const spacesB$ = new Subject<BriefSpace[]>();
+      const roundsB$ = new Subject<BriefRound[]>();
+      api.getBriefByStage.mockImplementation((stageId: string) =>
+        of(head({ id: `brief-${stageId}`, projectStageId: stageId })),
+      );
+      api.listSpaces.mockImplementation((briefId: string) =>
+        briefId === 'brief-A' ? spacesA$ : spacesB$,
+      );
+      api.listRounds.mockImplementation((briefId: string) =>
+        briefId === 'brief-A' ? roundsA$ : roundsB$,
+      );
+      const s = store();
+      s.load(PROJECT_ID, 'A');
+      s.load(PROJECT_ID, 'B');
+
+      spacesB$.next([space({ id: 'entry-B', briefId: 'brief-B' })]);
+      roundsB$.next(rounds(1));
+      spacesA$.next([space({ id: 'entry-A', briefId: 'brief-A' })]);
+      roundsA$.next(rounds(1, 2, 3));
+
+      expect(s.head()?.id).toBe('brief-B');
+      expect(s.spaces().map((e) => e.id)).toEqual(['entry-B']);
+      expect(s.headRound()).toBe(1);
     });
 
     it('a rounds fetch failure does not blank the head — rounds just stay empty', () => {

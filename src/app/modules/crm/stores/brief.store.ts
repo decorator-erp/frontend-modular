@@ -1,7 +1,7 @@
 import { computed, inject } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { patchState, signalStore, withComputed, withMethods, withState } from '@ngrx/signals';
-import { of } from 'rxjs';
+import { Subscription, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { CrmBriefService } from '../data/crm-brief.service';
 import { ErrorHandlerService, friendly } from '@platform/http/error-handler.service';
@@ -116,6 +116,8 @@ export const BriefStore = signalStore(
       api = inject(CrmBriefService),
       errors = inject(ErrorHandlerService),
       reloadOnConflict = injectReloadOnConflict(),
+      /** The in-flight `load()`: a newer load cancels it, so a stale head never lands (FINDING-5-5). */
+      inFlight = { load: new Subscription() },
     ) => ({
       /**
        * Loads the stage's brief head (009b #9) — or, with no stage, the project's latest through the
@@ -123,19 +125,32 @@ export const BriefStore = signalStore(
        * rounds (`GET /briefs/{id}/rounds`, 009b #14).
        */
       load(projectId: string, stageId: string | null = null): void {
+        inFlight.load.unsubscribe();
+        const load = new Subscription();
+        inFlight.load = load;
         patchState(store, { loading: true, error: null, noBrief: false, projectId, stageId });
         const head$ = stageId ? api.getBriefByStage(stageId) : api.getBrief(projectId);
-        head$.subscribe({
+        // Entries and rounds land only while their brief is still the loaded head (FINDING-5-5).
+        const isCurrent = (briefId: string) => store.head()?.id === briefId;
+        const sub = head$.subscribe({
           next: (head) => {
             patchState(store, { head, loading: false });
-            api
-              .listSpaces(head.id, head.projectId || projectId)
-              .pipe(catchError(() => of<BriefSpace[]>([])))
-              .subscribe((spaces) => patchState(store, { spaces }));
-            api
-              .listRounds(head.id)
-              .pipe(catchError(() => of<BriefRound[]>([])))
-              .subscribe((rounds) => patchState(store, { rounds }));
+            load.add(
+              api
+                .listSpaces(head.id, head.projectId || projectId)
+                .pipe(catchError(() => of<BriefSpace[]>([])))
+                .subscribe((spaces) => {
+                  if (isCurrent(head.id)) patchState(store, { spaces });
+                }),
+            );
+            load.add(
+              api
+                .listRounds(head.id)
+                .pipe(catchError(() => of<BriefRound[]>([])))
+                .subscribe((rounds) => {
+                  if (isCurrent(head.id)) patchState(store, { rounds });
+                }),
+            );
           },
           error: (err: unknown) => {
             const noBrief =
@@ -152,6 +167,7 @@ export const BriefStore = signalStore(
             });
           },
         });
+        load.add(sub);
       },
 
       /**
