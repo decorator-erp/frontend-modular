@@ -1160,6 +1160,11 @@ export const EN = {
   'ws.tasksTitle': 'Stage tasks',
   'ws.weight': 'Weight',
   'ws.workArea': 'Work area',
+
+  // ── sow.* — scope of work (نطاق العمل), NEW-FEATURE-1 (specs/sow-scope-of-work.md). AUTHORED from
+  // the ScopeOfWork.dc.html prototype's English copy (it has no L.ar dictionary); Arabic authored
+  // to this file's register. Office-only, but bilingual by spec (B16). ──
+  'sow.title': 'Scope of work',
 } as const;
 
 /** The key set of record. Every catalog lookup is typed against this. */

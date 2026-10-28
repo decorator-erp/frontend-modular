@@ -1089,4 +1089,7 @@ export const AR: Partial<Record<CatalogKey, string>> = {
   'ws.tasksTitle': 'مهام المرحلة',
   'ws.weight': 'الوزن',
   'ws.workArea': 'مساحة العمل',
+
+  // ── sow.* — scope of work, NEW-FEATURE-1 (specs/sow-scope-of-work.md). AUTHORED (see en.ts). ──
+  'sow.title': 'نطاق العمل',
 };
