@@ -87,4 +87,30 @@ describe('CrmLeadService', () => {
       expect(first).toMatchObject({ id: 'L1', status: LeadStatus.Qualified, ownerId: 'E1' });
     });
   });
+
+  describe('statusCounts (009b #2) — GET /status-counts under the list filters', () => {
+    it('sends the same ownerId/search as the list and reads the six counts', () => {
+      let counts: unknown;
+      service.statusCounts({ search: 'a', ownerId: 'E1' }).subscribe((c) => (counts = c));
+
+      const req = http.expectOne(
+        (r) =>
+          r.url === url('/crm/leads/status-counts') &&
+          r.params.get('search') === 'a' &&
+          r.params.get('ownerId') === 'E1',
+      );
+      expect(req.request.method).toBe('GET');
+      expect(req.request.params.has('pageNumber')).toBe(false);
+      req.flush({ total: 9, new: 1, contacted: 2, qualified: 3, unqualified: 1, converted: 2 });
+
+      expect(counts).toEqual({
+        total: 9,
+        new: 1,
+        contacted: 2,
+        qualified: 3,
+        unqualified: 1,
+        converted: 2,
+      });
+    });
+  });
 });

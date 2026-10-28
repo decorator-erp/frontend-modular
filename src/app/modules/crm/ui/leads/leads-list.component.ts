@@ -14,6 +14,7 @@ import { Subscription, catchError, of } from 'rxjs';
 import { CrmLeadService, type CrmLead } from '../../data/crm-lead.service';
 import { CatalogService } from '@platform/i18n/catalog.service';
 import { emptyPage, type PagedResult } from '@platform/types';
+import type { CrmLeadStatusCounts } from '../../model';
 import { LeadSource, LeadStatus } from '../../model/crm-enums';
 import { CanDirective, PERM } from '@platform/permissions';
 import { EmployeeService } from '@modules/people';
@@ -244,6 +245,9 @@ export class CrmLeadsListComponent implements OnInit {
   private readonly owners = signal<Record<string, string>>({});
   readonly filters = signal<FilterState>({});
   private listSub?: Subscription;
+  private countsSub?: Subscription;
+  /** Pill counts from `status-counts` (009b #2), under the list's search filter. */
+  private readonly counts = signal<CrmLeadStatusCounts | null>(null);
 
   readonly rows = computed(() => this.paged().items);
 
@@ -251,10 +255,11 @@ export class CrmLeadsListComponent implements OnInit {
     {
       key: 'status',
       label: this.catalog.t('leads.colStatus'),
-      options: STATUS_ORDER.map((s) => ({
-        value: String(s),
-        label: this.catalog.t(LEAD_STATUS_KEYS[s]),
-      })),
+      options: STATUS_ORDER.map((s) => {
+        const label = this.catalog.t(LEAD_STATUS_KEYS[s]);
+        const count = this.statusCount(s);
+        return { value: String(s), label: count === null ? label : `${label} · ${count}` };
+      }),
     },
   ]);
 
@@ -329,6 +334,7 @@ export class CrmLeadsListComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadPage();
+    this.loadCounts();
     this.directory
       .listPaged({ page: 1, pageSize: 500, isActive: true })
       .pipe(catchError(() => of(null)))
@@ -358,6 +364,32 @@ export class CrmLeadsListComponent implements OnInit {
       });
   }
 
+  /** Status counts follow the search filter, never the status pick or the page. */
+  private loadCounts(): void {
+    this.countsSub?.unsubscribe();
+    this.countsSub = this.leads
+      .statusCounts({ search: this.filters().search })
+      .pipe(catchError(() => of(null)))
+      .subscribe((counts) => this.counts.set(counts));
+  }
+
+  statusCount(status: LeadStatus): number | null {
+    const c = this.counts();
+    if (!c) return null;
+    switch (status) {
+      case LeadStatus.New:
+        return c.new;
+      case LeadStatus.Contacted:
+        return c.contacted;
+      case LeadStatus.Qualified:
+        return c.qualified;
+      case LeadStatus.Unqualified:
+        return c.unqualified;
+      case LeadStatus.Converted:
+        return c.converted;
+    }
+  }
+
   goToPage(page: number): void {
     this.page.set(page);
     this.loadPage();
@@ -379,11 +411,13 @@ export class CrmLeadsListComponent implements OnInit {
     this.filters.set(state);
     this.page.set(1);
     this.loadPage();
+    this.loadCounts();
   }
   onClear(): void {
     this.filters.set({});
     this.page.set(1);
     this.loadPage();
+    this.loadCounts();
   }
 
   open(row: CrmLead): void {

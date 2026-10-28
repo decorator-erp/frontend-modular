@@ -94,6 +94,19 @@ export interface LeadIntakeRequest {
 export type LeadIntakeResponse = LeadIntakeRequest;
 
 /**
+ * `GET /api/crm/leads/status-counts` (`LeadContracts.cs:71`): one count per status under the
+ * list's owner and search filters (009b #2). `total` is the sum.
+ */
+export interface CrmLeadStatusCounts {
+  total: number;
+  new: number;
+  contacted: number;
+  qualified: number;
+  unqualified: number;
+  converted: number;
+}
+
+/**
  * Anonymous public submission (`POST /api/crm/public/leads`) — creates the lead +
  * intake in one transaction. `website` is a HONEYPOT: always leave empty/hidden and
  * never render it as a real field.

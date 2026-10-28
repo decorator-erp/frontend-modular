@@ -4,7 +4,7 @@ import { map } from 'rxjs/operators';
 import { ApiService } from '@platform/http/api.service';
 import type { PagedResult } from '@platform/types';
 import { LeadSource, LeadStatus } from '../model/crm-enums';
-import type { LeadIntakeRequest, LeadIntakeResponse } from '../model';
+import type { CrmLeadStatusCounts, LeadIntakeRequest, LeadIntakeResponse } from '../model';
 
 /** Mirrors `LeadResponse` — the full lead record. */
 export interface CrmLead {
@@ -123,6 +123,30 @@ export class CrmLeadService extends ApiService {
       ownerId: options?.ownerId,
       search: options?.search?.trim(),
     }).pipe(map((r) => this.normalizePage(r, pageSize)));
+  }
+
+  /**
+   * `GET /status-counts?ownerId&search` → one count per status (`CrmLeadEndpoints.cs:71-77`),
+   * under the same owner and search filters as `search()` (009b #2).
+   */
+  statusCounts(options?: { ownerId?: string; search?: string }): Observable<CrmLeadStatusCounts> {
+    return this.get<unknown>('/crm/leads/status-counts', {
+      ownerId: options?.ownerId,
+      search: options?.search?.trim(),
+    }).pipe(
+      map((r) => {
+        const c = this.unwrap(r);
+        const n = (key: string) => this.field<number>(c, key) ?? 0;
+        return {
+          total: n('total'),
+          new: n('new'),
+          contacted: n('contacted'),
+          qualified: n('qualified'),
+          unqualified: n('unqualified'),
+          converted: n('converted'),
+        };
+      }),
+    );
   }
 
   private normalizePage(response: unknown, requestedPageSize: number): PagedResult<CrmLead> {
