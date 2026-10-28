@@ -5,6 +5,7 @@ import { ApiService } from '@platform/http/api.service';
 import {
   CreateStageTemplateRequest,
   StageTemplateRef,
+  TemplateStage,
   UpdateStageTemplateRequest,
 } from '../model/stage-template.model';
 
@@ -32,5 +33,26 @@ export class StageTemplatesService extends ApiService {
 
   update(id: string, req: UpdateStageTemplateRequest): Observable<unknown> {
     return this.put(`/stage-templates/${id}`, req);
+  }
+
+  /** `GET /api/stage-templates/{id}/stages` — the template's stages, with fee + task count (008b #10). */
+  stages(templateId: string): Observable<TemplateStage[]> {
+    return this.get<unknown>(`/stage-templates/${templateId}/stages`).pipe(
+      map((r) =>
+        this.unwrapArray(r).map((s) => {
+          const fee = this.field<number | string | null>(s, 'defaultFee');
+          return {
+            id: this.field<string>(s, 'id') ?? '',
+            stageTemplateId: this.field<string>(s, 'stageTemplateId') ?? templateId,
+            name: this.field<string>(s, 'name') ?? '',
+            description: this.field<string | null>(s, 'description') ?? null,
+            order: Number(this.field(s, 'order') ?? 0),
+            weightPercent: Number(this.field(s, 'weightPercent') ?? 0),
+            defaultFee: fee === null || fee === undefined ? null : Number(fee),
+            taskCount: Number(this.field(s, 'taskCount') ?? 0),
+          };
+        }),
+      ),
+    );
   }
 }

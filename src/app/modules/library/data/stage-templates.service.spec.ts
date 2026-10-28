@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { StageTemplatesService } from './stage-templates.service';
-import type { StageTemplateRef } from '../model/stage-template.model';
+import type { StageTemplateRef, TemplateStage } from '../model/stage-template.model';
 
 describe('StageTemplatesService', () => {
   let service: StageTemplatesService;
@@ -60,5 +60,57 @@ describe('StageTemplatesService', () => {
     ]);
     expect(items[0].type).toBe('System');
     expect(items[0].isDefault).toBe(true);
+  });
+
+  it('stages GETs /stage-templates/{id}/stages and maps defaultFee/taskCount (008b #10)', () => {
+    let stages: TemplateStage[] = [];
+    service.stages('t1').subscribe((r) => (stages = r));
+    const req = httpMock.expectOne(
+      (r) => r.method === 'GET' && r.url.endsWith('/stage-templates/t1/stages'),
+    );
+    req.flush([
+      {
+        id: 's2',
+        stageTemplateId: 't1',
+        name: 'Execution',
+        description: null,
+        order: 2,
+        weightPercent: 60,
+        defaultFee: 1500.5,
+        taskCount: 7,
+      },
+      {
+        id: 's1',
+        stageTemplateId: 't1',
+        name: 'Design',
+        description: 'Concept + shop drawings',
+        order: 1,
+        weightPercent: 40,
+        defaultFee: null,
+        taskCount: 4,
+      },
+    ]);
+    expect(stages).toEqual([
+      {
+        id: 's2',
+        stageTemplateId: 't1',
+        name: 'Execution',
+        description: null,
+        order: 2,
+        weightPercent: 60,
+        defaultFee: 1500.5,
+        taskCount: 7,
+      },
+      {
+        id: 's1',
+        stageTemplateId: 't1',
+        name: 'Design',
+        description: 'Concept + shop drawings',
+        order: 1,
+        weightPercent: 40,
+        defaultFee: null,
+        taskCount: 4,
+      },
+    ]);
   });
 });
