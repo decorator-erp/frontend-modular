@@ -26,7 +26,13 @@ const NAV_ITEMS: ClientNavItem[] = [
     labelKey: 'nav.cAdd',
     permission: PERM.requirements.submitOwn,
   },
-  { path: '/portal/approvals', icon: 'inbox', labelKey: 'nav.appr' },
+  // FINDING-5-10: the route requires `crm.approvals.view_own` (app.routes.ts) — no entry without it.
+  {
+    path: '/portal/approvals',
+    icon: 'inbox',
+    labelKey: 'nav.appr',
+    permission: PERM.crm.approvals.viewOwn,
+  },
 ];
 
 /**

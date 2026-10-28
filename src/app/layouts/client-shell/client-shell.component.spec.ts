@@ -37,16 +37,27 @@ describe('ClientShellComponent — the Add requirement tab (009b #46)', () => {
   };
 
   it('is hidden without requirements.submit_own', () => {
+    perms = [PERM.crm.approvals.viewOwn];
     expect(hrefs()).toEqual(['/portal', '/portal/schedule', '/portal/approvals']);
   });
 
   it('is shown with requirements.submit_own', () => {
-    perms = [PERM.requirements.submitOwn];
+    perms = [PERM.requirements.submitOwn, PERM.crm.approvals.viewOwn];
     expect(hrefs()).toEqual([
       '/portal',
       '/portal/schedule',
       '/portal/add-requirement',
       '/portal/approvals',
     ]);
+  });
+
+  // FINDING-5-10: the /portal/approvals route requires crm.approvals.view_own (app.routes.ts).
+  it('hides the Approvals tab without crm.approvals.view_own', () => {
+    expect(hrefs()).toEqual(['/portal', '/portal/schedule']);
+  });
+
+  it('shows the Approvals tab with crm.approvals.view_own', () => {
+    perms = [PERM.crm.approvals.viewOwn];
+    expect(hrefs()).toContain('/portal/approvals');
   });
 });
