@@ -565,6 +565,8 @@ export const EN = {
   'common.attachments': 'Attachments',
   'common.backToBrief': 'Back to the brief',
   'common.cancel': 'Cancel',
+  // 009b X-3: shown after a concurrency 409 (`platform/http/concurrency.ts`). Authored.
+  'common.changedReloaded': 'Changed by someone else — reloaded.',
   'common.delete': 'Delete',
   'common.demo1': '1 project',
   'common.demo2': '2 projects',

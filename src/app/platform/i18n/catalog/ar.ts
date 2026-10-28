@@ -514,6 +514,7 @@ export const AR: Partial<Record<CatalogKey, string>> = {
   'common.attachments': 'المرفقات',
   'common.backToBrief': 'عودة إلى الموجز',
   'common.cancel': 'إلغاء',
+  'common.changedReloaded': 'عدّله شخص آخر — أُعيد التحميل.',
   'common.delete': 'حذف',
   'common.demo1': 'مشروع واحد',
   'common.demo2': 'مشروعان',
