@@ -119,17 +119,16 @@ export interface CrmClientOption {
 }
 
 /**
- * Anonymous public submission (`POST /api/crm/public/leads`) — creates the lead +
- * intake in one transaction. `website` is a HONEYPOT: always leave empty/hidden and
- * never render it as a real field.
+ * Anonymous public submission (`POST /api/crm/public/leads`) — creates the lead only.
+ * `PublicLeadRequest(FirstName, LastName, Email?, Phone?, Notes?)` (`CrmPublicEndpoints.cs:80`):
+ * no intake and no honeypot are bound (009b #8, D-a).
  */
 export interface PublicLeadSubmissionRequest {
   firstName: string;
   lastName: string;
-  phone?: string | null;
-  email?: string | null;
-  website?: string | null;
-  intake: LeadIntakeRequest;
+  email: string | null;
+  phone: string | null;
+  notes: string | null;
 }
 
 // ---------------------------------------------------------------------------

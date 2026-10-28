@@ -916,6 +916,13 @@ export const EN = {
   'public.tryAgain': 'Try again',
   'public.failTitle': 'Something went wrong',
   'public.failMsg': 'We couldn’t send your request just now. Please try again.',
+  'public.projectLater':
+    'We’ll ask about your project when we contact you. Send your details to get started.',
+  'public.tooLargeTitle': 'That’s a bit too long',
+  'public.tooLargeMsg': 'Your request is too large to send. Please shorten it and try again.',
+  'public.unavailableTitle': 'Online requests are unavailable',
+  'public.unavailableMsg':
+    'We can’t take requests online right now. Please try again later or contact us directly.',
   'public.error': 'Something went wrong. Please try again.',
   'public.errSector': 'The sector details don’t match the selected sector.',
   'public.errDesignerUse': 'Set the experience only when a designer was used before.',

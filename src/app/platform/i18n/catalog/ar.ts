@@ -857,6 +857,12 @@ export const AR: Partial<Record<CatalogKey, string>> = {
   'public.tryAgain': 'المحاولة مجدداً',
   'public.failTitle': 'حدث خطأ ما',
   'public.failMsg': 'تعذّر إرسال طلبك الآن. الرجاء المحاولة مجدداً.',
+  'public.projectLater': 'سنسألك عن مشروعك عندما نتواصل معك. أرسل بياناتك للبدء.',
+  'public.tooLargeTitle': 'الطلب طويل بعض الشيء',
+  'public.tooLargeMsg': 'طلبك أكبر من أن يُرسَل. الرجاء اختصاره والمحاولة مجدداً.',
+  'public.unavailableTitle': 'الطلبات الإلكترونية غير متاحة',
+  'public.unavailableMsg':
+    'لا يمكننا استقبال الطلبات إلكترونياً الآن. الرجاء المحاولة لاحقاً أو التواصل معنا مباشرة.',
   'public.error': 'حدث خطأ ما. حاوِل مرة أخرى.',
   'public.errSector': 'تفاصيل القطاع لا تطابق القطاع المختار.',
   'public.errDesignerUse': 'حدِّد التجربة فقط عند سبق التعامل مع مهندس.',
