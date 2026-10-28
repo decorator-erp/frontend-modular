@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { ApiService } from '@platform/http/api.service';
+import type { PagedResult } from '@platform/types';
 import { LeadSource, LeadStatus } from '../model/crm-enums';
 import type { LeadIntakeRequest, LeadIntakeResponse } from '../model';
 
@@ -18,22 +19,20 @@ export interface CrmLead {
   notes: string | null;
   convertedClientId: string | null;
   convertedAtUtc: string | null;
-  createdAtUtc: string;
   /** The 1:1 qualification intake, or `null` when none has been saved yet. */
   intake?: LeadIntakeResponse | null;
 }
 
-/** Mirrors `LeadListItemResponse` — the search-result row (no `notes`, no conversion fields). */
-export interface CrmLeadListItem {
-  id: string;
-  firstName: string;
-  lastName: string;
-  email: string | null;
-  phone: string | null;
-  status: LeadStatus;
-  source: LeadSource;
-  ownerId: string;
-  createdAtUtc: string;
+/**
+ * `GET /api/crm/leads` filters (009b #1). Every filter is server-side; `search` is a
+ * case-insensitive contains-match on first name, last name, email and phone.
+ */
+export interface CrmLeadSearchOptions {
+  pageNumber?: number;
+  pageSize?: number;
+  status?: LeadStatus;
+  ownerId?: string;
+  search?: string;
 }
 
 export interface CreateLeadRequest {
@@ -112,20 +111,34 @@ export class CrmLeadService extends ApiService {
   }
 
   /**
-   * `GET /?status&skip&take` — a raw `skip`/`take` slice, NOT the app's `PagedResult`
-   * contract: the endpoint returns a bare array with no `totalCount`. Do not force it
-   * into `PagedResult` — there is nothing to normalize.
+   * `GET /?pageNumber&pageSize&status&ownerId&search` → `PagedResult<CrmLeadResponse>`
+   * (`CrmLeadEndpoints.cs:93-100`), newest created first. Default page 1 of 50.
    */
-  search(options?: {
-    status?: LeadStatus;
-    skip?: number;
-    take?: number;
-  }): Observable<CrmLeadListItem[]> {
+  search(options?: CrmLeadSearchOptions): Observable<PagedResult<CrmLead>> {
+    const pageSize = options?.pageSize ?? 50;
     return this.get<unknown>('/crm/leads', {
+      pageNumber: options?.pageNumber ?? 1,
+      pageSize,
       status: options?.status,
-      skip: options?.skip ?? 0,
-      take: options?.take ?? 50,
-    }).pipe(map((r) => this.unwrapArray<unknown>(r).map((l) => this.normalizeListItem(l))));
+      ownerId: options?.ownerId,
+      search: options?.search?.trim(),
+    }).pipe(map((r) => this.normalizePage(r, pageSize)));
+  }
+
+  private normalizePage(response: unknown, requestedPageSize: number): PagedResult<CrmLead> {
+    const page = this.unwrap(response);
+    const items = this.unwrapArray<unknown>(page).map((l) => this.normalizeLead(l));
+    const pageSize = this.field<number>(page, 'pageSize') ?? requestedPageSize;
+    const totalCount = this.field<number>(page, 'totalCount') ?? items.length;
+    return {
+      items,
+      totalCount,
+      page: this.field<number>(page, 'pageNumber') ?? 1,
+      pageSize,
+      totalPages:
+        this.field<number>(page, 'totalPages') ??
+        (pageSize > 0 ? Math.ceil(totalCount / pageSize) : 0),
+    };
   }
 
   private normalizeLead(source: unknown): CrmLead {
@@ -141,23 +154,8 @@ export class CrmLeadService extends ApiService {
       notes: this.field<string | null>(source, 'notes') ?? null,
       convertedClientId: this.field<string | null>(source, 'convertedClientId') ?? null,
       convertedAtUtc: this.field<string | null>(source, 'convertedAtUtc') ?? null,
-      createdAtUtc: this.field<string>(source, 'createdAtUtc') ?? '',
       // The intake round-trips as-is (its own nullable fields); no per-field normalization.
       intake: this.field<LeadIntakeResponse | null>(source, 'intake') ?? null,
-    };
-  }
-
-  private normalizeListItem(source: unknown): CrmLeadListItem {
-    return {
-      id: this.field<string>(source, 'id') ?? '',
-      firstName: this.field<string>(source, 'firstName') ?? '',
-      lastName: this.field<string>(source, 'lastName') ?? '',
-      email: this.field<string | null>(source, 'email') ?? null,
-      phone: this.field<string | null>(source, 'phone') ?? null,
-      status: this.field<number>(source, 'status') ?? LeadStatus.New,
-      source: this.field<number>(source, 'source') ?? LeadSource.Other,
-      ownerId: this.field<string>(source, 'ownerId') ?? '',
-      createdAtUtc: this.field<string>(source, 'createdAtUtc') ?? '',
     };
   }
 }

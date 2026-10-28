@@ -10,10 +10,10 @@ import {
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { catchError, of } from 'rxjs';
-import { CrmLeadService, type CrmLeadListItem } from '../../data/crm-lead.service';
+import { Subscription, catchError, of } from 'rxjs';
+import { CrmLeadService, type CrmLead } from '../../data/crm-lead.service';
 import { CatalogService } from '@platform/i18n/catalog.service';
-import { LocaleService } from '@platform/i18n';
+import { emptyPage, type PagedResult } from '@platform/types';
 import { LeadSource, LeadStatus } from '../../model/crm-enums';
 import { CanDirective, PERM } from '@platform/permissions';
 import { EmployeeService } from '@modules/people';
@@ -29,6 +29,7 @@ import {
   PeraEmptyComponent,
   PeraFilterBarComponent,
   PeraPageHeaderComponent,
+  PeraPaginationComponent,
   PeraSegmentedComponent,
   PeraSkeletonComponent,
   PeraStatusBadgeComponent,
@@ -64,13 +65,14 @@ const STATUS_ORDER: LeadStatus[] = [
     PeraEmptyComponent,
     PeraFilterBarComponent,
     PeraPageHeaderComponent,
+    PeraPaginationComponent,
     PeraSegmentedComponent,
     PeraSkeletonComponent,
     PeraStatusBadgeComponent,
   ],
   host: { class: 'block' },
   template: `
-    <pera-page-header [title]="catalog.t('leads.listTitle')" [count]="rows().length">
+    <pera-page-header [title]="catalog.t('leads.listTitle')" [count]="paged().totalCount">
       <div actions>
         <pera-button
           *peraCan="PERM.crm.leads.create"
@@ -183,6 +185,14 @@ const STATUS_ORDER: LeadStatus[] = [
             </button>
           }
         </div>
+        <div class="mt-3">
+          <pera-pagination
+            [page]="paged().page"
+            [pageSize]="paged().pageSize || pageSize"
+            [totalCount]="paged().totalCount"
+            (pageChange)="goToPage($event)"
+          />
+        </div>
       } @else {
         <pera-data-table
           density="compact"
@@ -190,6 +200,10 @@ const STATUS_ORDER: LeadStatus[] = [
           [rows]="rows()"
           [rowId]="rowId"
           [hasRowClick]="true"
+          [page]="paged().page"
+          [pageSize]="paged().pageSize || pageSize"
+          [totalCount]="paged().totalCount"
+          (pageChange)="goToPage($event)"
           (rowClick)="open($event)"
         />
       }
@@ -217,26 +231,21 @@ export class CrmLeadsListComponent implements OnInit {
   private readonly modal = inject(ModalService);
   private readonly router = inject(Router);
   protected readonly catalog = inject(CatalogService);
-  private readonly locale = inject(LocaleService);
   protected readonly PERM = PERM;
 
   private readonly nameTpl = viewChild.required<TemplateRef<unknown>>('nameTpl');
   private readonly statusTpl = viewChild.required<TemplateRef<unknown>>('statusTpl');
 
   readonly loading = signal(true);
-  private readonly allRows = signal<CrmLeadListItem[]>([]);
+  /** One server page (009b #1): status and search filter server-side, newest first. */
+  readonly paged = signal<PagedResult<CrmLead>>(emptyPage<CrmLead>());
+  readonly pageSize = 50;
+  private readonly page = signal(1);
   private readonly owners = signal<Record<string, string>>({});
   readonly filters = signal<FilterState>({});
+  private listSub?: Subscription;
 
-  readonly rows = computed(() => {
-    const q = (this.filters().search ?? '').trim().toLowerCase();
-    const status = this.filters().facets?.['status']?.at(-1);
-    return this.allRows().filter((l) => {
-      const matchesStatus = !status || String(l.status) === status;
-      const matchesSearch = !q || `${l.firstName} ${l.lastName}`.toLowerCase().includes(q);
-      return matchesStatus && matchesSearch;
-    });
-  });
+  readonly rows = computed(() => this.paged().items);
 
   readonly facets = computed<FilterFacet[]>(() => [
     {
@@ -249,7 +258,7 @@ export class CrmLeadsListComponent implements OnInit {
     },
   ]);
 
-  readonly columns = computed<ColumnDef<CrmLeadListItem>[]>(() => [
+  readonly columns = computed<ColumnDef<CrmLead>[]>(() => [
     {
       key: 'name',
       header: this.catalog.t('leads.colName'),
@@ -273,12 +282,6 @@ export class CrmLeadsListComponent implements OnInit {
       header: this.catalog.t('leads.colOwner'),
       minWidth: 140,
       value: (r) => this.owners()[r.ownerId] ?? '—',
-    },
-    {
-      key: 'created',
-      header: this.catalog.t('leads.colCreated'),
-      width: 120,
-      value: (r) => this.formatDate(r.createdAtUtc),
     },
   ]);
 
@@ -306,32 +309,26 @@ export class CrmLeadsListComponent implements OnInit {
     if (typeof localStorage !== 'undefined') localStorage.setItem('pera.leads.view', v);
   }
 
-  protected ownerName(row: CrmLeadListItem): string {
+  protected ownerName(row: CrmLead): string {
     return this.owners()[row.ownerId] ?? '—';
   }
-  protected isConverted(row: CrmLeadListItem): boolean {
+  protected isConverted(row: CrmLead): boolean {
     return row.status === LeadStatus.Converted;
   }
   /**
-   * Prepared-but-inert adornments: `CrmLeadListItem` carries no intake flag or sector today, so
+   * Prepared-but-inert adornments: `CrmLead` carries no intake flag or sector today, so
    * both slots stay hidden. They light up unchanged the moment `LeadListItemResponse` grows a
    * `hasIntake` boolean / a resolved `sectorLabel` — no template change needed.
    */
-  protected intakePresent(row: CrmLeadListItem): boolean {
+  protected intakePresent(row: CrmLead): boolean {
     return Boolean((row as { hasIntake?: boolean }).hasIntake);
   }
-  protected sectorLabel(row: CrmLeadListItem): string | null {
+  protected sectorLabel(row: CrmLead): string | null {
     return (row as { sectorLabel?: string }).sectorLabel ?? null;
   }
 
   ngOnInit(): void {
-    this.leads
-      .search({ take: 100 })
-      .pipe(catchError(() => of([] as CrmLeadListItem[])))
-      .subscribe((rows) => {
-        this.allRows.set(rows);
-        this.loading.set(false);
-      });
+    this.loadPage();
     this.directory
       .listPaged({ page: 1, pageSize: 500, isActive: true })
       .pipe(catchError(() => of(null)))
@@ -342,16 +339,28 @@ export class CrmLeadsListComponent implements OnInit {
       });
   }
 
-  private formatDate(iso: string): string {
-    if (!iso) return '—';
-    try {
-      return new Date(iso).toLocaleDateString(this.locale.locale() === 'ar' ? 'ar-EG' : 'en-GB', {
-        day: 'numeric',
-        month: 'short',
+  /** Fetch the current page under the current filters; a newer fetch cancels the older one. */
+  private loadPage(): void {
+    const status = this.filters().facets?.['status']?.at(-1);
+    this.listSub?.unsubscribe();
+    this.loading.set(true);
+    this.listSub = this.leads
+      .search({
+        pageNumber: this.page(),
+        pageSize: this.pageSize,
+        status: status ? (Number(status) as LeadStatus) : undefined,
+        search: this.filters().search,
+      })
+      .pipe(catchError(() => of(emptyPage<CrmLead>())))
+      .subscribe((paged) => {
+        this.paged.set(paged);
+        this.loading.set(false);
       });
-    } catch {
-      return '—';
-    }
+  }
+
+  goToPage(page: number): void {
+    this.page.set(page);
+    this.loadPage();
   }
 
   protected statusKey(status: LeadStatus) {
@@ -364,16 +373,20 @@ export class CrmLeadsListComponent implements OnInit {
     return LEAD_SOURCE_KEYS[source];
   }
 
-  rowId = (row: CrmLeadListItem): string => row.id;
+  rowId = (row: CrmLead): string => row.id;
 
   onFilters(state: FilterState): void {
     this.filters.set(state);
+    this.page.set(1);
+    this.loadPage();
   }
   onClear(): void {
     this.filters.set({});
+    this.page.set(1);
+    this.loadPage();
   }
 
-  open(row: CrmLeadListItem): void {
+  open(row: CrmLead): void {
     void this.router.navigate(['/crm/leads', row.id]);
   }
 
