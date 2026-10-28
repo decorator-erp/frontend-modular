@@ -9,9 +9,8 @@ import type { ClientProfile, ClientProfileContact, ClientProfileProject } from '
 /**
  * `CrmClientPortalService` (T108) — the one genuinely new client-portal surface, as
  * opposed to the nine `/api/crm/portal/*` endpoints already folded into their own
- * domain services (`CrmMeetingService.portal*`, `CrmItemService.portal*`,
- * `CrmApprovalsService.decideAsClient`/`portalPending`; see `crm-brief.service.ts` for
- * the tenth, `getMyBrief`).
+ * domain services (`CrmMeetingService.portal*`, `CrmItemService.portal*`; see
+ * `crm-brief.service.ts` for `getMyBrief`).
  *
  * `getMyProfile` targets `GET /api/crm/portal/profile` (`CrmClientPortalEndpoints.cs`,
  * gated `portal.profile.view_own`) — the client's own `Client`/`CrmContact` rows and

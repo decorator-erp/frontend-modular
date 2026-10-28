@@ -1,8 +1,6 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
-import { FormsModule } from '@angular/forms';
 import { CrmBriefService } from '../../data/crm-brief.service';
-import { APPROVAL_COMMENT_MAX } from '../../data/crm-approvals.service';
 import { CrmItemService } from '../../data/crm-item.service';
 import { CatalogService } from '@platform/i18n/catalog.service';
 import { ErrorHandlerService, friendly } from '@platform/http/error-handler.service';
@@ -17,12 +15,10 @@ import type {
 } from '../../model';
 import {
   PeraAlertComponent,
-  PeraButtonComponent,
   PeraCardComponent,
   PeraEmptyComponent,
   PeraSpinnerComponent,
   PeraStatusBadgeComponent,
-  PeraTextareaComponent,
 } from '@ds';
 import { ApprovalsInboxStore } from '../../stores/approvals-inbox.store';
 import { formatHeadDiffValue, headDiffFieldLabel } from './head-diff-format';
@@ -37,9 +33,11 @@ const SUBJECT_NOUN_KEYS: Record<ApprovalSubjectType, CatalogKey> = {
 
 /**
  * The client approvals inbox (T119, FR-029) — the brief head by round with a field
- * diff, gathering entries, and requirement items, in one list. Approve and reject
- * are both offered; reject refuses to submit without a comment. A decided row
- * stays in the trail forever (append-only — never overwritten, never removed).
+ * diff, gathering entries, and requirement items, in one list. A decided row stays in
+ * the trail forever (append-only — never overwritten, never removed).
+ *
+ * 009b #N-2: no portal approvals route exists, so the store reports
+ * `appr.notAvailableYet` and the approve/reject actions are gone.
  *
  * A `BriefSpace` row shows its CURRENT data only, no per-round entry diff.
  */
@@ -48,14 +46,11 @@ const SUBJECT_NOUN_KEYS: Record<ApprovalSubjectType, CatalogKey> = {
   changeDetection: ChangeDetectionStrategy.OnPush,
   providers: [ApprovalsInboxStore],
   imports: [
-    FormsModule,
     PeraAlertComponent,
-    PeraButtonComponent,
     PeraCardComponent,
     PeraEmptyComponent,
     PeraSpinnerComponent,
     PeraStatusBadgeComponent,
-    PeraTextareaComponent,
   ],
   host: { class: 'flex flex-col gap-4' },
   template: `
@@ -173,51 +168,6 @@ const SUBJECT_NOUN_KEYS: Record<ApprovalSubjectType, CatalogKey> = {
                             }
                           }
                         }
-
-                        <div class="flex items-center gap-2 pt-3">
-                          @if (rejectingId() === row.id) {
-                            <div class="flex flex-col gap-2 w-full">
-                              <pera-textarea
-                                [ngModel]="rejectComment()"
-                                (ngModelChange)="rejectComment.set($event)"
-                                [placeholder]="catalog.t('appr.apRejC')"
-                              />
-                              <span class="fs-label text-text-muted" dir="ltr"
-                                >{{ rejectComment().length }}/{{ APPROVAL_COMMENT_MAX }}</span
-                              >
-                              <div class="flex items-center gap-2">
-                                <pera-button
-                                  variant="secondary"
-                                  size="sm"
-                                  (click)="cancelReject()"
-                                  >{{ catalog.t('common.dismiss') }}</pera-button
-                                >
-                                <pera-button
-                                  variant="primary"
-                                  size="sm"
-                                  [disabled]="!rejectComment().trim()"
-                                  [loading]="store.decidingId() === row.id"
-                                  (click)="submitReject(row.id)"
-                                  >{{ catalog.t('appr.apSendRej') }}</pera-button
-                                >
-                              </div>
-                            </div>
-                          } @else {
-                            <pera-button
-                              variant="primary"
-                              size="sm"
-                              [loading]="store.decidingId() === row.id"
-                              (click)="approve(row.id)"
-                              >{{ catalog.t('appr.approve') }}</pera-button
-                            >
-                            <pera-button
-                              variant="secondary"
-                              size="sm"
-                              (click)="startReject(row.id)"
-                              >{{ catalog.t('appr.rejectDots') }}</pera-button
-                            >
-                          }
-                        </div>
                       </div>
                     }
                   </div>
@@ -275,7 +225,6 @@ export class CrmApprovalsInboxComponent {
   protected readonly store = inject(ApprovalsInboxStore);
   protected readonly SUBJECT_TYPE = ApprovalSubjectType;
   protected readonly DECISION = ApprovalDecision;
-  protected readonly APPROVAL_COMMENT_MAX = APPROVAL_COMMENT_MAX;
 
   protected readonly expandedId = signal<string | null>(null);
   protected readonly detailLoading = signal(false);
@@ -284,9 +233,6 @@ export class CrmApprovalsInboxComponent {
   protected readonly diffError = signal<string | null>(null);
   protected readonly spaceDetail = signal<BriefSpace | null>(null);
   protected readonly itemDetail = signal<RequirementItem | null>(null);
-
-  protected readonly rejectingId = signal<string | null>(null);
-  protected readonly rejectComment = signal('');
 
   constructor() {
     this.store.load();
@@ -314,7 +260,6 @@ export class CrmApprovalsInboxComponent {
       return;
     }
     this.expandedId.set(row.id);
-    this.rejectingId.set(null);
     this.headDiff.set(null);
     this.diffError.set(null);
     this.spaceDetail.set(null);
@@ -353,25 +298,5 @@ export class CrmApprovalsInboxComponent {
     } else {
       this.detailLoading.set(false);
     }
-  }
-
-  protected approve(id: string): void {
-    this.store.decide(id, { decision: ApprovalDecision.Approved, comment: null });
-  }
-
-  protected startReject(id: string): void {
-    this.rejectingId.set(id);
-    this.rejectComment.set('');
-  }
-
-  protected cancelReject(): void {
-    this.rejectingId.set(null);
-    this.rejectComment.set('');
-  }
-
-  protected submitReject(id: string): void {
-    if (!this.rejectComment().trim()) return;
-    this.store.decide(id, { decision: ApprovalDecision.Rejected, comment: this.rejectComment() });
-    this.rejectingId.set(null);
   }
 }

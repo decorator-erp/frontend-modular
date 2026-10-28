@@ -23,29 +23,22 @@ describe('CrmApprovalsService', () => {
 
   const url = (path: string) => `${environment.apiUrl}${path}`;
 
-  // Everything on the wire is a bare integer EXCEPT these two fields, which are
-  // hand-serialized as strings. One payload, two conventions. No string enum may reach
-  // a store, so both are mapped at this boundary.
-  describe('the two hand-serialized string enums', () => {
-    it('maps ClientApprovalTrailResponse.SubjectType from its STRING name to the enum', () => {
-      let subjectType: ApprovalSubjectType | undefined;
-      service.portalPending().subscribe((r) => (subjectType = r[0].subjectType));
+  // `PendingApprovalResponse.SubjectType` may arrive hand-serialized as its STRING name.
+  // No string enum may reach a store, so it is mapped at this boundary.
+  describe('the hand-serialized string enum', () => {
+    const page = (subjectType: unknown) => ({
+      items: [{ id: 'a1', subjectType, subjectId: 's1', type: 2, round: 1, dueAtUtc: null }],
+      pageNumber: 1,
+      pageSize: 20,
+      totalCount: 1,
+      totalPages: 1,
+    });
 
-      http.expectOne(url('/crm/portal/approvals')).flush([
-        {
-          id: 'a1',
-          subjectType: 'DesignBrief', // ← a STRING, while roundNumber beside it is an int
-          subjectId: 'brief-1',
-          projectId: 'project-1',
-          projectName: 'Villa Kafr El-Sheikh',
-          roundNumber: 3,
-          createdAtUtc: '2026-07-03T09:00:00Z',
-          decision: null,
-          decidedAtUtc: null,
-          comment: null,
-          responseDueAtUtc: null,
-        },
-      ]);
+    it('maps PendingApprovalResponse.SubjectType from its STRING name to the enum', () => {
+      let subjectType: ApprovalSubjectType | undefined;
+      service.pending().subscribe((r) => (subjectType = r.items[0].subjectType));
+
+      http.expectOne((r) => r.url === url('/approvals/pending')).flush(page('DesignBrief'));
 
       expect(subjectType).toBe(ApprovalSubjectType.DesignBrief);
       expect(typeof subjectType).toBe('number');
@@ -55,86 +48,11 @@ describe('CrmApprovalsService', () => {
     // normalizer must not regress.
     it('also accepts the integer form, so a server-side fix cannot break us', () => {
       let subjectType: ApprovalSubjectType | undefined;
-      service.portalPending().subscribe((r) => (subjectType = r[0].subjectType));
+      service.pending().subscribe((r) => (subjectType = r.items[0].subjectType));
 
-      http.expectOne(url('/crm/portal/approvals')).flush([
-        {
-          id: 'a1',
-          subjectType: 3,
-          subjectId: 'item-1',
-          projectId: 'project-1',
-          projectName: 'Villa Kafr El-Sheikh',
-          roundNumber: 1,
-          createdAtUtc: '2026-07-03T09:00:00Z',
-        },
-      ]);
+      http.expectOne((r) => r.url === url('/approvals/pending')).flush(page(3));
 
       expect(subjectType).toBe(ApprovalSubjectType.RequirementItem);
-    });
-  });
-
-  // ClientApprovalTrailResponse is a DIFFERENT shape than PendingApprovalResponse —
-  // its own project identity, and `roundNumber` rather than `round` on the wire.
-  describe('portalPending() — the full row shape', () => {
-    it('normalizes a still-pending row', () => {
-      let row: import('../model').ClientApprovalTrailRow | undefined;
-      service.portalPending().subscribe((r) => (row = r[0]));
-
-      http.expectOne(url('/crm/portal/approvals')).flush([
-        {
-          id: 'a1',
-          subjectType: 'BriefSpace',
-          subjectId: 'space-1',
-          projectId: 'project-1',
-          projectName: 'Villa Kafr El-Sheikh',
-          roundNumber: 1,
-          createdAtUtc: '2026-07-03T09:00:00Z',
-          decision: null,
-          decidedAtUtc: null,
-          comment: null,
-          responseDueAtUtc: '2026-07-10T09:00:00Z',
-        },
-      ]);
-
-      expect(row).toEqual({
-        id: 'a1',
-        subjectType: ApprovalSubjectType.BriefSpace,
-        subjectId: 'space-1',
-        projectId: 'project-1',
-        projectName: 'Villa Kafr El-Sheikh',
-        round: 1,
-        createdAtUtc: '2026-07-03T09:00:00Z',
-        decision: null,
-        decidedAtUtc: null,
-        comment: null,
-        responseDueAtUtc: '2026-07-10T09:00:00Z',
-        trackKey: 'a1',
-      });
-    });
-
-    it('normalizes a decided (rejected) row — stays in the trail, never overwritten', () => {
-      let row: import('../model').ClientApprovalTrailRow | undefined;
-      service.portalPending().subscribe((r) => (row = r[0]));
-
-      http.expectOne(url('/crm/portal/approvals')).flush([
-        {
-          id: 'a2',
-          subjectType: 'RequirementItem',
-          subjectId: 'item-1',
-          projectId: 'project-1',
-          projectName: 'Villa Kafr El-Sheikh',
-          roundNumber: 2,
-          createdAtUtc: '2026-07-05T09:00:00Z',
-          decision: 'Rejected',
-          decidedAtUtc: '2026-07-06T09:00:00Z',
-          comment: 'Wrong floor.',
-          responseDueAtUtc: null,
-        },
-      ]);
-
-      expect(row?.decision).toBe(ApprovalDecision.Rejected);
-      expect(row?.round).toBe(2);
-      expect(row?.comment).toBe('Wrong floor.');
     });
   });
 
@@ -272,23 +190,21 @@ describe('CrmApprovalsService', () => {
       req.flush(null);
     });
 
-    it('maps a decision of 3 (or its name) to ChangesRequested and subject 5 to ProjectDocument', () => {
-      let rows: import('../model').ClientApprovalTrailRow[] = [];
-      service.portalPending().subscribe((r) => (rows = r));
+    it('maps the subject name ProjectDocument to 5', () => {
+      let subjectType: ApprovalSubjectType | undefined;
+      service.pending().subscribe((r) => (subjectType = r.items[0].subjectType));
 
-      http.expectOne(url('/crm/portal/approvals')).flush([
-        { id: 'a1', subjectType: 'ProjectDocument', subjectId: 'd1', decision: 3 },
-        { id: 'a2', subjectType: 5, subjectId: 'd2', decision: 'ChangesRequested' },
-      ]);
+      http
+        .expectOne((r) => r.url === url('/approvals/pending'))
+        .flush({
+          items: [{ id: 'a1', subjectType: 'ProjectDocument', subjectId: 'd1', type: 1, round: 1 }],
+          pageNumber: 1,
+          pageSize: 20,
+          totalCount: 1,
+          totalPages: 1,
+        });
 
-      expect(rows.map((r) => r.decision)).toEqual([
-        ApprovalDecision.ChangesRequested,
-        ApprovalDecision.ChangesRequested,
-      ]);
-      expect(rows.map((r) => r.subjectType)).toEqual([
-        ApprovalSubjectType.ProjectDocument,
-        ApprovalSubjectType.ProjectDocument,
-      ]);
+      expect(subjectType).toBe(ApprovalSubjectType.ProjectDocument);
     });
 
     it('carries the approvals codes the backend has, in EN and AR, and not DecisionFailed', () => {
@@ -305,15 +221,11 @@ describe('CrmApprovalsService', () => {
     });
   });
 
-  // Dependency 12 — the client decides through the PORTAL route, gated on crm.portal.
-  // The Client role does not hold projects.read, so the office route is not reachable.
-  it('routes the client decide through /crm/portal/approvals/{id}/decide', () => {
-    service
-      .decideAsClient('a1', { decision: ApprovalDecision.Approved, comment: null })
-      .subscribe();
-
-    const req = http.expectOne(url('/crm/portal/approvals/a1/decide'));
-    expect(req.request.method).toBe('PUT');
-    req.flush(null);
+  // 009b #N-2: GET /crm/portal/approvals and PUT /crm/portal/approvals/{id}/decide have no
+  // backend route (EP/CrmPortalEndpoints.cs:36-153), so nothing callable targets them.
+  it('has no portal inbox or portal decide method (009b #N-2)', () => {
+    const methods = service as unknown as Record<string, unknown>;
+    expect(methods['portalPending']).toBeUndefined();
+    expect(methods['decideAsClient']).toBeUndefined();
   });
 });

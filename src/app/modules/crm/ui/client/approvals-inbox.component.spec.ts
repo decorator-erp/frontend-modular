@@ -1,6 +1,6 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { signal } from '@angular/core';
-import { TestBed } from '@angular/core/testing';
+import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { of, throwError } from 'rxjs';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { CrmBriefService } from '../../data/crm-brief.service';
@@ -100,5 +100,68 @@ describe('CrmApprovalsInboxComponent — brief head diff (009b #16)', () => {
     );
 
     expect(open().textContent).toContain('The brief has no such round.');
+  });
+});
+
+// 009b #N-2: no portal approvals routes (EP/CrmPortalEndpoints.cs:36-153).
+describe('CrmApprovalsInboxComponent — not available (009b #N-2)', () => {
+  function render(error: string | null): ComponentFixture<CrmApprovalsInboxComponent> {
+    TestBed.configureTestingModule({
+      imports: [CrmApprovalsInboxComponent],
+      providers: [
+        {
+          provide: CrmBriefService,
+          useValue: {
+            getHeadDiff: vi.fn().mockReturnValue(
+              of({
+                briefId: 'B',
+                round: 1,
+                previousRound: null,
+                changes: [{ field: 'UnitType', previousValue: null, currentValue: '2' }],
+              }),
+            ),
+          },
+        },
+        { provide: CrmItemService, useValue: {} },
+      ],
+    });
+    TestBed.overrideComponent(CrmApprovalsInboxComponent, {
+      add: {
+        providers: [
+          {
+            provide: ApprovalsInboxStore,
+            useValue: {
+              load: vi.fn(),
+              loading: signal(false),
+              error: signal(error),
+              pending: signal([ROW]),
+              decided: signal([]),
+              rows: signal([ROW]),
+            },
+          },
+        ],
+      },
+    });
+    const fixture = TestBed.createComponent(CrmApprovalsInboxComponent);
+    fixture.detectChanges();
+    return fixture;
+  }
+
+  it('renders "Approvals are not available yet" from the store', () => {
+    expect((render('appr.notAvailableYet').nativeElement as HTMLElement).textContent).toContain(
+      'Approvals are not available yet.',
+    );
+  });
+
+  it('offers no approve or reject action on an expanded row', () => {
+    const fixture = render(null);
+    const el = fixture.nativeElement as HTMLElement;
+    (el.querySelector('li button') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    const text = el.textContent ?? '';
+    expect(text).toContain('Initial values (round 1):');
+    expect(el.querySelectorAll('pera-button')).toHaveLength(0);
+    expect(text).not.toContain('Approve');
+    expect(text).not.toContain('Reject');
   });
 });

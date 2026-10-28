@@ -80,6 +80,7 @@ export const EN = {
   'appr.inbox': 'Approvals inbox',
   // 009b #41: PendingApprovalResponse carries no project, owner or gate label.
   'appr.labelNotAvailable': 'Not available',
+  'appr.notAvailableYet': 'Approvals are not available yet.',
   'appr.mandatory': 'mandatory',
   'appr.rejectDots': 'Reject…',
   'appr.roundLabel': 'round {round}',

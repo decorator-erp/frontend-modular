@@ -64,6 +64,7 @@ export const AR: Partial<Record<CatalogKey, string>> = {
   'appr.inbox': 'صندوق الموافقات',
   // 009b #41: PendingApprovalResponse carries no project, owner or gate label.
   'appr.labelNotAvailable': 'غير متاح',
+  'appr.notAvailableYet': 'الموافقات غير متاحة بعد.',
   'appr.mandatory': 'إلزامي',
   'appr.rejectDots': 'رفض…',
   'appr.roundLabel': 'الجولة {round}',

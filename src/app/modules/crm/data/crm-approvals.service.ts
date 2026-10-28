@@ -4,19 +4,18 @@ import { map } from 'rxjs/operators';
 import { ApiService } from '@platform/http/api.service';
 import { ApprovalDecision, ApprovalSubjectType } from '../model/crm-enums';
 import type { PagedResult } from '@platform/types';
-import type { ClientApprovalTrailRow, DecideApprovalRequest, PendingApproval } from '../model';
+import type { DecideApprovalRequest, PendingApproval } from '../model';
 
 /**
- * Approvals — the office decide flow, reused by the client portal (Dependency 12).
+ * Approvals — the office decide flow. 009b #N-2: the client portal's inbox and decide
+ * (`GET /api/crm/portal/approvals`, `PUT …/{id}/decide`) have no backend route
+ * (`EP/CrmPortalEndpoints.cs:36-153`), so `portalPending`/`decideAsClient` are gone.
  *
  * ## The two wire quirks quarantined here (Principle VI)
  *
- * **1. Two hand-serialized STRING enums in an otherwise all-integer payload.** The
- * backend has no `JsonStringEnumConverter`, so every enum on the wire is a bare integer
- * — EXCEPT `ApprovalTrailItemResponse.Decision` (`"Approved" | "Rejected" | null`) and
- * `PendingApprovalResponse.SubjectType` (`"DesignBrief"`, …). One payload, two
- * conventions. Both are mapped to their numeric mirrors on the way in: **no string enum
- * may reach a store.**
+ * **1. A hand-serialized STRING enum.** `PendingApprovalResponse.SubjectType` may arrive
+ * as its name (`"DesignBrief"`, …) or as an integer; it is mapped to its numeric mirror on
+ * the way in: **no string enum may reach a store.**
  *
  * **2. `PagedResult<T>` paging (009b #41).** `ApprovalEndpoints.cs:24-31` binds two REQUIRED
  * `int`s, `pageNumber` (1-based) and `pageSize`, and returns `PagedResult<PendingApprovalResponse>`
@@ -40,30 +39,6 @@ export class CrmApprovalsService extends ApiService {
    */
   decide(approvalId: string, request: DecideApprovalRequest): Observable<void> {
     return this.put<void>(`/approvals/${approvalId}/decide`, this.decideBody(request));
-  }
-
-  /**
-   * `PUT /api/crm/portal/approvals/{id}/decide` — the CLIENT decides their own assigned
-   * approval. Gated on `crm.portal`, which the Client role holds; `projects.read` was
-   * deliberately NOT granted to it (Dependency 12).
-   *
-   * Same body, same `204`. The domain service enforces that the approval's
-   * `AssignedContactId` is the caller's contact (`403` otherwise).
-   */
-  decideAsClient(approvalId: string, request: DecideApprovalRequest): Observable<void> {
-    return this.put<void>(`/crm/portal/approvals/${approvalId}/decide`, this.decideBody(request));
-  }
-
-  /**
-   * `GET /api/crm/portal/approvals` — the client's own inbox. Mirrors
-   * `ClientApprovalTrailResponse`, a DIFFERENT shape than the office pending-list row
-   * (`PendingApprovalResponse`) — this one carries its own project identity and the
-   * decision itself, pending or not, in one row.
-   */
-  portalPending(): Observable<ClientApprovalTrailRow[]> {
-    return this.get<unknown>('/crm/portal/approvals').pipe(
-      map((r) => this.unwrapArray<unknown>(r).map((a) => this.normalizeClientRow(a))),
-    );
   }
 
   /**
@@ -106,28 +81,6 @@ export class CrmApprovalsService extends ApiService {
     };
   }
 
-  /**
-   * Quirk 1a again, on the CLIENT row: `SubjectType` is the same hand-serialized
-   * string. Note the wire field is `RoundNumber`, not `Round` — a different DTO than
-   * `PendingApprovalResponse`, not a renamed copy of it.
-   */
-  private normalizeClientRow(source: unknown): ClientApprovalTrailRow {
-    return {
-      id: this.field<string>(source, 'id') ?? '',
-      subjectType: this.toSubjectType(this.field<unknown>(source, 'subjectType')),
-      subjectId: this.field<string>(source, 'subjectId') ?? '',
-      projectId: this.field<string>(source, 'projectId') ?? '',
-      projectName: this.field<string>(source, 'projectName') ?? '',
-      round: this.field<number>(source, 'roundNumber') ?? 0,
-      createdAtUtc: this.field<string>(source, 'createdAtUtc') ?? '',
-      decision: this.toDecision(this.field<unknown>(source, 'decision')),
-      decidedAtUtc: this.field<string | null>(source, 'decidedAtUtc') ?? null,
-      comment: this.field<string | null>(source, 'comment') ?? null,
-      responseDueAtUtc: this.field<string | null>(source, 'responseDueAtUtc') ?? null,
-      trackKey: this.trackKeyFor(source, 'ClientApprovalTrailRow.id', 'id'),
-    };
-  }
-
   /** Accepts the string name OR an integer, so a future server-side fix cannot break us. */
   private toSubjectType(raw: unknown): ApprovalSubjectType {
     if (typeof raw === 'number') return raw as ApprovalSubjectType;
@@ -138,19 +91,6 @@ export class CrmApprovalsService extends ApiService {
       if (!Number.isNaN(asNumber)) return asNumber as ApprovalSubjectType;
     }
     return ApprovalSubjectType.GateCondition;
-  }
-
-  /** `null` ⇒ undecided. That is a state, not a parse failure — preserve it. */
-  private toDecision(raw: unknown): ApprovalDecision | null {
-    if (raw === null || raw === undefined || raw === '') return null;
-    if (typeof raw === 'number') return raw as ApprovalDecision;
-    if (typeof raw === 'string') {
-      const byName = ApprovalDecision[raw as keyof typeof ApprovalDecision];
-      if (typeof byName === 'number') return byName;
-      const asNumber = Number(raw);
-      if (!Number.isNaN(asNumber)) return asNumber as ApprovalDecision;
-    }
-    return null;
   }
 
   /** Quirk 2: the wire `pageNumber` is already 1-based; it becomes the app's `page` as is. */
