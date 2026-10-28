@@ -33,8 +33,9 @@ import {
 //
 // The backend `SpaceType` enum is deleted; only frozen migration artifacts
 // remain. Mirroring it would re-introduce the coupling the 2026-07-12 amendment
-// removed. `sortOrder` / `isActive` exist server-side but are not on the wire —
-// the server filters and orders; the client renders the list as received.
+// removed. `CrmSpaceTypeResponse` (`SpaceContracts.cs:5-6`) carries `sortOrder` and
+// `isActive`: the server orders by `sortOrder` but returns inactive types too, so
+// pickers for new rows filter `isActive` themselves (009b #27).
 // ---------------------------------------------------------------------------
 
 export interface CrmSpaceType {
@@ -43,6 +44,13 @@ export interface CrmSpaceType {
   code: string;
   nameEn: string;
   nameAr: string;
+  /**
+   * Set by the `/crm/space-types` lookup; absent on the `spaceType` refs embedded in other
+   * responses, which never carry them.
+   */
+  sortOrder?: number;
+  /** An item create/update rejects an inactive type (400 `crm.items.UnknownSpaceType`). */
+  isActive?: boolean;
 }
 
 // ---------------------------------------------------------------------------

@@ -15,8 +15,9 @@ export class CrmLookupService extends ApiService {
    * `GET /api/crm/space-types` — permission `crm.space_types.read`.
    *
    * Space types are DATA, not an enum: the backend `SpaceType` enum is deleted. The
-   * server filters (`isActive`) and orders (`sortOrder`) — neither is on the wire, so
-   * the client renders the list exactly as received.
+   * server orders by `sortOrder` and returns **inactive types too** (009b #27,
+   * `GetCrmSpaceTypesQueryHandler.cs:14-17`): pickers for new rows filter `isActive`,
+   * labels for existing rows resolve from the full list.
    */
   spaceTypes(): Observable<CrmSpaceType[]> {
     return this.get<unknown>('/crm/space-types').pipe(
@@ -30,6 +31,8 @@ export class CrmLookupService extends ApiService {
       code: this.field<string>(source, 'code') ?? '',
       nameEn: this.field<string>(source, 'nameEn') ?? '',
       nameAr: this.field<string>(source, 'nameAr') ?? '',
+      sortOrder: this.field<number>(source, 'sortOrder') ?? 0,
+      isActive: this.field<boolean>(source, 'isActive') ?? true,
     };
   }
 }

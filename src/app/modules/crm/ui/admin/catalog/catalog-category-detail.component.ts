@@ -607,11 +607,14 @@ export class CrmCatalogCategoryDetailComponent {
   /** The space type selected in the targeting card's "add" row. */
   readonly targetType = signal<string>('');
 
-  /** Only space types NOT already mapped — mapping the same one twice is `MappingExists`. */
+  /**
+   * Only space types NOT already mapped — mapping the same one twice is `MappingExists` —
+   * and active (009b #27). `spaceTypeName` still names an inactive type on a mapping.
+   */
   readonly unmappedSpaceTypeOptions = computed<SelectOption[]>(() => {
     const mapped = new Set(this.store.spaceTypeIds());
     return this.spaceTypes()
-      .filter((s) => !mapped.has(s.id))
+      .filter((s) => s.isActive !== false && !mapped.has(s.id))
       .map((s) => ({
         value: s.id,
         label: this.catalog.locale() === 'ar' ? s.nameAr || s.nameEn : s.nameEn,
