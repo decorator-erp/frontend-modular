@@ -1150,4 +1150,6 @@ export const AR: Partial<Record<CatalogKey, string>> = {
   'sow.confirmedOn': 'أُكِّد في {date} بواسطة {name}.',
   'sow.confirmedSummary': 'أُنشئت {n} مراحل · الإجمالي {total} ج.م · ينتهي {end}.',
   'sow.readOnlyFooter': 'للقراءة فقط. لإضافة بنود أو تغييرها بعد التأكيد، اطلب تعديلًا.',
+  'sow.notFound': 'نطاق العمل غير موجود',
+  'sow.notFoundHint': 'المشروع غير موجود أو غير نشط أو خارج نطاق صلاحياتك.',
 };

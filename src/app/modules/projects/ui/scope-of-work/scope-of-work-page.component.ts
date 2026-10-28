@@ -11,9 +11,11 @@ import {
   ConfirmService,
   PeraAlertComponent,
   PeraButtonComponent,
+  PeraEmptyComponent,
   PeraPageHeaderComponent,
   PeraStatusBadgeComponent,
 } from '@ds';
+import { friendlyMessage } from '@platform/errors/error-catalog';
 import { CatalogService } from '@platform/i18n/catalog.service';
 import { formatCairoDate, intlLocale } from '@platform/i18n/intl-locale';
 import { PERM, PermissionsService } from '@platform/permissions';
@@ -33,6 +35,7 @@ import { SowTemplatePickerComponent } from './sow-template-picker.component';
   imports: [
     PeraAlertComponent,
     PeraButtonComponent,
+    PeraEmptyComponent,
     PeraPageHeaderComponent,
     PeraStatusBadgeComponent,
     SowItemsTableComponent,
@@ -46,6 +49,17 @@ import { SowTemplatePickerComponent } from './sow-template-picker.component';
     <div class="px-8 py-6 flex flex-col gap-5">
       @if (store.error(); as error) {
         <pera-alert tone="danger">{{ error }}</pera-alert>
+      }
+      @if (store.notFound()) {
+        <pera-empty
+          data-not-found
+          iconName="search"
+          [title]="catalog.t('sow.notFound')"
+          [description]="catalog.t('sow.notFoundHint')"
+        />
+      }
+      @if (isFreeStyle()) {
+        <pera-alert tone="warning" data-free-style>{{ freeStyleMessage() }}</pera-alert>
       }
       @if (store.scope(); as scope) {
         <div class="flex items-center gap-3 flex-wrap">
@@ -111,6 +125,7 @@ import { SowTemplatePickerComponent } from './sow-template-picker.component';
             [saveStatus]="store.headerStatus()"
             [confirmPermitted]="canConfirm()"
             [busy]="store.saving()"
+            [confirmError]="store.confirmError()"
             (headerChange)="store.updateHeader($event)"
             (confirm)="onConfirm()"
           />
@@ -158,12 +173,23 @@ export class ScopeOfWorkPageComponent implements OnInit {
     return this.catalog.t('sow.confirmedSummary', { n: scope.items.length, total, end });
   });
 
+  /** B12: a FreeStyle project has no scope of work to edit or confirm. */
+  protected readonly isFreeStyle = computed(
+    () => this.store.project()?.workflowType === 'FreeStyle',
+  );
+
+  /** B12: the `projects.scope.WorkflowNotSupported` catalog message (EN/AR). */
+  protected readonly freeStyleMessage = computed(() =>
+    friendlyMessage(
+      'projects.scope.WorkflowNotSupported',
+      this.catalog.t('sow.loadFailed'),
+      this.catalog.locale(),
+    ),
+  );
+
   /** Edit controls render only with `scope.manage`, on a Draft of a Stage-workflow project. */
   protected readonly editable = computed(
-    () =>
-      this.canManage() &&
-      !this.store.isConfirmed() &&
-      this.store.project()?.workflowType !== 'FreeStyle',
+    () => this.canManage() && !this.store.isConfirmed() && !this.isFreeStyle(),
   );
 
   /** B6: the template picker is open; templates are read on first open. */

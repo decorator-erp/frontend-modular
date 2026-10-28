@@ -1,8 +1,10 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { HttpErrorResponse } from '@angular/common/http';
 import { provideRouter } from '@angular/router';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { of, throwError } from 'rxjs';
 import { PermissionsService, PERM } from '@platform/permissions';
+import { ToastService } from '@platform/feedback/toast.service';
 import { ProjectService } from '../../data/project.service';
 import { ScopeOfWorkService } from '../../data/scope-of-work.service';
 import { ScopeOfWork, ScopeOfWorkItem, ScopeOfWorkStatus } from '../../model/scope-of-work.model';
@@ -348,5 +350,138 @@ describe('ScopeOfWorkPageComponent — items (sow #3)', () => {
     const inputs = Array.from(el.querySelectorAll<HTMLInputElement>('input, textarea'));
     expect(inputs.every((i) => i.disabled)).toBe(true);
     expect(el.querySelector('[data-confirmed-banner]')).toBeNull();
+  });
+});
+
+/** sow #8: error and concurrency states (B12, B14). */
+describe('ScopeOfWorkPageComponent — errors (sow #8)', () => {
+  let fixture: ComponentFixture<ScopeOfWorkPageComponent>;
+  let el: HTMLElement;
+  let api: Record<string, ReturnType<typeof vi.fn>>;
+  let project: { getById: ReturnType<typeof vi.fn> };
+  let toast: { show: ReturnType<typeof vi.fn> };
+  let granted: Set<string>;
+
+  const coded = (code: string, status: number) =>
+    new HttpErrorResponse({ status, error: { title: code, status, errors: { [code]: ['x'] } } });
+
+  beforeEach(() => {
+    granted = new Set([PERM.scope.read, PERM.scope.manage, PERM.scope.confirm]);
+    api = {
+      getScope: vi.fn().mockReturnValue(of(scope({ canConfirm: true }))),
+      updateHeader: vi.fn().mockReturnValue(of(undefined)),
+      confirm: vi.fn().mockReturnValue(of({ createdStageIds: [] })),
+    };
+    project = {
+      getById: vi.fn().mockReturnValue(of({ id: 'p1', name: 'Villa', workflowType: 'Stage' })),
+    };
+    toast = { show: vi.fn() };
+    TestBed.configureTestingModule({
+      imports: [ScopeOfWorkPageComponent],
+      providers: [
+        provideRouter([]),
+        { provide: ScopeOfWorkService, useValue: api },
+        { provide: ProjectService, useValue: project },
+        { provide: PermissionsService, useValue: { can: (p: string) => granted.has(p) } },
+        { provide: StageTemplatesService, useValue: { list: vi.fn(), stages: vi.fn() } },
+        { provide: EmployeeService, useValue: { getById: vi.fn() } },
+        { provide: ConfirmService, useValue: { open: vi.fn().mockResolvedValue(true) } },
+        { provide: ToastService, useValue: toast },
+      ],
+    });
+  });
+
+  function render() {
+    fixture = TestBed.createComponent(ScopeOfWorkPageComponent);
+    fixture.componentRef.setInput('id', 'p1');
+    fixture.detectChanges();
+    el = fixture.nativeElement;
+  }
+
+  const confirmButton = () =>
+    Array.from(el.querySelectorAll<HTMLButtonElement>('app-sow-summary pera-button button')).find(
+      (b) => b.textContent!.trim() === EN['sow.confirmScope'],
+    );
+
+  async function pressConfirm() {
+    confirmButton()!.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+  }
+
+  it('a 404 shows the not-found state and nothing else (B14)', () => {
+    api['getScope'].mockReturnValue(throwError(() => coded('projects.NotFound', 404)));
+    render();
+    expect(el.querySelector('[data-not-found]')!.textContent).toContain(EN['sow.notFound']);
+    expect(el.querySelector('app-sow-summary')).toBeNull();
+    expect(el.querySelector('app-sow-items-table')).toBeNull();
+  });
+
+  it('a 409 projects.scope.ConcurrentUpdate reloads and says "Changed by someone else" (B14)', () => {
+    api['updateHeader'].mockReturnValue(
+      throwError(() => coded('projects.scope.ConcurrentUpdate', 409)),
+    );
+    render();
+    const input = el.querySelector<HTMLInputElement>('app-sow-summary pera-input input')!;
+    input.value = '30';
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+    fixture.detectChanges();
+    expect(api['getScope']).toHaveBeenCalledTimes(2);
+    expect(toast.show).toHaveBeenCalledWith({
+      tone: 'info',
+      message: 'Changed by someone else — reloaded.',
+    });
+    expect(el.querySelector('pera-alert[tone="danger"]')).toBeNull();
+  });
+
+  it('FreeStyle: read-only with the WorkflowNotSupported message; confirm disabled (B12)', () => {
+    project.getById.mockReturnValue(of({ id: 'p1', name: 'Villa', workflowType: 'FreeStyle' }));
+    api['getScope'].mockReturnValue(
+      of(scope({ canConfirm: false, blockingReason: 'projects.scope.WorkflowNotSupported' })),
+    );
+    render();
+    const message = 'Only a stage-workflow project has a scope of work.';
+    expect(el.querySelector('[data-free-style]')!.textContent!.trim()).toBe(message);
+    expect(el.querySelector('[data-blocking-reason]')!.textContent!.trim()).toBe(message);
+    expect(confirmButton()!.disabled).toBe(true);
+    const inputs = Array.from(el.querySelectorAll<HTMLInputElement>('input, textarea'));
+    expect(inputs.every((i) => i.disabled)).toBe(true);
+    expect(el.querySelectorAll('tbody button')).toHaveLength(0);
+  });
+
+  it('a Stage project shows no FreeStyle message', () => {
+    render();
+    expect(el.querySelector('[data-free-style]')).toBeNull();
+  });
+
+  it('confirm 403 projects.AccessDenied: inline at the button, no toast (B14)', async () => {
+    api['confirm'].mockReturnValue(throwError(() => coded('projects.AccessDenied', 403)));
+    render();
+    await pressConfirm();
+    expect(el.querySelector('[data-confirm-error]')!.textContent!.trim()).toBe(
+      'You do not have access to this project.',
+    );
+    expect(toast.show).not.toHaveBeenCalled();
+    expect(el.querySelector('pera-alert[tone="danger"]')).toBeNull();
+    expect(api['getScope']).toHaveBeenCalledTimes(1);
+  });
+
+  it('confirm 409 teams.MissingHead: inline at the button, no toast (B14)', async () => {
+    api['confirm'].mockReturnValue(throwError(() => coded('teams.MissingHead', 409)));
+    render();
+    await pressConfirm();
+    expect(el.querySelector('[data-confirm-error]')!.textContent!.trim()).toBe(
+      'A department in a picked stage has no head. Assign one first.',
+    );
+    expect(toast.show).not.toHaveBeenCalled();
+  });
+
+  it('a later successful action clears the confirm error', async () => {
+    api['confirm'].mockReturnValueOnce(throwError(() => coded('teams.MissingHead', 409)));
+    render();
+    await pressConfirm();
+    expect(el.querySelector('[data-confirm-error]')).not.toBeNull();
+    await pressConfirm();
+    expect(el.querySelector('[data-confirm-error]')).toBeNull();
   });
 });

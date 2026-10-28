@@ -1223,6 +1223,8 @@ export const EN = {
   'sow.confirmedOn': 'Confirmed on {date} by {name}.',
   'sow.confirmedSummary': '{n} stages created · total {total} EGP · ends {end}.',
   'sow.readOnlyFooter': 'Read-only. To add or change items after confirmation, raise a variation.',
+  'sow.notFound': 'Scope of work not found',
+  'sow.notFoundHint': 'The project is missing, inactive or outside your scope.',
 } as const;
 
 /** The key set of record. Every catalog lookup is typed against this. */

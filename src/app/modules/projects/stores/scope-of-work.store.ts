@@ -36,6 +36,11 @@ interface ScopeOfWorkState {
   saving: boolean;
   /** The last failed action's message, already localized (B14), or null. */
   error: string | null;
+  /**
+   * B14: confirm's own failure (403 `projects.AccessDenied`, 409 `teams.MissingHead`, …),
+   * shown at the button.
+   */
+  confirmError: string | null;
   /** B6 picker: `GET /api/stage-templates`, read when the picker first opens. */
   templates: SowTemplateOption[];
   selectedTemplateId: string | null;
@@ -56,6 +61,7 @@ const INITIAL: ScopeOfWorkState = {
   notFound: false,
   saving: false,
   error: null,
+  confirmError: null,
   templates: [],
   selectedTemplateId: null,
   templateStages: [],
@@ -125,10 +131,11 @@ export const ScopeOfWorkStore = signalStore(
       const write = (
         call: (projectId: string) => Observable<unknown>,
         settled?: (ok: boolean) => void,
+        errorField: 'error' | 'confirmError' = 'error',
       ): void => {
         const projectId = store.projectId();
         if (!projectId) return;
-        patchState(store, { saving: true, error: null });
+        patchState(store, { saving: true, error: null, confirmError: null });
         call(projectId).subscribe({
           next: () => {
             patchState(store, { saving: false });
@@ -139,7 +146,9 @@ export const ScopeOfWorkStore = signalStore(
             patchState(store, { saving: false });
             settled?.(false);
             if (reloadOnConflict(err, refresh)) return;
-            patchState(store, { error: codedMessage(err, errors) ?? catalog.t('sow.saveFailed') });
+            patchState(store, {
+              [errorField]: codedMessage(err, errors) ?? catalog.t('sow.saveFailed'),
+            });
           },
         });
       };
@@ -200,10 +209,11 @@ export const ScopeOfWorkStore = signalStore(
 
         /**
          * B10 `POST …/confirm`, then reload: the scope comes back Confirmed with each item's
-         * `createdStageId`.
+         * `createdStageId`. B14: a failure (403 `projects.AccessDenied`, marked `handled(403)`
+         * so no global toast; 409 `teams.MissingHead`; …) lands in `confirmError`, at the button.
          */
         confirm(): void {
-          write((projectId) => api.confirm(projectId));
+          write((projectId) => api.confirm(projectId), undefined, 'confirmError');
         },
 
         /** B6: the template pills; opens the first template's stages. */

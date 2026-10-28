@@ -168,6 +168,9 @@ type HeaderField = 'duration' | 'start' | 'adjustment' | 'adjustmentNote' | 'not
         <p class="m-0 fs-body-sm text-text-secondary">
           {{ catalog.t('sow.confirmCopy', { n: scope().items.length }) }}
         </p>
+        @if (confirmError(); as message) {
+          <p class="m-0 fs-body-sm text-danger" role="alert" data-confirm-error>{{ message }}</p>
+        }
         <div class="flex gap-2 flex-wrap">
           <pera-button
             variant="primary"
@@ -193,6 +196,8 @@ export class SowSummaryComponent {
   readonly confirmPermitted = input(false);
   /** A write is in flight. */
   readonly busy = input(false);
+  /** B14: confirm's failure message, already localized, shown inline at the button. */
+  readonly confirmError = input<string | null>(null);
 
   /** One full header, ready for `PUT …/scope-of-work` (B9). */
   readonly headerChange = output<UpdateScopeOfWorkHeaderRequest>();
