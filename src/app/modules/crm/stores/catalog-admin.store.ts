@@ -11,11 +11,9 @@ import type {
   CatalogAttribute,
   CatalogCategory,
   CatalogItem,
-  CloneCatalogCategoryRequest,
   CreateCatalogCategoryRequest,
   UpdateCatalogAttributeOptionRequest,
   UpdateCatalogAttributeRequest,
-  UpdateCatalogCategoryRequest,
 } from '../model';
 import { CatalogStore } from './catalog.store';
 import type { MutationHandlers } from './mutation-handlers';
@@ -37,9 +35,9 @@ export type { MutationHandlers };
  * 009b #N-7: no route reads a category's space-type mappings or searches categories, so
  * targeting is write-only again and the search filters the cached `/tree` client-side.
  *
- * Reorder is optimistic against the cache with rollback; all other mutations refetch.
- * This store is deliberately URL-agnostic — it never imports the Router. A mutation that
- * must move the URL (delete → go to the parent) reports upward and the page navigates.
+ * Every mutation refetches. This store is deliberately URL-agnostic — it never imports the
+ * Router. 009b #N-8: no category update, reorder, activate, clone, delete or unmap route
+ * exists, so those mutations are gone; create, move and map remain.
  */
 
 interface CatalogAdminState {
@@ -179,79 +177,12 @@ export const CatalogAdminStore = signalStore(
         createCategory(request: CreateCatalogCategoryRequest, handlers?: MutationHandlers): void {
           run(api.createCategory(request), 'cat.saveFailed', refresh, handlers);
         },
-        updateCategory(
-          categoryId: string,
-          request: UpdateCatalogCategoryRequest,
-          handlers?: MutationHandlers,
-        ): void {
-          run(api.updateCategory(categoryId, request), 'cat.saveFailed', refresh, handlers);
-        },
-        setCategoryActive(
-          categoryId: string,
-          isActive: boolean,
-          handlers?: MutationHandlers,
-        ): void {
-          run(api.setCategoryActive(categoryId, isActive), 'cat.statusFailed', refresh, handlers);
-        },
         moveCategory(
           categoryId: string,
           newParentId: string | null,
           handlers?: MutationHandlers,
         ): void {
           run(api.moveCategory(categoryId, { newParentId }), 'cat.moveFailed', refresh, handlers);
-        },
-        cloneCategory(
-          categoryId: string,
-          request: CloneCatalogCategoryRequest,
-          handlers?: MutationHandlers,
-        ): void {
-          run(api.cloneCategory(categoryId, request), 'cat.saveFailed', refresh, handlers);
-        },
-        /**
-         * Delete, then point at the parent. The URL is NOT touched here — the page owns
-         * `?category=` and navigates from its own `(deleted)` binding.
-         */
-        deleteCategory(
-          categoryId: string,
-          parentId: string | null,
-          handlers?: MutationHandlers,
-        ): void {
-          run(
-            api.deleteCategory(categoryId),
-            'cat.nodeInUse',
-            () => {
-              this.selectCategory(parentId);
-              refresh();
-            },
-            handlers,
-          );
-        },
-
-        /**
-         * Sibling reorder (Move up/down). NOT optimistic, unlike the v1 admin's
-         * `reorderChild` — `CatalogStore` has no `setCategories` mutator to patch ahead of
-         * the response (categories were never written to client-side before this run), so
-         * this sends the new order and refetches on success rather than inventing a
-         * write-path into a cache that has only ever been read into. `direction` is -1/+1.
-         */
-        reorderChild(parentId: string | null, categoryId: string, direction: -1 | 1): void {
-          const siblings = cache.categoryChildrenOf(parentId);
-          const index = siblings.findIndex((c) => c.id === categoryId);
-          const target = index + direction;
-          if (index < 0 || target < 0 || target >= siblings.length) return;
-
-          const reordered = [...siblings];
-          [reordered[index], reordered[target]] = [reordered[target], reordered[index]];
-          const items = reordered.map((c, i) => ({ id: c.id, sortOrder: i }));
-
-          patchState(store, { saving: true, error: null });
-          api.reorderCategories(parentId, { items }).subscribe({
-            next: () => {
-              patchState(store, { saving: false });
-              refresh();
-            },
-            error: () => patchState(store, { saving: false, error: 'cat.reorderFailed' }),
-          });
         },
 
         // ── Attributes + options (009b #39: add is POST /attributes { categoryId }) ─────
@@ -324,15 +255,6 @@ export const CatalogAdminStore = signalStore(
             handlers,
           );
         },
-        unmapSpaceType(categoryId: string, spaceTypeId: string, handlers?: MutationHandlers): void {
-          run(
-            api.unmapCategorySpaceType(categoryId, spaceTypeId),
-            'cat.targetingFailed',
-            () => undefined,
-            handlers,
-          );
-        },
-
         // ── Items (v2 — new in F6) ─────────────────────────────────────────
         //
         // Create/update + the attribute-values write are a TWO-STEP chain (create needs

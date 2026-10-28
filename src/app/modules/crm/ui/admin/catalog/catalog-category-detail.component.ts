@@ -5,7 +5,6 @@ import {
   effect,
   inject,
   Injector,
-  output,
   signal,
 } from '@angular/core';
 import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -46,8 +45,10 @@ import {
 
 /**
  * The detail rail for the current category (v2, Run B F6): bilingual identity, branch
- * rules, attribute definitions (own + inherited), items, targeting, and move/activate/
- * delete. Replaces `catalog-node-detail.component.ts`.
+ * rules, attribute definitions (own + inherited), items, targeting, and move. Replaces
+ * `catalog-node-detail.component.ts`. 009b #N-8: no category update, activate or delete
+ * route exists, so the identity form is read-only (disabled, no Save) and Activate/Delete
+ * are gone.
  *
  * Two things that existed in the v1 admin are gone, not merely changed: the
  * `isSelectable` checkbox and its invariant-enforcement (categories are ALWAYS branches
@@ -128,16 +129,6 @@ import {
               <pera-checkbox formControlName="isRequired">{{
                 catalog.t('cat.requiredL')
               }}</pera-checkbox>
-            </div>
-
-            <div class="flex items-center gap-2" *peraCan="PERM.crm.catalog.manage">
-              <pera-button
-                variant="primary"
-                size="sm"
-                [loading]="store.saving()"
-                (click)="save(c)"
-                >{{ catalog.t('cat.save') }}</pera-button
-              >
             </div>
           </div>
         </section>
@@ -519,12 +510,6 @@ import {
           <pera-button variant="secondary" size="sm" (click)="moving.set(!moving())">{{
             catalog.t('cat.move')
           }}</pera-button>
-          <pera-button variant="ghost" size="sm" (click)="toggleActive(c)">{{
-            c.isActive ? catalog.t('cat.deactivate') : catalog.t('cat.activate')
-          }}</pera-button>
-          <pera-button variant="danger" size="sm" class="ms-auto" (click)="remove(c)">{{
-            catalog.t('cat.delete')
-          }}</pera-button>
         </div>
 
         @if (moving()) {
@@ -566,11 +551,6 @@ export class CrmCatalogCategoryDetailComponent {
   /** Space types for the targeting card — one lookup, shared by every category. */
   private readonly spaceTypes = signal<CrmSpaceType[]>([]);
 
-  /**
-   * Emitted with the deleted category's parent id (`null` = root) once the delete
-   * succeeds. The page owns the `?category=` query param, so navigation belongs there.
-   */
-  readonly deleted = output<string | null>();
   readonly attributes = this.store.effectiveAttributes;
   readonly items = this.store.items;
 
@@ -678,6 +658,7 @@ export class CrmCatalogCategoryDetailComponent {
     });
 
     this.form.controls.imageUri.valueChanges.subscribe((v) => this.imagePreview.set(v ?? ''));
+    this.form.disable(); // 009b #N-8: no update route — the identity is read-only.
   }
 
   name(x: { nameEn: string; nameAr: string }): string {
@@ -719,28 +700,6 @@ export class CrmCatalogCategoryDetailComponent {
       });
     }
     return options;
-  }
-
-  save(category: CatalogCategory): void {
-    if (this.form.invalid) {
-      this.form.markAllAsTouched();
-      return;
-    }
-    const v = this.form.getRawValue();
-    this.store.updateCategory(
-      category.id,
-      {
-        code: category.code,
-        nameEn: v.nameEn.trim(),
-        nameAr: v.nameAr.trim(),
-        selectionMode: Number(v.selectionMode),
-        isRequired: v.isRequired,
-        descriptionEn: v.descriptionEn.trim() || null,
-        descriptionAr: v.descriptionAr.trim() || null,
-        imageUri: v.imageUri.trim() || null,
-      },
-      this.toastOn('cat.nodeSaved'),
-    );
   }
 
   /**
@@ -786,10 +745,6 @@ export class CrmCatalogCategoryDetailComponent {
     if (!id) return;
     this.store.mapSpaceType(category.id, id, this.toastOn('cat.nodeSaved'));
     this.targetType.set('');
-  }
-
-  unmapType(category: CatalogCategory, spaceTypeId: string): void {
-    this.store.unmapSpaceType(category.id, spaceTypeId, this.toastOn('cat.nodeSaved'));
   }
 
   /** Only one inline panel is open at a time — four stacked forms would be unreadable. */
@@ -911,33 +866,6 @@ export class CrmCatalogCategoryDetailComponent {
     void this.confirm
       .open({ title: this.catalog.t('cat.delete'), body: attr.nameEn, tone: 'danger' })
       .then((ok) => ok && this.store.deleteAttribute(attr.id));
-  }
-
-  toggleActive(category: CatalogCategory): void {
-    this.store.setCategoryActive(category.id, !category.isActive);
-  }
-
-  remove(category: CatalogCategory): void {
-    void this.confirm
-      .open({
-        title: this.catalog.t('cat.delete'),
-        body: this.catalog.t('cat.deleteConfirm'),
-        tone: 'danger',
-      })
-      .then(
-        (ok) =>
-          ok &&
-          this.store.deleteCategory(category.id, category.parentId, {
-            // The page owns `?category=`; without this the URL still points at the
-            // deleted category and a refresh would land on nothing.
-            onDone: () => this.deleted.emit(category.parentId),
-            onError: (err, fallback) =>
-              this.toast.show({
-                tone: 'danger',
-                message: this.catalog.t(domainErrorKey(err.code, fallback)),
-              }),
-          }),
-      );
   }
 
   doMove(category: CatalogCategory): void {

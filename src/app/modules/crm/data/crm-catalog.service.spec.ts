@@ -355,32 +355,6 @@ describe('CrmCatalogService', () => {
       expect(id).toBe('O');
     });
 
-    it('updateCategory() PUTs the full replacement — selectionMode/isRequired always sent', () => {
-      service
-        .updateCategory('cat-1', {
-          code: 'lighting',
-          nameEn: 'Lighting',
-          nameAr: 'إضاءة',
-          selectionMode: CatalogSelectionMode.Single,
-          isRequired: true,
-        })
-        .subscribe();
-
-      const req = http.expectOne(url('/crm/catalog/categories/cat-1'));
-      expect(req.request.method).toBe('PUT');
-      expect(req.request.body).toEqual({
-        code: 'lighting',
-        nameEn: 'Lighting',
-        nameAr: 'إضاءة',
-        selectionMode: CatalogSelectionMode.Single,
-        isRequired: true,
-        descriptionEn: null,
-        descriptionAr: null,
-        imageUri: null,
-      });
-      req.flush(null);
-    });
-
     it('moveCategory() PUTs to /parent, null = move to root', () => {
       service.moveCategory('cat-1', { newParentId: null }).subscribe();
 
@@ -390,53 +364,28 @@ describe('CrmCatalogService', () => {
       req.flush(null);
     });
 
-    it('reorderCategories() sends parentId as a query param, omitted for root siblings', () => {
-      service.reorderCategories(null, { items: [{ id: 'cat-1', sortOrder: 0 }] }).subscribe();
-      const req = http.expectOne((r) => r.url === url('/crm/catalog/categories/reorder'));
-      expect(req.request.method).toBe('PUT');
-      req.flush(null);
-    });
-
-    it('setCategoryActive() PUTs isActive', () => {
-      service.setCategoryActive('cat-1', false).subscribe();
-      const req = http.expectOne(url('/crm/catalog/categories/cat-1/active'));
-      expect(req.request.body).toEqual({ isActive: false });
-      req.flush(null);
-    });
-
-    it('cloneCategory() POSTs newParentId/newCode and returns the new id', () => {
-      let newId: string | undefined;
-      service
-        .cloneCategory('cat-1', { newParentId: 'cat-2', newCode: 'lighting_copy' })
-        .subscribe((id) => (newId = id));
-
-      const req = http.expectOne(url('/crm/catalog/categories/cat-1/clone'));
-      expect(req.request.method).toBe('POST');
-      expect(req.request.body).toEqual({ newParentId: 'cat-2', newCode: 'lighting_copy' });
-      req.flush('cloned-id');
-
-      expect(newId).toBe('cloned-id');
-    });
-
-    it('deleteCategory() DELETEs the category route', () => {
-      service.deleteCategory('cat-1').subscribe();
-      const req = http.expectOne(url('/crm/catalog/categories/cat-1'));
-      expect(req.request.method).toBe('DELETE');
-      req.flush(null);
-    });
-
     // 009b #37: CrmCatalogEndpoints.cs:42-47 takes the space type in the path, binds no body.
-    it('mapCategorySpaceType() / unmapCategorySpaceType() hit the space-types sub-route', () => {
+    it('mapCategorySpaceType() hits the space-types sub-route', () => {
       service.mapCategorySpaceType('cat-1', 'st-1').subscribe();
       const mapReq = http.expectOne(url('/crm/catalog/categories/cat-1/space-types/st-1'));
       expect(mapReq.request.method).toBe('POST');
       expect(mapReq.request.body).toBeNull();
       mapReq.flush(null);
-
-      service.unmapCategorySpaceType('cat-1', 'st-1').subscribe();
-      const unmapReq = http.expectOne(url('/crm/catalog/categories/cat-1/space-types/st-1'));
-      expect(unmapReq.request.method).toBe('DELETE');
-      unmapReq.flush(null);
     });
+  });
+
+  // 009b #N-8: CrmCatalogEndpoints.cs:27-47 maps category create, move and map only (C §2.11).
+  it('has no category update, reorder, activate, clone, delete or unmap (009b #N-8)', () => {
+    const methods = service as unknown as Record<string, unknown>;
+    for (const name of [
+      'updateCategory',
+      'reorderCategories',
+      'setCategoryActive',
+      'cloneCategory',
+      'deleteCategory',
+      'unmapCategorySpaceType',
+    ]) {
+      expect(methods[name], name).toBeUndefined();
+    }
   });
 });

@@ -2,6 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
 import { of } from 'rxjs';
 import { describe, expect, it } from 'vitest';
+import { PermissionsService } from '@platform/permissions/permissions.service';
 import { CrmLookupService } from '../../../data/crm-lookup.service';
 import { CatalogAdminStore } from '../../../stores/catalog-admin.store';
 import { CrmCatalogService } from '../../../data/crm-catalog.service';
@@ -88,5 +89,60 @@ describe('CrmCatalogCategoryDetailComponent — targeting read (009b #34)', () =
       'Not available yet.',
     );
     expect(el.textContent).not.toContain('No mappings');
+  });
+});
+
+// 009b #N-8..#N-10: C §2.11 — "No update, delete or activate route for categories, items,
+// attributes or options". The rail keeps create/move/map and the add actions only.
+describe('CrmCatalogCategoryDetailComponent — write actions without a route', () => {
+  const CATEGORY: CatalogCategory = {
+    id: 'C',
+    parentId: null,
+    code: 'c',
+    nameEn: 'Cat',
+    nameAr: 'Cat',
+    path: '/C/',
+    depth: 0,
+    selectionMode: CatalogSelectionMode.None,
+    isRequired: false,
+    sortOrder: 0,
+    isActive: true,
+    trackKey: 'C',
+  };
+
+  function render(over: Record<string, unknown> = {}): HTMLElement {
+    TestBed.configureTestingModule({
+      imports: [CrmCatalogCategoryDetailComponent],
+      providers: [
+        { provide: PermissionsService, useValue: { can: () => true } },
+        { provide: CrmLookupService, useValue: { spaceTypes: () => of(types) } },
+        { provide: CrmCatalogService, useValue: {} },
+        {
+          provide: CatalogAdminStore,
+          useValue: {
+            currentCategory: signal(CATEGORY),
+            effectiveAttributes: signal([]),
+            items: signal([]),
+            saving: signal(false),
+            ...over,
+          },
+        },
+      ],
+    });
+    const fixture = TestBed.createComponent(CrmCatalogCategoryDetailComponent);
+    fixture.detectChanges();
+    return fixture.nativeElement as HTMLElement;
+  }
+
+  const buttonTexts = (el: HTMLElement) =>
+    [...el.querySelectorAll('pera-button')].map((b) => b.textContent?.trim());
+
+  it('offers Move but no Save, Activate/Deactivate or Delete for the category (009b #N-8)', () => {
+    const texts = buttonTexts(render());
+
+    expect(texts).toContain('Move');
+    expect(texts).not.toContain('Save');
+    expect(texts).not.toContain('Deactivate');
+    expect(texts).not.toContain('Delete');
   });
 });

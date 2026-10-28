@@ -11,7 +11,6 @@ import type {
   CatalogCategory,
   CatalogItem,
   CatalogReorderRequest,
-  CloneCatalogCategoryRequest,
   CreateCatalogCategoryRequest,
   CreateCatalogItemRequest,
   ItemAttributeValue,
@@ -19,7 +18,6 @@ import type {
   MoveCatalogCategoryRequest,
   UpdateCatalogAttributeOptionRequest,
   UpdateCatalogAttributeRequest,
-  UpdateCatalogCategoryRequest,
   UpdateCatalogItemRequest,
 } from '../model';
 
@@ -54,6 +52,8 @@ import type {
  * 009b #N-7: the mappings read, the ancestors read, the category search and the single-item
  * read have no route (C §2.11), so `getCategorySpaceTypes`/`categoryAncestors`/
  * `searchCategories`/`getItem` are gone; ancestors and search derive from `/tree`.
+ * 009b #N-8: nor is there a category update, reorder, activate, clone, delete or unmap
+ * route; only create, move and map remain.
  */
 @Injectable({ providedIn: 'root' })
 export class CrmCatalogService extends ApiService {
@@ -115,24 +115,6 @@ export class CrmCatalogService extends ApiService {
   }
 
   /**
-   * `PUT /api/crm/catalog/categories/{categoryId}` → `204` — `crm.catalog.manage`.
-   * Full replacement of everything except `sortOrder` and `parentId` — see
-   * {@link reorderCategories} and {@link moveCategory} for those.
-   */
-  updateCategory(categoryId: string, request: UpdateCatalogCategoryRequest): Observable<void> {
-    return this.put<void>(`/crm/catalog/categories/${categoryId}`, {
-      code: request.code,
-      nameEn: request.nameEn,
-      nameAr: request.nameAr,
-      selectionMode: request.selectionMode,
-      isRequired: request.isRequired,
-      descriptionEn: request.descriptionEn ?? null,
-      descriptionAr: request.descriptionAr ?? null,
-      imageUri: request.imageUri ?? null,
-    });
-  }
-
-  /**
    * `PUT /api/crm/catalog/categories/{categoryId}/parent` → `204` — `crm.catalog.manage`.
    * `400 crm.catalog.CyclicMove` (009b #40; was `CycleDetected`) / `crm.catalog.InactiveAncestor`,
    * `400 crm.catalog.MaxDepthExceeded` (cap applies to the deepest descendant, not the
@@ -142,42 +124,6 @@ export class CrmCatalogService extends ApiService {
     return this.put<void>(`/crm/catalog/categories/${categoryId}/parent`, {
       newParentId: request.newParentId,
     });
-  }
-
-  /** `PUT /api/crm/catalog/categories/reorder?parentId=` → `204` — `crm.catalog.manage`. */
-  reorderCategories(parentId: string | null, request: CatalogReorderRequest): Observable<void> {
-    const query = parentId ? `?parentId=${parentId}` : '';
-    return this.put<void>(`/crm/catalog/categories/reorder${query}`, request);
-  }
-
-  /**
-   * `PUT /api/crm/catalog/categories/{categoryId}/active` → `204` — `crm.catalog.manage`.
-   * Cascades to the WHOLE subtree and every item under it, both directions.
-   */
-  setCategoryActive(categoryId: string, isActive: boolean): Observable<void> {
-    return this.put<void>(`/crm/catalog/categories/${categoryId}/active`, { isActive });
-  }
-
-  /**
-   * `POST /api/crm/catalog/categories/{categoryId}/clone` → `201` bare `Guid` —
-   * `crm.catalog.manage`. Deep-copies the subtree — categories, items, item specs,
-   * attributes and options.
-   */
-  cloneCategory(categoryId: string, request: CloneCatalogCategoryRequest): Observable<string> {
-    return this.post<unknown>(`/crm/catalog/categories/${categoryId}/clone`, {
-      newParentId: request.newParentId ?? null,
-      newCode: request.newCode,
-    }).pipe(map((r) => this.unwrap<string>(r)));
-  }
-
-  /**
-   * `DELETE /api/crm/catalog/categories/{categoryId}` → `204` — `crm.catalog.manage`.
-   * Hard delete, deepest-first. `409 crm.catalog.NodeInUse` — note the error name is
-   * `NodeInUse`, not `CategoryInUse`; there is no such code — raised when the subtree has
-   * recorded board rows (custom entries included) or still holds any item.
-   */
-  deleteCategory(categoryId: string): Observable<void> {
-    return this.delete<void>(`/crm/catalog/categories/${categoryId}`);
   }
 
   /**
@@ -190,14 +136,6 @@ export class CrmCatalogService extends ApiService {
       `/crm/catalog/categories/${categoryId}/space-types/${spaceTypeId}`,
       null,
     );
-  }
-
-  /**
-   * `DELETE /api/crm/catalog/categories/{categoryId}/space-types/{spaceTypeId}` → `204` —
-   * `crm.catalog.manage`. Removing the LAST mapping makes the category global, not hidden.
-   */
-  unmapCategorySpaceType(categoryId: string, spaceTypeId: string): Observable<void> {
-    return this.delete<void>(`/crm/catalog/categories/${categoryId}/space-types/${spaceTypeId}`);
   }
 
   /**
