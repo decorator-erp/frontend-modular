@@ -61,13 +61,13 @@ export * from './space.model';
 // §3a — Lead intake: qualification data captured at the lead stage.
 //
 // 1:1 with the lead, upserted separately (`PUT /api/crm/leads/{id}/intake`).
-// Sector-aware: exactly zero or one detail block, matching `projectSector`. Only
+// Sector-aware: exactly zero or one detail block, matching `sector`. Only
 // `residential` ships today — future sectors add their own optional block the same
 // way. Enum fields carry their real enum types here (not bare `number`) because the
 // shared validators and both intake forms switch on them.
 // ---------------------------------------------------------------------------
 
-/** Residential sector block (مدلول السكني) — present only when `projectSector === Residential`. */
+/** Residential sector block (مدلول السكني) — present only when `sector === Residential`. */
 export interface ResidentialIntakeRequest {
   unitType?: UnitType | null;
   unitCondition?: UnitCondition | null;
@@ -80,7 +80,8 @@ export interface LeadIntakeRequest {
   /** → `Client` on convert (fill-blanks). */
   jobTitle?: string | null;
   clientAddress?: string | null;
-  projectSector?: ProjectSector | null;
+  /** `CrmLeadIntakeData.Sector` (`LeadContracts.cs:17`); the wire name is `sector` (009b #6). */
+  sector?: ProjectSector | null;
   /** → brief head at period-open (copy-once). */
   unitAddress?: string | null;
   areaSqm?: number | null;

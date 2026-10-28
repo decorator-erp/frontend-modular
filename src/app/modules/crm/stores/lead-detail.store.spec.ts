@@ -59,4 +59,30 @@ describe('LeadDetailStore', () => {
       expect(s.intake()).toEqual({});
     });
   });
+
+  describe('upsertIntake (009b #6) — a concurrency 409 reloads', () => {
+    it('reloads the lead and intake on 409 crm.leads.ConcurrentUpdate, not onError', () => {
+      const s = store();
+      let failed = false;
+      s.upsertIntake('L', { sector: 1 }, { onError: () => (failed = true) });
+
+      const put = http.expectOne({ method: 'PUT', url: url('/crm/leads/L/intake') });
+      expect(put.request.body).toEqual({ sector: 1 });
+      put.flush(
+        {
+          status: 409,
+          title: 'crm.leads.ConcurrentUpdate',
+          errors: { 'crm.leads.ConcurrentUpdate': ['changed'] },
+        },
+        { status: 409, statusText: 'Conflict' },
+      );
+
+      http.expectOne({ method: 'GET', url: url('/crm/leads/L') }).flush(lead);
+      http
+        .expectOne({ method: 'GET', url: url('/crm/leads/L/intake') })
+        .flush({ leadId: 'L', data: {} });
+      expect(failed).toBe(false);
+      expect(s.savingIntake()).toBe(false);
+    });
+  });
 });

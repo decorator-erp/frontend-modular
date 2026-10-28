@@ -530,6 +530,11 @@ export const ERROR_MESSAGES_AR: Record<string, string> = {
   'crm.leads.ResidentialWithoutSector': 'لا تُحفظ التفاصيل السكنية إلا عندما يكون القطاع سكنيًا.',
   'crm.leads.ConcurrentUpdate': 'عدّل شخص آخر هذا العميل المحتمل. أعِد التحميل وحاول مرة أخرى.',
   'crm.leads.InvalidClientId': 'اختر عميلًا لتحويل هذا العميل المحتمل.',
+  // 009b #6: the lead intake editor is bilingual.
+  'crm.leads.AlreadyConverted': 'تم تحويل هذا العميل المحتمل بالفعل.',
+  'crm.leads.DesignerExperienceWithoutUse':
+    'لا يمكن تحديد تجربة المصمم إلا إذا سبق للعميل التعامل مع مصمم.',
+  'crm.leads.ExperienceReasonWithoutExperience': 'يتطلب سبب التجربة تحديد تجربة المصمم أولًا.',
   'crm.briefs.UnitDetailsRequired':
     'نوع الوحدة وحالتها مطلوبان ما لم تكن بيانات العميل المحتمل تتضمّنهما.',
   'crm.briefs.HeadLockedPendingApproval': 'لا يمكن تعديل رأس الموجز وهو بانتظار قرار العميل.',

@@ -511,7 +511,7 @@ export class IntakePageComponent {
 
   protected readonly failureMessage = computed(() => {
     switch (this.store.errorCode()) {
-      case 'crm.leads.SectorMismatch':
+      case 'crm.leads.ResidentialWithoutSector':
         return this.catalog.t('public.errSector');
       case 'crm.leads.DesignerExperienceWithoutUse':
         return this.catalog.t('public.errDesignerUse');
@@ -698,7 +698,7 @@ export class IntakePageComponent {
     const intake: LeadIntakeRequest = {
       jobTitle: v.jobTitle.trim() || null,
       clientAddress: v.clientAddress.trim() || null,
-      projectSector: sector,
+      sector,
       unitAddress: v.unitAddress.trim() || null,
       areaSqm: v.areaSqm.trim() ? Number(v.areaSqm) : null,
       usedDesignerBefore: v.usedDesignerBefore,
