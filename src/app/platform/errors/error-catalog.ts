@@ -590,6 +590,9 @@ export const ERROR_MESSAGES_AR: Record<string, string> = {
   'crm.meetings.SlotNotFound': 'الموعد غير موجود.',
   'crm.meetings.ConcurrentUpdate': 'عدّل شخص آخر الاجتماع. أعِد التحميل وحاول مرة أخرى.',
   'crm.meetings.SlotExpired': 'مضى وقت بدء هذا الموعد. اقترح وقتًا جديدًا.',
+  // FINDING-5-2: the two slot/meeting codes rows 20/21 left without Arabic.
+  'crm.meetings.SlotNotProposed': 'لا يُقبل أو يُرفض إلا موعد مقترح.',
+  'crm.meetings.AlreadyStarted': 'بدأ هذا الاجتماع بالفعل ولم يعد تغييره ممكنًا.',
   'crm.notes.ProjectMismatch': 'مشروع الملاحظة لا يخص هذا العميل.',
   'crm.notes.NotAuthor': 'لا يعدّل هذه الملاحظة إلا كاتبها.',
   'crm.artifacts.DocumentNotFound': 'المستند غير موجود في هذا المشروع.',

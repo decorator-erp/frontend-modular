@@ -992,7 +992,8 @@ export const EN = {
   'sched.coord': 'Nourhan Adel',
   'sched.coordLbl': 'Coordinator',
   'sched.csFreeTap': 'Free — tap to request',
-  'sched.csHeldB': 'awaiting employee confirmation. Hold expires in 24h.',
+  'sched.csHeldB':
+    'awaiting employee confirmation. If it is not confirmed before the slot starts, the request lapses.',
   'sched.csHeldT': 'Slot held.',
   'sched.csRequest': 'Request',
   'sched.csRequestFailed': 'Could not send your request. Please try again.',

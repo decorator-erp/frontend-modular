@@ -931,7 +931,7 @@ export const AR: Partial<Record<CatalogKey, string>> = {
   'sched.coord': 'نورهان عادل',
   'sched.coordLbl': 'المنسقة',
   'sched.csFreeTap': 'حر — اضغط للطلب',
-  'sched.csHeldB': 'بانتظار تأكيد الموظف. ينتهي الحجز خلال 24 ساعة.',
+  'sched.csHeldB': 'بانتظار تأكيد الموظف. إن لم يُؤكَّد قبل بدء الموعد يسقط الطلب.',
   'sched.csHeldT': 'الموعد محجوز.',
   'sched.csRequest': 'طلب',
   'sched.csRequestFailed': 'تعذّر إرسال طلبك. حاول مرة أخرى.',
