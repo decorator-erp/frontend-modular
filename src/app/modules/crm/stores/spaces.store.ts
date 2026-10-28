@@ -7,22 +7,21 @@ import { CrmBriefService } from '../data/crm-brief.service';
 import { CrmLookupService } from '../data/crm-lookup.service';
 import { ErrorHandlerService } from '@platform/http/error-handler.service';
 import type { CatalogKey } from '@platform/i18n/catalog/en';
-import { ApprovalState, CrmProvisionStatus } from '../model/crm-enums';
+import { ApprovalState } from '../model/crm-enums';
 import type {
   BriefSpace,
   CreateSpaceRequest,
   CrmSpace,
   CrmSpaceType,
-  ProvisionGroup,
-  ProvisionSummary,
   UpdateSpaceRequest,
 } from '../model';
 import type { MutationHandlers } from './mutation-handlers';
 
 /**
- * Route-scoped state for a project's spaces page — the registry and provisioning, plus the
- * project brief so the per-space brief note has something to bind. 009b #N-5: no space-item
- * routes exist on the backend, so the per-space board and completeness are gone.
+ * Route-scoped state for a project's spaces page — the registry, plus the project brief so the
+ * per-space brief note has something to bind. 009b #N-5: no space-item routes exist on the
+ * backend, so the per-space board and completeness are gone. 009b #N-6: nor do reorder, delete
+ * or the provisioning reads.
  *
  * The brief is loaded here (core is importable from any feature) and entries are indexed
  * by `spaceId`; the *current* entry for a space is the newest one not referenced by any
@@ -33,8 +32,6 @@ interface SpacesState {
   projectId: string | null;
   spaces: CrmSpace[];
   spaceTypes: CrmSpaceType[];
-  provisioning: ProvisionGroup[];
-  provisioningSummary: ProvisionSummary[];
   /** The current (newest, not-superseded) brief entry per space id. */
   currentEntryBySpace: Record<string, BriefSpace>;
   briefId: string | null;
@@ -48,8 +45,6 @@ const INITIAL: SpacesState = {
   projectId: null,
   spaces: [],
   spaceTypes: [],
-  provisioning: [],
-  provisioningSummary: [],
   currentEntryBySpace: {},
   briefId: null,
   loading: false,
@@ -91,9 +86,9 @@ export const SpacesStore = signalStore(
     ) => {
       return {
         /**
-         * The full spaces-page load: the registry, the project brief, and the space-type lookup. Expensive by design — a screen that
-         * only needs one slice should set the project with `setProject()` and call just
-         * the loader it needs (see the provisioning page).
+         * The full spaces-page load: the registry, the project brief, and the space-type
+         * lookup. A screen that only needs one slice should set the project with
+         * `setProject()` and call just the loader it needs.
          */
         load(projectId: string): void {
           patchState(store, { projectId, loading: true, error: null });
@@ -140,25 +135,6 @@ export const SpacesStore = signalStore(
             });
         },
 
-        loadProvisioning(status?: CrmProvisionStatus | null): void {
-          const projectId = store.projectId();
-          if (!projectId) return;
-          patchState(store, { loading: true });
-          spacesApi.provisioning(projectId, status).subscribe({
-            next: (provisioning) => patchState(store, { provisioning, loading: false }),
-            error: () => patchState(store, { loading: false, error: 'space.provLoadFailed' }),
-          });
-        },
-
-        loadProvisioningSummary(): void {
-          const projectId = store.projectId();
-          if (!projectId) return;
-          spacesApi.provisioningSummary(projectId).subscribe({
-            next: (provisioningSummary) => patchState(store, { provisioningSummary }),
-            error: () => patchState(store, { error: 'space.provLoadFailed' }),
-          });
-        },
-
         currentEntryFor(spaceId: string): BriefSpace | undefined {
           return store.currentEntryBySpace()[spaceId];
         },
@@ -200,45 +176,10 @@ export const SpacesStore = signalStore(
           });
         },
 
-        /**
-         * Optimistic sibling reorder (Move up/down) with rollback — mirrors
-         * `CatalogAdminStore.reorderChild`. `direction` is -1 or +1.
-         */
-        reorderSpace(spaceId: string, direction: -1 | 1): void {
-          const projectId = store.projectId();
-          if (!projectId) return;
-          const ordered = [...store.spaces()].sort((a, b) => a.sortOrder - b.sortOrder);
-          const index = ordered.findIndex((s) => s.id === spaceId);
-          const target = index + direction;
-          if (index < 0 || target < 0 || target >= ordered.length) return;
-
-          [ordered[index], ordered[target]] = [ordered[target], ordered[index]];
-          const items = ordered.map((s, i) => ({ id: s.id, sortOrder: i }));
-          const order = new Map(items.map((it) => [it.id, it.sortOrder]));
-
-          const snapshot = store.spaces();
-          patchState(store, {
-            spaces: snapshot
-              .map((s) => (order.has(s.id) ? { ...s, sortOrder: order.get(s.id)! } : s))
-              .sort((a, b) => a.sortOrder - b.sortOrder),
-          });
-
-          spacesApi.reorder(projectId, { items }).subscribe({
-            error: () => patchState(store, { spaces: snapshot, error: 'space.saveFailed' }),
-          });
-        },
-
         setSpaceActive(spaceId: string, isActive: boolean): void {
           spacesApi.setActive(spaceId, isActive).subscribe({
             next: () => this.loadSpaces(),
             error: () => patchState(store, { error: 'space.statusFailed' }),
-          });
-        },
-
-        deleteSpace(spaceId: string): void {
-          spacesApi.remove(spaceId).subscribe({
-            next: () => this.loadSpaces(),
-            error: () => patchState(store, { error: 'space.inUse' }),
           });
         },
 

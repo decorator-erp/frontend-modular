@@ -457,6 +457,7 @@ export const EN = {
   'space.provOccurrences': 'Occurrences',
   'space.provSpaces': 'Spaces',
   'space.provEmpty': 'Nothing to provision yet.',
+  'space.provNotAvailable': 'Provisioning is not available yet.',
   // failures — patched into the store as KEYS so they translate (never English prose)
   'space.loadFailed': 'Could not load the spaces.',
   'space.boardLoadFailed': 'Could not load the board.',

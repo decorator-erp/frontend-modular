@@ -12,7 +12,6 @@ import { CatalogService } from '@platform/i18n/catalog.service';
 import { CanDirective, PERM } from '@platform/permissions';
 import type { CrmSpace } from '../../model';
 import {
-  ConfirmService,
   ModalService,
   PeraAlertComponent,
   PeraButtonComponent,
@@ -28,7 +27,8 @@ import { AddSpaceDialogData, CrmAddSpaceDialogComponent } from './add-space-dial
  * space's brief note. Two spaces of one type ("Kids room 1" / "Kids room 2") is the whole point.
  *
  * 009b #N-5: no space-item routes exist on the backend, so the board and completeness panels
- * and the storefront route are gone.
+ * and the storefront route are gone. 009b #N-6: nor do reorder or delete, so the rail offers
+ * rename and activate/deactivate only.
  */
 @Component({
   selector: 'app-crm-spaces-page',
@@ -74,7 +74,7 @@ import { AddSpaceDialogData, CrmAddSpaceDialogComponent } from './add-space-dial
         flex-1 select button plus separate action columns.
       -->
       <aside class="flex flex-col gap-2">
-        @for (space of store.spaces(); track space.id; let i = $index) {
+        @for (space of store.spaces(); track space.id) {
           <div
             class="flex items-stretch gap-1 rounded-card border bg-surface"
             [class.border-accent]="space.id === selectedId()"
@@ -104,27 +104,6 @@ import { AddSpaceDialogData, CrmAddSpaceDialogComponent } from './add-space-dial
             <div class="flex flex-col justify-center gap-1 pe-1" *peraCan="PERM.crm.spaces.manage">
               <button
                 type="button"
-                class="p-1 rounded hover:bg-surface-muted disabled:opacity-30"
-                [disabled]="i === 0"
-                [attr.aria-label]="catalog.t('cat.moveUp')"
-                (click)="store.reorderSpace(space.id, -1)"
-              >
-                <pera-icon name="chevron-up" [size]="14" />
-              </button>
-              <button
-                type="button"
-                class="p-1 rounded hover:bg-surface-muted disabled:opacity-30"
-                [disabled]="i === store.spaces().length - 1"
-                [attr.aria-label]="catalog.t('cat.moveDown')"
-                (click)="store.reorderSpace(space.id, 1)"
-              >
-                <pera-icon name="chevron-down" [size]="14" />
-              </button>
-            </div>
-
-            <div class="flex flex-col justify-center gap-1 pe-1" *peraCan="PERM.crm.spaces.manage">
-              <button
-                type="button"
                 class="p-1 rounded hover:bg-surface-muted"
                 [attr.aria-label]="catalog.t('space.rename')"
                 (click)="renameSpace(space)"
@@ -140,14 +119,6 @@ import { AddSpaceDialogData, CrmAddSpaceDialogComponent } from './add-space-dial
                 (click)="store.setSpaceActive(space.id, !space.isActive)"
               >
                 <pera-icon [name]="space.isActive ? 'eye-off' : 'eye'" [size]="14" />
-              </button>
-              <button
-                type="button"
-                class="p-1 rounded hover:bg-surface-muted text-danger"
-                [attr.aria-label]="catalog.t('space.delete')"
-                (click)="deleteSpace(space)"
-              >
-                <pera-icon name="trash-2" [size]="14" />
               </button>
             </div>
           </div>
@@ -172,7 +143,6 @@ export class CrmSpacesPageComponent {
   protected readonly store = inject(SpacesStore);
   protected readonly catalog = inject(CatalogService);
   private readonly modal = inject(ModalService);
-  private readonly confirm = inject(ConfirmService);
   /**
    * Lent to every dialog opened from here: `ModalService` builds them off the ROOT injector,
    * so without this the route-provided `SpacesStore` would be invisible and they would have to
@@ -227,18 +197,6 @@ export class CrmSpacesPageComponent {
       data,
       injector: this.injector,
     });
-  }
-
-  /** A space referenced by an entry or a board row cannot be deleted — the store surfaces
-   * `crm.spaces.SpaceInUse` and the user is told to deactivate instead. */
-  deleteSpace(space: CrmSpace): void {
-    void this.confirm
-      .open({
-        title: this.catalog.t('space.delete'),
-        body: this.catalog.t('space.deleteConfirm'),
-        tone: 'danger',
-      })
-      .then((ok) => ok && this.store.deleteSpace(space.id));
   }
 
   addSpace(): void {

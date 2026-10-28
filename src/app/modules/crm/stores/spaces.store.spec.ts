@@ -97,10 +97,6 @@ function spacesApiMock() {
     create: vi.fn().mockReturnValue(of('new-id')),
     update: vi.fn().mockReturnValue(of(undefined)),
     setActive: vi.fn().mockReturnValue(of(undefined)),
-    remove: vi.fn().mockReturnValue(of(undefined)),
-    reorder: vi.fn().mockReturnValue(of(undefined)),
-    provisioning: vi.fn().mockReturnValue(of([])),
-    provisioningSummary: vi.fn().mockReturnValue(of([])),
   };
 }
 
@@ -147,13 +143,6 @@ describe('SpacesStore', () => {
       s.setProject(PROJECT_ID);
       expect(spacesApi.list).not.toHaveBeenCalled();
       expect(briefApi.getBrief).not.toHaveBeenCalled();
-    });
-
-    it('is enough for loadProvisioning to work', () => {
-      const s = store();
-      s.setProject(PROJECT_ID);
-      s.loadProvisioning();
-      expect(spacesApi.provisioning).toHaveBeenCalledWith(PROJECT_ID, undefined);
     });
   });
 
@@ -275,5 +264,20 @@ describe('SpacesStore', () => {
       expect(s.spaces()).toEqual([SPACE]);
       expect(s.loading()).toBe(false);
     });
+  });
+
+  // 009b #N-6: no reorder, delete or provisioning route (EP/CrmSpaceEndpoints.cs:25-71).
+  it('has no reorder, delete or provisioning (009b #N-6)', () => {
+    const s = store() as unknown as Record<string, unknown>;
+    for (const name of [
+      'reorderSpace',
+      'deleteSpace',
+      'loadProvisioning',
+      'loadProvisioningSummary',
+      'provisioning',
+      'provisioningSummary',
+    ]) {
+      expect(s[name], name).toBeUndefined();
+    }
   });
 });

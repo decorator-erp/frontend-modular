@@ -416,6 +416,7 @@ export const AR: Partial<Record<CatalogKey, string>> = {
   'space.provOccurrences': 'التكرارات',
   'space.provSpaces': 'المساحات',
   'space.provEmpty': 'لا شيء للتجهيز بعد.',
+  'space.provNotAvailable': 'التجهيز غير متاح بعد.',
   'space.loadFailed': 'تعذّر تحميل المساحات.',
   'space.boardLoadFailed': 'تعذّر تحميل اللوحة.',
   'space.completenessFailed': 'تعذّر تحميل حالة الاكتمال.',
