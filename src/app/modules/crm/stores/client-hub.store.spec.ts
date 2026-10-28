@@ -47,7 +47,8 @@ describe('ClientHubStore', () => {
   });
 
   function flushSiblings(contacts: unknown[]): void {
-    http.expectOne((r) => r.url === url('/projects/by-client/C')).flush({ items: [] });
+    // 008b #1: a client's projects come from GET /api/projects, filtered on clientId client-side.
+    http.expectOne((r) => r.url === url('/projects')).flush({ items: [] });
     http.expectOne(url('/crm/clients/C/contacts')).flush(contacts);
     http.expectOne(url('/crm/clients/C/notes')).flush([]);
   }
