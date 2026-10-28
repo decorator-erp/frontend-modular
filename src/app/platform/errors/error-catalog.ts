@@ -479,6 +479,7 @@ export const ERROR_MESSAGES: Record<string, string> = {
   // From `Projects.Domain/Errors/Errors.cs`. `projects.NotFound` and `stage_templates.NotFound`
   // are already above; only their Arabic twins are new.
   'projects.AccessDenied': 'You do not have access to this project.',
+  'projects.ClientNotFound': 'The client was not found or is inactive.',
   'projects.scope.Confirmed': 'The scope of work is confirmed and can no longer be changed.',
   'projects.scope.Empty': 'A scope of work needs at least one item to be confirmed.',
   'projects.scope.DurationRequired': 'Set the duration before confirming the scope of work.',
@@ -615,6 +616,7 @@ export const ERROR_MESSAGES_AR: Record<string, string> = {
   // CRM-API-CONTRACT §5.2 — scope of work and projects
   'projects.NotFound': 'المشروع غير موجود.',
   'projects.AccessDenied': 'ليس لديك وصول إلى هذا المشروع.',
+  'projects.ClientNotFound': 'العميل غير موجود أو غير مفعّل.',
   'projects.scope.Confirmed': 'نطاق العمل مؤكَّد ولم يعد قابلًا للتعديل.',
   'projects.scope.Empty': 'يحتاج نطاق العمل إلى بند واحد على الأقل لتأكيده.',
   'projects.scope.DurationRequired': 'حدّد المدة قبل تأكيد نطاق العمل.',

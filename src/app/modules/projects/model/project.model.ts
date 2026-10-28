@@ -246,18 +246,19 @@ export interface TaskAttachment {
 
 // ---- Request payloads ------------------------------------------------------
 
+/** Mirrors CreateProjectCommand (008b #2). The server sets the status; there is no budget field. */
 export interface CreateProjectRequest {
+  /** Required, ≤ 50 chars (CreateProjectCommandValidator). */
+  code: string;
   name: string;
   address: string;
-  estimatedBudget: number;
   clientId: string;
-  status: ProjectStatus;
   workflowType: WorkflowType;
   stageTemplateId?: string | null;
   notes?: string | null;
   description?: string | null;
-  startDate?: string | null;
-  endDate?: string | null;
+  estimatedStartDate?: string | null;
+  estimatedEndDate?: string | null;
 }
 export interface UpdateProjectRequest {
   name: string;

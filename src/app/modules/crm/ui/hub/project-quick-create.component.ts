@@ -126,9 +126,7 @@ export class CrmProjectQuickCreateComponent {
       code: v.code.trim(),
       name: v.name.trim(),
       address: v.address.trim(),
-      estimatedBudget: Number(v.estimatedBudget),
       clientId: this.data.clientId,
-      status: 'Draft',
       workflowType: 'FreeStyle',
       stageTemplateId: null,
     } as unknown as CreateProjectRequest;

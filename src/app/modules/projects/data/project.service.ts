@@ -97,13 +97,13 @@ export class ProjectService extends ApiService {
     );
   }
 
+  /** `POST /api/projects` → 200 `{ projectId }` (008b #2). */
   create(req: CreateProjectRequest): Observable<string> {
     const body = {
       ...req,
-      status: this.statusInt(req.status),
       workflowType: this.workflowInt(req.workflowType),
     };
-    return this.post<unknown>('/projects', body).pipe(map((r) => this.unwrap<string>(r)));
+    return this.post<unknown>('/projects', body).pipe(map((r) => this.unwrapId(r, 'projectId')));
   }
 
   update(id: string, req: UpdateProjectRequest): Observable<unknown> {
