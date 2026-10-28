@@ -1,0 +1,176 @@
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  inject,
+  input,
+  output,
+  signal,
+} from '@angular/core';
+import { FormsModule } from '@angular/forms';
+import { PeraDateInputComponent, PeraFormFieldComponent, PeraInputComponent } from '@ds';
+import type { CatalogKey } from '@platform/i18n/catalog/en';
+import { CatalogService } from '@platform/i18n/catalog.service';
+import { formatCairoDate } from '@platform/i18n/intl-locale';
+import { ScopeOfWork, UpdateScopeOfWorkHeaderRequest } from '../../model/scope-of-work.model';
+import type { SowHeaderStatus } from '../../stores/scope-of-work.store';
+import { InnerInputLabelDirective } from './inner-input-label.directive';
+
+/** Server limits (`UpdateScopeOfWorkHeaderCommandValidator`, C §8.4.15). */
+const DURATION_MIN = 1;
+const DURATION_MAX = 3650;
+const START_MIN = '2000-01-01';
+const START_MAX = '2100-12-31';
+
+const CARD = 'bg-surface border border-border p-5 flex flex-col gap-3 min-w-0';
+const HEADING = 'm-0 fs-h3 font-semibold text-text-primary';
+
+type HeaderField = 'duration' | 'start';
+
+/**
+ * The scope-of-work header (B7, B9): duration, planned start and the server's estimated end.
+ * Presentational: every change emits ONE full header (all five fields, `adjustmentAmount`
+ * always), built from the stored values plus the change, and the page calls the store. There
+ * is no "Save draft": each change saves itself and the quiet status says so (C §8.4.6-7).
+ */
+@Component({
+  selector: 'app-sow-summary',
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [
+    FormsModule,
+    InnerInputLabelDirective,
+    PeraDateInputComponent,
+    PeraFormFieldComponent,
+    PeraInputComponent,
+  ],
+  host: { class: 'flex flex-col gap-4 min-w-0' },
+  template: `
+    <p class="m-0 min-h-5 fs-caption text-text-muted text-end" role="status" aria-live="polite">
+      {{ statusText() }}
+    </p>
+
+    <section class="${CARD}" aria-labelledby="sow-duration-heading">
+      <h2 id="sow-duration-heading" class="${HEADING}">{{ catalog.t('sow.duration') }}</h2>
+      <div class="grid grid-cols-2 gap-3">
+        <pera-form-field [label]="catalog.t('sow.durationDays')" [error]="errorText('duration')">
+          <pera-input
+            type="number"
+            [appInnerInputLabel]="catalog.t('sow.durationDays')"
+            [ngModel]="scope().durationDays ?? ''"
+            [disabled]="!editable()"
+            [error]="errors()['duration'] ? 'invalid' : undefined"
+            (change)="onDuration($event)"
+          />
+        </pera-form-field>
+        <pera-form-field [label]="catalog.t('sow.plannedStart')" [error]="errorText('start')">
+          <pera-date-input
+            [appInnerInputLabel]="catalog.t('sow.plannedStart')"
+            [min]="startMin"
+            [max]="startMax"
+            [ngModel]="scope().plannedStartDate ?? ''"
+            [disabled]="!editable()"
+            [error]="errors()['start'] ? 'invalid' : undefined"
+            (change)="onStart($event)"
+          />
+        </pera-form-field>
+      </div>
+      <div class="flex items-center justify-between gap-3 bg-surface-muted px-3 py-2.5">
+        <span class="text-text-secondary">{{ catalog.t('sow.estimatedEnd') }}</span>
+        <strong class="text-text-primary" data-estimated-end>{{ endText() }}</strong>
+      </div>
+    </section>
+  `,
+})
+export class SowSummaryComponent {
+  protected readonly catalog = inject(CatalogService);
+
+  readonly scope = input.required<ScopeOfWork>();
+  /** `scope.manage`, a Draft and a Stage-workflow project (B11, B12, B15). */
+  readonly editable = input(false);
+  /** B9: the store's header save status. */
+  readonly saveStatus = input<SowHeaderStatus>('idle');
+
+  /** One full header, ready for `PUT …/scope-of-work` (B9). */
+  readonly headerChange = output<UpdateScopeOfWorkHeaderRequest>();
+
+  protected readonly startMin = START_MIN;
+  protected readonly startMax = START_MAX;
+
+  /** Client-side check failures (they block the call, B7). */
+  protected readonly errors = signal<Partial<Record<HeaderField, CatalogKey>>>({});
+
+  protected readonly statusText = computed(() => {
+    const status = this.saveStatus();
+    if (status === 'saving') return this.catalog.t('sow.saving');
+    if (status === 'saved') return this.catalog.t('sow.saved');
+    return '';
+  });
+
+  /** B7: the server's `estimatedEndDate`; "Set a start date" before a start, "—" with no duration. */
+  protected readonly endText = computed(() => {
+    const s = this.scope();
+    if (s.estimatedEndDate) {
+      return formatCairoDate(`${s.estimatedEndDate}T00:00:00Z`, this.catalog.locale());
+    }
+    return s.durationDays ? this.catalog.t('sow.setStartDate') : '—';
+  });
+
+  protected errorText(field: HeaderField): string | undefined {
+    const key = this.errors()[field];
+    return key ? this.catalog.t(key) : undefined;
+  }
+
+  protected onDuration(event: Event): void {
+    if (!this.editable()) return;
+    const raw = valueOf(event).trim();
+    const days = raw === '' ? null : Number(raw);
+    if (days !== null && (!Number.isInteger(days) || days < DURATION_MIN || days > DURATION_MAX)) {
+      this.setError('duration', 'sow.durationInvalid');
+      return;
+    }
+    this.setError('duration', null);
+    if (days !== this.scope().durationDays) this.emit({ durationDays: days });
+  }
+
+  protected onStart(event: Event): void {
+    if (!this.editable()) return;
+    const raw = valueOf(event).trim();
+    const date = raw === '' ? null : raw;
+    if (
+      date !== null &&
+      (!/^\d{4}-\d{2}-\d{2}$/.test(date) || date < START_MIN || date > START_MAX)
+    ) {
+      this.setError('start', 'sow.startInvalid');
+      return;
+    }
+    this.setError('start', null);
+    if (date !== this.scope().plannedStartDate) this.emit({ plannedStartDate: date });
+  }
+
+  /** The stored header plus `change`: all five fields, every time (a full replace, C §8.4.6). */
+  private emit(change: Partial<UpdateScopeOfWorkHeaderRequest>): void {
+    const s = this.scope();
+    this.headerChange.emit({
+      durationDays: s.durationDays,
+      plannedStartDate: s.plannedStartDate,
+      adjustmentAmount: s.adjustmentAmount,
+      adjustmentNote: s.adjustmentNote,
+      notes: s.notes,
+      ...change,
+    });
+  }
+
+  private setError(field: HeaderField, key: CatalogKey | null): void {
+    this.errors.update((all) => {
+      const next = { ...all };
+      if (key) next[field] = key;
+      else delete next[field];
+      return next;
+    });
+  }
+}
+
+function valueOf(event: Event): string {
+  const target = event.target as HTMLInputElement | null;
+  return target?.value ?? '';
+}

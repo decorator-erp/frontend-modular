@@ -1193,6 +1193,15 @@ export const EN = {
   'sow.addedRemove': 'Added · remove',
   'sow.noTemplates': 'No stage templates yet.',
   'sow.noStages': 'This template has no stages.',
+  'sow.duration': 'Duration',
+  'sow.durationDays': 'Project duration (days)',
+  'sow.plannedStart': 'Project start',
+  'sow.estimatedEnd': 'Estimated end',
+  'sow.setStartDate': 'Set a start date',
+  'sow.durationInvalid': 'Enter a whole number of days from 1 to 3650.',
+  'sow.startInvalid': 'Enter a date from 2000-01-01 to 2100-12-31.',
+  'sow.saving': 'Saving…',
+  'sow.saved': 'Saved',
 } as const;
 
 /** The key set of record. Every catalog lookup is typed against this. */

@@ -1120,4 +1120,13 @@ export const AR: Partial<Record<CatalogKey, string>> = {
   'sow.addedRemove': 'مُضاف · حذف',
   'sow.noTemplates': 'لا توجد قوالب مراحل بعد.',
   'sow.noStages': 'لا يحتوي هذا القالب على مراحل.',
+  'sow.duration': 'المدة',
+  'sow.durationDays': 'مدة المشروع (بالأيام)',
+  'sow.plannedStart': 'بداية المشروع',
+  'sow.estimatedEnd': 'النهاية المتوقعة',
+  'sow.setStartDate': 'حدّد تاريخ البدء',
+  'sow.durationInvalid': 'أدخل عددًا صحيحًا من الأيام من 1 إلى 3650.',
+  'sow.startInvalid': 'أدخل تاريخًا من 2000-01-01 إلى 2100-12-31.',
+  'sow.saving': 'جارٍ الحفظ…',
+  'sow.saved': 'تم الحفظ',
 };

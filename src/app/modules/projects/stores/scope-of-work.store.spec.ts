@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { HttpErrorResponse } from '@angular/common/http';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { of, throwError } from 'rxjs';
+import { of, Subject, throwError } from 'rxjs';
 import { ToastService } from '@platform/feedback/toast.service';
 import { ScopeOfWorkService } from '../data/scope-of-work.service';
 import { ProjectService } from '../data/project.service';
@@ -153,6 +153,72 @@ describe('ScopeOfWorkStore (sow #3)', () => {
     expect(s.error()).toBeTruthy();
     expect(s.error()).not.toContain('projects.scope.Confirmed');
     expect(api['getScope']).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('ScopeOfWorkStore — header (sow #5)', () => {
+  let api: Record<string, ReturnType<typeof vi.fn>>;
+  let toast: { show: ReturnType<typeof vi.fn> };
+
+  beforeEach(() => {
+    api = {
+      getScope: vi.fn().mockReturnValue(of(sowScope())),
+      updateHeader: vi.fn().mockReturnValue(of(undefined)),
+    };
+    toast = { show: vi.fn() };
+    TestBed.configureTestingModule({
+      providers: [
+        ScopeOfWorkStore,
+        { provide: ScopeOfWorkService, useValue: api },
+        {
+          provide: ProjectService,
+          useValue: { getById: vi.fn().mockReturnValue(of({ id: 'p1' })) },
+        },
+        { provide: ToastService, useValue: toast },
+        { provide: StageTemplatesService, useValue: { list: vi.fn(), stages: vi.fn() } },
+      ],
+    });
+  });
+
+  const store = () => TestBed.inject(ScopeOfWorkStore);
+  const header = {
+    durationDays: 90,
+    plannedStartDate: '2026-11-01',
+    adjustmentAmount: 0,
+    adjustmentNote: null,
+    notes: null,
+  };
+
+  it('updateHeader sends one PUT with the five fields, then reloads; status Saved (B9)', () => {
+    const s = store();
+    s.load('p1');
+    expect(s.headerStatus()).toBe('idle');
+    s.updateHeader(header);
+    expect(api['updateHeader']).toHaveBeenCalledTimes(1);
+    expect(api['updateHeader']).toHaveBeenCalledWith('p1', header);
+    expect(api['getScope']).toHaveBeenCalledTimes(2);
+    expect(s.headerStatus()).toBe('saved');
+  });
+
+  it('the status reads Saving… while the PUT is in flight', () => {
+    const pending = new Subject<void>();
+    api['updateHeader'].mockReturnValue(pending);
+    const s = store();
+    s.load('p1');
+    s.updateHeader(header);
+    expect(s.headerStatus()).toBe('saving');
+    pending.next();
+    pending.complete();
+    expect(s.headerStatus()).toBe('saved');
+  });
+
+  it('a failed header save drops the status and shows the coded message (B14)', () => {
+    api['updateHeader'].mockReturnValue(throwError(() => conflict('projects.scope.Confirmed')));
+    const s = store();
+    s.load('p1');
+    s.updateHeader(header);
+    expect(s.headerStatus()).toBe('idle');
+    expect(s.error()).toBeTruthy();
   });
 });
 

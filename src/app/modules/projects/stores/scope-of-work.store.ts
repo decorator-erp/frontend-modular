@@ -17,8 +17,12 @@ import {
   ScopeOfWork,
   ScopeOfWorkStatus,
   SowTemplateOption,
+  UpdateScopeOfWorkHeaderRequest,
   UpdateScopeOfWorkItemRequest,
 } from '../model/scope-of-work.model';
+
+/** B9: the quiet header save status. */
+export type SowHeaderStatus = 'idle' | 'saving' | 'saved';
 
 interface ScopeOfWorkState {
   projectId: string | null;
@@ -37,6 +41,8 @@ interface ScopeOfWorkState {
   /** The selected template's stages (`GET /api/stage-templates/{id}/stages`). */
   templateStages: TemplateStage[];
   templatesLoading: boolean;
+  /** B9: the last header save: in flight, done, or nothing to say. */
+  headerStatus: SowHeaderStatus;
 }
 
 const INITIAL: ScopeOfWorkState = {
@@ -51,6 +57,7 @@ const INITIAL: ScopeOfWorkState = {
   selectedTemplateId: null,
   templateStages: [],
   templatesLoading: false,
+  headerStatus: 'idle',
 };
 
 /**
@@ -95,17 +102,22 @@ export const ScopeOfWorkStore = signalStore(
       };
 
       /** Runs one write: reload on success, reload on a concurrency 409, else show the message. */
-      const write = (call: (projectId: string) => Observable<unknown>): void => {
+      const write = (
+        call: (projectId: string) => Observable<unknown>,
+        settled?: (ok: boolean) => void,
+      ): void => {
         const projectId = store.projectId();
         if (!projectId) return;
         patchState(store, { saving: true, error: null });
         call(projectId).subscribe({
           next: () => {
             patchState(store, { saving: false });
+            settled?.(true);
             refresh();
           },
           error: (err: unknown) => {
             patchState(store, { saving: false });
+            settled?.(false);
             if (reloadOnConflict(err, refresh)) return;
             patchState(store, { error: codedMessage(err, errors) ?? catalog.t('sow.saveFailed') });
           },
@@ -133,6 +145,18 @@ export const ScopeOfWorkStore = signalStore(
         /** Clears the inline action error. */
         clearError(): void {
           patchState(store, { error: null });
+        },
+
+        /**
+         * B9 `PUT …/scope-of-work`: one call carrying all five header fields (a full replace),
+         * with the quiet "Saving…" / "Saved" status.
+         */
+        updateHeader(req: UpdateScopeOfWorkHeaderRequest): void {
+          patchState(store, { headerStatus: 'saving' });
+          write(
+            (projectId) => api.updateHeader(projectId, req),
+            (ok) => patchState(store, { headerStatus: ok ? 'saved' : 'idle' }),
+          );
         },
 
         /** B3 `PUT …/items/{itemId}`: the caller re-sends the stored `description`. */

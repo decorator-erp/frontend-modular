@@ -12,6 +12,7 @@ import { CatalogService } from '@platform/i18n/catalog.service';
 import { PERM, PermissionsService } from '@platform/permissions';
 import { ScopeOfWorkStore } from '../../stores/scope-of-work.store';
 import { SowItemsTableComponent, SowItemUpdate } from './sow-items-table.component';
+import { SowSummaryComponent } from './sow-summary.component';
 import { SowTemplatePickerComponent } from './sow-template-picker.component';
 
 /**
@@ -27,6 +28,7 @@ import { SowTemplatePickerComponent } from './sow-template-picker.component';
     PeraButtonComponent,
     PeraPageHeaderComponent,
     SowItemsTableComponent,
+    SowSummaryComponent,
     SowTemplatePickerComponent,
   ],
   providers: [ScopeOfWorkStore],
@@ -37,50 +39,58 @@ import { SowTemplatePickerComponent } from './sow-template-picker.component';
       @if (store.error(); as error) {
         <pera-alert tone="danger">{{ error }}</pera-alert>
       }
-      @if (store.scope()) {
-        <section
-          class="bg-surface border border-border p-5 flex flex-col gap-4 min-w-0"
-          aria-labelledby="sow-items-heading"
-        >
-          <div class="flex items-center justify-between gap-3 flex-wrap">
-            <h2 id="sow-items-heading" class="m-0 fs-h3 font-semibold text-text-primary">
-              {{ catalog.t('sow.items') }}
-              <span class="text-text-muted font-medium">· {{ store.items().length }}</span>
-            </h2>
-            @if (editable()) {
-              <pera-button
-                iconStart="plus"
-                [attr.aria-expanded]="pickerOpen()"
-                (click)="togglePicker()"
-              >
-                {{ catalog.t(pickerOpen() ? 'sow.closeTemplates' : 'sow.addFromTemplates') }}
-              </pera-button>
+      @if (store.scope(); as scope) {
+        <div class="grid gap-5 items-start lg:grid-cols-3">
+          <section
+            class="bg-surface border border-border p-5 flex flex-col gap-4 min-w-0 lg:col-span-2"
+            aria-labelledby="sow-items-heading"
+          >
+            <div class="flex items-center justify-between gap-3 flex-wrap">
+              <h2 id="sow-items-heading" class="m-0 fs-h3 font-semibold text-text-primary">
+                {{ catalog.t('sow.items') }}
+                <span class="text-text-muted font-medium">· {{ store.items().length }}</span>
+              </h2>
+              @if (editable()) {
+                <pera-button
+                  iconStart="plus"
+                  [attr.aria-expanded]="pickerOpen()"
+                  (click)="togglePicker()"
+                >
+                  {{ catalog.t(pickerOpen() ? 'sow.closeTemplates' : 'sow.addFromTemplates') }}
+                </pera-button>
+              }
+            </div>
+            @if (editable() && pickerOpen()) {
+              <app-sow-template-picker
+                [templates]="store.templates()"
+                [selectedTemplateId]="store.selectedTemplateId()"
+                [stages]="store.templateStages()"
+                [pickedStageIds]="store.pickedStageIds()"
+                [loading]="store.templatesLoading()"
+                [busy]="store.saving()"
+                (selectTemplate)="store.selectTemplate($event)"
+                (addStage)="store.addStage($event)"
+                (removeStage)="store.removeStage($event)"
+                (addTemplate)="store.addTemplate($event)"
+              />
             }
-          </div>
-          @if (editable() && pickerOpen()) {
-            <app-sow-template-picker
-              [templates]="store.templates()"
-              [selectedTemplateId]="store.selectedTemplateId()"
-              [stages]="store.templateStages()"
-              [pickedStageIds]="store.pickedStageIds()"
-              [loading]="store.templatesLoading()"
-              [busy]="store.saving()"
-              (selectTemplate)="store.selectTemplate($event)"
-              (addStage)="store.addStage($event)"
-              (removeStage)="store.removeStage($event)"
-              (addTemplate)="store.addTemplate($event)"
+            <app-sow-items-table
+              [items]="store.items()"
+              [editable]="editable()"
+              [confirmed]="store.isConfirmed()"
+              [projectId]="id()"
+              (updateItem)="onUpdateItem($event)"
+              (reorder)="store.reorder($event)"
+              (remove)="store.removeItem($event)"
             />
-          }
-          <app-sow-items-table
-            [items]="store.items()"
+          </section>
+          <app-sow-summary
+            [scope]="scope"
             [editable]="editable()"
-            [confirmed]="store.isConfirmed()"
-            [projectId]="id()"
-            (updateItem)="onUpdateItem($event)"
-            (reorder)="store.reorder($event)"
-            (remove)="store.removeItem($event)"
+            [saveStatus]="store.headerStatus()"
+            (headerChange)="store.updateHeader($event)"
           />
-        </section>
+        </div>
       }
     </div>
   `,

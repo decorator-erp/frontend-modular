@@ -64,6 +64,7 @@ describe('ScopeOfWorkPageComponent — items (sow #3)', () => {
       removeItem: vi.fn().mockReturnValue(of(undefined)),
       addItems: vi.fn().mockReturnValue(of([])),
       addFromTemplate: vi.fn().mockReturnValue(of([])),
+      updateHeader: vi.fn().mockReturnValue(of(undefined)),
     };
     const templateStage = (id: string, name: string, order: number, defaultFee: number | null) => ({
       id,
@@ -199,5 +200,21 @@ describe('ScopeOfWorkPageComponent — items (sow #3)', () => {
     granted.delete(PERM.scope.manage);
     render();
     expect(toggle()).toBeUndefined();
+  });
+
+  it('sow #5: a duration change sends one full header PUT, then reloads (B7, B9)', () => {
+    render();
+    const input = el.querySelector<HTMLInputElement>('app-sow-summary pera-input input')!;
+    input.value = '45';
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+    expect(api['updateHeader']).toHaveBeenCalledTimes(1);
+    expect(api['updateHeader']).toHaveBeenCalledWith('p1', {
+      durationDays: 45,
+      plannedStartDate: null,
+      adjustmentAmount: 0,
+      adjustmentNote: null,
+      notes: null,
+    });
+    expect(api['getScope']).toHaveBeenCalledTimes(2);
   });
 });
