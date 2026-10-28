@@ -4,14 +4,8 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { NEVER, of, throwError } from 'rxjs';
 import { CrmApprovalsService } from '../data/crm-approvals.service';
 import { CrmBriefService } from '../data/crm-brief.service';
-import { ApprovalState, ApprovalSubjectType } from '../model/crm-enums';
-import type {
-  ApprovalTrailItem,
-  BriefHead,
-  BriefSpace,
-  BriefSpaceRef,
-  CrmSpaceType,
-} from '../model';
+import { ApprovalState } from '../model/crm-enums';
+import type { BriefHead, BriefRound, BriefSpace, BriefSpaceRef, CrmSpaceType } from '../model';
 import { BriefStore } from './brief.store';
 
 const PROJECT_ID = 'project-1';
@@ -91,16 +85,14 @@ function space(over: Partial<BriefSpace> = {}): BriefSpace {
   };
 }
 
-function trailItem(over: Partial<ApprovalTrailItem> = {}): ApprovalTrailItem {
-  return {
-    id: 'appr-1',
-    round: 1,
-    decision: null,
-    comment: null,
+/** `CrmBriefRoundResponse` rows, in round order (009b #14). */
+function rounds(...numbers: number[]): BriefRound[] {
+  return numbers.map((round) => ({
+    round,
+    sentAtUtc: '2026-07-01T00:00:00Z',
+    outcome: 1,
     decidedAtUtc: null,
-    decidedById: null,
-    ...over,
-  };
+  }));
 }
 
 function briefApiMock() {
@@ -116,6 +108,7 @@ function briefApiMock() {
     sendSpace: vi.fn().mockReturnValue(of(undefined)),
     supersedeSpace: vi.fn().mockReturnValue(of('new-space-id')),
     getHeadDiff: vi.fn(),
+    listRounds: vi.fn().mockReturnValue(of([])),
   };
 }
 
@@ -148,11 +141,12 @@ describe('BriefStore', () => {
   const store = () => TestBed.inject(BriefStore);
 
   describe('load()', () => {
-    it('loads the head, spaces, and the head trail', () => {
+    it('loads the head, spaces, and the rounds — never the approvals trail (009b #14)', () => {
       const s = store();
       s.load(PROJECT_ID);
       expect(api.getBrief).toHaveBeenCalledWith(PROJECT_ID);
-      expect(approvals.bySubject).toHaveBeenCalledWith(ApprovalSubjectType.DesignBrief, 'brief-1');
+      expect(api.listRounds).toHaveBeenCalledWith('brief-1');
+      expect(approvals.bySubject).not.toHaveBeenCalled();
       expect(s.head()?.id).toBe('brief-1');
       expect(s.spaces()).toHaveLength(1);
       expect(s.loading()).toBe(false);
@@ -207,12 +201,13 @@ describe('BriefStore', () => {
       expect(s.spaces()).toEqual([]);
     });
 
-    it('a trail fetch failure does not blank the head — headTrail just stays empty', () => {
-      approvals.bySubject.mockReturnValue(throwError(() => new Error('boom')));
+    it('a rounds fetch failure does not blank the head — rounds just stay empty', () => {
+      api.listRounds.mockReturnValue(throwError(() => new Error('boom')));
       const s = store();
       s.load(PROJECT_ID);
       expect(s.head()?.id).toBe('brief-1');
-      expect(s.headTrail()).toEqual([]);
+      expect(s.rounds()).toEqual([]);
+      expect(s.headRound()).toBe(0);
     });
   });
 
@@ -370,35 +365,33 @@ describe('BriefStore', () => {
   });
 
   describe('headRound / isHeadRoundOutstanding', () => {
-    it('is 0 when the head has never been sent (no trail rows)', () => {
+    it('is 0 when the head has never been sent (no rounds)', () => {
       const s = store();
       s.load(PROJECT_ID);
       expect(s.headRound()).toBe(0);
       expect(s.isHeadRoundOutstanding()).toBe(false);
     });
 
-    it('reflects the highest round in the trail once sent', () => {
-      approvals.bySubject.mockReturnValue(
-        of([trailItem({ round: 1 }), trailItem({ round: 2, id: 'appr-2' })]),
-      );
+    it('is the last round of the list once sent (009b #14)', () => {
+      api.listRounds.mockReturnValue(of(rounds(1, 2, 3)));
       api.getBrief.mockReturnValue(of(head({ status: ApprovalState.PendingApproval })));
       const s = store();
 
       s.load(PROJECT_ID);
 
-      expect(s.headRound()).toBe(2);
+      expect(s.headRound()).toBe(3);
       expect(s.isHeadRoundOutstanding()).toBe(true);
     });
 
-    it('an edit that returns an Approved head to PendingApproval does NOT itself create a new trail row — round is unchanged until send()', () => {
-      approvals.bySubject.mockReturnValue(of([trailItem({ round: 1 })]));
+    it('an edit that returns an Approved head to PendingApproval does NOT itself open a new round — round is unchanged until send()', () => {
+      api.listRounds.mockReturnValue(of(rounds(1)));
       api.getBrief.mockReturnValueOnce(of(head({ status: ApprovalState.Approved })));
       const s = store();
       s.load(PROJECT_ID);
       expect(s.headRound()).toBe(1);
 
       // Simulate the server's real behavior: editing flips status to PendingApproval but
-      // the trail (fetched fresh on reload) still reports the SAME round — FR-009.
+      // the rounds (fetched fresh on reload) still report the SAME round — FR-009.
       api.getBrief.mockReturnValue(of(head({ status: ApprovalState.PendingApproval })));
       s.updateHead({ data: { unitType: 1, unitCondition: 1 } });
 
@@ -408,15 +401,13 @@ describe('BriefStore', () => {
     });
 
     it('sendForConfirmation() is what advances the round (FR-009)', () => {
-      approvals.bySubject.mockReturnValueOnce(of([trailItem({ round: 1 })]));
+      api.listRounds.mockReturnValueOnce(of(rounds(1)));
       api.getBrief.mockReturnValueOnce(of(head({ status: ApprovalState.Rejected })));
       const s = store();
       s.load(PROJECT_ID);
       expect(s.headRound()).toBe(1);
 
-      approvals.bySubject.mockReturnValue(
-        of([trailItem({ round: 1 }), trailItem({ id: 'appr-2', round: 2 })]),
-      );
+      api.listRounds.mockReturnValue(of(rounds(1, 2)));
       api.getBrief.mockReturnValue(of(head({ status: ApprovalState.PendingApproval })));
       s.sendForConfirmation();
 

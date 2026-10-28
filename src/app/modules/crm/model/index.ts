@@ -336,6 +336,18 @@ export interface BriefView {
   spaces: BriefSpace[];
 }
 
+/**
+ * `CrmBriefRoundResponse` (`BriefContracts.cs:149`, 009b #14): one sent round of the head, in round
+ * order, Voided rounds included. `outcome` is `CrmBriefRoundOutcome` (1 Pending, 2 Approved,
+ * 3 ChangesRequested, 4 Voided, 5 Unknown).
+ */
+export interface BriefRound {
+  round: number;
+  sentAtUtc: string;
+  outcome: number;
+  decidedAtUtc: string | null;
+}
+
 // ---------------------------------------------------------------------------
 // Per-round head diff (FR-029, Dependency 5) — raw facts, never prose.
 // ---------------------------------------------------------------------------

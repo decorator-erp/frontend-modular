@@ -8,6 +8,7 @@ import type {
   BriefHead,
   BriefHeadDiff,
   BriefHeadFieldChange,
+  BriefRound,
   BriefSpace,
   BriefSpaceRequest,
   BriefView,
@@ -171,6 +172,23 @@ export class CrmBriefService extends ApiService {
   getHeadDiff(briefId: string, round: number): Observable<BriefHeadDiff> {
     return this.get<unknown>(`/crm/briefs/${briefId}/rounds/${round}/diff`).pipe(
       map((r) => this.normalizeDiff(this.unwrap(r))),
+    );
+  }
+
+  /**
+   * `GET /api/crm/briefs/{briefId}/rounds` → `CrmBriefRoundResponse[]` — `crm.briefs.read` (009b #14).
+   * Round order, Voided rounds included; the last entry is the head's current round.
+   */
+  listRounds(briefId: string): Observable<BriefRound[]> {
+    return this.get<unknown>(`/crm/briefs/${briefId}/rounds`).pipe(
+      map((r) =>
+        this.unwrapArray<unknown>(r).map((x) => ({
+          round: this.field<number>(x, 'round') ?? 0,
+          sentAtUtc: this.field<string>(x, 'sentAtUtc') ?? '',
+          outcome: this.field<number>(x, 'outcome') ?? 0,
+          decidedAtUtc: this.field<string | null>(x, 'decidedAtUtc') ?? null,
+        })),
+      ),
     );
   }
 

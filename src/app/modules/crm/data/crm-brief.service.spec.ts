@@ -127,6 +127,31 @@ describe('CrmBriefService', () => {
     });
   });
 
+  describe('listRounds (009b #14) — GET /api/crm/briefs/{briefId}/rounds', () => {
+    it('reads CrmBriefRoundResponse rows in round order, Voided included', () => {
+      let rows: { round: number; outcome: number; decidedAtUtc: string | null }[] = [];
+      service.listRounds('B').subscribe((r) => (rows = r));
+
+      const req = http.expectOne(url('/crm/briefs/B/rounds'));
+      expect(req.request.method).toBe('GET');
+      req.flush([
+        { round: 1, sentAtUtc: '2026-07-01T00:00:00Z', outcome: 4, decidedAtUtc: null },
+        {
+          round: 2,
+          sentAtUtc: '2026-07-02T00:00:00Z',
+          outcome: 3,
+          decidedAtUtc: '2026-07-03T00:00:00Z',
+        },
+        { round: 3, sentAtUtc: '2026-07-04T00:00:00Z', outcome: 1 },
+      ]);
+
+      expect(rows.map((r) => r.round)).toEqual([1, 2, 3]);
+      expect(rows[0].outcome).toBe(4);
+      expect(rows[1].decidedAtUtc).toBe('2026-07-03T00:00:00Z');
+      expect(rows[2].decidedAtUtc).toBeNull();
+    });
+  });
+
   describe('getBrief (N-11, the obsolete project fallback)', () => {
     it('reads the same flattened CrmDesignBriefResponse off the project route', () => {
       let head: BriefHead | undefined;

@@ -3,16 +3,15 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { patchState, signalStore, withComputed, withMethods, withState } from '@ngrx/signals';
 import { of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
-import { CrmApprovalsService } from '../data/crm-approvals.service';
 import { CrmBriefService } from '../data/crm-brief.service';
 import { ErrorHandlerService, friendly } from '@platform/http/error-handler.service';
 import { injectReloadOnConflict } from '@platform/http/concurrency';
 import type { ParsedApiError } from '@platform/types';
-import { ApprovalState, ApprovalSubjectType } from '../model/crm-enums';
+import { ApprovalState } from '../model/crm-enums';
 import type {
-  ApprovalTrailItem,
   BriefHead,
   BriefHeadData,
+  BriefRound,
   BriefSpace,
   BriefSpaceRef,
   BriefSpaceRequest,
@@ -35,8 +34,8 @@ interface BriefState {
   noBrief: boolean;
   creating: boolean;
   spaces: BriefSpace[];
-  /** The head's own approval trail — round NUMBER lives here, not on the head itself. */
-  headTrail: ApprovalTrailItem[];
+  /** The head's rounds (`GET /briefs/{id}/rounds`, 009b #14) — the round NUMBER lives here, not on the head. */
+  rounds: BriefRound[];
   loading: boolean;
   savingHead: boolean;
   sending: boolean;
@@ -51,7 +50,7 @@ const INITIAL: BriefState = {
   noBrief: false,
   creating: false,
   spaces: [],
-  headTrail: [],
+  rounds: [],
   loading: false,
   savingHead: false,
   sending: false,
@@ -71,11 +70,10 @@ export const BriefStore = signalStore(
 
   withComputed((store) => ({
     /**
-     * The round the head is currently on — derived from its OWN approval trail, since
-     * the head entity carries no round field (only the diff endpoint and the trail do).
-     * 0 ⇒ never sent (still Draft, no approval row exists yet).
+     * The round the head is currently on — the last entry of its rounds list (009b #14, C §8.2.2),
+     * since `CrmDesignBriefResponse` carries no round. 0 ⇒ never sent (an empty list).
      */
-    headRound: computed(() => store.headTrail().reduce((max, t) => Math.max(max, t.round), 0)),
+    headRound: computed(() => store.rounds().at(-1)?.round ?? 0),
 
     /** Send is disabled while a round is outstanding (FR-014) — the head's own status IS that fact. */
     isHeadRoundOutstanding: computed(() => store.head()?.status === ApprovalState.PendingApproval),
@@ -110,14 +108,13 @@ export const BriefStore = signalStore(
     (
       store,
       api = inject(CrmBriefService),
-      approvals = inject(CrmApprovalsService),
       errors = inject(ErrorHandlerService),
       reloadOnConflict = injectReloadOnConflict(),
     ) => ({
       /**
        * Loads the stage's brief head (009b #9) — or, with no stage, the project's latest through the
-       * obsolete project route (N-11) — then its entries (`GET /briefs/{id}/spaces`, 009b #11) and the
-       * head's own approval trail (for its round).
+       * obsolete project route (N-11) — then its entries (`GET /briefs/{id}/spaces`, 009b #11) and its
+       * rounds (`GET /briefs/{id}/rounds`, 009b #14).
        */
       load(projectId: string, stageId: string | null = null): void {
         patchState(store, { loading: true, error: null, noBrief: false, projectId, stageId });
@@ -129,10 +126,10 @@ export const BriefStore = signalStore(
               .listSpaces(head.id, head.projectId || projectId)
               .pipe(catchError(() => of<BriefSpace[]>([])))
               .subscribe((spaces) => patchState(store, { spaces }));
-            approvals
-              .bySubject(ApprovalSubjectType.DesignBrief, head.id)
-              .pipe(catchError(() => of([])))
-              .subscribe((headTrail) => patchState(store, { headTrail }));
+            api
+              .listRounds(head.id)
+              .pipe(catchError(() => of<BriefRound[]>([])))
+              .subscribe((rounds) => patchState(store, { rounds }));
           },
           error: (err: unknown) => {
             const noBrief =
@@ -143,6 +140,7 @@ export const BriefStore = signalStore(
               loading: false,
               head: null,
               spaces: [],
+              rounds: [],
               noBrief,
               error: noBrief ? null : 'Could not load the brief.',
             });
@@ -181,9 +179,8 @@ export const BriefStore = signalStore(
       },
 
       /**
-       * The client's own read of their brief (T111's brief tab). Skips the head's
-       * approval trail — `GET /approvals/by-subject` is gated `approvals.read`, which the
-       * Client role does not hold — so `headRound` stays 0 for a client caller;
+       * The client's own read of their brief (T111's brief tab). Skips the rounds read — the
+       * office route is gated `crm.briefs.read` — so `headRound` stays 0 for a client caller;
        * `isHeadRoundOutstanding` is unaffected (it reads `head.status` directly).
        */
       loadAsClient(projectId: string): void {
