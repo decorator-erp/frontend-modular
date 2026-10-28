@@ -14,7 +14,6 @@ import {
   ApprovalState,
   ApprovalDecision,
   ApprovalSubjectType,
-  ApproverKind,
   ContactRole,
   FinishingPurpose,
   MeetingSlotStatus,
@@ -485,21 +484,18 @@ export interface ClientAddRequirementItemRequest {
 // boundary — these are the POST-normalization shapes.
 // ---------------------------------------------------------------------------
 
+/**
+ * `PendingApprovalResponse` (`Approvals.Contracts/Approvals/ApprovalContracts.cs:20-22`, 009b #41).
+ * The wire carries no project, owner or gate label; screens render those as "not available".
+ */
 export interface PendingApproval {
   id: string;
   subjectType: ApprovalSubjectType;
   subjectId: string;
+  /** `ApprovalType` on the wire: 1 = ManagerApproval, 2 = ClientReview. */
+  type: number;
   round: number;
-  approverKind: ApproverKind;
-  assignedContactId: string | null;
-  requestedAtUtc: string;
-  // Documented `PendingApprovalResponse` fields (office "mine" inbox) — used by the
-  // dashboard "Needs attention" widget. Additive; older callers ignore them.
-  projectId: string;
-  projectName: string;
-  ownerKind: string;
-  ownerName: string;
-  gateLabel: string | null;
+  dueAtUtc: string | null;
   /** Render-only `@for` key — synthetic when the server omitted `id`. Never send it. */
   trackKey: string;
 }

@@ -56,9 +56,12 @@ import { ItemsStore } from '../../stores/items.store';
                   <div class="flex items-center gap-2 flex-wrap">
                     <pera-status-badge tone="info" [label]="subjectLabel(a)" />
                     <span class="fs-body-sm text-text-primary flex-1">{{ subjectTitle(a) }}</span>
-                    <span class="fs-label text-text-muted" dir="ltr">{{
-                      formatCairoDateTime(a.requestedAtUtc, catalog.locale())
-                    }}</span>
+                    <!-- 009b #41: dueAtUtc replaces the retired requestedAtUtc. -->
+                    @if (a.dueAtUtc) {
+                      <span class="fs-label text-text-muted" dir="ltr">{{
+                        formatCairoDateTime(a.dueAtUtc, catalog.locale())
+                      }}</span>
+                    }
                   </div>
                   <!--
                     Deciding happens where the subject lives, not here. NOT linked to the

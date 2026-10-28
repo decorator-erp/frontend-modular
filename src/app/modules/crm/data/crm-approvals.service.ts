@@ -23,13 +23,9 @@ import type {
  * conventions. Both are mapped to their numeric mirrors on the way in: **no string enum
  * may reach a store.**
  *
- * **2. `PagedResult<T>` page indexing.** The wire is a row OFFSET, not a page number:
- * `ApprovalEndpoints.cs` binds `skip`/`take` (`.Skip(query.Skip).Take(query.Take)`), not
- * `page`/`pageSize` — those were unbound query params the server silently ignored, so
- * pagination never worked and every caller ran at the server's `take = 50` default
- * regardless of what it asked for. `pageIndex = skip / take` comes back from the server;
- * `NotificationService.normalize()`'s 0-based-in/1-based-out shape is the precedent for
- * the app-facing `page`, copied not re-solved.
+ * **2. `PagedResult<T>` paging (009b #41).** `ApprovalEndpoints.cs:24-31` binds two REQUIRED
+ * `int`s, `pageNumber` (1-based) and `pageSize`, and returns `PagedResult<PendingApprovalResponse>`
+ * `{items, pageNumber, pageSize, totalCount, totalPages}`. The page comes back 1-based, unshifted.
  */
 
 /** The reject comment is enforced twice server-side (FluentValidation + the entity). */
@@ -37,12 +33,11 @@ export const APPROVAL_COMMENT_MAX = 2000;
 
 @Injectable({ providedIn: 'root' })
 export class CrmApprovalsService extends ApiService {
-  /** `GET /api/approvals/pending` — permission `approvals.read`. 1-based page in; `skip`/`take` on the wire. */
+  /** `GET /api/approvals/pending?pageNumber&pageSize` — permission `approvals.read`. Both 1-based and required (009b #41). */
   pending(page = 1, pageSize = 20): Observable<PagedResult<PendingApproval>> {
-    return this.get<unknown>('/approvals/pending', {
-      skip: (page - 1) * pageSize, // ApprovalEndpoints.cs binds a row OFFSET, not a page number
-      take: pageSize,
-    }).pipe(map((r) => this.normalizePage(r, pageSize)));
+    return this.get<unknown>('/approvals/pending', { pageNumber: page, pageSize }).pipe(
+      map((r) => this.normalizePage(r, page, pageSize)),
+    );
   }
 
   /** `GET /api/approvals/by-subject/{type}/{id}` — the decision trail for one subject. */
@@ -102,21 +97,18 @@ export class CrmApprovalsService extends ApiService {
     };
   }
 
-  /** Quirk 1a: `SubjectType` arrives as a STRING while everything around it is an integer. */
+  /**
+   * `PendingApprovalResponse {id, subjectType, subjectId, type, round, dueAtUtc?}`
+   * (`ApprovalContracts.cs:20-22`, 009b #41). No project, owner or gate label on the wire.
+   */
   private normalizePendingApproval(source: unknown): PendingApproval {
     return {
       id: this.field<string>(source, 'id') ?? '',
       subjectType: this.toSubjectType(this.field<unknown>(source, 'subjectType')),
       subjectId: this.field<string>(source, 'subjectId') ?? '',
+      type: this.field<number>(source, 'type') ?? 0,
       round: this.field<number>(source, 'round') ?? 0,
-      approverKind: this.field<number>(source, 'approverKind') ?? 0,
-      assignedContactId: this.field<string | null>(source, 'assignedContactId') ?? null,
-      requestedAtUtc: this.field<string>(source, 'requestedAtUtc') ?? '',
-      projectId: this.field<string>(source, 'projectId') ?? '',
-      projectName: this.field<string>(source, 'projectName') ?? '',
-      ownerKind: String(this.field(source, 'ownerKind') ?? ''),
-      ownerName: this.field<string>(source, 'ownerName') ?? '',
-      gateLabel: this.field<string | null>(source, 'gateLabel') ?? null,
+      dueAtUtc: this.field<string | null>(source, 'dueAtUtc') ?? null,
       trackKey: this.trackKeyFor(source, 'PendingApproval.id', 'id'),
     };
   }
@@ -180,21 +172,20 @@ export class CrmApprovalsService extends ApiService {
     return null;
   }
 
-  /** Quirk 2: 0-based wire → 1-based app. Mirrors `NotificationService.normalize()`. */
+  /** Quirk 2: the wire `pageNumber` is already 1-based; it becomes the app's `page` as is. */
   private normalizePage(
     response: unknown,
+    requestedPage: number,
     requestedPageSize: number,
   ): PagedResult<PendingApproval> {
     const value = this.unwrap<Record<string, unknown>>(response);
     const items = this.unwrapArray<unknown>(this.field<unknown>(value, 'items') ?? value).map((a) =>
       this.normalizePendingApproval(a),
     );
-    const wireIndex = this.field<number>(value, 'pageIndex', 'page') ?? 0; // 0-based
-
     return {
       items,
       totalCount: this.field<number>(value, 'totalCount') ?? items.length,
-      page: wireIndex + 1, // → app 1-based
+      page: this.field<number>(value, 'pageNumber') ?? requestedPage,
       pageSize: this.field<number>(value, 'pageSize') ?? requestedPageSize,
       totalPages: this.field<number>(value, 'totalPages') ?? 0,
     };

@@ -28,11 +28,13 @@ import {
         @for (a of rows(); track a.trackKey) {
           <pera-card>
             <div class="flex flex-col gap-0.5">
+              <!-- 009b #41: the wire has no gate or project label. -->
               <span class="fs-body-sm font-medium text-text-primary">{{
-                a.gateLabel || a.projectName
+                catalog.t('appr.labelNotAvailable')
               }}</span>
               <span class="fs-caption text-text-muted">
-                {{ a.projectName }} · {{ catalog.t('dash.round', { round: a.round }) }}
+                {{ catalog.t('appr.labelNotAvailable') }} ·
+                {{ catalog.t('dash.round', { round: a.round }) }}
               </span>
             </div>
           </pera-card>

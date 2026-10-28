@@ -62,6 +62,8 @@ export const AR: Partial<Record<CatalogKey, string>> = {
   'appr.empty': 'لا توجد موافقات معلّقة على هذا المشروع.',
   'appr.finalDecision': 'صاحب القرار',
   'appr.inbox': 'صندوق الموافقات',
+  // 009b #41: PendingApprovalResponse carries no project, owner or gate label.
+  'appr.labelNotAvailable': 'غير متاح',
   'appr.mandatory': 'إلزامي',
   'appr.rejectDots': 'رفض…',
   'appr.roundLabel': 'الجولة {round}',
