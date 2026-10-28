@@ -3,6 +3,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { AbstractControl, FormGroup } from '@angular/forms';
 import { ApiProblemDetails, ParsedApiError } from '../types/api-error';
 import { friendlyMessage } from '../errors/error-catalog';
+import { activeLocale } from '../i18n/locale.service';
 
 /**
  * Parses backend ProblemDetails into a UI-friendly shape and applies field
@@ -161,9 +162,10 @@ export interface FormError {
 /**
  * Map a parsed API error to the catalog's friendly message (falls back to the
  * backend's general message). Usage: `toast.show({ tone: 'danger', message: friendly(parsed) })`.
+ * Arabic under the Arabic locale, where the catalog has it (009b X-2).
  */
 export function friendly(error: ParsedApiError): string {
-  return friendlyMessage(error.code, error.generalMessage);
+  return friendlyMessage(error.code, error.generalMessage, activeLocale());
 }
 
 export function toLegacyFormError(parsed: ParsedApiError): FormError {
