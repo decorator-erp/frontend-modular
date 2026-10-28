@@ -172,6 +172,25 @@ describe('SpacesStore', () => {
       expect(s.savingSpace()).toBe(false);
     });
 
+    it('keeps the entry count, meeting and task on an in-place edit (FINDING-5-4)', () => {
+      // `CrmBriefSpace.Update` overwrites all five fields, so omitted ones would be nulled.
+      briefApi.listSpaces.mockReturnValue(
+        of([entry({ countOrPieces: 3, meetingId: 'meeting-1', projectTaskId: 'task-1' })]),
+      );
+      const s = store();
+      s.load(PROJECT_ID);
+
+      s.saveSpaceNote(SPACE, 'updated');
+
+      expect(briefApi.updateSpace).toHaveBeenCalledWith('entry-1', {
+        spaceId: SPACE.id,
+        countOrPieces: 3,
+        requirements: 'updated',
+        meetingId: 'meeting-1',
+        projectTaskId: 'task-1',
+      });
+    });
+
     it('creates an entry preset to the space when none exists', () => {
       const s = store();
       s.load(PROJECT_ID);

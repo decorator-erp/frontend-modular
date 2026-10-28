@@ -211,7 +211,18 @@ export const SpacesStore = signalStore(
           };
           const body = { spaceId: space.id, requirements };
           if (existing) {
-            briefApi.updateSpace(existing.id, body).subscribe(done);
+            // The PUT overwrites all five fields (`CrmBriefSpace.cs:79`, positional
+            // `UpdateBriefSpaceRequest`, `CrmBriefEndpoints.cs:261-262`): the ones this note
+            // does not edit travel unchanged from the existing entry (FINDING-5-4).
+            briefApi
+              .updateSpace(existing.id, {
+                spaceId: space.id,
+                countOrPieces: existing.countOrPieces,
+                requirements,
+                meetingId: existing.meetingId,
+                projectTaskId: existing.projectTaskId,
+              })
+              .subscribe(done);
           } else {
             briefApi.addSpace(briefId, body).subscribe(done);
           }
