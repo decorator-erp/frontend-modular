@@ -63,6 +63,9 @@ export function isSlotHoldExpired(slot: CrmMeetingSlot, nowMs: number = Date.now
   return new Date(slot.startsAtUtc).getTime() <= nowMs;
 }
 
+/** `portalRequestSlot`'s text for an uncoded failure (009b #45) — the client scheduler swaps it for its catalog copy. */
+export const PORTAL_REQUEST_FAILED = 'Could not request the meeting.';
+
 /**
  * 009b #44: the client can answer (accept / decline) a slot the OTHER side proposed — `proposedByMe`
  * false on the portal detail — while it is still held (not started). Replaces the proposer-id test.
@@ -285,7 +288,11 @@ export const MeetingsStore = signalStore(
 
         // ── Client portal ──
 
-        /** The client taps a free slot and requests it directly — lands Requested + Held (FR-023). */
+        /**
+         * The client taps a free slot and requests it directly — lands Requested + Held (FR-023). A coded
+         * failure (`crm.portal.NotFound`, `crm.periods.NotOpen`, a handled 403 `crm.access.NotAClient`, …)
+         * shows its catalog message (009b #45).
+         */
         portalRequestSlot(request: RequestMeetingByClientRequest): void {
           patchState(store, { mutating: true, error: null });
           api.portalRequest(request).subscribe({
@@ -293,8 +300,7 @@ export const MeetingsStore = signalStore(
               patchState(store, { mutating: false });
               methods.loadPortal(request.projectId);
             },
-            error: () =>
-              patchState(store, { mutating: false, error: 'Could not request the meeting.' }),
+            error: (err: unknown) => fail(err, null, PORTAL_REQUEST_FAILED),
           });
         },
 

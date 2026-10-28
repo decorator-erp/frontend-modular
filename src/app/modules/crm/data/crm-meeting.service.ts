@@ -131,20 +131,26 @@ export class CrmMeetingService extends ApiService {
   // ── Client portal — gated on `crm.meetings.{view_own,request_own,respond_own}` ──
 
   /**
-   * `POST /portal/meetings/request` → `201` `Guid`. The client requests ONE specific
-   * slot directly (from the free-slot grid) — not a proposal list. Lands `Requested`
-   * with a single held slot (FR-023).
+   * `POST /portal/meetings/request` → `201 { meetingId }` (009b #45) — `crm.meetings.request_own`. The
+   * client requests ONE specific slot directly (from the free-slot grid) — not a proposal list. Lands
+   * `Requested` with a single held slot (FR-023). 404 `crm.portal.NotFound` / `crm.periods.NotFound`,
+   * 409 `crm.periods.NotOpen`, 400 `SlotTooLong` / `InvalidSlotRange`; 403 `crm.access.NotAClient` is
+   * the caller's to show (`handled(403)`).
    */
   portalRequest(request: RequestMeetingByClientRequest): Observable<string> {
-    return this.post<unknown>('/crm/portal/meetings/request', {
-      projectId: request.projectId,
-      periodId: request.periodId ?? null,
-      title: request.title,
-      type: request.type,
-      startsAtUtc: request.startsAtUtc,
-      endsAtUtc: request.endsAtUtc,
-      location: request.location ?? null,
-    }).pipe(map((r) => this.unwrap<string>(r)));
+    return this.post<unknown>(
+      '/crm/portal/meetings/request',
+      {
+        projectId: request.projectId,
+        periodId: request.periodId ?? null,
+        title: request.title,
+        type: request.type,
+        startsAtUtc: request.startsAtUtc,
+        endsAtUtc: request.endsAtUtc,
+        location: request.location ?? null,
+      },
+      { context: handled(403) },
+    ).pipe(map((r) => this.unwrapId(r, 'meetingId')));
   }
 
   /** `PUT /portal/meetings/slots/{slotId}/accept` → `204` — the client accepts a proposed slot. 403 handled (009b #21). */

@@ -16,7 +16,11 @@ import type { FreeSlot } from '../../model';
 import { PeraAlertComponent, PeraButtonComponent, PeraCardComponent } from '@ds';
 import { MEETING_TYPE_KEYS } from '../scheduler/meeting-labels';
 import { CrmSlotGridComponent } from '../scheduler/slot-grid.component';
-import { isSlotHoldExpired, MeetingsStore } from '../../stores/meetings.store';
+import {
+  isSlotHoldExpired,
+  MeetingsStore,
+  PORTAL_REQUEST_FAILED,
+} from '../../stores/meetings.store';
 
 const TYPES = [MeetingType.InOffice, MeetingType.OnSite, MeetingType.Online] as const;
 
@@ -174,10 +178,14 @@ export class CrmClientSchedulerComponent {
       if (wasMutating && !mutating && requested) {
         this.requesting.set(false);
         this.pendingRequest.set(null);
-        if (this.meetings.error()) {
-          // The store's own text is English-only prose (office/client shared store,
-          // FR-037b) — a client-facing screen must show a catalog string instead.
-          this.error.set(this.catalog.t('sched.csRequestFailed'));
+        const failure = this.meetings.error();
+        if (failure) {
+          // The store's uncoded fallback is English-only prose (office/client shared store,
+          // FR-037b) — a client-facing screen shows a catalog string instead. A coded failure is
+          // already the locale-aware catalog message (009b #45).
+          this.error.set(
+            failure === PORTAL_REQUEST_FAILED ? this.catalog.t('sched.csRequestFailed') : failure,
+          );
         } else {
           this.confirmedSlot.set(requested);
         }

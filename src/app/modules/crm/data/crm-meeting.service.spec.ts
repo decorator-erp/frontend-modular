@@ -212,4 +212,36 @@ describe('CrmMeetingService', () => {
       ]);
     });
   });
+
+  describe('portalRequest (009b #45)', () => {
+    it('reads the 201 { meetingId } and marks 403 handled', () => {
+      let id: string | undefined;
+      service
+        .portalRequest({
+          projectId: 'P',
+          periodId: 'PER',
+          title: 'Visit',
+          type: MeetingType.OnSite,
+          startsAtUtc: '2026-07-20T10:00:00Z',
+          endsAtUtc: '2026-07-20T11:00:00Z',
+        })
+        .subscribe((v) => (id = v));
+
+      const req = http.expectOne(url('/crm/portal/meetings/request'));
+      expect(req.request.method).toBe('POST');
+      expect(req.request.body).toEqual({
+        projectId: 'P',
+        periodId: 'PER',
+        title: 'Visit',
+        type: MeetingType.OnSite,
+        startsAtUtc: '2026-07-20T10:00:00Z',
+        endsAtUtc: '2026-07-20T11:00:00Z',
+        location: null,
+      });
+      expect(req.request.context.get(HANDLED_ERROR_STATUSES)).toEqual([403]);
+      req.flush({ meetingId: 'M' }, { status: 201, statusText: 'Created' });
+
+      expect(id).toBe('M');
+    });
+  });
 });

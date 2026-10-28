@@ -13,6 +13,7 @@ import {
   isSlotHeld,
   isSlotHoldExpired,
   MeetingsStore,
+  PORTAL_REQUEST_FAILED,
 } from './meetings.store';
 
 const PROJECT_ID = 'project-1';
@@ -410,6 +411,44 @@ describe('MeetingsStore mutation errors (009b #21)', () => {
     (s[method] as (id: string) => void)('x');
 
     expect(s.error()).toBe(ERROR_MESSAGES[code]);
+  });
+
+  it.each([
+    [404, 'crm.portal.NotFound'],
+    [404, 'crm.periods.NotFound'],
+    [409, 'crm.periods.NotOpen'],
+    [400, 'crm.meetings.SlotTooLong'],
+    [400, 'crm.meetings.InvalidSlotRange'],
+    [403, 'crm.access.NotAClient'],
+  ] as const)('portalRequestSlot (009b #45): %i %s shows its catalog message', (status, code) => {
+    api.portalRequest.mockReturnValue(throwError(() => coded(status, code)));
+    const s = store();
+
+    s.portalRequestSlot({
+      projectId: PROJECT_ID,
+      title: 'Visit',
+      type: MeetingType.OnSite,
+      startsAtUtc: 'a',
+      endsAtUtc: 'b',
+    });
+
+    expect(s.error()).toBe(ERROR_MESSAGES[code]);
+    expect(s.mutating()).toBe(false);
+  });
+
+  it('portalRequestSlot: an uncoded failure keeps the old text', () => {
+    api.portalRequest.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 500 })));
+    const s = store();
+
+    s.portalRequestSlot({
+      projectId: PROJECT_ID,
+      title: 'Visit',
+      type: MeetingType.OnSite,
+      startsAtUtc: 'a',
+      endsAtUtc: 'b',
+    });
+
+    expect(s.error()).toBe(PORTAL_REQUEST_FAILED);
   });
 
   it('the dead crm.meetings.SlotUnavailable code is gone from the catalog', () => {
