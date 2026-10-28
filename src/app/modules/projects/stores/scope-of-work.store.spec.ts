@@ -88,13 +88,12 @@ describe('ScopeOfWorkStore (sow #3)', () => {
 
   const store = () => TestBed.inject(ScopeOfWorkStore);
 
-  it('load reads the scope and the project (B1)', () => {
+  it('load reads the scope only, not the project (B1, FINDING-7-7)', () => {
     const s = store();
     s.load('p1');
     expect(api['getScope']).toHaveBeenCalledWith('p1');
-    expect(projects.getById).toHaveBeenCalledWith('p1');
+    expect(projects.getById).not.toHaveBeenCalled();
     expect(s.items().map((i) => i.id)).toEqual(['i1', 'i2', 'i3']);
-    expect(s.project()?.name).toBe('Villa 14');
     expect(s.loading()).toBe(false);
   });
 

@@ -546,6 +546,23 @@ describe('ScopeOfWorkPageComponent — errors (sow #8)', () => {
     expect(el.querySelectorAll('tbody button')).toHaveLength(0);
   });
 
+  it('FINDING-7-7: a 403 on the project read does not stop the page (it is not read)', () => {
+    project.getById.mockReturnValue(throwError(() => coded('projects.AccessDenied', 403)));
+    render();
+    expect(project.getById).not.toHaveBeenCalled();
+    expect(el.querySelector('app-sow-summary')).not.toBeNull();
+    expect(el.querySelectorAll('tbody tr')).toHaveLength(2);
+    expect(el.querySelector('pera-alert[tone="danger"]')).toBeNull();
+  });
+
+  it('FINDING-7-7: FreeStyle comes from the scope blockingReason alone', () => {
+    api['getScope'].mockReturnValue(
+      of(scope({ canConfirm: false, blockingReason: 'projects.scope.WorkflowNotSupported' })),
+    );
+    render();
+    expect(el.querySelector('[data-free-style]')).not.toBeNull();
+  });
+
   it('a Stage project shows no FreeStyle message', () => {
     render();
     expect(el.querySelector('[data-free-style]')).toBeNull();

@@ -175,9 +175,12 @@ export class ScopeOfWorkPageComponent implements OnInit {
     return this.catalog.t('sow.confirmedSummary', { n: scope.items.length, total, end });
   });
 
-  /** B12: a FreeStyle project has no scope of work to edit or confirm. */
+  /**
+   * B12: a FreeStyle project has no scope of work to edit or confirm. FINDING-7-7: read from
+   * the scope's `blockingReason`, which checks the workflow first (no `project.read` needed).
+   */
   protected readonly isFreeStyle = computed(
-    () => this.store.project()?.workflowType === 'FreeStyle',
+    () => this.store.scope()?.blockingReason === 'projects.scope.WorkflowNotSupported',
   );
 
   /** B12: the `projects.scope.WorkflowNotSupported` catalog message (EN/AR). */

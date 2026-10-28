@@ -1,7 +1,7 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { computed, inject } from '@angular/core';
 import { patchState, signalStore, withComputed, withMethods, withState } from '@ngrx/signals';
-import { forkJoin, Observable } from 'rxjs';
+import { Observable } from 'rxjs';
 import { StageTemplatesService, TemplateStage } from '@modules/library';
 import { EmployeeService } from '@modules/people';
 import { injectReloadOnConflict } from '@platform/http/concurrency';
@@ -11,9 +11,7 @@ import {
   hasCatalogMessage,
 } from '@platform/http/error-handler.service';
 import { CatalogService } from '@platform/i18n/catalog.service';
-import { ProjectService } from '../data/project.service';
 import { ScopeOfWorkService } from '../data/scope-of-work.service';
-import { Project } from '../model/project.model';
 import {
   ScopeOfWork,
   ScopeOfWorkStatus,
@@ -28,7 +26,6 @@ export type SowHeaderStatus = 'idle' | 'saving' | 'saved';
 interface ScopeOfWorkState {
   projectId: string | null;
   scope: ScopeOfWork | null;
-  project: Project | null;
   loading: boolean;
   /** 404 `projects.NotFound`: missing, inactive or out of scope (B14). */
   notFound: boolean;
@@ -63,7 +60,6 @@ interface ScopeOfWorkState {
 const INITIAL: ScopeOfWorkState = {
   projectId: null,
   scope: null,
-  project: null,
   loading: false,
   notFound: false,
   saving: false,
@@ -101,7 +97,6 @@ export const ScopeOfWorkStore = signalStore(
     (
       store,
       api = inject(ScopeOfWorkService),
-      projects = inject(ProjectService),
       stageTemplates = inject(StageTemplatesService),
       employees = inject(EmployeeService),
       errors = inject(ErrorHandlerService),
@@ -219,16 +214,16 @@ export const ScopeOfWorkStore = signalStore(
       };
 
       return {
-        /** B1: the scope and the project. `id: null` is an empty Draft, not an error. */
+        /**
+         * B1: the scope. `id: null` is an empty Draft, not an error. FINDING-7-7: no project
+         * read (it needs `project.read`); FreeStyle comes from the scope's `blockingReason`.
+         */
         load(projectId: string): void {
           confirmerId = null;
           patchState(store, { ...INITIAL, projectId, loading: true });
-          forkJoin({
-            scope: api.getScope(projectId),
-            project: projects.getById(projectId),
-          }).subscribe({
-            next: ({ scope, project }) => {
-              patchState(store, { scope, project, loading: false });
+          api.getScope(projectId).subscribe({
+            next: (scope) => {
+              patchState(store, { scope, loading: false });
               resolveConfirmer(scope);
             },
             error: (err: unknown) =>
