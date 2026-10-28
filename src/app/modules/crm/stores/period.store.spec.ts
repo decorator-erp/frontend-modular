@@ -1,6 +1,8 @@
 import { TestBed } from '@angular/core/testing';
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
+import { HttpErrorResponse } from '@angular/common/http';
 import { NEVER, of, throwError } from 'rxjs';
+import { ToastService } from '@platform/feedback/toast.service';
 import { CrmPeriod, CrmPeriodService } from '../data/crm-period.service';
 import { RequirementPeriodStatus } from '../model/crm-enums';
 import { PeriodStore } from './period.store';
@@ -15,9 +17,7 @@ function period(over: Partial<CrmPeriod> = {}): CrmPeriod {
     status: RequirementPeriodStatus.Open,
     closesAtUtc: '2026-07-20T18:00:00.000Z',
     closedAtUtc: null,
-    closeNotifiedAtUtc: null,
     openedById: 'employee-1',
-    createdAtUtc: '2026-07-06T09:00:00.000Z',
     ...over,
   };
 }
@@ -33,12 +33,18 @@ function periodApiMock() {
 
 describe('PeriodStore', () => {
   let api: ReturnType<typeof periodApiMock>;
+  let toast: { show: ReturnType<typeof vi.fn> };
 
   beforeEach(() => {
     vi.useFakeTimers();
     api = periodApiMock();
+    toast = { show: vi.fn() };
     TestBed.configureTestingModule({
-      providers: [PeriodStore, { provide: CrmPeriodService, useValue: api }],
+      providers: [
+        PeriodStore,
+        { provide: CrmPeriodService, useValue: api },
+        { provide: ToastService, useValue: toast },
+      ],
     });
   });
 
@@ -76,6 +82,35 @@ describe('PeriodStore', () => {
       expect(s.error()).toBe('Could not load the requirement period.');
       expect(s.loading()).toBe(false);
       expect(s.periods()).toEqual([]);
+    });
+
+    it('a 404 crm.periods.NotFound is notFound, not an error (FINDING-5-6, X-5)', () => {
+      api.list.mockReturnValue(
+        throwError(
+          () =>
+            new HttpErrorResponse({
+              status: 404,
+              error: {
+                status: 404,
+                title: 'crm.periods.NotFound',
+                errors: { 'crm.periods.NotFound': ['Requirement period not found.'] },
+              },
+            }),
+        ),
+      );
+      const s = store();
+      s.load(PROJECT_ID);
+      expect(s.notFound()).toBe(true);
+      expect(s.error()).toBeNull();
+      expect(s.loading()).toBe(false);
+    });
+
+    it('a fresh successful load clears notFound', () => {
+      api.list.mockReturnValueOnce(throwError(() => new HttpErrorResponse({ status: 404 })));
+      const s = store();
+      s.load(PROJECT_ID);
+      s.load(PROJECT_ID);
+      expect(s.notFound()).toBe(false);
     });
 
     it('clears a previous error on a fresh load', () => {
@@ -263,6 +298,57 @@ describe('PeriodStore', () => {
 
       expect(s.error()).toBe('Could not close the requirement period.');
       expect(s.closing()).toBe(false);
+      expect(api.list).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('error codes (009b #26)', () => {
+    function coded(status: number, code: string): HttpErrorResponse {
+      return new HttpErrorResponse({
+        status,
+        error: { status, title: code, errors: { [code]: ['x'] } },
+      });
+    }
+
+    it('close: 409 crm.periods.ConcurrentUpdate reloads the history (X-3) instead of an error', () => {
+      api.close.mockReturnValue(throwError(() => coded(409, 'crm.periods.ConcurrentUpdate')));
+      const s = store();
+      s.load(PROJECT_ID);
+      api.list.mockClear();
+
+      s.close('period-1');
+
+      expect(api.list).toHaveBeenCalledWith(PROJECT_ID);
+      expect(s.error()).toBeNull();
+      expect(s.closing()).toBe(false);
+      expect(toast.show).toHaveBeenCalledWith({
+        tone: 'info',
+        message: 'Changed by someone else — reloaded.',
+      });
+    });
+
+    it('extend: 409 crm.periods.ConcurrentUpdate reloads the history (X-3)', () => {
+      api.extend.mockReturnValue(throwError(() => coded(409, 'crm.periods.ConcurrentUpdate')));
+      const s = store();
+      s.load(PROJECT_ID);
+      api.list.mockClear();
+
+      s.extend('period-1', '2026-07-27T18:00:00.000Z');
+
+      expect(api.list).toHaveBeenCalledWith(PROJECT_ID);
+      expect(s.error()).toBeNull();
+      expect(s.extending()).toBe(false);
+    });
+
+    it('close: 409 crm.periods.NotOpen shows its catalog message, no reload', () => {
+      api.close.mockReturnValue(throwError(() => coded(409, 'crm.periods.NotOpen')));
+      const s = store();
+      s.load(PROJECT_ID);
+      api.list.mockClear();
+
+      s.close('period-1');
+
+      expect(s.error()).toBe('The requirement period is not open.');
       expect(api.list).not.toHaveBeenCalled();
     });
   });

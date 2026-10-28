@@ -6,7 +6,7 @@ import { ProjectService } from '../../data/project.service';
 import { ClientService } from '@modules/clients';
 import { ErrorHandlerService, friendly } from '@platform/http/error-handler.service';
 import { ToastService } from '@platform/feedback/toast.service';
-import { CreateProjectRequest, ProjectStatus, WorkflowType } from '../../model/project.model';
+import { CreateProjectRequest, WorkflowType } from '../../model/project.model';
 import { ParsedApiError } from '@platform/types';
 import { PeraValidators, ServerErrorsDirective, firstErrorMessage } from '@shared/forms';
 import { StageTemplatesService } from '@modules/library';
@@ -51,9 +51,7 @@ export class ProjectCreateComponent implements OnInit {
       code: ['', [Validators.required, PeraValidators.trimmedLength(2, 32)]],
       name: ['', [Validators.required, PeraValidators.trimmedLength(2, 200)]],
       address: ['', [Validators.required, PeraValidators.trimmedLength(5, 300)]],
-      estimatedBudget: ['', [Validators.required, PeraValidators.money]],
       clientId: [null as string | null, [Validators.required]],
-      status: ['Draft' as ProjectStatus, [Validators.required]],
       workflowType: ['Stage' as WorkflowType, [Validators.required]],
       stageTemplateId: [null as string | null, [Validators.required]],
       estimatedStartDate: ['', [PeraValidators.isoDate]],
@@ -69,14 +67,6 @@ export class ProjectCreateComponent implements OnInit {
 
   readonly clientOptions = signal<SelectOption[]>([]);
   readonly templateOptions = signal<SelectOption[]>([]);
-
-  readonly statusOptions: SelectOption[] = [
-    { value: 'Draft', label: 'Draft' },
-    { value: 'InProgress', label: 'In progress' },
-    { value: 'OnHold', label: 'On hold' },
-    { value: 'Completed', label: 'Completed' },
-    { value: 'Cancelled', label: 'Cancelled' },
-  ];
 
   readonly workflowOptions = [
     {
@@ -144,27 +134,26 @@ export class ProjectCreateComponent implements OnInit {
   }
 
   submit(): void {
-    if (this.form.invalid) {
+    const v = this.form.getRawValue();
+    // clientId is Validators.required, so a valid form never has it null; the check narrows the type.
+    if (this.form.invalid || v.clientId === null) {
       this.form.markAllAsTouched();
       return;
     }
     this.submitting.set(true);
     this.serverError.set(null);
-    const v = this.form.getRawValue();
     const payload = {
       code: v.code.trim(),
       name: v.name.trim(),
       address: v.address.trim(),
-      estimatedBudget: Number(v.estimatedBudget),
       clientId: v.clientId,
-      status: v.status,
       workflowType: v.workflowType,
       stageTemplateId: v.workflowType === 'Stage' ? v.stageTemplateId : null,
       estimatedStartDate: v.estimatedStartDate || null,
       estimatedEndDate: v.estimatedEndDate || null,
       description: v.description.trim() || null,
       notes: v.notes.trim() || null,
-    } as unknown as CreateProjectRequest;
+    } satisfies CreateProjectRequest;
 
     this.projects.create(payload).subscribe({
       next: (id) => {

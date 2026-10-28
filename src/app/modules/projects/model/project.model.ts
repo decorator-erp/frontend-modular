@@ -71,6 +71,10 @@ export interface Project {
   endDate: string | null;
   actualStartDate: string | null;
   actualEndDate: string | null;
+  /** ProjectResponse.StageCount — 0 until a template or a confirmed scope of work creates stages (008b #3). */
+  stageCount: number;
+  /** ProjectResponse.IsActive — the soft-delete flag; `true` when absent (008b #4). */
+  isActive: boolean;
   /** Financial block — present on enriched project responses (financial-queries spec). */
   financial?: ProjectFinancialBlock;
   /** Render-only `@for` key — synthetic when the server omitted `id`. Never send it. */
@@ -242,18 +246,19 @@ export interface TaskAttachment {
 
 // ---- Request payloads ------------------------------------------------------
 
+/** Mirrors CreateProjectCommand (008b #2). The server sets the status; there is no budget field. */
 export interface CreateProjectRequest {
+  /** Required, ≤ 50 chars (CreateProjectCommandValidator). */
+  code: string;
   name: string;
   address: string;
-  estimatedBudget: number;
   clientId: string;
-  status: ProjectStatus;
   workflowType: WorkflowType;
   stageTemplateId?: string | null;
   notes?: string | null;
   description?: string | null;
-  startDate?: string | null;
-  endDate?: string | null;
+  estimatedStartDate?: string | null;
+  estimatedEndDate?: string | null;
 }
 export interface UpdateProjectRequest {
   name: string;

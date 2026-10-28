@@ -3,10 +3,10 @@ import { ActivatedRoute } from '@angular/router';
 import { CanDirective, PERM } from '@platform/permissions';
 import { isClientAuthoredItem } from '../../data/crm-item.service';
 import { CatalogService } from '@platform/i18n/catalog.service';
-import { formatCairoDate } from '@platform/i18n/intl-locale';
 import {
   ApprovalState,
   RequirementCategory,
+  RequirementPeriodStatus,
   RequirementPriority,
   RequirementSource,
 } from '../../model/crm-enums';
@@ -15,6 +15,7 @@ import type { RequirementItem } from '../../model';
 import { isLocked, isUnconfirmed, trustChip } from '../trust/trust-chip';
 import {
   ModalService,
+  PeraAlertComponent,
   PeraButtonComponent,
   PeraPageHeaderComponent,
   PeraSkeletonComponent,
@@ -68,6 +69,7 @@ const SOURCE_LABEL_KEYS: Record<RequirementSource, CatalogKey> = {
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     CanDirective,
+    PeraAlertComponent,
     PeraButtonComponent,
     PeraPageHeaderComponent,
     PeraSkeletonComponent,
@@ -84,6 +86,13 @@ const SOURCE_LABEL_KEYS: Record<RequirementSource, CatalogKey> = {
     </pera-page-header>
 
     <div class="p-6 flex flex-col gap-4">
+      @if (store.notFound()) {
+        <!-- FINDING-5-6 (X-5): a 404 on load is "not found", never "Could not load". -->
+        <pera-alert tone="warning">{{ catalog.t('period.notFound') }}</pera-alert>
+      }
+      @if (store.error(); as error) {
+        <pera-alert tone="danger">{{ error }}</pera-alert>
+      }
       @if (store.loading()) {
         <pera-skeleton [height]="200" />
       } @else {
@@ -114,9 +123,6 @@ const SOURCE_LABEL_KEYS: Record<RequirementSource, CatalogKey> = {
                             catalog.t(sourceLabel(item.sourceType))
                           }}</span>
                         }
-                        <span class="fs-label text-text-muted" dir="ltr">{{
-                          dateLabel(item)
-                        }}</span>
                       </div>
                     </div>
                     <div class="flex items-center gap-2 shrink-0">
@@ -132,7 +138,9 @@ const SOURCE_LABEL_KEYS: Record<RequirementSource, CatalogKey> = {
                           @if (isLockedRow(item)) {
                             <button
                               type="button"
-                              class="fs-caption text-accent cursor-pointer underline outline-none focus-visible:outline-2 focus-visible:outline-accent"
+                              class="fs-caption text-accent cursor-pointer underline outline-none focus-visible:outline-2 focus-visible:outline-accent disabled:opacity-50 disabled:cursor-not-allowed"
+                              [disabled]="isPeriodClosed(item)"
+                              [attr.title]="closedTitle(item)"
                               (click)="openSupersede(item)"
                             >
                               {{ catalog.t('trust.newVersion') }}
@@ -140,7 +148,9 @@ const SOURCE_LABEL_KEYS: Record<RequirementSource, CatalogKey> = {
                           } @else {
                             <button
                               type="button"
-                              class="fs-caption text-text-secondary cursor-pointer underline outline-none focus-visible:outline-2 focus-visible:outline-accent"
+                              class="fs-caption text-text-secondary cursor-pointer underline outline-none focus-visible:outline-2 focus-visible:outline-accent disabled:opacity-50 disabled:cursor-not-allowed"
+                              [disabled]="isPeriodClosed(item)"
+                              [attr.title]="closedTitle(item)"
                               (click)="openEdit(item)"
                             >
                               {{ catalog.t('common.edit') }}
@@ -148,7 +158,9 @@ const SOURCE_LABEL_KEYS: Record<RequirementSource, CatalogKey> = {
                             @if (item.approvalStatus === APPROVAL_STATE.Draft) {
                               <button
                                 type="button"
-                                class="fs-caption text-accent cursor-pointer underline outline-none focus-visible:outline-2 focus-visible:outline-accent"
+                                class="fs-caption text-accent cursor-pointer underline outline-none focus-visible:outline-2 focus-visible:outline-accent disabled:opacity-50 disabled:cursor-not-allowed"
+                                [disabled]="isPeriodClosed(item)"
+                                [attr.title]="closedTitle(item)"
                                 (click)="store.send(item.id)"
                               >
                                 {{ catalog.t('appr.sendConfirm') }}
@@ -195,8 +207,18 @@ export class CrmItemsBoardComponent implements OnInit {
     return SOURCE_LABEL_KEYS[s as RequirementSource] ?? 'item.source';
   }
 
-  protected dateLabel(item: RequirementItem): string {
-    return formatCairoDate(item.createdAtUtc, this.catalog.locale());
+  /**
+   * 009b #24: an item whose period is Closed takes no Send, Edit or Supersede (the server answers
+   * 409 `crm.periods.NotOpen`), so those actions are disabled.
+   */
+  protected isPeriodClosed(item: RequirementItem): boolean {
+    return this.period
+      .periods()
+      .some((p) => p.id === item.periodId && p.status === RequirementPeriodStatus.Closed);
+  }
+
+  protected closedTitle(item: RequirementItem): string | null {
+    return this.isPeriodClosed(item) ? this.catalog.t('period.closed') : null;
   }
 
   protected isClientAuthored(item: RequirementItem): boolean {

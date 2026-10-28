@@ -2,24 +2,27 @@ import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { ApiService } from '@platform/http/api.service';
+import { handled } from '@platform/http/handled-errors';
 import { ContactRole } from '../model/crm-enums';
 import type { ClientProfile, ClientProfileContact, ClientProfileProject } from '../model';
 
 /**
  * `CrmClientPortalService` (T108) — the one genuinely new client-portal surface, as
  * opposed to the nine `/api/crm/portal/*` endpoints already folded into their own
- * domain services (`CrmMeetingService.portal*`, `CrmItemService.portal*`,
- * `CrmApprovalsService.decideAsClient`/`portalPending`; see `crm-brief.service.ts` for
- * the tenth, `getMyBrief`).
+ * domain services (`CrmMeetingService.portal*`, `CrmItemService.portal*`; see
+ * `crm-brief.service.ts` for `getMyBrief`).
  *
  * `getMyProfile` targets `GET /api/crm/portal/profile` (`CrmClientPortalEndpoints.cs`,
  * gated `portal.profile.view_own`) — the client's own `Client`/`CrmContact` rows and
  * every project they can see, in one call.
+ *
+ * 009b #N-1: that route is still absent (Dependency 13), so the call 404s. The 404 is
+ * `handled(404)`: `ClientProfileStore` turns it into `client.profileUnavailable`.
  */
 @Injectable({ providedIn: 'root' })
 export class CrmClientPortalService extends ApiService {
   getMyProfile(): Observable<ClientProfile> {
-    return this.get<unknown>('/crm/portal/profile').pipe(
+    return this.get<unknown>('/crm/portal/profile', undefined, { context: handled(404) }).pipe(
       map((r) => this.normalize(this.unwrap(r))),
     );
   }

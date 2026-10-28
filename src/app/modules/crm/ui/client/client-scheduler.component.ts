@@ -16,13 +16,17 @@ import type { FreeSlot } from '../../model';
 import { PeraAlertComponent, PeraButtonComponent, PeraCardComponent } from '@ds';
 import { MEETING_TYPE_KEYS } from '../scheduler/meeting-labels';
 import { CrmSlotGridComponent } from '../scheduler/slot-grid.component';
-import { isSlotHoldExpired, MeetingsStore } from '../../stores/meetings.store';
+import {
+  isSlotHoldExpired,
+  MeetingsStore,
+  PORTAL_REQUEST_FAILED,
+} from '../../stores/meetings.store';
 
 const TYPES = [MeetingType.InOffice, MeetingType.OnSite, MeetingType.Online] as const;
 
 /**
  * The client scheduler (T052, FR-023) — **mobile-first**: grid → tap → type picker →
- * request sheet → Held with its expiry. No step opens a second overlay system; each is
+ * request sheet → Held (009b #19: no hold timestamp on the slot, so no expiry line). No step opens a second overlay system; each is
  * a stacked section on the SAME page, which is what keeps this usable at phone width
  * with no horizontal scrolling (US2 scenario 4) — the same reasoning that shaped
  * `CrmSlotGridComponent` itself (day pills + a vertical list, not a literal grid table).
@@ -39,14 +43,11 @@ const TYPES = [MeetingType.InOffice, MeetingType.OnSite, MeetingType.Online] as 
   host: { class: 'block max-w-full' },
   template: `
     <div class="flex flex-col gap-4">
-      @if (heldSlot(); as held) {
+      @if (heldSlot()) {
         <pera-card>
           <div class="flex flex-col gap-2 p-1">
             <div class="font-semibold text-text-primary">{{ catalog.t('sched.csHeldT') }}</div>
             <p class="fs-body-sm text-text-secondary m-0">{{ catalog.t('sched.csHeldB') }}</p>
-            <div class="fs-caption text-text-muted" dir="ltr">
-              {{ catalog.t('sched.holdExpires') }}: {{ whenLabel(held.holdExpiresAtUtc!) }}
-            </div>
             <pera-button variant="secondary" size="sm" (click)="reset()">{{
               catalog.t('common.dismiss')
             }}</pera-button>
@@ -147,7 +148,7 @@ export class CrmClientSchedulerComponent {
       this.meetings
         .meetings()
         .flatMap((m) => m.slots)
-        .find((s) => s.startsAtUtc === confirmed.startsAtUtc && s.proposedByContactId) ?? null
+        .find((s) => s.startsAtUtc === confirmed.startsAtUtc && s.proposedByMe) ?? null
     );
   });
 
@@ -177,10 +178,14 @@ export class CrmClientSchedulerComponent {
       if (wasMutating && !mutating && requested) {
         this.requesting.set(false);
         this.pendingRequest.set(null);
-        if (this.meetings.error()) {
-          // The store's own text is English-only prose (office/client shared store,
-          // FR-037b) — a client-facing screen must show a catalog string instead.
-          this.error.set(this.catalog.t('sched.csRequestFailed'));
+        const failure = this.meetings.error();
+        if (failure) {
+          // The store's uncoded fallback is English-only prose (office/client shared store,
+          // FR-037b) — a client-facing screen shows a catalog string instead. A coded failure is
+          // already the locale-aware catalog message (009b #45).
+          this.error.set(
+            failure === PORTAL_REQUEST_FAILED ? this.catalog.t('sched.csRequestFailed') : failure,
+          );
         } else {
           this.confirmedSlot.set(requested);
         }

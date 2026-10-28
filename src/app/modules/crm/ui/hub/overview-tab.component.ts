@@ -10,8 +10,8 @@ import { CanDirective, PERM } from '@platform/permissions';
 import { CrmContact, CrmContactService } from '../../data/crm-contact.service';
 import { CrmNote, CrmNoteService } from '../../data/crm-note.service';
 import { CatalogService } from '@platform/i18n/catalog.service';
-import { formatCairoDate } from '@platform/i18n/intl-locale';
 import { ErrorHandlerService, friendly } from '@platform/http/error-handler.service';
+import { injectReloadOnConflict } from '@platform/http/concurrency';
 import { ToastService } from '@platform/feedback/toast.service';
 import {
   ColumnDef,
@@ -103,7 +103,6 @@ import { CrmNoteFormComponent } from './note-form.component';
                   <p class="fs-body-sm text-text-primary m-0 whitespace-pre-wrap">
                     {{ note.content }}
                   </p>
-                  <span class="fs-label text-text-muted">{{ dateLabel(note.createdAtUtc) }}</span>
                 </div>
                 <div class="flex items-center gap-2 shrink-0" *peraCan="PERM.crm.notes.update">
                   <button
@@ -142,6 +141,7 @@ export class ClientHubOverviewTabComponent {
   protected readonly catalog = inject(CatalogService);
   protected readonly store = inject(ClientHubStore);
   protected readonly PERM = PERM;
+  private readonly reloadOnConflict = injectReloadOnConflict();
 
   private readonly nameTpl = viewChild.required<TemplateRef<unknown>>('nameTpl');
   private readonly contactTpl = viewChild.required<TemplateRef<unknown>>('contactTpl');
@@ -165,17 +165,13 @@ export class ClientHubOverviewTabComponent {
     },
   ];
 
-  protected dateLabel(iso: string): string {
-    return formatCairoDate(iso, this.catalog.locale());
-  }
-
   protected async addContact(): Promise<void> {
     const client = this.store.client();
     if (!client) return;
     const ok = await this.modal
       .open<boolean>(CrmContactFormComponent, {
         size: 'md',
-        data: { clientId: client.id, clientName: `${client.firstName} ${client.lastName}` },
+        data: { clientId: client.id, clientName: this.store.clientName() },
       })
       .afterClosed();
     if (ok) this.store.reloadContacts();
@@ -202,6 +198,8 @@ export class ClientHubOverviewTabComponent {
         this.store.reloadContacts();
       },
       error: (err) => {
+        // 409 crm.contacts.ConcurrentPrimaryChange: reload and say so (009b #32, X-3).
+        if (this.reloadOnConflict(err, () => this.store.reloadContacts())) return;
         const parsed = this.errorHandler.parse(err);
         this.toast.show({ tone: 'danger', message: friendly(parsed) });
       },

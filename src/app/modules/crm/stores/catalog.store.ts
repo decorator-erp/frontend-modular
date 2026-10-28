@@ -19,12 +19,9 @@ import type { CatalogAttribute, CatalogCategory, CatalogItem } from '../model';
  * such bound (it is catalog-wide SKUs, not branches), so it is a per-query cache instead of
  * a whole-table fetch.
  *
- * Four side caches: the v2 item feed keyed by category (F6's admin Items card); the
+ * Three side caches: the v2 item feed keyed by category (F6's admin Items card); the
  * storefront's whole item pool keyed by space type (`itemsBySpaceType` — see
- * `loadItemsForSpaceType`'s own docblock); v2 items keyed by their OWN id (`itemsById` —
- * the board's room-override chip needs an item's default attribute values, which the
- * space-item wire does not carry: the backend joins only the room's own override table,
- * never the catalog item's); and effective attributes keyed by node id — this last one
+ * `loadItemsForSpaceType`'s own docblock); and effective attributes keyed by node id — this last one
  * already accepts a v2 category id or item id interchangeably, since
  * `GET /nodes/{id}/attributes` does (verified: the same ancestor-inclusive query backs
  * both `/nodes/{id}/attributes` and the v2 `/categories/{id}/attributes`). Any admin
@@ -60,15 +57,6 @@ interface CatalogState {
    * admin's category-tree fetch race independently. */
   poolLoading: boolean;
   poolError: CatalogKey | null;
-  /**
-   * v2 items by their OWN id, no TTL (load-once, same idiom as `attrsByNode`) — the
-   * board's room-override chip needs an item's own default attribute values, and the
-   * space-item wire only carries the room's OVERRIDE values (verified against
-   * `GetSpaceItemsQueryHandler`: it joins `CrmSpaceItemAttributeValues` alone, never the
-   * catalog item's own value table). So the item defaults are a second fetch, cached
-   * here by item id, merged client-side against the room's `SpaceItem.attributes`.
-   */
-  itemsById: Record<string, CatalogItem>;
   /** Effective (own + inherited) attribute definitions per node. Cleared on invalidate. */
   attrsByNode: Record<string, CatalogAttribute[]>;
   /** The category-tree fetch (`loadCategories`). Kept separate from `poolLoading` — see
@@ -83,7 +71,6 @@ const INITIAL: CatalogState = {
   categoriesFetchedAtMs: null,
   itemsByCategory: {},
   itemsBySpaceType: {},
-  itemsById: {},
   attrsByNode: {},
   treeLoading: false,
   poolLoading: false,
@@ -120,7 +107,6 @@ export const CatalogStore = signalStore(
           categoriesFetchedAtMs: null,
           itemsByCategory: {},
           itemsBySpaceType: {},
-          itemsById: {},
           attrsByNode: {},
         });
       },
@@ -156,12 +142,8 @@ export const CatalogStore = signalStore(
       },
 
       /**
-       * Root-to-category breadcrumb, resolved locally by walking `parentId`.
-       * `GET /categories/{id}/ancestors` exists on the backend too
-       * ({@link CrmCatalogService.categoryAncestors}), but this derives client-side
-       * while the cache holds the whole tree — the round trip is redundant against a
-       * cache that already has the answer. If the cache ever goes partial or paged,
-       * `categoryAncestors()` is the fallback to reach for.
+       * Root-to-category breadcrumb, resolved locally by walking `parentId` — the only way:
+       * no ancestors route exists (009b #N-7).
        */
       categoryAncestorsOf(id: string): CatalogCategory[] {
         const byId = new Map(store.categories().map((c) => [c.id, c]));
@@ -197,7 +179,7 @@ export const CatalogStore = signalStore(
       loadItemsForCategory(categoryId: string, nowMs: number = Date.now(), force = false): void {
         const entry = store.itemsByCategory()[categoryId];
         if (!force && entry && nowMs - entry.fetchedAtMs < CATALOG_TTL_MS) return;
-        api.getItems({ categoryId }).subscribe({
+        api.itemsByCategory(categoryId).subscribe({
           next: (items) =>
             patchState(store, (s) => ({
               itemsByCategory: {
@@ -216,68 +198,29 @@ export const CatalogStore = signalStore(
       // ── v2 items by space type — the storefront's whole pool ─────────────
 
       /**
-       * Every item for one space type, fetched ONCE and held in memory. Facet counts in
-       * the storefront are self-excluding — each group's count is computed with that
-       * group's own selection dropped but every other filter still applied — which a
-       * server-filtered response cannot answer, because the filtering has already thrown
-       * away the rows a count would need. So filtering happens entirely client-side over
-       * this pool; `getItems({ spaceTypeId })` is the only network call, on facet change
-       * or search the pool is just re-derived in memory.
-       *
-       * BOUND THIS ASSUMES: the catalog is master data in the hundreds per space type —
-       * the same assumption `categories` already makes for the whole tree. Past a
-       * few thousand items for one space type, this fetch and the per-keystroke recount
-       * become the cost. The fix then is server-side paging PLUS a server-computed
-       * facet-count endpoint — paging alone cannot restore self-excluding counts, which
-       * need the full unfiltered set to answer "how many WOULD match without my own
-       * selection". Nothing in this store enforces the bound; it is a design assumption,
-       * recorded here so the first large catalog has an explanation rather than a mystery.
+       * The storefront's whole item pool for one space type — **not available** (009b #35).
+       * The backend's only item read is per category (`GET /categories/{id}/items`), with no
+       * space-type, attribute or option facet, and no route reads a category's space-type
+       * mappings, so the pool cannot be built. No request is made; `poolError` carries the
+       * catalog's "not available" key. The signature stays for the storefront page.
        */
-      loadItemsForSpaceType(spaceTypeId: string, nowMs: number = Date.now(), force = false): void {
-        const entry = store.itemsBySpaceType()[spaceTypeId];
-        if (!force && entry && nowMs - entry.fetchedAtMs < CATALOG_TTL_MS) return;
-        patchState(store, { poolLoading: true, poolError: null });
-        api.getItems({ spaceTypeId }).subscribe({
-          next: (items) =>
-            patchState(store, (s) => ({
-              itemsBySpaceType: {
-                ...s.itemsBySpaceType,
-                [spaceTypeId]: { items, fetchedAtMs: nowMs },
-              },
-              poolLoading: false,
-              poolError: null,
-            })),
-          error: () => patchState(store, { poolLoading: false, poolError: 'cat.itemsLoadFailed' }),
-        });
+      loadItemsForSpaceType(
+        _spaceTypeId: string,
+        _nowMs: number = Date.now(),
+        _force = false,
+      ): void {
+        patchState(store, { poolLoading: false, poolError: 'cat.notAvailable' });
       },
 
       itemsForSpaceType(spaceTypeId: string): CatalogItem[] | undefined {
         return store.itemsBySpaceType()[spaceTypeId]?.items;
       },
 
-      // ── v2 items by id — for resolving an item's own default attribute values ──
-
-      /** Load-once, same idiom as `loadEffectiveAttributes` — no in-flight guard needed
-       * beyond the cache check, since a second call before the first resolves just
-       * re-requests the same (idempotent) read. */
-      loadItem(itemId: string): void {
-        if (store.itemsById()[itemId]) return;
-        api.getItem(itemId).subscribe({
-          next: (item) =>
-            patchState(store, (s) => ({ itemsById: { ...s.itemsById, [itemId]: item } })),
-          error: () => patchState(store, { error: 'cat.itemsLoadFailed' }),
-        });
-      },
-
-      item(itemId: string): CatalogItem | undefined {
-        return store.itemsById()[itemId];
-      },
-
-      // ── Effective attributes per node (v1 node id, v2 category id, or v2 item id) ─
+      // ── Effective attributes per category ─
       //
-      // One cache serves all three. `GET /nodes/{id}/attributes` accepts a category id
-      // or an item id in v2 terms just as well as a v1 node id — same ancestor-inclusive
-      // query, same result — so there is no separate v2 method or cache to keep in sync.
+      // 009b #36: keyed by CATEGORY id. `CrmCatalogService.effectiveAttributes` walks the
+      // tree and reads each ancestor's own `/categories/{id}/attributes`; the `/nodes/*`
+      // alias that also took an item id is gone.
 
       loadEffectiveAttributes(nodeId: string): void {
         if (store.attrsByNode()[nodeId]) return;

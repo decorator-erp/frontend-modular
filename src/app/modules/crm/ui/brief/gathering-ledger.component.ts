@@ -2,7 +2,6 @@ import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/cor
 import { RouterLink } from '@angular/router';
 import { CanDirective, PERM } from '@platform/permissions';
 import { CatalogService } from '@platform/i18n/catalog.service';
-import { formatCairoDate } from '@platform/i18n/intl-locale';
 import type { BriefSpace } from '../../model';
 import { isLocked, isUnconfirmed, SUPERSEDED_CHIP, trustChip } from '../trust/trust-chip';
 import {
@@ -89,9 +88,6 @@ import { CrmSupersedeEntryModalComponent } from './supersede-entry.modal';
                             [tone]="chipFor(entry).tone"
                             [label]="catalog.t(chipFor(entry).key)"
                           />
-                          <span class="fs-label text-text-muted" dir="ltr">{{
-                            dateLabel(entry)
-                          }}</span>
                           <span class="flex-1"></span>
                           @if (isSupersededEntry(entry)) {
                             <!-- trail only — no action on a superseded row -->
@@ -172,16 +168,13 @@ export class CrmGatheringLedgerComponent {
     return trustChip(entry.approvalStatus, false);
   }
 
-  protected dateLabel(entry: BriefSpace): string {
-    return formatCairoDate(entry.createdAtUtc, this.catalog.locale());
-  }
-
   protected isLockedEntry(entry: BriefSpace): boolean {
     return isLocked(entry.approvalStatus, false);
   }
 
+  /** The server's `isCurrent` (009b #11, C §8.2.10): false once another entry supersedes this one. */
   protected isSupersededEntry(entry: BriefSpace): boolean {
-    return this.store.spaces().some((s) => s.supersedesSpaceId === entry.id);
+    return !entry.isCurrent;
   }
 
   protected isUnconfirmedEntry(entry: BriefSpace): boolean {
@@ -213,7 +206,7 @@ export class CrmGatheringLedgerComponent {
         data: { projectId: head.projectId, briefId: head.id },
       })
       .afterClosed();
-    if (ok) this.store.load(head.projectId);
+    if (ok) this.store.reload();
   }
 
   protected async openEdit(entry: BriefSpace): Promise<void> {
@@ -225,7 +218,7 @@ export class CrmGatheringLedgerComponent {
         data: { projectId: head.projectId, briefId: head.id, existing: entry },
       })
       .afterClosed();
-    if (ok) this.store.load(head.projectId);
+    if (ok) this.store.reload();
   }
 
   protected async openSupersede(entry: BriefSpace): Promise<void> {
@@ -237,6 +230,6 @@ export class CrmGatheringLedgerComponent {
         data: { projectId: head.projectId, entry },
       })
       .afterClosed();
-    if (ok) this.store.load(head.projectId);
+    if (ok) this.store.reload();
   }
 }

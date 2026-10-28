@@ -1,6 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, input } from '@angular/core';
 import { CatalogService } from '@platform/i18n/catalog.service';
-import { formatCairoDate } from '@platform/i18n/intl-locale';
 import type { BriefSpace } from '../model';
 import type { WorkspaceHost } from '@platform/composition/task-workspace.token';
 import { isLocked, isUnconfirmed, trustChip } from '../ui/trust/trust-chip';
@@ -73,9 +72,6 @@ import { BriefStore } from '../stores/brief.store';
                         [tone]="chipFor(entry).tone"
                         [label]="catalog.t(chipFor(entry).key)"
                       />
-                      <span class="fs-label text-text-muted" dir="ltr">{{
-                        formatCairoDate(entry.createdAtUtc, catalog.locale())
-                      }}</span>
                     </div>
                     <div class="fs-caption text-text-secondary" dir="auto">
                       {{ entry.requirements || entryTitle(entry) }}
@@ -96,7 +92,6 @@ export class CrmTaskPanelComponent {
   private readonly modal = inject(ModalService);
   protected readonly catalog = inject(CatalogService);
   protected readonly brief = inject(BriefStore);
-  protected readonly formatCairoDate = formatCairoDate;
 
   readonly host = input.required<WorkspaceHost>();
 

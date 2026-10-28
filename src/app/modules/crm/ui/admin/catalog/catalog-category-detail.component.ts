@@ -5,7 +5,6 @@ import {
   effect,
   inject,
   Injector,
-  output,
   signal,
 } from '@angular/core';
 import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -19,16 +18,13 @@ import type {
   CatalogAttribute,
   CatalogAttributeOption,
   CatalogCategory,
-  CatalogItem,
   CrmSpaceType,
 } from '../../../model';
 import {
-  ConfirmService,
   ModalService,
   PeraButtonComponent,
   PeraCheckboxComponent,
   PeraFormFieldComponent,
-  PeraIconComponent,
   PeraInputComponent,
   PeraSelectComponent,
   PeraStatusBadgeComponent,
@@ -46,8 +42,10 @@ import {
 
 /**
  * The detail rail for the current category (v2, Run B F6): bilingual identity, branch
- * rules, attribute definitions (own + inherited), items, targeting, and move/activate/
- * delete. Replaces `catalog-node-detail.component.ts`.
+ * rules, attribute definitions (own + inherited), items, targeting, and move. Replaces
+ * `catalog-node-detail.component.ts`. 009b #N-8: no category update, activate or delete
+ * route exists, so the identity form is read-only (disabled, no Save) and Activate/Delete
+ * are gone.
  *
  * Two things that existed in the v1 admin are gone, not merely changed: the
  * `isSelectable` checkbox and its invariant-enforcement (categories are ALWAYS branches
@@ -55,8 +53,7 @@ import {
  * nothing left for the field to mean here), and the Specs card (F6c — a category has no
  * spec values of its own; only its items do, edited through the item dialog below).
  *
- * Targeting is now READ + WRITE — `getCategorySpaceTypes` didn't exist when Run A shipped
- * this card write-only.
+ * Targeting is write-only: no route reads a category's mappings (009b #34, #N-7).
  */
 @Component({
   selector: 'app-crm-catalog-category-detail',
@@ -68,7 +65,6 @@ import {
     PeraButtonComponent,
     PeraCheckboxComponent,
     PeraFormFieldComponent,
-    PeraIconComponent,
     PeraInputComponent,
     PeraSelectComponent,
     PeraTextareaComponent,
@@ -130,16 +126,6 @@ import {
                 catalog.t('cat.requiredL')
               }}</pera-checkbox>
             </div>
-
-            <div class="flex items-center gap-2" *peraCan="PERM.crm.catalog.manage">
-              <pera-button
-                variant="primary"
-                size="sm"
-                [loading]="store.saving()"
-                (click)="save(c)"
-                >{{ catalog.t('cat.save') }}</pera-button
-              >
-            </div>
           </div>
         </section>
 
@@ -174,120 +160,25 @@ import {
                     />
                   }
                   <span class="fs-micro text-text-muted ms-auto">{{ origin(attr, c) }}</span>
-                  @if (attr.categoryId === c.id) {
-                    <ng-container *peraCan="PERM.crm.catalog.manage">
-                      <button
-                        type="button"
-                        class="fs-micro text-accent hover:underline"
-                        (click)="toggleEditAttr(attr)"
-                      >
-                        {{ catalog.t('common.edit') }}
-                      </button>
-                      <button
-                        type="button"
-                        class="fs-micro text-danger hover:underline"
-                        (click)="removeAttr(attr)"
-                      >
-                        {{ catalog.t('cat.delete') }}
-                      </button>
-                    </ng-container>
-                  }
                 </div>
-
-                <!-- The data type is absent by design: immutable once any value exists. -->
-                @if (editingAttrId() === attr.id) {
-                  <div [formGroup]="attrEditForm" class="flex flex-col gap-2">
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      <pera-input
-                        formControlName="code"
-                        [placeholder]="catalog.t('cat.codeL')"
-                        dir="ltr"
-                      />
-                      <pera-input
-                        formControlName="unit"
-                        [placeholder]="catalog.t('cat.attrUnit')"
-                        dir="ltr"
-                      />
-                      <pera-input
-                        formControlName="nameEn"
-                        [placeholder]="catalog.t('cat.nameEnL')"
-                        dir="ltr"
-                      />
-                      <pera-input
-                        formControlName="nameAr"
-                        [placeholder]="catalog.t('cat.nameArL')"
-                        dir="rtl"
-                      />
-                    </div>
-                    <div class="flex items-center gap-2">
-                      <pera-checkbox formControlName="isRequired">{{
-                        catalog.t('cat.attrRequired')
-                      }}</pera-checkbox>
-                      <pera-button
-                        variant="primary"
-                        size="xs"
-                        class="ms-auto"
-                        [loading]="store.saving()"
-                        (click)="submitEditAttr(attr)"
-                        >{{ catalog.t('cat.save') }}</pera-button
-                      >
-                    </div>
-                  </div>
-                }
 
                 <!--
                   A Select attribute is unusable without options — the picker would offer a
-                  dropdown with nothing in it. Only the DEFINING category may edit them.
+                  dropdown with nothing in it. Only the DEFINING category may add them.
                 -->
                 @if (attr.dataType === ATTR_TYPE.Select) {
                   <div class="flex flex-col gap-1 ps-3 border-s border-border">
                     <div class="flex items-center gap-1.5 flex-wrap">
-                      @for (opt of sortedOptions(attr); track opt.id; let oi = $index) {
+                      @for (opt of sortedOptions(attr); track opt.id) {
                         <span
                           class="inline-flex items-center gap-1 fs-micro px-1.5 py-0.5 rounded bg-surface-muted text-text-secondary"
                         >
                           <span dir="auto">{{ name(opt) }}</span>
-                          @if (attr.categoryId === c.id) {
-                            <ng-container *peraCan="PERM.crm.catalog.manage">
-                              <button
-                                type="button"
-                                [attr.aria-label]="catalog.t('common.edit')"
-                                (click)="toggleEditOption(opt)"
-                              >
-                                <pera-icon name="pencil" [size]="12" />
-                              </button>
-                              <button
-                                type="button"
-                                class="disabled:opacity-30"
-                                [disabled]="oi === 0"
-                                [attr.aria-label]="catalog.t('cat.moveUp')"
-                                (click)="store.reorderOption(attr, opt.id, -1)"
-                              >
-                                <pera-icon name="chevron-up" [size]="12" />
-                              </button>
-                              <button
-                                type="button"
-                                class="disabled:opacity-30"
-                                [disabled]="oi === attr.options.length - 1"
-                                [attr.aria-label]="catalog.t('cat.moveDown')"
-                                (click)="store.reorderOption(attr, opt.id, 1)"
-                              >
-                                <pera-icon name="chevron-down" [size]="12" />
-                              </button>
-                              <button
-                                type="button"
-                                class="text-danger"
-                                [attr.aria-label]="catalog.t('cat.delete')"
-                                (click)="removeOption(opt)"
-                              >
-                                <pera-icon name="x" [size]="12" />
-                              </button>
-                            </ng-container>
-                          }
                         </span>
                       } @empty {
-                        <span class="fs-micro text-text-muted"
-                          >{{ catalog.t('cat.options') }}: —</span
+                        <!-- 009b #36: no route reads an attribute's options. -->
+                        <span class="fs-micro text-text-muted" data-testid="cat-options-unavailable"
+                          >{{ catalog.t('cat.options') }}: {{ catalog.t('cat.notAvailable') }}</span
                         >
                       }
 
@@ -302,36 +193,6 @@ import {
                         </button>
                       }
                     </div>
-
-                    @if (editingOptionOf(attr); as editing) {
-                      <div
-                        [formGroup]="optionEditForm"
-                        class="grid grid-cols-1 sm:grid-cols-3 gap-2"
-                      >
-                        <pera-input
-                          formControlName="code"
-                          [placeholder]="catalog.t('cat.codeL')"
-                          dir="ltr"
-                        />
-                        <pera-input
-                          formControlName="nameEn"
-                          [placeholder]="catalog.t('cat.nameEnL')"
-                          dir="ltr"
-                        />
-                        <pera-input
-                          formControlName="nameAr"
-                          [placeholder]="catalog.t('cat.nameArL')"
-                          dir="rtl"
-                        />
-                        <pera-button
-                          variant="primary"
-                          size="xs"
-                          [loading]="store.saving()"
-                          (click)="submitEditOption(editing)"
-                          >{{ catalog.t('cat.save') }}</pera-button
-                        >
-                      </div>
-                    }
 
                     @if (addingOptionFor() === attr.id) {
                       <div [formGroup]="optionForm" class="grid grid-cols-1 sm:grid-cols-3 gap-2">
@@ -424,7 +285,7 @@ import {
               type="button"
               class="ms-auto fs-caption text-accent hover:underline"
               *peraCan="PERM.crm.catalog.manage"
-              (click)="openItemDialog(c, null)"
+              (click)="openItemDialog(c)"
             >
               {{ catalog.t('cat.addItem') }}
             </button>
@@ -445,38 +306,6 @@ import {
                     [dot]="false"
                   />
                 }
-                <span class="fs-micro text-text-muted truncate max-w-[40%]" dir="auto">{{
-                  itemSpecSummary(item)
-                }}</span>
-                <button
-                  type="button"
-                  class="p-1 rounded hover:bg-surface-muted"
-                  *peraCan="PERM.crm.catalog.manage"
-                  [attr.aria-label]="catalog.t('common.edit')"
-                  (click)="openItemDialog(c, item)"
-                >
-                  <pera-icon name="pencil" [size]="14" />
-                </button>
-                <button
-                  type="button"
-                  class="p-1 rounded hover:bg-surface-muted"
-                  *peraCan="PERM.crm.catalog.manage"
-                  [attr.aria-label]="
-                    item.isActive ? catalog.t('cat.deactivate') : catalog.t('cat.activate')
-                  "
-                  (click)="store.setItemActive(item.id, !item.isActive)"
-                >
-                  <pera-icon [name]="item.isActive ? 'eye-off' : 'eye'" [size]="14" />
-                </button>
-                <button
-                  type="button"
-                  class="p-1 rounded hover:bg-surface-muted text-danger"
-                  *peraCan="PERM.crm.catalog.manage"
-                  [attr.aria-label]="catalog.t('cat.delete')"
-                  (click)="removeItem(item)"
-                >
-                  <pera-icon name="x" [size]="14" />
-                </button>
               </div>
             } @empty {
               <p class="fs-caption text-text-muted m-0 p-2">{{ catalog.t('cat.noItems') }}</p>
@@ -484,7 +313,10 @@ import {
           </div>
         </section>
 
-        <!-- Space-type targeting — read + write now that the read exists. -->
+        <!--
+          Space-type targeting. 009b #34: no route reads a category's mappings, so the
+          current set is "not available"; mapping a new type still works (row 37).
+        -->
         <section class="bg-surface border border-border rounded-card">
           <header class="px-4 py-3 border-b border-border">
             <span class="fs-label uppercase tracking-wide text-text-muted">{{
@@ -492,29 +324,9 @@ import {
             }}</span>
           </header>
           <div class="p-4 flex flex-col gap-2">
-            @if (store.spaceTypesLoading()) {
-              <p class="fs-caption text-text-muted m-0">{{ catalog.t('common.loading') }}</p>
-            } @else if (store.spaceTypeIds().length === 0) {
-              <p class="fs-caption text-text-muted m-0">{{ catalog.t('cat.targetingGlobal') }}</p>
-            } @else {
-              <div class="flex flex-wrap gap-1.5">
-                @for (id of store.spaceTypeIds(); track id) {
-                  <span
-                    class="inline-flex items-center gap-1 fs-micro px-1.5 py-0.5 rounded bg-accent-soft text-accent"
-                  >
-                    {{ spaceTypeName(id) }}
-                    <button
-                      type="button"
-                      *peraCan="PERM.crm.catalog.manage"
-                      [attr.aria-label]="catalog.t('cat.unmapType')"
-                      (click)="unmapType(c, id)"
-                    >
-                      <pera-icon name="x" [size]="10" />
-                    </button>
-                  </span>
-                }
-              </div>
-            }
+            <p class="fs-caption text-text-muted m-0" data-testid="cat-targeting-unavailable">
+              {{ catalog.t('cat.notAvailable') }}
+            </p>
             <div class="flex items-center gap-2" *peraCan="PERM.crm.catalog.manage">
               <pera-select
                 class="flex-1"
@@ -538,12 +350,6 @@ import {
         <div class="flex items-center gap-2 flex-wrap" *peraCan="PERM.crm.catalog.manage">
           <pera-button variant="secondary" size="sm" (click)="moving.set(!moving())">{{
             catalog.t('cat.move')
-          }}</pera-button>
-          <pera-button variant="ghost" size="sm" (click)="toggleActive(c)">{{
-            c.isActive ? catalog.t('cat.deactivate') : catalog.t('cat.activate')
-          }}</pera-button>
-          <pera-button variant="danger" size="sm" class="ms-auto" (click)="remove(c)">{{
-            catalog.t('cat.delete')
           }}</pera-button>
         </div>
 
@@ -573,7 +379,6 @@ export class CrmCatalogCategoryDetailComponent {
   protected readonly store = inject(CatalogAdminStore);
   private readonly cache = inject(CatalogStore);
   protected readonly catalog = inject(CatalogService);
-  private readonly confirm = inject(ConfirmService);
   private readonly lookup = inject(CrmLookupService);
   private readonly toast = inject(ToastService);
   private readonly fb = inject(FormBuilder);
@@ -586,32 +391,27 @@ export class CrmCatalogCategoryDetailComponent {
   /** Space types for the targeting card — one lookup, shared by every category. */
   private readonly spaceTypes = signal<CrmSpaceType[]>([]);
 
-  /**
-   * Emitted with the deleted category's parent id (`null` = root) once the delete
-   * succeeds. The page owns the `?category=` query param, so navigation belongs there.
-   */
-  readonly deleted = output<string | null>();
   readonly attributes = this.store.effectiveAttributes;
   readonly items = this.store.items;
 
   protected readonly ATTR_TYPE = CatalogAttributeType;
 
-  // Four inline panels share one open slot — see `closePanels()`.
+  // Two inline panels share one open slot — see `closePanels()`. 009b #N-10: no attribute
+  // or option update/delete/reorder route exists, so only the add panels remain.
   readonly addingAttr = signal(false);
   /** The attribute id whose "add option" row is open, or `null`. */
   readonly addingOptionFor = signal<string | null>(null);
-  /** The attribute id whose inline edit panel is open, or `null`. */
-  readonly editingAttrId = signal<string | null>(null);
-  /** The option id whose inline edit row is open, or `null`. */
-  readonly editingOptionId = signal<string | null>(null);
   /** The space type selected in the targeting card's "add" row. */
   readonly targetType = signal<string>('');
 
-  /** Only space types NOT already mapped — mapping the same one twice is `MappingExists`. */
+  /**
+   * Every active space type (009b #27). The current mappings cannot be read (009b #N-7), so
+   * an already-mapped type is offered too and answers 409 `DuplicateMapping`.
+   * `spaceTypeName` still names an inactive type.
+   */
   readonly unmappedSpaceTypeOptions = computed<SelectOption[]>(() => {
-    const mapped = new Set(this.store.spaceTypeIds());
     return this.spaceTypes()
-      .filter((s) => !mapped.has(s.id))
+      .filter((s) => s.isActive !== false)
       .map((s) => ({
         value: s.id,
         label: this.catalog.locale() === 'ar' ? s.nameAr || s.nameEn : s.nameEn,
@@ -622,18 +422,6 @@ export class CrmCatalogCategoryDetailComponent {
     code: ['', [Validators.required]],
     nameEn: ['', [Validators.required]],
     nameAr: ['', [Validators.required]],
-  });
-  readonly optionEditForm = this.fb.nonNullable.group({
-    code: ['', [Validators.required]],
-    nameEn: ['', [Validators.required]],
-    nameAr: ['', [Validators.required]],
-  });
-  readonly attrEditForm = this.fb.nonNullable.group({
-    code: ['', [Validators.required]],
-    nameEn: ['', [Validators.required]],
-    nameAr: ['', [Validators.required]],
-    unit: [''],
-    isRequired: [false],
   });
   readonly moving = signal(false);
   readonly moveTarget = signal<string>('');
@@ -684,16 +472,18 @@ export class CrmCatalogCategoryDetailComponent {
       this.form.reset({
         nameEn: c.nameEn,
         nameAr: c.nameAr,
-        descriptionEn: c.descriptionEn ?? '',
-        descriptionAr: c.descriptionAr ?? '',
-        imageUri: c.imageUri ?? '',
+        // 009b #34: the tree carries no description or image — the fields start empty.
+        descriptionEn: '',
+        descriptionAr: '',
+        imageUri: '',
         selectionMode: String(c.selectionMode),
         isRequired: c.isRequired,
       });
-      this.imagePreview.set(c.imageUri ?? '');
+      this.imagePreview.set('');
     });
 
     this.form.controls.imageUri.valueChanges.subscribe((v) => this.imagePreview.set(v ?? ''));
+    this.form.disable(); // 009b #N-8: no update route — the identity is read-only.
   }
 
   name(x: { nameEn: string; nameAr: string }): string {
@@ -724,24 +514,6 @@ export class CrmCatalogCategoryDetailComponent {
     });
   }
 
-  /** A resolved-spec preview for the Items list — item values only, unit appended. */
-  itemSpecSummary(item: CatalogItem): string {
-    if (item.attributes.length === 0) return '';
-    return item.attributes
-      .map((v) => {
-        const value =
-          (this.catalog.locale() === 'ar' ? v.optionNameAr : v.optionNameEn) ??
-          v.valueText ??
-          (v.valueNumber != null ? String(v.valueNumber) + (v.unit ? ' ' + v.unit : '') : null) ??
-          (v.valueBool != null ? String(v.valueBool) : null) ??
-          v.valueDate;
-        if (value == null) return null;
-        return `${this.name(v)}: ${value}`;
-      })
-      .filter((s): s is string => s !== null)
-      .join(' · ');
-  }
-
   moveOptions(category: CatalogCategory): SelectOption[] {
     const blocked = this.cache.categorySubtreeIds(category.id);
     const options: SelectOption[] = [{ value: '', label: this.catalog.t('cat.moveToRoot') }];
@@ -753,28 +525,6 @@ export class CrmCatalogCategoryDetailComponent {
       });
     }
     return options;
-  }
-
-  save(category: CatalogCategory): void {
-    if (this.form.invalid) {
-      this.form.markAllAsTouched();
-      return;
-    }
-    const v = this.form.getRawValue();
-    this.store.updateCategory(
-      category.id,
-      {
-        code: category.code,
-        nameEn: v.nameEn.trim(),
-        nameAr: v.nameAr.trim(),
-        selectionMode: Number(v.selectionMode),
-        isRequired: v.isRequired,
-        descriptionEn: v.descriptionEn.trim() || null,
-        descriptionAr: v.descriptionAr.trim() || null,
-        imageUri: v.imageUri.trim() || null,
-      },
-      this.toastOn('cat.nodeSaved'),
-    );
   }
 
   /**
@@ -822,16 +572,10 @@ export class CrmCatalogCategoryDetailComponent {
     this.targetType.set('');
   }
 
-  unmapType(category: CatalogCategory, spaceTypeId: string): void {
-    this.store.unmapSpaceType(category.id, spaceTypeId, this.toastOn('cat.nodeSaved'));
-  }
-
-  /** Only one inline panel is open at a time — four stacked forms would be unreadable. */
+  /** Only one inline panel is open at a time — stacked forms would be unreadable. */
   private closePanels(): void {
     this.addingAttr.set(false);
     this.addingOptionFor.set(null);
-    this.editingAttrId.set(null);
-    this.editingOptionId.set(null);
   }
 
   toggleAddAttr(): void {
@@ -845,79 +589,6 @@ export class CrmCatalogCategoryDetailComponent {
     this.closePanels();
     this.addingOptionFor.set(open ? null : attributeId);
     this.optionForm.reset();
-  }
-
-  toggleEditAttr(attr: CatalogAttribute): void {
-    const open = this.editingAttrId() === attr.id;
-    this.closePanels();
-    if (open) return;
-    this.editingAttrId.set(attr.id);
-    this.attrEditForm.reset({
-      code: attr.code,
-      nameEn: attr.nameEn,
-      nameAr: attr.nameAr,
-      unit: attr.unit ?? '',
-      isRequired: attr.isRequired,
-    });
-  }
-
-  submitEditAttr(attr: CatalogAttribute): void {
-    if (this.attrEditForm.invalid) {
-      this.attrEditForm.markAllAsTouched();
-      return;
-    }
-    const v = this.attrEditForm.getRawValue();
-    this.store.updateAttribute(
-      attr.id,
-      {
-        code: v.code.trim(),
-        nameEn: v.nameEn.trim(),
-        nameAr: v.nameAr.trim(),
-        unit: v.unit.trim() || null,
-        isRequired: v.isRequired,
-      },
-      this.toastOn('cat.attrSaved'),
-    );
-    this.editingAttrId.set(null);
-  }
-
-  toggleEditOption(option: CatalogAttributeOption): void {
-    const open = this.editingOptionId() === option.id;
-    this.closePanels();
-    if (open) return;
-    this.editingOptionId.set(option.id);
-    this.optionEditForm.reset({
-      code: option.code,
-      nameEn: option.nameEn,
-      nameAr: option.nameAr,
-    });
-  }
-
-  /** The option under edit within THIS attribute, so the row renders in the right block. */
-  editingOptionOf(attr: CatalogAttribute): CatalogAttributeOption | null {
-    const id = this.editingOptionId();
-    return id ? (attr.options.find((o) => o.id === id) ?? null) : null;
-  }
-
-  submitEditOption(option: CatalogAttributeOption): void {
-    if (this.optionEditForm.invalid) {
-      this.optionEditForm.markAllAsTouched();
-      return;
-    }
-    const v = this.optionEditForm.getRawValue();
-    this.store.updateOption(
-      option.id,
-      {
-        code: v.code.trim(),
-        nameEn: v.nameEn.trim(),
-        nameAr: v.nameAr.trim(),
-        // The wire layer sends `imageUri ?? null`, so omitting it would CLEAR a persisted
-        // image. This form does not edit it — resend what the option already carries.
-        imageUri: option.imageUri,
-      },
-      this.toastOn('cat.attrSaved'),
-    );
-    this.editingOptionId.set(null);
   }
 
   submitOption(attributeId: string): void {
@@ -935,45 +606,6 @@ export class CrmCatalogCategoryDetailComponent {
     this.addingOptionFor.set(null);
   }
 
-  removeOption(option: CatalogAttributeOption): void {
-    void this.confirm
-      .open({ title: this.catalog.t('cat.delete'), body: this.name(option), tone: 'danger' })
-      .then((ok) => ok && this.store.deleteOption(option.id, this.toastOn('cat.attrSaved')));
-  }
-
-  removeAttr(attr: CatalogAttribute): void {
-    void this.confirm
-      .open({ title: this.catalog.t('cat.delete'), body: attr.nameEn, tone: 'danger' })
-      .then((ok) => ok && this.store.deleteAttribute(attr.id));
-  }
-
-  toggleActive(category: CatalogCategory): void {
-    this.store.setCategoryActive(category.id, !category.isActive);
-  }
-
-  remove(category: CatalogCategory): void {
-    void this.confirm
-      .open({
-        title: this.catalog.t('cat.delete'),
-        body: this.catalog.t('cat.deleteConfirm'),
-        tone: 'danger',
-      })
-      .then(
-        (ok) =>
-          ok &&
-          this.store.deleteCategory(category.id, category.parentId, {
-            // The page owns `?category=`; without this the URL still points at the
-            // deleted category and a refresh would land on nothing.
-            onDone: () => this.deleted.emit(category.parentId),
-            onError: (err, fallback) =>
-              this.toast.show({
-                tone: 'danger',
-                message: this.catalog.t(domainErrorKey(err.code, fallback)),
-              }),
-          }),
-      );
-  }
-
   doMove(category: CatalogCategory): void {
     this.store.moveCategory(category.id, this.moveTarget() || null, this.toastOn('cat.moved'));
     this.moving.set(false);
@@ -981,18 +613,13 @@ export class CrmCatalogCategoryDetailComponent {
 
   // ── Items ────────────────────────────────────────────────────────────
 
-  openItemDialog(category: CatalogCategory, item: CatalogItem | null): void {
-    const data: CatalogItemDialogData = { categoryId: category.id, item };
+  /** Create-only (009b #N-9: no item update route). */
+  openItemDialog(category: CatalogCategory): void {
+    const data: CatalogItemDialogData = { categoryId: category.id };
     this.modal.open<string | null>(CrmCatalogItemDialogComponent, {
       size: 'md',
       data,
       injector: this.injector,
     });
-  }
-
-  removeItem(item: CatalogItem): void {
-    void this.confirm
-      .open({ title: this.catalog.t('cat.delete'), body: this.name(item), tone: 'danger' })
-      .then((ok) => ok && this.store.deleteItem(item.id, this.toastOn('cat.nodeSaved')));
   }
 }

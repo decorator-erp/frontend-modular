@@ -3,6 +3,7 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import type { Observable } from 'rxjs';
 import { CrmItemService } from '../../data/crm-item.service';
 import { CrmMeetingService } from '../../data/crm-meeting.service';
+import { injectReloadOnConflict } from '@platform/http/concurrency';
 import { ErrorHandlerService, friendly } from '@platform/http/error-handler.service';
 import { CatalogService } from '@platform/i18n/catalog.service';
 import type { CatalogKey } from '@platform/i18n/catalog/en';
@@ -131,6 +132,7 @@ export class CrmItemFormComponent {
   private readonly meetingService = inject(CrmMeetingService);
   private readonly errorHandler = inject(ErrorHandlerService);
   private readonly toast = inject(ToastService);
+  private readonly reloadOnConflict = injectReloadOnConflict();
   private readonly modalRef = inject(PeraModalRef) as PeraModalRef<boolean>;
   protected readonly catalog = inject(CatalogService);
   readonly data = inject(PERA_MODAL_DATA) as CrmItemFormDialogData;
@@ -169,16 +171,16 @@ export class CrmItemFormComponent {
   readonly submitting = signal(false);
 
   protected eyebrow(): string {
-    if (this.mode === 'add') return 'POST /api/crm/projects/{projectId}/requirement-items';
+    if (this.mode === 'add') return 'POST /api/crm/periods/{periodId}/items';
     if (this.mode === 'supersede') return 'POST /api/crm/requirement-items/{itemId}/supersede';
     return 'PUT /api/crm/requirement-items/{itemId}';
   }
 
   constructor() {
-    this.meetingService.search(this.data.projectId).subscribe((meetings: CrmMeeting[]) => {
+    this.meetingService.search(this.data.projectId).subscribe((page) => {
       this.meetingOptions.set([
         { value: '', label: '—' },
-        ...meetings.map((m) => ({ value: m.id, label: m.title })),
+        ...page.items.map((m: CrmMeeting) => ({ value: m.id, label: m.title })),
       ]);
     });
   }
@@ -190,6 +192,38 @@ export class CrmItemFormComponent {
 
   close(): void {
     this.modalRef.close(false);
+  }
+
+  /**
+   * FINDING-5-1: update/supersede bind every source field positionally, so an omitted one is
+   * cleared. The form edits only the meeting: while it is unchanged the item's stored source
+   * (type + its one id) travels as is; a new meeting replaces the single source (the backend allows
+   * exactly one); clearing the stored meeting clears it. `projectTaskId` is never edited here and is
+   * always the stored value. `add` has no stored item, so this is the old meeting-only body.
+   */
+  private sourceFields(
+    meetingId: string,
+  ): Pick<
+    UpdateRequirementItemRequest,
+    'sourceType' | 'meetingId' | 'briefId' | 'noteId' | 'projectTaskId'
+  > {
+    const stored = this.data.existing;
+    if (stored && meetingId === (stored.meetingId ?? '')) {
+      return {
+        sourceType: stored.sourceType,
+        meetingId: stored.meetingId,
+        briefId: stored.briefId,
+        noteId: stored.noteId,
+        projectTaskId: stored.projectTaskId,
+      };
+    }
+    return {
+      sourceType: meetingId ? RequirementSource.Meeting : null,
+      meetingId: meetingId || null,
+      briefId: null,
+      noteId: null,
+      projectTaskId: stored?.projectTaskId ?? null,
+    };
   }
 
   submit(): void {
@@ -205,16 +239,17 @@ export class CrmItemFormComponent {
       category: Number(v.category),
       title: v.title.trim(),
       priority: Number(v.priority),
+      // 009b #24: update/supersede bind spaceTypeId positionally — keep the item's own value.
+      spaceTypeId: this.data.existing?.spaceTypeId ?? null,
       room: v.room.trim() || null,
       description: v.details.trim() || null,
-      sourceType: v.meetingId ? RequirementSource.Meeting : null,
-      meetingId: v.meetingId || null,
+      ...this.sourceFields(v.meetingId),
     };
 
     let call: Observable<unknown>;
     if (this.mode === 'add') {
-      call = this.items.create(this.data.projectId, {
-        periodId: this.data.periodId,
+      call = this.items.create(this.data.periodId, {
+        projectId: this.data.projectId,
         ...updateRequest,
       });
     } else if (this.mode === 'supersede') {
@@ -229,6 +264,8 @@ export class CrmItemFormComponent {
         this.modalRef.close(true);
       },
       error: (err) => {
+        // 009b #24: 409 crm.items.ConcurrentUpdate → close as done; the board reloads (X-3).
+        if (this.reloadOnConflict(err, () => this.modalRef.close(true))) return;
         const parsed = this.errorHandler.parse(err);
         this.serverError.set({ ...parsed, generalMessage: friendly(parsed) });
         this.submitting.set(false);

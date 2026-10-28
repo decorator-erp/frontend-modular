@@ -3,7 +3,6 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { CatalogService } from '@platform/i18n/catalog.service';
 import { CanDirective, PERM } from '@platform/permissions';
-import type { CatalogCategory } from '../../../model';
 import { FormsModule } from '@angular/forms';
 import {
   ModalService,
@@ -109,16 +108,11 @@ import {
             (open)="openSearchHit($event.id)"
           />
         } @else {
-          <app-crm-catalog-children-list
-            [categories]="store.children()"
-            (open)="goto($event.id)"
-            (moveUp)="move($event, -1)"
-            (moveDown)="move($event, 1)"
-          />
+          <app-crm-catalog-children-list [categories]="store.children()" (open)="goto($event.id)" />
         }
       </div>
       <aside>
-        <app-crm-catalog-category-detail (deleted)="goto($event)" />
+        <app-crm-catalog-category-detail />
       </aside>
     </div>
   `,
@@ -154,11 +148,6 @@ export class CrmCatalogAdminPageComponent {
   openSearchHit(categoryId: string): void {
     this.store.search('');
     this.goto(categoryId);
-  }
-
-  move(category: CatalogCategory, direction: -1 | 1): void {
-    // The parent of the listed children is the current category (null at root).
-    this.store.reorderChild(this.store.currentCategory()?.id ?? null, category.id, direction);
   }
 
   async newCategory(): Promise<void> {

@@ -23,8 +23,6 @@ import { CrmSlotGridComponent } from './slot-grid.component';
 
 export interface ProposeSlotsDialogData {
   projectId: string;
-  /** Always `project.productOwnerId` — the ONLY employee whose availability the server computes. */
-  targetEmployeeId: string;
   periodId?: string | null;
 }
 
@@ -177,7 +175,6 @@ export class CrmProposeSlotsComponent {
         type: Number(v.type) as MeetingType,
         location: v.location.trim() || null,
         durationMinutes: v.durationMinutes || null,
-        targetEmployeeId: this.data.targetEmployeeId,
         slots: this.selectedSlots(),
       })
       .subscribe({

@@ -13,7 +13,7 @@ import { CatalogService } from '@platform/i18n/catalog.service';
 import type { CatalogKey } from '@platform/i18n/catalog/en';
 import { LocaleService, type Locale } from '@platform/i18n';
 import { ProjectSector } from '../../model/crm-enums';
-import type { LeadIntakeRequest, PublicLeadSubmissionRequest } from '../../model';
+import type { PublicLeadSubmissionRequest } from '../../model';
 import {
   AREA_SQM_MAX,
   AREA_SQM_MIN,
@@ -25,9 +25,6 @@ import {
   PeraButtonComponent,
   PeraFormFieldComponent,
   PeraInputComponent,
-  PeraSegmentedComponent,
-  PeraSelectComponent,
-  PeraTextareaComponent,
   SegmentedOption,
   SelectOption,
 } from '@ds';
@@ -40,7 +37,8 @@ import {
 } from '../brief/brief-head.component';
 import { PublicIntakeStore } from '../../stores/public-intake.store';
 
-type Phase = 'form' | 'submitting' | 'success' | 'rateLimited' | 'failure';
+type Phase =
+  'form' | 'submitting' | 'success' | 'rateLimited' | 'tooLarge' | 'unavailable' | 'failure';
 
 /**
  * Anonymous public lead-intake page — top-level route `/intake` (+ `/intake/:lang`), OUTSIDE
@@ -52,15 +50,7 @@ type Phase = 'form' | 'submitting' | 'success' | 'rateLimited' | 'failure';
   selector: 'app-intake-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
   providers: [PublicIntakeStore],
-  imports: [
-    ReactiveFormsModule,
-    PeraButtonComponent,
-    PeraFormFieldComponent,
-    PeraInputComponent,
-    PeraSegmentedComponent,
-    PeraSelectComponent,
-    PeraTextareaComponent,
-  ],
+  imports: [ReactiveFormsModule, PeraButtonComponent, PeraFormFieldComponent, PeraInputComponent],
   template: `
     <div
       class="min-h-screen bg-bg text-text-primary font-sans flex items-center justify-center px-5 py-8"
@@ -232,6 +222,40 @@ type Phase = 'form' | 'submitting' | 'success' | 'rateLimited' | 'failure';
                 }}</pera-button>
               </div>
             }
+            @case ('tooLarge') {
+              <div class="py-20 flex flex-col items-center gap-4 text-center">
+                <div>
+                  <div class="fs-h3 font-semibold mb-2">
+                    {{ catalog.t('public.tooLargeTitle') }}
+                  </div>
+                  <div
+                    class="fs-body text-text-secondary leading-relaxed max-w-[var(--w-column-lg)]"
+                  >
+                    {{ catalog.t('public.tooLargeMsg') }}
+                  </div>
+                </div>
+                <pera-button variant="secondary" (click)="retry()">{{
+                  catalog.t('public.tryAgain')
+                }}</pera-button>
+              </div>
+            }
+            @case ('unavailable') {
+              <div class="py-20 flex flex-col items-center gap-4 text-center">
+                <div>
+                  <div class="fs-h3 font-semibold mb-2">
+                    {{ catalog.t('public.unavailableTitle') }}
+                  </div>
+                  <div
+                    class="fs-body text-text-secondary leading-relaxed max-w-[var(--w-column-lg)]"
+                  >
+                    {{ catalog.t('public.unavailableMsg') }}
+                  </div>
+                </div>
+                <pera-button variant="secondary" (click)="retry()">{{
+                  catalog.t('public.tryAgain')
+                }}</pera-button>
+              </div>
+            }
             @case ('failure') {
               <div class="py-20 flex flex-col items-center gap-4 text-center">
                 <span
@@ -265,17 +289,6 @@ type Phase = 'form' | 'submitting' | 'success' | 'rateLimited' | 'failure';
             }
             @default {
               <form [formGroup]="form" class="flex flex-col gap-6" (ngSubmit)="submit()" novalidate>
-                <!-- honeypot: present, invisible, always empty -->
-                <div class="absolute w-px h-px overflow-hidden opacity-0 -z-10" aria-hidden="true">
-                  <label
-                    >Website<input
-                      formControlName="website"
-                      type="text"
-                      tabindex="-1"
-                      autocomplete="off"
-                  /></label>
-                </div>
-
                 @if (step() === 1) {
                   <div class="flex flex-col gap-5">
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-5">
@@ -313,137 +326,11 @@ type Phase = 'form' | 'submitting' | 'success' | 'rateLimited' | 'failure';
                     </pera-form-field>
                   </div>
                 } @else {
-                  <div class="flex flex-col gap-5">
-                    <!-- sector -->
-                    <div class="flex items-center gap-2.5">
-                      <span class="w-3.5 h-px bg-accent"></span>
-                      <span class="fs-label uppercase tracking-wide font-semibold">{{
-                        catalog.t('intake.fSector')
-                      }}</span>
-                    </div>
-                    <pera-form-field [label]="catalog.t('intake.fSector')">
-                      <pera-select
-                        formControlName="projectSector"
-                        [options]="sectorOptions()"
-                        [placeholder]="catalog.t('intake.selectSector')"
-                      />
-                    </pera-form-field>
-
-                    @if (hasSector()) {
-                      <!-- client info -->
-                      <div class="flex items-center gap-2.5 mt-2">
-                        <span class="w-3.5 h-px bg-accent"></span>
-                        <span class="fs-label uppercase tracking-wide font-semibold">{{
-                          catalog.t('intake.secClient')
-                        }}</span>
-                      </div>
-                      <pera-form-field [label]="catalog.t('intake.fJobTitle')">
-                        <pera-input formControlName="jobTitle" />
-                      </pera-form-field>
-                      <pera-form-field
-                        [label]="catalog.t('intake.fResidence')"
-                        [hint]="catalog.t('intake.residenceNote')"
-                      >
-                        <pera-input formControlName="clientAddress" />
-                      </pera-form-field>
-
-                      <!-- project details -->
-                      <div class="flex items-center gap-2.5 mt-2">
-                        <span class="w-3.5 h-px bg-accent"></span>
-                        <span class="fs-label uppercase tracking-wide font-semibold">{{
-                          catalog.t('intake.secProject')
-                        }}</span>
-                      </div>
-                      <pera-form-field [label]="catalog.t('intake.fUnitAddress')">
-                        <pera-input formControlName="unitAddress" />
-                      </pera-form-field>
-                      <pera-form-field
-                        [label]="catalog.t('brief.fArea')"
-                        [error]="errorText('areaSqm')"
-                      >
-                        <pera-input
-                          type="number"
-                          formControlName="areaSqm"
-                          dir="ltr"
-                          [error]="errorText('areaSqm')"
-                        />
-                      </pera-form-field>
-                      <pera-form-field [label]="catalog.t('intake.usedDesignerBefore')">
-                        <pera-segmented
-                          formControlName="usedDesignerBefore"
-                          [options]="yesNoOptions()"
-                        />
-                      </pera-form-field>
-                      @if (usedBefore()) {
-                        <pera-form-field [label]="catalog.t('brief.fExperience')">
-                          <pera-segmented
-                            formControlName="designerExperience"
-                            [options]="experienceOptions()"
-                          />
-                        </pera-form-field>
-                      }
-                      @if (hasExperience()) {
-                        <pera-form-field [label]="catalog.t('intake.fReason')">
-                          <pera-textarea
-                            formControlName="designerExperienceReason"
-                            [rows]="2"
-                            [placeholder]="catalog.t('intake.reasonPh')"
-                          />
-                        </pera-form-field>
-                      }
-
-                      @if (isResidential()) {
-                        <!-- residential specifics -->
-                        <div class="flex items-center gap-2.5 mt-2">
-                          <span class="w-3.5 h-px bg-accent"></span>
-                          <span class="fs-label uppercase tracking-wide font-semibold">{{
-                            catalog.t('intake.residentialSection')
-                          }}</span>
-                        </div>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-5">
-                          <pera-form-field [label]="catalog.t('intake.fUnit')">
-                            <pera-select
-                              formControlName="unitType"
-                              [options]="unitTypeOptions()"
-                              [placeholder]="catalog.t('intake.selectUnit')"
-                            />
-                          </pera-form-field>
-                          <pera-form-field [label]="catalog.t('intake.fCondition')">
-                            <pera-select
-                              formControlName="unitCondition"
-                              [options]="unitConditionOptions()"
-                              [placeholder]="catalog.t('intake.selectUnit')"
-                            />
-                          </pera-form-field>
-                          <pera-form-field [label]="catalog.t('intake.fLicense')">
-                            <pera-segmented
-                              formControlName="isLicensed"
-                              [options]="yesNoOptions()"
-                            />
-                          </pera-form-field>
-                          <pera-form-field [label]="catalog.t('intake.fTenure')">
-                            <pera-segmented
-                              formControlName="isRented"
-                              [options]="tenureOptions()"
-                            />
-                          </pera-form-field>
-                        </div>
-                        <pera-form-field [label]="catalog.t('brief.fFinishingPurpose')">
-                          <pera-select
-                            formControlName="finishingPurpose"
-                            [options]="finishingOptions()"
-                            [placeholder]="catalog.t('intake.selectFinishing')"
-                          />
-                        </pera-form-field>
-                      } @else {
-                        <div
-                          class="flex gap-2 p-3 fs-body-sm text-text-secondary bg-surface-muted border border-border"
-                        >
-                          {{ catalog.t('intake.comingSoon', { sector: sectorLabel() }) }}
-                        </div>
-                      }
-                    }
-                  </div>
+                  <!-- 009b #8 (D-a): the public route binds no intake, so the project
+                       questions are hidden; the office captures them on the lead. -->
+                  <p class="fs-body-sm text-text-secondary leading-relaxed m-0">
+                    {{ catalog.t('public.projectLater') }}
+                  </p>
                 }
 
                 <div class="flex items-center gap-4 pt-1 border-t border-border">
@@ -505,13 +392,15 @@ export class IntakePageComponent {
     if (s === 'submitting') return 'submitting';
     if (s === 'success') return 'success';
     if (s === 'rateLimited') return 'rateLimited';
+    if (s === 'tooLarge') return 'tooLarge';
+    if (s === 'unavailable') return 'unavailable';
     if (s === 'error' && Object.keys(this.store.fieldErrors()).length === 0) return 'failure';
     return 'form';
   });
 
   protected readonly failureMessage = computed(() => {
     switch (this.store.errorCode()) {
-      case 'crm.leads.SectorMismatch':
+      case 'crm.leads.ResidentialWithoutSector':
         return this.catalog.t('public.errSector');
       case 'crm.leads.DesignerExperienceWithoutUse':
         return this.catalog.t('public.errDesignerUse');
@@ -572,7 +461,6 @@ export class IntakePageComponent {
       isLicensed: [null as boolean | null],
       isRented: [null as boolean | null],
       finishingPurpose: [''],
-      website: [''],
     },
     { validators: intakeDesignerRulesValidator() },
   );
@@ -682,37 +570,15 @@ export class IntakePageComponent {
     this.store.submit(this.buildBody());
   }
 
+  /** `PublicLeadRequest` binds exactly these five fields (009b #8, D-a). */
   private buildBody(): PublicLeadSubmissionRequest {
     const v = this.form.getRawValue();
-    const sector = v.projectSector ? (Number(v.projectSector) as ProjectSector) : null;
-    const residential =
-      sector === ProjectSector.Residential
-        ? {
-            unitType: v.unitType ? Number(v.unitType) : null,
-            unitCondition: v.unitCondition ? Number(v.unitCondition) : null,
-            isLicensed: v.isLicensed,
-            isRented: v.isRented,
-            finishingPurpose: v.finishingPurpose ? Number(v.finishingPurpose) : null,
-          }
-        : null;
-    const intake: LeadIntakeRequest = {
-      jobTitle: v.jobTitle.trim() || null,
-      clientAddress: v.clientAddress.trim() || null,
-      projectSector: sector,
-      unitAddress: v.unitAddress.trim() || null,
-      areaSqm: v.areaSqm.trim() ? Number(v.areaSqm) : null,
-      usedDesignerBefore: v.usedDesignerBefore,
-      designerExperience: v.designerExperience,
-      designerExperienceReason: v.designerExperienceReason.trim() || null,
-      residential,
-    };
     return {
       firstName: v.firstName.trim(),
       lastName: v.lastName.trim(),
-      phone: v.phone.trim() || null,
       email: v.email.trim() || null,
-      website: v.website, // honeypot — always empty
-      intake,
+      phone: v.phone.trim() || null,
+      notes: null,
     };
   }
 }

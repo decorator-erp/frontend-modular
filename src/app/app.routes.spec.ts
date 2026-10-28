@@ -129,8 +129,9 @@ describe('app.routes — the 004 shell skeleton', () => {
   // alongside its own app.routes.spec.ts additions — see spec 005's recipe step 4.
   // 004: '' -> dashboard redirect, 403, 500, ** (4). 006: +6 people routes. 005: +1 clients,
   // +1 audit, +4 library, +1 notifications. 007: +1 finance. 008: +8 projects. 009: +1 admin/catalog,
-  // +1 crm, +1 approvals, +1 crm/designer/projects/:projectId.
-  const EXPECTED_SHELL_CHILDREN_AT_009 = 30;
+  // +1 crm, +1 approvals, +1 crm/designer/projects/:projectId. sow (NEW-FEATURE-1): +1
+  // projects/:id/scope-of-work.
+  const EXPECTED_SHELL_CHILDREN_AT_009 = 31;
 
   it('has exactly the expected number of real (non-stub) shell children', () => {
     expect(shellChildren()).toHaveLength(EXPECTED_SHELL_CHILDREN_AT_009);
@@ -238,7 +239,8 @@ describe('app.routes — the 009 CRM routes', () => {
   it('wires the four portal children with their own-scope permissions', () => {
     const portal = routes.find((r) => r.path === 'portal')!;
     const expected: [string, string, unknown][] = [
-      ['', PERM.portal.profileViewOwn, crmPages.clientProfile],
+      // 009b X-7: no portal.profile.view_own exists; the profile route is gated on the shell flag.
+      ['', PERM.crm.portal, crmPages.clientProfile],
       ['schedule', PERM.crm.meetings.viewOwn, crmPages.clientSchedule],
       ['add-requirement', PERM.requirements.submitOwn, crmPages.clientAddRequirement],
       ['approvals', PERM.crm.approvals.viewOwn, crmPages.clientApprovals],

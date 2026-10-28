@@ -43,7 +43,9 @@ export const routes: Routes = [
       {
         path: '',
         canActivate: [PermissionGuard],
-        data: { permission: PERM.portal.profileViewOwn },
+        // 009b X-7: the backend has no portal.profile.view_own; gate on the client shell flag so the
+        // profile's "not available" state (N-1) is reachable.
+        data: { permission: PERM.crm.portal },
         loadComponent: crmPages.clientProfile,
       },
       {

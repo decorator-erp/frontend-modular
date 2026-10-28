@@ -10,10 +10,17 @@ import { ApprovalsListComponent } from './ui/office-approvals/approvals-list.com
 import { CrmDesignProfileComponent } from './ui/designer/design-profile.component';
 
 describe('crmPages — the lazy loaders app.routes.ts routes through', () => {
-  it('resolves the routes loader to crmRoutes and its 11 children', async () => {
+  it('resolves the routes loader to crmRoutes and its 10 children', async () => {
     const routes = await crmPages.routes();
     expect(routes).toBe(crmRoutes);
-    expect(routes).toHaveLength(11);
+    expect(routes).toHaveLength(10);
+  });
+
+  // 009b #N-5: no space-item routes exist on the backend, so the storefront route is gone.
+  it('has no space storefront (record) route (009b #N-5)', () => {
+    expect(crmRoutes.map((r) => r.path)).not.toContain(
+      'projects/:projectId/spaces/:spaceId/record',
+    );
   });
 
   it('resolves each page loader to its page class', async () => {

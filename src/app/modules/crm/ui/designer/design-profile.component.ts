@@ -1,22 +1,15 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
 import { ActivatedRoute } from '@angular/router';
 import { catchError, of } from 'rxjs';
 import { CrmDesignProfileService } from '../../data/crm-design-profile.service';
 import { CrmPeriodService } from '../../data/crm-period.service';
+import { ErrorHandlerService } from '@platform/http/error-handler.service';
 import { CatalogService } from '@platform/i18n/catalog.service';
 import type { CatalogKey } from '@platform/i18n/catalog/en';
 import { formatCairoDateTime } from '@platform/i18n/intl-locale';
-import {
-  RequirementCategory,
-  RequirementPeriodStatus,
-  RequirementPriority,
-} from '../../model/crm-enums';
-import type {
-  ClientDesignProfile,
-  DesignProfileBriefHead,
-  DesignProfileItem,
-  DesignProfileSpace,
-} from '../../model';
+import { RequirementPeriodStatus } from '../../model/crm-enums';
+import type { ClientDesignProfile } from '../../model';
 import {
   PeraAlertComponent,
   PeraBreadcrumbsComponent,
@@ -27,85 +20,47 @@ import {
 } from '@ds';
 import { formatHeadDiffValue, headDiffFieldLabel } from '../client/head-diff-format';
 
-const CATEGORY_LABEL_KEYS: Record<RequirementCategory, CatalogKey> = {
-  [RequirementCategory.SpaceLayout]: 'item.catLayout',
-  [RequirementCategory.Style]: 'item.catSelStyle',
-  [RequirementCategory.ColorPalette]: 'item.catSelColorPalette',
-  [RequirementCategory.Materials]: 'item.catSelMaterials',
-  [RequirementCategory.Furniture]: 'item.catFurn1',
-  [RequirementCategory.Lighting]: 'item.catLighting',
-  [RequirementCategory.Budget]: 'item.catSelBudget',
-  [RequirementCategory.Timeline]: 'item.catSelTimeline',
-  [RequirementCategory.Technical]: 'item.catSelTechnical',
-  [RequirementCategory.Other]: 'common.other',
-};
-const PRIORITY_LABEL_KEYS: Record<RequirementPriority, CatalogKey> = {
-  [RequirementPriority.Low]: 'item.prLow',
-  [RequirementPriority.Medium]: 'item.prMed',
-  [RequirementPriority.High]: 'item.prHigh',
-  [RequirementPriority.Urgent]: 'item.prUrgent',
-};
-
-/** The exact order+field-name `DesignProfileBriefHead` carries — NO `ExpectedBudget`, ever (FR-018). */
-const BRIEF_HEAD_FIELD_ORDER: Array<[string, keyof DesignProfileBriefHead]> = [
-  ['UnitType', 'unitType'],
-  ['UnitCondition', 'unitCondition'],
-  ['Address', 'address'],
-  ['FloorNo', 'floorNo'],
-  ['UnitsPerFloor', 'unitsPerFloor'],
-  ['AreaSqm', 'areaSqm'],
-  ['BuildingKind', 'buildingKind'],
-  ['IsLicensed', 'isLicensed'],
-  ['Position', 'position'],
-  ['ElevatorStatus', 'elevatorStatus'],
-  ['UtilityMetersNote', 'utilityMetersNote'],
-  ['ReceivesFrequentVisitors', 'receivesFrequentVisitors'],
-  ['VisitorsNote', 'visitorsNote'],
-  ['ParentsHobbies', 'parentsHobbies'],
-  ['ChildrenHobbies', 'childrenHobbies'],
-  ['HobbiesInDesign', 'hobbiesInDesign'],
-  ['UsedDesignerBefore', 'usedDesignerBefore'],
-  ['DesignerExperience', 'designerExperience'],
-  ['DesignerExperienceReason', 'designerExperienceReason'],
-  ['HiringReasons', 'hiringReasons'],
+/** The fields `ClientDesignProfileResponse` carries (009b #17) — NO `ExpectedBudget`, ever (FR-018). */
+const PREFERENCE_FIELD_ORDER: Array<[string, keyof ClientDesignProfile]> = [
   ['PreferredStyle', 'preferredStyle'],
   ['PreferredColors', 'preferredColors'],
   ['FurnitureStatus', 'furnitureStatus'],
-  ['TimelinePressure', 'timelinePressure'],
+  ['HiringReasons', 'hiringReasons'],
   ['ArchitecturalRequests', 'architecturalRequests'],
   ['OtherNeeds', 'otherNeeds'],
 ];
 
-interface RoomGroup {
-  room: string | null;
-  items: DesignProfileItem[];
-}
-interface CategoryGroup {
-  category: RequirementCategory;
-  rooms: RoomGroup[];
-}
-interface BriefHeadRow {
+/**
+ * Sections the old profile carried that `ClientDesignProfileResponse` no longer serves (009b #17):
+ * each keeps its card and renders "not available".
+ */
+const UNAVAILABLE_SECTION_KEYS: CatalogKey[] = [
+  'client.identityData',
+  'client.primaryChip',
+  'dp.briefT',
+  'brief.secSpaces',
+  'dp.itemsT',
+  'common.attachments',
+];
+
+interface PreferenceRow {
   label: string;
   value: string;
 }
 
 /**
- * The designer profile (T120–T127, FR-030) — client metadata + primary contact,
- * the approved brief, approved items grouped by category and room, and
- * attachments of confirmed artifacts. **Read-only throughout — no write
- * affordance anywhere on this screen.**
+ * The designer profile (T120–T127, FR-030) — the latest brief's design preferences, read-only.
+ * **No write affordance anywhere on this screen.**
  *
- * Zero money (FR-018) and zero unconfirmed content (FR-019) are enforced
- * SERVER-SIDE (`GetClientDesignProfileQueryHandler`) — this component renders
- * exactly what arrives and never re-filters or re-derives either exclusion
- * (T125/T126). `ClientDesignProfile`'s docblock has the full verification.
- * Field labels/values reuse `head-diff-format.ts` (B6b) rather than a third
- * copy of the same enum-translation table.
+ * `ClientDesignProfileResponse` carries seven fields only (009b #17), so the client card, the
+ * primary contact, the rest of the brief head, spaces, items and attachments render "not
+ * available". A 404 `crm.briefs.NotFound` is "no brief yet". Zero money (FR-018) is enforced
+ * SERVER-SIDE; this component renders exactly what arrives. Field labels/values reuse
+ * `head-diff-format.ts` rather than another copy of the enum-translation table.
  *
- * The open-period banner (T123) is the one thing this screen fetches
- * separately (`CrmPeriodService.list`, gated `crm.periods.read`) — a pure
- * `crm.design_profile.read` grant without `crm.periods.read` simply won't show it;
- * that failure is swallowed rather than surfaced as an error on an otherwise-fine page.
+ * The open-period banner (T123) is the one thing this screen fetches separately
+ * (`CrmPeriodService.list`, gated `crm.periods.read`) — a pure `crm.design_profile.read` grant
+ * without `crm.periods.read` simply won't show it; that failure is swallowed.
  */
 @Component({
   selector: 'app-crm-design-profile',
@@ -135,9 +90,11 @@ interface BriefHeadRow {
     <div class="p-6 flex flex-col gap-4">
       @if (loading() && !profile()) {
         <div class="flex justify-center py-8"><pera-spinner /></div>
+      } @else if (noBrief()) {
+        <pera-empty [title]="catalog.t('brief.noBrief')" />
       } @else if (error()) {
         <pera-alert tone="warning">{{ error() }}</pera-alert>
-      } @else if (profile(); as p) {
+      } @else if (profile()) {
         @if (openPeriodClosesAtUtc(); as closesAtUtc) {
           <pera-alert tone="info">
             <span class="font-medium">{{ catalog.t('dp.openT') }}</span>
@@ -148,155 +105,31 @@ interface BriefHeadRow {
         <pera-card>
           <div class="flex flex-col gap-2 p-1">
             <span class="font-semibold fs-body-sm text-text-primary">{{
-              catalog.t('client.identityData')
+              catalog.t('brief.secPrefs')
             }}</span>
-            <dl class="flex flex-col gap-1 fs-body-sm m-0">
-              @if (p.client.fullName) {
-                <div class="flex justify-between gap-3">
-                  <dt class="text-text-secondary">{{ catalog.t('client.lbl') }}</dt>
-                  <dd class="text-text-primary m-0">{{ p.client.fullName }}</dd>
-                </div>
-              }
-              @if (p.client.jobTitle) {
-                <div class="flex justify-between gap-3">
-                  <dt class="text-text-secondary">{{ catalog.t('brief.fJob') }}</dt>
-                  <dd class="text-text-primary m-0">{{ p.client.jobTitle }}</dd>
-                </div>
-              }
-              @if (p.client.maritalStatus) {
-                <div class="flex justify-between gap-3">
-                  <dt class="text-text-secondary">{{ catalog.t('brief.fMarital') }}</dt>
-                  <dd class="text-text-primary m-0">{{ p.client.maritalStatus }}</dd>
-                </div>
-              }
-              @if (p.client.address) {
-                <div class="flex justify-between gap-3">
-                  <dt class="text-text-secondary">{{ catalog.t('brief.fAddress') }}</dt>
-                  <dd class="text-text-primary m-0 text-end">{{ p.client.address }}</dd>
-                </div>
-              }
-              @if (p.client.children.length) {
-                <div class="flex justify-between gap-3">
-                  <dt class="text-text-secondary">{{ catalog.t('brief.fChildren') }}</dt>
-                  <dd class="text-text-primary m-0">{{ childrenLabel(p.client.children) }}</dd>
-                </div>
-              }
-            </dl>
+            @if (preferenceRows().length) {
+              <dl class="flex flex-col gap-1 fs-body-sm m-0">
+                @for (row of preferenceRows(); track row.label) {
+                  <div class="flex justify-between gap-3">
+                    <dt class="text-text-secondary">{{ row.label }}</dt>
+                    <dd class="text-text-primary m-0 text-end">{{ row.value }}</dd>
+                  </div>
+                }
+              </dl>
+            } @else {
+              <pera-empty [title]="catalog.t('brief.secPrefs')" />
+            }
           </div>
         </pera-card>
 
-        @if (p.primaryContact; as pc) {
+        @for (key of unavailableSections; track key) {
           <pera-card>
-            <div class="flex flex-col gap-2 p-1">
-              <span class="font-semibold fs-body-sm text-text-primary">{{
-                catalog.t('client.primaryChip')
-              }}</span>
-              <div class="fs-body-sm text-text-primary">{{ pc.firstName }} {{ pc.lastName }}</div>
-              @if (pc.email) {
-                <div class="fs-caption text-text-secondary" dir="ltr">{{ pc.email }}</div>
-              }
-              @if (pc.phone) {
-                <div class="fs-caption text-text-secondary" dir="ltr">{{ pc.phone }}</div>
-              }
+            <div class="flex flex-col gap-1 p-1" data-testid="dp-unavailable">
+              <span class="font-semibold fs-body-sm text-text-primary">{{ catalog.t(key) }}</span>
+              <p class="fs-caption text-text-secondary m-0">{{ catalog.t('dp.notAvailable') }}</p>
             </div>
           </pera-card>
         }
-
-        @if (briefHeadRows(); as rows) {
-          @if (rows.length) {
-            <pera-card>
-              <div class="flex flex-col gap-2 p-1">
-                <span class="font-semibold fs-body-sm text-text-primary">{{
-                  catalog.t('dp.briefT')
-                }}</span>
-                <dl class="flex flex-col gap-1 fs-body-sm m-0">
-                  @for (row of rows; track row.label) {
-                    <div class="flex justify-between gap-3">
-                      <dt class="text-text-secondary">{{ row.label }}</dt>
-                      <dd class="text-text-primary m-0 text-end">{{ row.value }}</dd>
-                    </div>
-                  }
-                </dl>
-              </div>
-            </pera-card>
-          }
-        }
-
-        @if (p.spaces.length) {
-          @for (space of p.spaces; track space.id) {
-            <pera-card>
-              <div class="flex flex-col gap-2 p-1">
-                <span class="font-semibold fs-body-sm text-text-primary" dir="auto">{{
-                  spaceName(space)
-                }}</span>
-                @if (space.requirements) {
-                  <p class="fs-body-sm text-text-secondary m-0" dir="auto">
-                    {{ space.requirements }}
-                  </p>
-                }
-              </div>
-            </pera-card>
-          }
-        }
-
-        <pera-card>
-          <div class="flex flex-col gap-3 p-1">
-            <div>
-              <span class="font-semibold fs-body-sm text-text-primary">{{
-                catalog.t('dp.itemsT')
-              }}</span>
-              <p class="fs-caption text-text-secondary m-0">{{ catalog.t('dp.itemsSub') }}</p>
-            </div>
-            @if (categoryGroups().length) {
-              @for (group of categoryGroups(); track group.category) {
-                <div class="flex flex-col gap-2">
-                  <span class="fs-label uppercase tracking-wide text-text-muted font-semibold">{{
-                    catalog.t(categoryLabel(group.category))
-                  }}</span>
-                  @for (roomGroup of group.rooms; track roomGroup.room) {
-                    <div class="flex flex-col gap-1">
-                      <span class="fs-caption text-text-secondary">{{
-                        roomGroup.room || catalog.t('brief.room')
-                      }}</span>
-                      <ul class="flex flex-col gap-1 m-0 p-0 list-none">
-                        @for (item of roomGroup.items; track item.id) {
-                          <li
-                            class="flex items-center justify-between gap-2 p-2 border border-border fs-body-sm"
-                          >
-                            <span class="text-text-primary">{{ item.title }}</span>
-                            <span class="fs-label text-text-muted">{{
-                              catalog.t(priorityLabel(item.priority))
-                            }}</span>
-                          </li>
-                        }
-                      </ul>
-                    </div>
-                  }
-                </div>
-              }
-            } @else {
-              <pera-empty [title]="catalog.t('dp.itemsT')" />
-            }
-          </div>
-        </pera-card>
-
-        <pera-card>
-          <div class="flex flex-col gap-2 p-1">
-            <span class="font-semibold fs-body-sm text-text-primary">{{
-              catalog.t('common.attachments')
-            }}</span>
-            <p class="fs-caption text-text-secondary m-0">{{ catalog.t('dp.attachSub') }}</p>
-            @if (p.attachments.length) {
-              <ul class="flex flex-col gap-1 m-0 p-0 list-none">
-                @for (a of p.attachments; track a.linkId) {
-                  <li class="fs-body-sm text-text-primary truncate">{{ a.fileName }}</li>
-                }
-              </ul>
-            } @else {
-              <pera-empty [title]="catalog.t('common.attachments')" />
-            }
-          </div>
-        </pera-card>
 
         <pera-card>
           <div class="flex flex-col gap-1 p-1">
@@ -314,20 +147,24 @@ export class CrmDesignProfileComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly api = inject(CrmDesignProfileService);
   private readonly periodApi = inject(CrmPeriodService);
+  private readonly errors = inject(ErrorHandlerService);
   protected readonly catalog = inject(CatalogService);
 
   protected projectId = '';
+  protected readonly unavailableSections = UNAVAILABLE_SECTION_KEYS;
 
   protected readonly loading = signal(false);
   protected readonly error = signal<string | null>(null);
+  /** 404 `crm.briefs.NotFound`: the project has no brief yet (009b #17). */
+  protected readonly noBrief = signal(false);
   protected readonly profile = signal<ClientDesignProfile | null>(null);
   protected readonly openPeriodClosesAtUtc = signal<string | null>(null);
 
-  protected readonly briefHeadRows = computed<BriefHeadRow[]>(() => {
-    const head = this.profile()?.briefHead;
-    if (!head) return [];
-    return BRIEF_HEAD_FIELD_ORDER.map(([field, prop]) => {
-      const raw = head[prop];
+  protected readonly preferenceRows = computed<PreferenceRow[]>(() => {
+    const p = this.profile();
+    if (!p) return [];
+    return PREFERENCE_FIELD_ORDER.map(([field, prop]) => {
+      const raw = p[prop];
       return {
         field,
         raw: raw === null || raw === undefined ? null : String(raw),
@@ -340,28 +177,9 @@ export class CrmDesignProfileComponent {
       }));
   });
 
-  protected readonly categoryGroups = computed<CategoryGroup[]>(() => {
-    const p = this.profile();
-    if (!p) return [];
-    return Object.entries(p.itemsByCategory)
-      .map(([category, items]) => ({
-        category: Number(category) as RequirementCategory,
-        rooms: this.groupByRoom(items ?? []),
-      }))
-      .filter((g) => g.rooms.length)
-      .sort((a, b) => a.category - b.category);
-  });
-
   constructor() {
     this.projectId = this.route.snapshot.paramMap.get('projectId') ?? '';
     this.load();
-  }
-
-  protected spaceName(space: DesignProfileSpace): string {
-    if (!space.space) return this.catalog.t('brief.general');
-    return this.catalog.locale() === 'ar'
-      ? space.space.spaceType.nameAr || space.space.name
-      : space.space.name;
   }
 
   private load(): void {
@@ -371,8 +189,13 @@ export class CrmDesignProfileComponent {
         this.profile.set(profile);
         this.loading.set(false);
       },
-      error: () => {
-        this.error.set('Could not load the design profile.');
+      error: (err: unknown) => {
+        const noBrief =
+          err instanceof HttpErrorResponse &&
+          err.status === 404 &&
+          this.errors.parse(err).code === 'crm.briefs.NotFound';
+        this.noBrief.set(noBrief);
+        if (!noBrief) this.error.set('Could not load the design profile.');
         this.loading.set(false);
       },
     });
@@ -384,33 +207,6 @@ export class CrmDesignProfileComponent {
         const open = periods.find((per) => per.status === RequirementPeriodStatus.Open);
         this.openPeriodClosesAtUtc.set(open?.closesAtUtc ?? null);
       });
-  }
-
-  private groupByRoom(items: DesignProfileItem[]): RoomGroup[] {
-    const groups = new Map<string, DesignProfileItem[]>();
-    for (const item of items) {
-      const key = item.room ?? '';
-      const list = groups.get(key) ?? [];
-      list.push(item);
-      groups.set(key, list);
-    }
-    return [...groups.entries()].map(([room, list]) => ({ room: room || null, items: list }));
-  }
-
-  protected categoryLabel(c: RequirementCategory): CatalogKey {
-    return CATEGORY_LABEL_KEYS[c];
-  }
-  protected priorityLabel(p: RequirementPriority): CatalogKey {
-    return PRIORITY_LABEL_KEYS[p];
-  }
-
-  protected childrenLabel(children: { gender: string; age: number }[]): string {
-    return children
-      .map(
-        (c) =>
-          `${c.gender === 'M' ? this.catalog.t('dp.childBoy') : this.catalog.t('dp.childGirl')} · ${c.age}`,
-      )
-      .join(', ');
   }
 
   protected whenLabel(iso: string): string {

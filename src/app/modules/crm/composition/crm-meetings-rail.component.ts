@@ -1,5 +1,4 @@
-import { ChangeDetectionStrategy, Component, effect, inject, input, signal } from '@angular/core';
-import { ProjectService } from '@modules/projects';
+import { ChangeDetectionStrategy, Component, effect, inject, input } from '@angular/core';
 import { CatalogService } from '@platform/i18n/catalog.service';
 import type { WorkspaceHost } from '@platform/composition/task-workspace.token';
 import { ModalService, PeraButtonComponent, PeraEmptyComponent } from '@ds';
@@ -44,14 +43,11 @@ import { PeriodStore } from '../stores/period.store';
 })
 export class CrmMeetingsRailComponent {
   private readonly modal = inject(ModalService);
-  private readonly projectsApi = inject(ProjectService);
   protected readonly catalog = inject(CatalogService);
   protected readonly meetings = inject(MeetingsStore);
   private readonly period = inject(PeriodStore);
 
   readonly host = input.required<WorkspaceHost>();
-
-  private readonly targetEmployeeId = signal('');
 
   constructor() {
     let loaded = false;
@@ -61,9 +57,6 @@ export class CrmMeetingsRailComponent {
       loaded = true;
       this.meetings.load(h.projectId);
       this.period.load(h.projectId);
-      this.projectsApi
-        .getById(h.projectId)
-        .subscribe((p) => this.targetEmployeeId.set(p.productOwnerId));
     });
   }
 
@@ -74,7 +67,6 @@ export class CrmMeetingsRailComponent {
         size: 'lg',
         data: {
           projectId: h.projectId,
-          targetEmployeeId: this.targetEmployeeId(),
           periodId: this.period.openPeriod()?.id ?? null,
         },
       })

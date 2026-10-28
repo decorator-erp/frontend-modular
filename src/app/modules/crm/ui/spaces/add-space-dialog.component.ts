@@ -101,10 +101,13 @@ export class CrmAddSpaceDialogComponent {
   protected readonly catalog = inject(CatalogService);
   readonly data = inject(PERA_MODAL_DATA) as AddSpaceDialogData;
 
-  protected readonly typeOptions: SelectOption[] = this.data.spaceTypes.map((s) => ({
-    value: s.id,
-    label: this.catalog.locale() === 'ar' ? s.nameAr || s.nameEn : s.nameEn,
-  }));
+  /** Active types only (009b #27); an edited space keeps its own type even if inactive. */
+  protected readonly typeOptions: SelectOption[] = this.data.spaceTypes
+    .filter((s) => s.isActive !== false || s.id === this.data.existing?.spaceType.id)
+    .map((s) => ({
+      value: s.id,
+      label: this.catalog.locale() === 'ar' ? s.nameAr || s.nameEn : s.nameEn,
+    }));
 
   readonly isEdit = !!this.data.existing;
 

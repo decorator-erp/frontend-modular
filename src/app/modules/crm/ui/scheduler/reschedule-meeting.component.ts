@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { CrmMeetingService } from '../../data/crm-meeting.service';
+import { injectReloadOnConflict } from '@platform/http/concurrency';
 import { ErrorHandlerService, friendly } from '@platform/http/error-handler.service';
 import { CatalogService } from '@platform/i18n/catalog.service';
 import type { FreeSlot } from '../../model';
@@ -60,6 +61,7 @@ export class CrmRescheduleMeetingComponent {
   private readonly meetings = inject(CrmMeetingService);
   private readonly errorHandler = inject(ErrorHandlerService);
   private readonly toast = inject(ToastService);
+  private readonly reloadOnConflict = injectReloadOnConflict();
   private readonly modalRef = inject(PeraModalRef) as PeraModalRef<boolean>;
   protected readonly catalog = inject(CatalogService);
   readonly data = inject(PERA_MODAL_DATA) as RescheduleMeetingDialogData;
@@ -98,6 +100,8 @@ export class CrmRescheduleMeetingComponent {
         this.modalRef.close(true);
       },
       error: (err) => {
+        // 009b #21: 409 crm.meetings.ConcurrentUpdate → close as done; the page reloads (X-3).
+        if (this.reloadOnConflict(err, () => this.modalRef.close(true))) return;
         const parsed = this.errorHandler.parse(err);
         this.serverError.set({ ...parsed, generalMessage: friendly(parsed) });
         this.submitting.set(false);

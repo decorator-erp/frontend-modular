@@ -2,6 +2,8 @@ import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { ApiService } from '@platform/http/api.service';
+import { handled } from '@platform/http/handled-errors';
+import type { PagedResult } from '@platform/types';
 import { MeetingSlotStatus, MeetingStatus, MeetingType } from '../model/crm-enums';
 import type {
   CancelMeetingRequest,
@@ -9,6 +11,8 @@ import type {
   CrmMeetingSlot,
   DeclineSlotRequest,
   FreeSlot,
+  PortalMeeting,
+  PortalMeetingDetail,
   ProposeMeetingRequest,
   RequestMeetingByClientRequest,
   SlotRequest,
@@ -20,10 +24,8 @@ import type {
  * domain object, and the office `MeetingsStore` (T046) drives both sides.
  *
  * **The server computes availability; the client derives nothing.** ⚠️ There is NO
- * `employeeId` param anywhere in this domain — `GET /free-slots` and `propose`'s
- * `targetEmployeeId` both resolve to `project.CreatedById` (verified against the
- * backend working tree: `ProjectResponse.productOwnerId` is a read-model alias for
- * the SAME column, never an independent value). Callers pass `project.productOwnerId`.
+ * `employeeId` param anywhere in this domain — `GET /free-slots` takes only the project, and
+ * `propose` takes its proposer from the caller's token (009b #20).
  */
 @Injectable({ providedIn: 'root' })
 export class CrmMeetingService extends ApiService {
@@ -34,30 +36,43 @@ export class CrmMeetingService extends ApiService {
     );
   }
 
-  /** `POST /propose` → `201` with a bare `Guid`. Permission `crm.meetings.schedule`. */
+  /**
+   * `POST /propose` → `201 { meetingId }` (009b #20). Permission `crm.meetings.schedule`; the proposer
+   * is the caller's token. 400 `crm.meetings.SlotTooLong` / `InvalidSlotRange` / `NoSlotsProvided`,
+   * 404 `crm.periods.NotFound`, 409 `crm.periods.NotOpen`; 403 `crm.access.NotAnEmployee` is handled
+   * by the form (X-6), not the global toast.
+   */
   propose(request: ProposeMeetingRequest): Observable<string> {
-    return this.post<unknown>('/crm/meetings/propose', {
-      projectId: request.projectId,
-      periodId: request.periodId ?? null,
-      title: request.title,
-      type: request.type,
-      location: request.location ?? null,
-      durationMinutes: request.durationMinutes ?? null,
-      targetEmployeeId: request.targetEmployeeId,
-      slots: request.slots,
-    }).pipe(map((r) => this.unwrap<string>(r)));
+    return this.post<unknown>(
+      '/crm/meetings/propose',
+      {
+        projectId: request.projectId,
+        periodId: request.periodId ?? null,
+        title: request.title,
+        type: request.type,
+        location: request.location ?? null,
+        durationMinutes: request.durationMinutes ?? null,
+        slots: request.slots,
+      },
+      { context: handled(403) },
+    ).pipe(map((r) => this.unwrapId(r, 'meetingId')));
   }
 
-  /** `PUT /slots/{slotId}/accept` → `204`. Permission `crm.meetings.respond_slot` (counterparty-checked server-side). */
+  /**
+   * `PUT /slots/{slotId}/accept` → `204`. Permission `crm.meetings.respond_slot` (counterparty-checked
+   * server-side): 403 `crm.meetings.NotCounterparty` is handled by the store's message (009b #21).
+   */
   acceptSlot(slotId: string): Observable<void> {
-    return this.put<void>(`/crm/meetings/slots/${slotId}/accept`, {});
+    return this.put<void>(`/crm/meetings/slots/${slotId}/accept`, {}, { context: handled(403) });
   }
 
   /** `PUT /slots/{slotId}/decline` → `204` — an optional counter-proposal, never a reason. */
   declineSlot(slotId: string, request?: DeclineSlotRequest): Observable<void> {
-    return this.put<void>(`/crm/meetings/slots/${slotId}/decline`, {
-      counterSlots: request?.counterSlots ?? null,
-    });
+    return this.put<void>(
+      `/crm/meetings/slots/${slotId}/decline`,
+      { counterSlots: request?.counterSlots ?? null },
+      { context: handled(403) },
+    );
   }
 
   /** `PUT /{meetingId}/reschedule` → `204` — a NEW slot proposal, an offer, no reason (FR-023 amended). */
@@ -89,61 +104,158 @@ export class CrmMeetingService extends ApiService {
     );
   }
 
-  /** `GET /?projectId&skip&take` — a bare array, no `PagedResult` wrapper. */
-  search(projectId?: string, skip = 0, take = 50): Observable<CrmMeeting[]> {
-    return this.get<unknown>('/crm/meetings', { projectId, skip, take }).pipe(
-      map((r) => this.unwrapArray<unknown>(r).map((m) => this.normalizeMeeting(m))),
+  /**
+   * `GET /?projectId&pageNumber&pageSize` → `PagedResult<CrmMeetingResponse>`, newest first (009b #18).
+   * All three params are required by the route (`int`, not `int?`); `pageSize` is 1..200. A project
+   * outside the caller's scope is 404 `crm.meetings.NotFound`.
+   */
+  search(projectId: string, pageNumber = 1, pageSize = 50): Observable<PagedResult<CrmMeeting>> {
+    return this.get<unknown>('/crm/meetings', { projectId, pageNumber, pageSize }).pipe(
+      map((r) => {
+        const page = this.unwrap(r);
+        const items = this.unwrapArray<unknown>(page).map((m) => this.normalizeMeeting(m));
+        const size = this.field<number>(page, 'pageSize') ?? pageSize;
+        const totalCount = this.field<number>(page, 'totalCount') ?? items.length;
+        return {
+          items,
+          totalCount,
+          page: this.field<number>(page, 'pageNumber') ?? pageNumber,
+          pageSize: size,
+          totalPages:
+            this.field<number>(page, 'totalPages') ?? (size ? Math.ceil(totalCount / size) : 1),
+        };
+      }),
     );
   }
 
-  // ── Client portal — gated on `crm.portal`, not the office `crm.meetings.*` ──
+  // ── Client portal — gated on `crm.meetings.{view_own,request_own,respond_own}` ──
 
   /**
-   * `POST /portal/meetings/request` → `201` `Guid`. The client requests ONE specific
-   * slot directly (from the free-slot grid) — not a proposal list. Lands `Requested`
-   * with a single held slot (FR-023).
+   * `POST /portal/meetings/request` → `201 { meetingId }` (009b #45) — `crm.meetings.request_own`. The
+   * client requests ONE specific slot directly (from the free-slot grid) — not a proposal list. Lands
+   * `Requested` with a single held slot (FR-023). 404 `crm.portal.NotFound` / `crm.periods.NotFound`,
+   * 409 `crm.periods.NotOpen`, 400 `SlotTooLong` / `InvalidSlotRange`; 403 `crm.access.NotAClient` is
+   * the caller's to show (`handled(403)`).
    */
   portalRequest(request: RequestMeetingByClientRequest): Observable<string> {
-    return this.post<unknown>('/crm/portal/meetings/request', {
-      projectId: request.projectId,
-      periodId: request.periodId ?? null,
-      title: request.title,
-      type: request.type,
-      startsAtUtc: request.startsAtUtc,
-      endsAtUtc: request.endsAtUtc,
-      location: request.location ?? null,
-    }).pipe(map((r) => this.unwrap<string>(r)));
+    return this.post<unknown>(
+      '/crm/portal/meetings/request',
+      {
+        projectId: request.projectId,
+        periodId: request.periodId ?? null,
+        title: request.title,
+        type: request.type,
+        startsAtUtc: request.startsAtUtc,
+        endsAtUtc: request.endsAtUtc,
+        location: request.location ?? null,
+      },
+      { context: handled(403) },
+    ).pipe(map((r) => this.unwrapId(r, 'meetingId')));
   }
 
-  /** `PUT /portal/meetings/slots/{slotId}/accept` → `204` — the client accepts a proposed slot. */
+  /** `PUT /portal/meetings/slots/{slotId}/accept` → `204` — the client accepts a proposed slot. 403 handled (009b #21). */
   portalAcceptSlot(slotId: string): Observable<void> {
-    return this.put<void>(`/crm/portal/meetings/slots/${slotId}/accept`, {});
+    return this.put<void>(
+      `/crm/portal/meetings/slots/${slotId}/accept`,
+      {},
+      { context: handled(403) },
+    );
   }
 
   /** `PUT /portal/meetings/slots/{slotId}/decline` → `204` — optional counter-proposal. */
   portalDeclineSlot(slotId: string, request?: DeclineSlotRequest): Observable<void> {
-    return this.put<void>(`/crm/portal/meetings/slots/${slotId}/decline`, {
-      counterSlots: request?.counterSlots ?? null,
-    });
+    return this.put<void>(
+      `/crm/portal/meetings/slots/${slotId}/decline`,
+      { counterSlots: request?.counterSlots ?? null },
+      { context: handled(403) },
+    );
   }
 
   /** `PUT /portal/meetings/{meetingId}/reschedule` → `204` — no reason, an offer. */
   portalReschedule(meetingId: string, slot: SlotRequest): Observable<void> {
-    return this.put<void>(`/crm/portal/meetings/${meetingId}/reschedule`, slot);
+    // FINDING-5-7: the modal shows the 403's catalog message (`friendly()`).
+    return this.put<void>(`/crm/portal/meetings/${meetingId}/reschedule`, slot, {
+      context: handled(403),
+    });
   }
 
   /** `PUT /portal/meetings/{meetingId}/cancel` → `204` — reason mandatory. */
   portalCancel(meetingId: string, reason: string): Observable<void> {
-    return this.put<void>(`/crm/portal/meetings/${meetingId}/cancel`, {
-      reason,
-    } satisfies CancelMeetingRequest);
+    // FINDING-5-7: the modal shows the 403's catalog message (`friendly()`).
+    return this.put<void>(
+      `/crm/portal/meetings/${meetingId}/cancel`,
+      { reason } satisfies CancelMeetingRequest,
+      { context: handled(403) },
+    );
   }
 
-  /** `GET /portal/meetings` — the client's own meetings, every status. */
-  portalList(): Observable<CrmMeeting[]> {
-    return this.get<unknown>('/crm/portal/meetings').pipe(
-      map((r) => this.unwrapArray<unknown>(r).map((m) => this.normalizeMeeting(m))),
+  /**
+   * `GET /portal/meetings?pageNumber&pageSize` → `PagedResult<PortalMeetingResponse>`, newest first —
+   * `crm.meetings.view_own` (009b #44). The rows carry no type and no slots: `portalGetById` reads those.
+   */
+  portalList(pageNumber = 1, pageSize = 50): Observable<PagedResult<PortalMeeting>> {
+    // FINDING-5-7: `MeetingsStore.loadPortal` shows the 403's catalog message (`friendly()`).
+    return this.get<unknown>(
+      '/crm/portal/meetings',
+      { pageNumber, pageSize },
+      { context: handled(403) },
+    ).pipe(
+      map((r) => {
+        const page = this.unwrap(r);
+        const items = this.unwrapArray<unknown>(page).map((m) => this.normalizePortalMeeting(m));
+        const size = this.field<number>(page, 'pageSize') ?? pageSize;
+        const totalCount = this.field<number>(page, 'totalCount') ?? items.length;
+        return {
+          items,
+          totalCount,
+          page: this.field<number>(page, 'pageNumber') ?? pageNumber,
+          pageSize: size,
+          totalPages:
+            this.field<number>(page, 'totalPages') ?? (size ? Math.ceil(totalCount / size) : 1),
+        };
+      }),
     );
+  }
+
+  /**
+   * `GET /portal/meetings/{meetingId}` → `PortalMeetingDetailResponse` — `crm.meetings.view_own`
+   * (009b #44): the client's own meeting with its slots, each with `proposedByMe` and no proposer ids.
+   * 404 for another client's meeting or an unknown one.
+   */
+  portalGetById(meetingId: string): Observable<PortalMeetingDetail> {
+    // FINDING-5-7: `MeetingsStore.loadPortal` falls back to the bare list row on any failure.
+    return this.get<unknown>(`/crm/portal/meetings/${meetingId}`, undefined, {
+      context: handled(403),
+    }).pipe(
+      map((r) => {
+        const source = this.unwrap(r);
+        return {
+          ...this.normalizePortalMeeting(source),
+          type: this.field<number>(source, 'type') ?? MeetingType.InOffice,
+          durationMinutes: this.field<number | null>(source, 'durationMinutes') ?? null,
+          location: this.field<string | null>(source, 'location') ?? null,
+          canceledAtUtc: this.field<string | null>(source, 'canceledAtUtc') ?? null,
+          cancelReason: this.field<string | null>(source, 'cancelReason') ?? null,
+          slots: (this.field<unknown[]>(source, 'slots') ?? []).map((x) => ({
+            id: this.field<string>(x, 'id') ?? '',
+            startsAtUtc: this.field<string>(x, 'startsAtUtc') ?? '',
+            endsAtUtc: this.field<string>(x, 'endsAtUtc') ?? '',
+            status: this.field<number>(x, 'status') ?? MeetingSlotStatus.Proposed,
+            proposedByMe: this.field<boolean>(x, 'proposedByMe') ?? false,
+          })),
+        };
+      }),
+    );
+  }
+
+  private normalizePortalMeeting(source: unknown): PortalMeeting {
+    return {
+      id: this.field<string>(source, 'id') ?? '',
+      projectId: this.field<string>(source, 'projectId') ?? '',
+      title: this.field<string>(source, 'title') ?? '',
+      status: this.field<number>(source, 'status') ?? MeetingStatus.Requested,
+      scheduledAtUtc: this.field<string | null>(source, 'scheduledAtUtc') ?? null,
+    };
   }
 
   private normalizeFreeSlot(source: unknown): FreeSlot {
@@ -157,13 +269,11 @@ export class CrmMeetingService extends ApiService {
     return {
       id: this.field<string>(source, 'id') ?? '',
       meetingId: this.field<string>(source, 'meetingId') ?? '',
-      employeeId: this.field<string>(source, 'employeeId') ?? '',
       startsAtUtc: this.field<string>(source, 'startsAtUtc') ?? '',
       endsAtUtc: this.field<string>(source, 'endsAtUtc') ?? '',
       status: this.field<number>(source, 'status') ?? MeetingSlotStatus.Proposed,
       proposedByEmployeeId: this.field<string | null>(source, 'proposedByEmployeeId') ?? null,
       proposedByContactId: this.field<string | null>(source, 'proposedByContactId') ?? null,
-      holdExpiresAtUtc: this.field<string | null>(source, 'holdExpiresAtUtc') ?? null,
     };
   }
 

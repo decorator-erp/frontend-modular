@@ -283,19 +283,18 @@ export const ERROR_MESSAGES: Record<string, string> = {
 
   // Approvals (shared with the office decide flow; reused by the client portal).
   'approvals.AlreadyDecided': 'This approval has already been decided.',
-  'approvals.CommentRequired': 'A comment is required when rejecting.',
+  'approvals.CommentRequired': 'A comment is required to reject or request changes.',
   'approvals.NotFound': 'Approval not found.',
   'approvals.OpenApprovalExists': 'An undecided approval already exists for this subject.',
   'approvals.NotAssignedApprover': 'Only the assigned approver can decide this.',
   'approvals.InvalidSubject': 'Exactly one subject and one approver must be provided.',
-  'approvals.DecisionFailed': 'The decision could not be processed. Please try again.',
 
   'crm.access.AccessDenied': 'You do not have access to this resource.',
 
   // Brief — the head and the append-only gathering ledger.
   'crm.briefs.NotFound': 'Design brief not found.',
   'crm.briefs.EntryNotFound': 'Gathering entry not found.',
-  'crm.briefs.AlreadyExists': 'A design brief already exists for this project.',
+  'crm.briefs.AlreadyExists': 'This stage already has a design brief.',
   'crm.briefs.NotPending': 'The brief is not pending approval.',
   'crm.briefs.EntryLocked': 'This entry is confirmed and locked. Add a new version to correct it.',
   'crm.briefs.EntryPending':
@@ -367,7 +366,6 @@ export const ERROR_MESSAGES: Record<string, string> = {
   'crm.meetings.InvalidProposer': 'Exactly one proposer must be provided.',
   'crm.meetings.InvalidSlotRange': 'The slot must end after it starts.',
   'crm.meetings.SlotNotProposed': 'Only a proposed slot can be accepted or declined.',
-  'crm.meetings.SlotUnavailable': 'That time is no longer available. Please pick another slot.',
   'crm.meetings.AlreadyStarted': 'This meeting has already started and can no longer be changed.',
   'crm.meetings.CancelReasonRequired': 'A reason is required when cancelling a meeting.',
   'crm.meetings.NotCounterparty': 'Only the other party can respond to this slot.',
@@ -380,7 +378,6 @@ export const ERROR_MESSAGES: Record<string, string> = {
 
   // Requirement periods.
   'crm.periods.NotFound': 'Requirement period not found.',
-  'crm.periods.OpenPeriodExists': 'An open requirement period already exists for this project.',
   'crm.periods.NotOpen': 'The requirement period is not open.',
   'crm.periods.InvalidCloseTime': 'The close time must be in the future.',
   'crm.periods.OpenFailed': 'Could not open the requirement period. Please try again.',
@@ -398,9 +395,261 @@ export const ERROR_MESSAGES: Record<string, string> = {
   'crm.artifacts.SubjectLocked':
     'This artifact is locked — its attachments are frozen. Attach evidence to the superseding entry instead.',
   'crm.artifacts.NotOwnArtifact': 'You can attach only to your own items and meetings.',
+
+  // ── 009b X-2 — CRM-API-CONTRACT §5.1/§5.3 ─────────────────────────────────
+  // From `Crm.Domain/Errors/Errors.cs`, `CrmAccessErrors` (`CrmAccessGuard.cs:110-134`) and
+  // `Approvals.Domain/Errors/ApprovalErrors.cs`. Each has an Arabic twin in ERROR_MESSAGES_AR.
+  'crm.access.Unauthenticated': 'We could not identify you. Please sign in again.',
+  'crm.access.NoStanding': 'Your account has no active access to this area.',
+  'crm.access.NotAnEmployee': 'Only an employee can do this.',
+  'crm.access.NotAClient': 'Only a client can do this.',
+  'crm.portal.NotFound': 'Nothing was found for that request.',
+  'crm.portal.NotAClient': 'This page is for clients only.',
+  'crm.clients.NotFound': 'Client not found.',
+  'crm.clients.AddressRequired': 'An address is required.',
+  'crm.clients.ChildNotFound': 'That child is not on this client.',
+  'crm.clients.Inactive': 'This client is deactivated. Reactivate it before changing it.',
+  'crm.clients.InvalidActiveFilter': 'The active filter must be all, active or inactive.',
+  'crm.clients.ConcurrentUpdate':
+    'The client was changed by someone else. Reload it and try again.',
+  'crm.client_children.InvalidGender': 'Choose male or female.',
+  'crm.client_children.InvalidAge': 'Age must be between 0 and 120.',
+  'crm.contacts.ConcurrentPrimaryChange':
+    'The primary contact was changed at the same time. Reload and try again.',
+  'crm.contacts.NameRequired': 'First and last name are required.',
+  'crm.leads.NameRequired': 'First and last name are required.',
+  'crm.leads.OwnerNotFound': 'The owner must be an active employee.',
+  'crm.leads.ResidentialWithoutSector':
+    'Residential details can only be saved when the sector is Residential.',
+  'crm.leads.ConcurrentUpdate': 'The lead was changed by someone else. Reload and try again.',
+  'crm.leads.InvalidClientId': 'Choose a client to convert this lead.',
+  'crm.briefs.UnitDetailsRequired':
+    "Unit type and unit condition are required unless the lead's intake supplies them.",
+  'crm.briefs.HeadLockedPendingApproval':
+    "The brief head can't be edited while it is waiting for the client's decision.",
+  'crm.briefs.NotSendable': 'Only a draft or rejected brief can be sent for approval.',
+  'crm.briefs.ConcurrentSend': 'The brief was sent at the same time. Reload and try again.',
+  'crm.briefs.TooManyVoidedRounds':
+    'The brief could not open a new approval round. Try again later.',
+  'crm.briefs.ConcurrencyConflict': 'The brief was changed by someone else. Reload and try again.',
+  'crm.briefs.StageProjectMismatch': "That stage is not on this brief's project.",
+  'crm.briefs.SpaceProjectMismatch': "That space is not on this brief's project.",
+  'crm.briefs.TaskProjectMismatch': "That task is not on this brief's project.",
+  'crm.briefs.TaskStageMismatch': "That task is not on this brief's stage.",
+  'crm.briefs.MeetingProjectMismatch': "That meeting is not on this brief's project.",
+  'crm.briefs.AlreadySuperseded': 'This entry has already been superseded.',
+  'crm.briefs.ProjectNotFound': 'Project not found.',
+  'crm.briefs.RoundNotFound': 'The brief has no such round.',
+  'crm.briefs.SupersedeSpaceMismatch': 'A correction must stay on the same space as the original.',
+  'crm.spaces.DuplicateName': 'A space with this name already exists in the project.',
+  'crm.spaces.InvalidData': 'A space name is required.',
+  'crm.spaces.UnknownSpaceType': 'That space type does not exist.',
+  'crm.catalog.ItemNotFound': 'Catalog item not found.',
+  'crm.catalog.CategoryNotFound': 'Catalog category not found.',
+  'crm.catalog.AttributeNotFound': 'Catalog attribute not found.',
+  'crm.catalog.InvalidData': 'A code and both English and Arabic names are required.',
+  'crm.catalog.SpaceTypeNotFound': 'Space type not found.',
+  'crm.catalog.MaxDepthExceeded': 'The category tree is already at its maximum depth.',
+  'crm.catalog.CyclicMove': 'A category cannot be moved under itself or one of its descendants.',
+  'crm.catalog.DuplicateMapping': 'This category is already mapped to this space type.',
+  'crm.periods.AlreadyOpen': 'This project already has an open requirement period.',
+  'crm.periods.ConcurrentUpdate':
+    'The requirement period was changed by someone else. Reload and try again.',
+  'crm.items.UnknownSpaceType': 'That space type does not exist or is inactive.',
+  'crm.items.AlreadyPending': "This item is already waiting for the client's decision.",
+  'crm.items.TooManyVoidedRounds':
+    "This item's approval was voided too many times. Try again later.",
+  'crm.items.AlreadySuperseded': 'This item has already been superseded.',
+  'crm.items.ConcurrentUpdate': 'The item was changed by someone else. Reload and try again.',
+  'crm.items.ProjectMismatch': "The project does not match the period's project.",
+  'crm.items.TaskProjectMismatch': "That task is not on this item's project.",
+  'crm.items.MeetingProjectMismatch': "That meeting is not on this item's project.",
+  'crm.items.BriefProjectMismatch': "That brief is not on this item's project.",
+  'crm.items.NoteProjectMismatch': "That note is not on this item's project or client.",
+  'crm.meetings.SlotTooLong': 'A slot can last at most 8 hours.',
+  'crm.meetings.ConcurrentUpdate': 'The meeting was changed by someone else. Reload and try again.',
+  'crm.meetings.SlotExpired': "This slot's start time has passed. Propose a new time.",
+  'crm.notes.ProjectMismatch': "The note's project does not belong to this client.",
+  'crm.artifacts.DocumentNotFound': 'The document was not found on this project.',
+  'crm.projects.Inactive': 'This project is inactive and takes no new CRM work.',
+  'approvals.ApprovalIdInUse': 'This approval belongs to a different subject.',
+  'approvals.Unauthenticated': 'We could not identify you. Please sign in again.',
+
+  // ── 009b X-2 — scope of work and projects, CRM-API-CONTRACT §5.2 ──────────
+  // From `Projects.Domain/Errors/Errors.cs`. `projects.NotFound` and `stage_templates.NotFound`
+  // are already above; only their Arabic twins are new.
+  'projects.AccessDenied': 'You do not have access to this project.',
+  'projects.ClientNotFound': 'The client was not found or is inactive.',
+  'projects.scope.Confirmed': 'The scope of work is confirmed and can no longer be changed.',
+  'projects.scope.Empty': 'A scope of work needs at least one item to be confirmed.',
+  'projects.scope.DurationRequired': 'Set the duration before confirming the scope of work.',
+  'projects.scope.NegativeTotal': 'The total (fees plus adjustment) cannot be negative.',
+  'projects.scope.AdjustmentNoteRequired': 'An adjustment needs a note explaining it.',
+  'projects.scope.ProjectHasStages':
+    "The project already has stages, so a scope of work can't be confirmed into it.",
+  'projects.scope.SourceStageNotFound': 'A picked template stage no longer exists.',
+  'projects.scope.WorkflowNotSupported': 'Only a stage-workflow project has a scope of work.',
+  'projects.scope.DuplicateItem': 'That template stage is already in the scope of work.',
+  'projects.scope.InvalidOrder': 'The new order must list every item of the scope exactly once.',
+  'projects.scope.ConcurrentUpdate':
+    'The scope of work was changed by someone else. Reload and try again.',
+  'projects.scope.TooManyItems': 'A scope of work holds at most 50 items.',
+  'projects.scope.ItemNotFound': 'That item is not in the scope of work.',
+  'projects.scope.NegativeFee': 'A fee cannot be negative.',
+  'teams.MissingHead': 'A department in a picked stage has no head. Assign one first.',
+  // FINDING-5-13: an uncoded 403 (a route-permission refusal carries no code); not a backend
+  // code — `friendly()` maps status 403 with no code to this key so the text can be localized.
+  'http.Forbidden': "You don't have permission to do that.",
+  // FINDING-7-10: the request validator's code (SharedKernel/Error.cs `ValidationError`).
+  'Validation.General': 'Some values are invalid. Check the highlighted fields.',
 };
 
-/** Look up the friendly message for a backend error code, with a fallback. */
-export function friendlyMessage(code: string | null, fallback: string): string {
-  return (code && ERROR_MESSAGES[code]) || fallback;
+/**
+ * Arabic twins of ERROR_MESSAGES (009b X-2). Partial by design: a code with no Arabic entry
+ * falls back to its English message, never to a blank. Every code added from 009b on gets an
+ * entry here as well as in ERROR_MESSAGES.
+ */
+export const ERROR_MESSAGES_AR: Record<string, string> = {
+  // CRM-API-CONTRACT §5.1/§5.3
+  'crm.access.Unauthenticated': 'تعذّر التعرّف عليك. يرجى تسجيل الدخول مرة أخرى.',
+  'crm.access.NoStanding': 'ليس لحسابك وصول فعّال إلى هذا القسم.',
+  'crm.access.NotAnEmployee': 'هذا الإجراء متاح للموظفين فقط.',
+  'crm.access.NotAClient': 'هذا الإجراء متاح للعملاء فقط.',
+  'crm.portal.NotFound': 'لم يُعثر على شيء لهذا الطلب.',
+  'crm.portal.NotAClient': 'هذه الصفحة مخصّصة للعملاء فقط.',
+  'crm.clients.NotFound': 'العميل غير موجود.',
+  'crm.clients.AddressRequired': 'العنوان مطلوب.',
+  'crm.clients.ChildNotFound': 'هذا الطفل غير مسجّل لدى هذا العميل.',
+  'crm.clients.Inactive': 'هذا العميل غير مفعّل. أعِد تفعيله قبل تعديله.',
+  'crm.clients.InvalidActiveFilter': 'يجب أن يكون مرشّح الحالة: الكل أو مفعّل أو غير مفعّل.',
+  'crm.clients.ConcurrentUpdate': 'عدّل شخص آخر بيانات العميل. أعِد التحميل وحاول مرة أخرى.',
+  'crm.client_children.InvalidGender': 'اختر ذكرًا أو أنثى.',
+  'crm.client_children.InvalidAge': 'يجب أن يكون العمر بين 0 و120.',
+  'crm.contacts.ConcurrentPrimaryChange':
+    'تغيّرت جهة الاتصال الرئيسية في الوقت نفسه. أعِد التحميل وحاول مرة أخرى.',
+  'crm.contacts.NameRequired': 'الاسم الأول واسم العائلة مطلوبان.',
+  'crm.leads.NameRequired': 'الاسم الأول واسم العائلة مطلوبان.',
+  'crm.leads.OwnerNotFound': 'يجب أن يكون المسؤول موظفًا مفعّلًا.',
+  'crm.leads.ResidentialWithoutSector': 'لا تُحفظ التفاصيل السكنية إلا عندما يكون القطاع سكنيًا.',
+  'crm.leads.ConcurrentUpdate': 'عدّل شخص آخر هذا العميل المحتمل. أعِد التحميل وحاول مرة أخرى.',
+  'crm.leads.InvalidClientId': 'اختر عميلًا لتحويل هذا العميل المحتمل.',
+  // 009b #6: the lead intake editor is bilingual.
+  'crm.leads.AlreadyConverted': 'تم تحويل هذا العميل المحتمل بالفعل.',
+  'crm.leads.DesignerExperienceWithoutUse':
+    'لا يمكن تحديد تجربة المصمم إلا إذا سبق للعميل التعامل مع مصمم.',
+  'crm.leads.ExperienceReasonWithoutExperience': 'يتطلب سبب التجربة تحديد تجربة المصمم أولًا.',
+  'crm.briefs.NotFound': 'موجز التصميم غير موجود.',
+  'crm.briefs.AlreadyExists': 'لهذه المرحلة موجز تصميم بالفعل.',
+  'crm.briefs.NotPending': 'الموجز ليس بانتظار الاعتماد.',
+  'approvals.OpenApprovalExists': 'يوجد بالفعل اعتماد لم يُبتّ فيه لهذا العنصر.',
+  'crm.briefs.OnlyLockedSuperseded':
+    'لا يُستبدل إلا قيد مؤكَّد — القيود غير المؤكدة تُعدَّل في مكانها.',
+  'crm.briefs.UnitDetailsRequired':
+    'نوع الوحدة وحالتها مطلوبان ما لم تكن بيانات العميل المحتمل تتضمّنهما.',
+  'crm.briefs.HeadLockedPendingApproval': 'لا يمكن تعديل رأس الموجز وهو بانتظار قرار العميل.',
+  'crm.briefs.NotSendable': 'لا يُرسل للاعتماد إلا موجز في حالة مسودة أو مرفوض.',
+  'crm.briefs.ConcurrentSend': 'أُرسل الموجز في الوقت نفسه. أعِد التحميل وحاول مرة أخرى.',
+  'crm.briefs.TooManyVoidedRounds': 'تعذّر فتح جولة اعتماد جديدة للموجز. حاول لاحقًا.',
+  'crm.briefs.ConcurrencyConflict': 'عدّل شخص آخر الموجز. أعِد التحميل وحاول مرة أخرى.',
+  'crm.briefs.StageProjectMismatch': 'هذه المرحلة ليست ضمن مشروع الموجز.',
+  'crm.briefs.SpaceProjectMismatch': 'هذه المساحة ليست ضمن مشروع الموجز.',
+  'crm.briefs.TaskProjectMismatch': 'هذه المهمة ليست ضمن مشروع الموجز.',
+  'crm.briefs.TaskStageMismatch': 'هذه المهمة ليست ضمن مرحلة الموجز.',
+  'crm.briefs.MeetingProjectMismatch': 'هذا الاجتماع ليس ضمن مشروع الموجز.',
+  'crm.briefs.AlreadySuperseded': 'حلّ محل هذا القيد قيدٌ آخر بالفعل.',
+  'crm.briefs.ProjectNotFound': 'المشروع غير موجود.',
+  'crm.briefs.RoundNotFound': 'لا توجد جولة بهذا الرقم في الموجز.',
+  'crm.briefs.SupersedeSpaceMismatch': 'يجب أن يبقى التصحيح على مساحة القيد الأصلي نفسها.',
+  'crm.spaces.DuplicateName': 'توجد مساحة بهذا الاسم في المشروع بالفعل.',
+  'crm.spaces.InvalidData': 'اسم المساحة مطلوب.',
+  'crm.spaces.UnknownSpaceType': 'نوع المساحة هذا غير موجود.',
+  'crm.catalog.ItemNotFound': 'عنصر الكتالوج غير موجود.',
+  'crm.catalog.CategoryNotFound': 'فئة الكتالوج غير موجودة.',
+  'crm.catalog.AttributeNotFound': 'خاصية الكتالوج غير موجودة.',
+  'crm.catalog.InvalidData': 'الرمز والاسمان الإنجليزي والعربي مطلوبة.',
+  'crm.catalog.SpaceTypeNotFound': 'نوع المساحة غير موجود.',
+  'crm.catalog.MaxDepthExceeded': 'شجرة الفئات بلغت أقصى عمق مسموح به.',
+  'crm.catalog.CyclicMove': 'لا يمكن نقل فئة تحت نفسها أو تحت إحدى فئاتها الفرعية.',
+  'crm.catalog.DuplicateMapping': 'هذه الفئة مرتبطة بنوع المساحة هذا بالفعل.',
+  'crm.periods.AlreadyOpen': 'لدى هذا المشروع فترة جمع متطلبات مفتوحة بالفعل.',
+  'crm.periods.ConcurrentUpdate': 'عدّل شخص آخر فترة جمع المتطلبات. أعِد التحميل وحاول مرة أخرى.',
+  'crm.items.UnknownSpaceType': 'نوع المساحة غير موجود أو غير مفعّل.',
+  'crm.items.AlreadyPending': 'هذا البند بانتظار قرار العميل بالفعل.',
+  'crm.items.TooManyVoidedRounds': 'أُلغي اعتماد هذا البند مرات كثيرة. حاول لاحقًا.',
+  'crm.items.AlreadySuperseded': 'حلّ محل هذا البند بندٌ آخر بالفعل.',
+  'crm.items.ConcurrentUpdate': 'عدّل شخص آخر هذا البند. أعِد التحميل وحاول مرة أخرى.',
+  'crm.items.ProjectMismatch': 'المشروع لا يطابق مشروع الفترة.',
+  'crm.items.TaskProjectMismatch': 'هذه المهمة ليست ضمن مشروع البند.',
+  'crm.items.MeetingProjectMismatch': 'هذا الاجتماع ليس ضمن مشروع البند.',
+  'crm.items.BriefProjectMismatch': 'هذا الموجز ليس ضمن مشروع البند.',
+  'crm.items.NoteProjectMismatch': 'هذه الملاحظة ليست ضمن مشروع البند أو عميله.',
+  'crm.meetings.SlotTooLong': 'لا يتجاوز الموعد 8 ساعات.',
+  // 009b #20: the propose form's codes.
+  'crm.meetings.InvalidSlotRange': 'يجب أن ينتهي الموعد بعد بدايته.',
+  'crm.meetings.NoSlotsProvided': 'اقترح موعدًا واحدًا على الأقل.',
+  'crm.periods.NotFound': 'فترة جمع المتطلبات غير موجودة.',
+  'crm.periods.NotOpen': 'فترة جمع المتطلبات ليست مفتوحة.',
+  // 009b #21: the slot and meeting actions' codes.
+  'crm.meetings.InvalidStateTransition': 'لا يمكن نقل الاجتماع إلى هذه الحالة.',
+  'crm.meetings.NotCounterparty': 'لا يردّ على هذا الموعد إلا الطرف الآخر.',
+  'crm.meetings.SlotNotFound': 'الموعد غير موجود.',
+  'crm.meetings.ConcurrentUpdate': 'عدّل شخص آخر الاجتماع. أعِد التحميل وحاول مرة أخرى.',
+  'crm.meetings.SlotExpired': 'مضى وقت بدء هذا الموعد. اقترح وقتًا جديدًا.',
+  // FINDING-5-2: the two slot/meeting codes rows 20/21 left without Arabic.
+  'crm.meetings.SlotNotProposed': 'لا يُقبل أو يُرفض إلا موعد مقترح.',
+  'crm.meetings.AlreadyStarted': 'بدأ هذا الاجتماع بالفعل ولم يعد تغييره ممكنًا.',
+  // FINDING-5-9: CRM codes X-2 left without Arabic.
+  'crm.meetings.CancelReasonRequired': 'يلزم ذكر سبب عند إلغاء الاجتماع.',
+  'crm.meetings.NotFound': 'الاجتماع غير موجود.',
+  'crm.periods.InvalidCloseTime': 'يجب أن يكون وقت الإغلاق في المستقبل.',
+  'crm.items.ItemLocked': 'هذا البند موثوق ومقفل. أضف نسخة جديدة لتصحيحه.',
+  'crm.items.NotPending': 'البند ليس بانتظار الاعتماد.',
+  'crm.items.OnlyLockedSuperseded':
+    'لا يُستبدل إلا بند موثوق — البنود غير المؤكدة تُعدَّل في مكانها.',
+  'crm.items.InvalidSource': 'مرجع المصدر لا يطابق نوع المصدر.',
+  'crm.notes.ProjectMismatch': 'مشروع الملاحظة لا يخص هذا العميل.',
+  'crm.notes.NotAuthor': 'لا يعدّل هذه الملاحظة إلا كاتبها.',
+  'crm.artifacts.DocumentNotFound': 'المستند غير موجود في هذا المشروع.',
+  'crm.projects.Inactive': 'هذا المشروع غير مفعّل ولا يقبل عملًا جديدًا.',
+  'approvals.ApprovalIdInUse': 'هذا الاعتماد يخص عنصرًا آخر.',
+  'approvals.CommentRequired': 'يلزم تعليق للرفض أو لطلب تعديلات.',
+  'approvals.Unauthenticated': 'تعذّر التعرّف عليك. يرجى تسجيل الدخول مرة أخرى.',
+
+  // CRM-API-CONTRACT §5.2 — scope of work and projects
+  'projects.NotFound': 'المشروع غير موجود.',
+  'projects.AccessDenied': 'ليس لديك وصول إلى هذا المشروع.',
+  'projects.ClientNotFound': 'العميل غير موجود أو غير مفعّل.',
+  'projects.scope.Confirmed': 'نطاق العمل مؤكَّد ولم يعد قابلًا للتعديل.',
+  'projects.scope.Empty': 'يحتاج نطاق العمل إلى بند واحد على الأقل لتأكيده.',
+  'projects.scope.DurationRequired': 'حدّد المدة قبل تأكيد نطاق العمل.',
+  'projects.scope.NegativeTotal': 'لا يمكن أن يكون الإجمالي (الأتعاب مع التعديل) سالبًا.',
+  'projects.scope.AdjustmentNoteRequired': 'يحتاج التعديل إلى ملاحظة توضّحه.',
+  'projects.scope.ProjectHasStages': 'للمشروع مراحل بالفعل، فلا يمكن تأكيد نطاق عمل فيه.',
+  'projects.scope.SourceStageNotFound': 'إحدى مراحل القالب المختارة لم تعد موجودة.',
+  'projects.scope.WorkflowNotSupported': 'نطاق العمل متاح لمشاريع سير العمل بالمراحل فقط.',
+  'projects.scope.DuplicateItem': 'مرحلة القالب هذه موجودة في نطاق العمل بالفعل.',
+  'projects.scope.InvalidOrder': 'يجب أن يذكر الترتيب الجديد كل بند في النطاق مرة واحدة.',
+  'projects.scope.ConcurrentUpdate': 'عدّل شخص آخر نطاق العمل. أعِد التحميل وحاول مرة أخرى.',
+  'projects.scope.TooManyItems': 'يتّسع نطاق العمل لـ 50 بندًا على الأكثر.',
+  'projects.scope.ItemNotFound': 'هذا البند ليس في نطاق العمل.',
+  'projects.scope.NegativeFee': 'لا يمكن أن تكون الأتعاب سالبة.',
+  'stage_templates.NotFound': 'قالب المرحلة غير موجود.',
+  'teams.MissingHead': 'أحد الأقسام في مرحلة مختارة بلا رئيس. عيّن رئيسًا أولًا.',
+  // FINDING-5-13: an uncoded 403 (route permission) — `friendly()` maps it to this key.
+  'http.Forbidden': 'ليس لديك صلاحية للقيام بذلك.',
+  // FINDING-7-10: the request validator's code.
+  'Validation.General': 'بعض القيم غير صحيحة. راجع الحقول المحدَّدة.',
+};
+
+/**
+ * Look up the friendly message for a backend error code, with a fallback. Under `ar` the
+ * Arabic entry wins, then the English one (009b X-2).
+ */
+export function friendlyMessage(
+  code: string | null,
+  fallback: string,
+  locale: 'en' | 'ar' = 'en',
+): string {
+  if (!code) return fallback;
+  return (locale === 'ar' && ERROR_MESSAGES_AR[code]) || ERROR_MESSAGES[code] || fallback;
 }

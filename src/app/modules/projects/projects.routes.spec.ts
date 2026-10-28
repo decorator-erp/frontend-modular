@@ -6,12 +6,17 @@ import { ProjectDetailComponent } from './ui/pages/project-detail.component';
 import { ProjectsListComponent } from './ui/pages/projects-list.component';
 import { TaskDetailComponent } from './ui/pages/task-detail.component';
 import { WorkflowBuilderComponent } from './ui/pages/workflow-builder.component';
+import { ScopeOfWorkPageComponent } from './ui/scope-of-work/scope-of-work-page.component';
+import { PERM } from '@platform/permissions';
 
-/** Pins the eight projects routes to the old app.routes.ts metadata at SOURCE_SHA (spec 008). */
+/**
+ * Pins the eight projects routes to the old app.routes.ts metadata at SOURCE_SHA (spec 008), plus
+ * the scope-of-work route NEW-FEATURE-1 appends (specs/sow-scope-of-work.md §3, sow #2).
+ */
 describe('projectsRoutes', () => {
   const route = (path: string) => projectsRoutes.find((r) => r.path === path);
 
-  it('holds exactly the eight old entries, in the old order', () => {
+  it('holds exactly the eight old entries, in the old order, then the scope-of-work route', () => {
     expect(projectsRoutes.map((r) => r.path)).toEqual([
       'projects',
       'projects/new',
@@ -21,6 +26,7 @@ describe('projectsRoutes', () => {
       'dms/projects/:projectId/tasks/:taskId',
       'dms/projects/:projectId/stages/:stageId',
       'projects/:projectId/workflow/builder',
+      'projects/:id/scope-of-work',
     ]);
   });
 
@@ -56,5 +62,13 @@ describe('projectsRoutes', () => {
     const r = route('dms/projects/:projectId/stages/:stageId')!;
     expect(r.redirectTo).toBe('projects/:projectId/stages/:stageId');
     expect(r.pathMatch).toBe('full');
+  });
+
+  it('sow #2: projects/:id/scope-of-work is PermissionGuard-gated on scope.read and lazy-loads the page', async () => {
+    const r = route('projects/:id/scope-of-work')!;
+    expect(r.canActivate).toEqual([PermissionGuard]);
+    expect(r.data).toEqual({ permission: PERM.scope.read, breadcrumb: 'Scope of work' });
+    expect(PERM.scope.read).toBe('scope.read');
+    expect(await r.loadComponent!()).toBe(ScopeOfWorkPageComponent);
   });
 });

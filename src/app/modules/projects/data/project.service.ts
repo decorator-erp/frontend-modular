@@ -56,10 +56,14 @@ export class ProjectService extends ApiService {
     );
   }
 
-  /** `GET /api/projects/by-client/{clientId}` — every project for one client. */
+  /**
+   * A client's projects (008b #1). `GET /api/projects` has no `clientId` filter (008b N-2), so this
+   * reads the caller's first `pageSize` visible projects and filters on `clientId` here — a
+   * client's projects beyond that first page are missing.
+   */
   getByClient(clientId: string, pageSize = 100): Observable<Project[]> {
-    return this.get<unknown>(`/projects/by-client/${clientId}`, { pageNumber: 1, pageSize }).pipe(
-      map((response) => this.normalizePaged(response).items),
+    return this.get<unknown>('/projects', { pageNumber: 1, pageSize }).pipe(
+      map((response) => this.normalizePaged(response).items.filter((p) => p.clientId === clientId)),
     );
   }
 
@@ -97,13 +101,13 @@ export class ProjectService extends ApiService {
     );
   }
 
+  /** `POST /api/projects` → 200 `{ projectId }` (008b #2). */
   create(req: CreateProjectRequest): Observable<string> {
     const body = {
       ...req,
-      status: this.statusInt(req.status),
       workflowType: this.workflowInt(req.workflowType),
     };
-    return this.post<unknown>('/projects', body).pipe(map((r) => this.unwrap<string>(r)));
+    return this.post<unknown>('/projects', body).pipe(map((r) => this.unwrapId(r, 'projectId')));
   }
 
   update(id: string, req: UpdateProjectRequest): Observable<unknown> {
@@ -208,6 +212,8 @@ export class ProjectService extends ApiService {
       endDate: this.field<string | null>(source, 'endDate') ?? null,
       actualStartDate: this.field<string | null>(source, 'actualStartDate') ?? null,
       actualEndDate: this.field<string | null>(source, 'actualEndDate', 'actualEndData') ?? null,
+      stageCount: this.num(this.field(source, 'stageCount')),
+      isActive: this.field<boolean>(source, 'isActive') ?? true,
       financial: this.field<ProjectFinancialBlock>(source, 'financial'),
     };
   }

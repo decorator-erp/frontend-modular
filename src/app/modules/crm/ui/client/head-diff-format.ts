@@ -8,6 +8,7 @@ import {
   FINISHING_PURPOSE_KEYS,
   FURNITURE_KEYS,
   POSITION_KEYS,
+  SECTOR_KEYS,
   TIMELINE_KEYS,
   UNIT_CONDITION_KEYS,
   UNIT_TYPE_KEYS,
@@ -40,14 +41,10 @@ const ENUM_FIELD_KEYS: Partial<Record<string, Record<number, CatalogKey>>> = {
   FurnitureStatus: FURNITURE_KEYS,
   TimelinePressure: TIMELINE_KEYS,
   FinishingPurpose: FINISHING_PURPOSE_KEYS,
+  Sector: SECTOR_KEYS,
 };
 
-const BOOL_FIELDS = new Set([
-  'IsLicensed',
-  'ReceivesFrequentVisitors',
-  'HobbiesInDesign',
-  'UsedDesignerBefore',
-]);
+const BOOL_FIELDS = new Set(['IsLicensed', 'ReceivesFrequentVisitors', 'UsedDesignerBefore']);
 
 const HIRING_REASON_KEYS: Record<Exclude<HiringReason, HiringReason.None>, CatalogKey> = {
   [HiringReason.ReliefFromCraftsmen]: 'brief.optHiringRelief',
@@ -55,7 +52,11 @@ const HIRING_REASON_KEYS: Record<Exclude<HiringReason, HiringReason.None>, Catal
   [HiringReason.OrganizeAndComfort]: 'brief.optHiringOrganize',
 };
 
-/** The exact PascalCase property names `Flatten()` emits, mapped to their label key. */
+/**
+ * The exact PascalCase property names `CrmBriefHeadSnapshot` emits (009b #16:
+ * `CrmBriefHeadSnapshot.cs:115-178`), mapped to their label key. The retired `UtilityMetersNote`,
+ * `ParentsHobbies`, `ChildrenHobbies` and `HobbiesInDesign` are gone; `Sector` is new.
+ */
 export const HEAD_DIFF_FIELD_KEYS: Record<string, CatalogKey> = {
   UnitType: 'brief.fUnitType',
   UnitCondition: 'brief.fCondition',
@@ -69,12 +70,8 @@ export const HEAD_DIFF_FIELD_KEYS: Record<string, CatalogKey> = {
   FinishingPurpose: 'brief.fFinishingPurpose',
   Position: 'brief.fPosition',
   ElevatorStatus: 'brief.fElevator',
-  UtilityMetersNote: 'brief.fUtilityMeters',
   ReceivesFrequentVisitors: 'brief.fVisitorsFreq',
   VisitorsNote: 'brief.fVisitorsNote',
-  ParentsHobbies: 'brief.fParentsHobbies',
-  ChildrenHobbies: 'brief.fChildrenHobbies',
-  HobbiesInDesign: 'brief.fHobbiesInDesign',
   UsedDesignerBefore: 'brief.fUsedBefore',
   DesignerExperience: 'brief.fExperience',
   DesignerExperienceReason: 'brief.fDesignerExpReason',
@@ -87,6 +84,7 @@ export const HEAD_DIFF_FIELD_KEYS: Record<string, CatalogKey> = {
   ArchitecturalRequests: 'brief.secArch',
   OtherNeeds: 'brief.fOtherNeeds',
   LastMeetingId: 'brief.fLastMeeting',
+  Sector: 'brief.sectorBadge',
 };
 
 export function headDiffFieldLabel(field: string, catalog: CatalogService): string {

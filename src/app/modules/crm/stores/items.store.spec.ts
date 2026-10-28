@@ -1,6 +1,8 @@
 import { TestBed } from '@angular/core/testing';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { HttpErrorResponse } from '@angular/common/http';
 import { NEVER, of, throwError } from 'rxjs';
+import { ToastService } from '@platform/feedback/toast.service';
 import { CrmItemService, isClientAuthoredItem } from '../data/crm-item.service';
 import { ApprovalState, RequirementCategory, RequirementPriority } from '../model/crm-enums';
 import type { RequirementItem } from '../model';
@@ -15,6 +17,7 @@ function item(over: Partial<RequirementItem> = {}): RequirementItem {
     projectId: PROJECT_ID,
     periodId: 'period-1',
     category: RequirementCategory.SpaceLayout,
+    spaceTypeId: null,
     room: 'Kitchen',
     title: 'Open kitchen',
     details: null,
@@ -28,15 +31,13 @@ function item(over: Partial<RequirementItem> = {}): RequirementItem {
     createdByEmployeeId: 'employee-1',
     createdByContactId: null,
     projectTaskId: null,
-    createdAtUtc: '2026-07-10T00:00:00.000Z',
     ...over,
   };
 }
 
 function apiMock() {
   return {
-    search: vi.fn().mockReturnValue(of([item()])),
-    portalSearch: vi.fn().mockReturnValue(of([item()])),
+    listByProject: vi.fn().mockReturnValue(of([item()])),
     create: vi.fn().mockReturnValue(of('new-id')),
     update: vi.fn().mockReturnValue(of(undefined)),
     send: vi.fn().mockReturnValue(of(undefined)),
@@ -51,7 +52,11 @@ describe('ItemsStore', () => {
   beforeEach(() => {
     api = apiMock();
     TestBed.configureTestingModule({
-      providers: [ItemsStore, { provide: CrmItemService, useValue: api }],
+      providers: [
+        ItemsStore,
+        { provide: CrmItemService, useValue: api },
+        { provide: ToastService, useValue: { show: vi.fn() } },
+      ],
     });
   });
 
@@ -61,22 +66,90 @@ describe('ItemsStore', () => {
     it('fetches items for the project', () => {
       const s = store();
       s.load(PROJECT_ID);
-      expect(api.search).toHaveBeenCalledWith(PROJECT_ID, { take: 500 });
+      expect(api.listByProject).toHaveBeenCalledWith(PROJECT_ID);
       expect(s.items()).toHaveLength(1);
     });
 
     it('sets loading true while in flight', () => {
-      api.search.mockReturnValueOnce(NEVER);
+      api.listByProject.mockReturnValueOnce(NEVER);
       const s = store();
       s.load(PROJECT_ID);
       expect(s.loading()).toBe(true);
     });
 
     it('surfaces a friendly error on failure', () => {
-      api.search.mockReturnValue(throwError(() => new Error('boom')));
+      api.listByProject.mockReturnValue(throwError(() => new Error('boom')));
       const s = store();
       s.load(PROJECT_ID);
       expect(s.error()).toBe('Could not load requirement items.');
+    });
+
+    it('a 404 crm.periods.NotFound is notFound, not an error (FINDING-5-6, X-5)', () => {
+      api.listByProject.mockReturnValue(
+        throwError(
+          () =>
+            new HttpErrorResponse({
+              status: 404,
+              error: {
+                status: 404,
+                title: 'crm.periods.NotFound',
+                errors: { 'crm.periods.NotFound': ['Requirement period not found.'] },
+              },
+            }),
+        ),
+      );
+      const s = store();
+      s.load(PROJECT_ID);
+      expect(s.notFound()).toBe(true);
+      expect(s.error()).toBeNull();
+      expect(s.loading()).toBe(false);
+    });
+
+    it('a fresh successful load clears notFound', () => {
+      api.listByProject.mockReturnValueOnce(
+        throwError(() => new HttpErrorResponse({ status: 404 })),
+      );
+      const s = store();
+      s.load(PROJECT_ID);
+      s.load(PROJECT_ID);
+      expect(s.notFound()).toBe(false);
+    });
+  });
+
+  describe('a handled 403 shows its catalog message (FINDING-5-7)', () => {
+    const noStanding = () =>
+      new HttpErrorResponse({
+        status: 403,
+        error: {
+          status: 403,
+          title: 'crm.access.NoStanding',
+          errors: { 'crm.access.NoStanding': ['x'] },
+        },
+      });
+
+    it('create', () => {
+      api.create.mockReturnValue(throwError(noStanding));
+      const s = store();
+      s.create('period-1', {
+        projectId: PROJECT_ID,
+        category: RequirementCategory.SpaceLayout,
+        title: 'T',
+        priority: RequirementPriority.Medium,
+      });
+      expect(s.error()).toBe('Your account has no active access to this area.');
+    });
+
+    it('portalCreate', () => {
+      api.portalCreate.mockReturnValue(throwError(noStanding));
+      const s = store();
+      s.portalCreate({
+        projectId: PROJECT_ID,
+        periodId: 'period-1',
+        category: RequirementCategory.SpaceLayout,
+        title: 'T',
+        priority: RequirementPriority.Medium,
+      });
+      expect(s.error()).toBe('Your account has no active access to this area.');
     });
   });
 
@@ -118,7 +191,7 @@ describe('ItemsStore', () => {
         category: RequirementCategory.SpaceLayout,
         supersedesItemId: 's3',
       });
-      api.search.mockReturnValue(of([layout, style, supersededLayout, newLayout]));
+      api.listByProject.mockReturnValue(of([layout, style, supersededLayout, newLayout]));
       const s = store();
 
       s.load(PROJECT_ID);
@@ -135,7 +208,7 @@ describe('ItemsStore', () => {
     it('a locked item is corrected via supersede, which reloads on success', () => {
       const s = store();
       s.load(PROJECT_ID);
-      api.search.mockClear();
+      api.listByProject.mockClear();
 
       s.supersede('item-1', {
         category: RequirementCategory.SpaceLayout,
@@ -147,12 +220,31 @@ describe('ItemsStore', () => {
         'item-1',
         expect.objectContaining({ title: 'Open kitchen (revised)' }),
       );
-      expect(api.search).toHaveBeenCalledWith(PROJECT_ID, { take: 500 });
+      expect(api.listByProject).toHaveBeenCalledWith(PROJECT_ID);
+    });
+  });
+
+  describe('create() (009b #22)', () => {
+    it('creates on the period and reloads the project carried by the request', () => {
+      const s = store();
+
+      s.create('period-1', {
+        projectId: PROJECT_ID,
+        category: RequirementCategory.Furniture,
+        title: 'Reading nook',
+        priority: RequirementPriority.Low,
+      });
+
+      expect(api.create).toHaveBeenCalledWith(
+        'period-1',
+        expect.objectContaining({ projectId: PROJECT_ID }),
+      );
+      expect(api.listByProject).toHaveBeenCalledWith(PROJECT_ID);
     });
   });
 
   describe('portal methods', () => {
-    it('portalCreate calls the api and reloads the portal list for that project', () => {
+    it('portalCreate calls the api and reloads nothing', () => {
       const s = store();
 
       s.portalCreate({
@@ -164,7 +256,61 @@ describe('ItemsStore', () => {
       });
 
       expect(api.portalCreate).toHaveBeenCalled();
-      expect(api.portalSearch).toHaveBeenCalledWith(PROJECT_ID);
+      expect(s.mutating()).toBe(false);
+    });
+
+    // 009b #N-3: no portal items read exists (EP/CrmPortalEndpoints.cs:36-153).
+    it('has no portal list load (009b #N-3)', () => {
+      expect((store() as unknown as Record<string, unknown>)['loadPortal']).toBeUndefined();
+    });
+  });
+
+  describe('mutation errors (009b #24)', () => {
+    function coded(code: string): HttpErrorResponse {
+      return new HttpErrorResponse({
+        status: 409,
+        error: { status: 409, title: code, errors: { [code]: ['x'] } },
+      });
+    }
+
+    it('send: 409 crm.items.ConcurrentUpdate reloads the board (X-3), no error', () => {
+      api.send.mockReturnValue(throwError(() => coded('crm.items.ConcurrentUpdate')));
+      const s = store();
+      s.load(PROJECT_ID);
+      api.listByProject.mockClear();
+
+      s.send('item-1');
+
+      expect(api.listByProject).toHaveBeenCalledWith(PROJECT_ID);
+      expect(s.error()).toBeNull();
+      expect(s.mutating()).toBe(false);
+    });
+
+    it('send in a Closed period: 409 crm.periods.NotOpen shows its catalog message', () => {
+      api.send.mockReturnValue(throwError(() => coded('crm.periods.NotOpen')));
+      const s = store();
+      s.load(PROJECT_ID);
+      api.listByProject.mockClear();
+
+      s.send('item-1');
+
+      expect(s.error()).toBe('The requirement period is not open.');
+      expect(api.listByProject).not.toHaveBeenCalled();
+    });
+
+    it('update and supersede: 409 crm.items.ConcurrentUpdate reloads (X-3)', () => {
+      api.update.mockReturnValue(throwError(() => coded('crm.items.ConcurrentUpdate')));
+      api.supersede.mockReturnValue(throwError(() => coded('crm.items.ConcurrentUpdate')));
+      const s = store();
+      s.load(PROJECT_ID);
+      api.listByProject.mockClear();
+      const request = { category: 1, title: 'x', priority: 1, spaceTypeId: 'T' };
+
+      s.update('item-1', request);
+      s.supersede('item-1', request);
+
+      expect(api.listByProject).toHaveBeenCalledTimes(2);
+      expect(s.error()).toBeNull();
     });
   });
 });

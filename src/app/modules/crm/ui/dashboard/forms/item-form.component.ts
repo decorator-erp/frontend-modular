@@ -70,7 +70,7 @@ const PRIORITY_KEYS: Record<RequirementPriority, CatalogKey> = {
   ],
   template: `
     <pera-form-modal
-      eyebrow="POST /api/crm/projects/{projectId}/requirement-items"
+      eyebrow="POST /api/crm/periods/{periodId}/items"
       [title]="catalog.t('nav.itemForm')"
       [subtitle]="catalog.t('item.formSub')"
       permission="crm.items.create"
@@ -174,10 +174,10 @@ export class CrmItemFormComponent {
   readonly submitting = signal(false);
 
   constructor() {
-    this.meetingService.search(this.data.projectId).subscribe((meetings: CrmMeeting[]) => {
+    this.meetingService.search(this.data.projectId).subscribe((page) => {
       this.meetingOptions.set([
         { value: '', label: '—' },
-        ...meetings.map((m) => ({ value: m.id, label: m.title })),
+        ...page.items.map((m: CrmMeeting) => ({ value: m.id, label: m.title })),
       ]);
     });
   }
@@ -202,8 +202,8 @@ export class CrmItemFormComponent {
     const meetingId = v.meetingId || null;
 
     this.items
-      .create(this.data.projectId, {
-        periodId: this.data.periodId,
+      .create(this.data.periodId, {
+        projectId: this.data.projectId,
         category: Number(v.category),
         title: v.title.trim(),
         priority: Number(v.priority),

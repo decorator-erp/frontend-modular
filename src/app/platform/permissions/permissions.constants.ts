@@ -119,6 +119,12 @@ export const PERM = {
     decideApproval: 'stage_tasks.decide_approval',
     manageGates: 'stage_tasks.manage_gates',
   },
+  /** Scope of work — office only; the client role holds none (ProjectsPermissions.Scope). */
+  scope: {
+    read: 'scope.read',
+    manage: 'scope.manage',
+    confirm: 'scope.confirm',
+  },
   documents: {
     read: 'documents.read',
     upload: 'documents.upload',
@@ -241,10 +247,6 @@ export const PERM = {
     viewOwn: 'requirements.view_own',
     submitOwn: 'requirements.submit_own',
   },
-  portal: {
-    /** GET /api/crm/portal/profile — the client's identity card (client + contacts + projects). */
-    profileViewOwn: 'portal.profile.view_own',
-  },
   // UI-side gate for the redesigned DMS task-detail route. Not in the backend catalog
   // (`AllDefaultPermissions`); a staged-rollout claim backend ops grant explicitly —
   // see docs/PERMISSIONS.md. Kept in the app's live snake_case claim spelling.
@@ -352,6 +354,9 @@ export const ALL_PERMISSIONS: { group: string; key: string; displayName: string 
     displayName: 'Decide Task Approval',
   },
   { group: 'Stage Tasks', key: PERM.stageTasks.manageGates, displayName: 'Manage Task Gates' },
+  { group: 'Scope of Work', key: PERM.scope.read, displayName: 'Read Scope of Work' },
+  { group: 'Scope of Work', key: PERM.scope.manage, displayName: 'Manage Scope of Work' },
+  { group: 'Scope of Work', key: PERM.scope.confirm, displayName: 'Confirm Scope of Work' },
   { group: 'Documents', key: PERM.documents.read, displayName: 'Read Documents' },
   { group: 'Documents', key: PERM.documents.upload, displayName: 'Upload Documents' },
   { group: 'Documents', key: PERM.documents.update, displayName: 'Update Documents' },
@@ -465,5 +470,4 @@ export const ALL_PERMISSIONS: { group: string; key: string; displayName: string 
     key: PERM.requirements.submitOwn,
     displayName: 'Submit Own Requirement',
   },
-  { group: 'Portal', key: PERM.portal.profileViewOwn, displayName: 'View Own Portal Profile' },
 ];

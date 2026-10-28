@@ -2,13 +2,15 @@ import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { ApiService } from '@platform/http/api.service';
+import { handled } from '@platform/http/handled-errors';
 import { RequirementPeriodStatus } from '../model/crm-enums';
 
 /**
- * The requirement period — mirrors `PeriodResponse` (`Application/DTOs/CrmPeriods`).
+ * The requirement period — mirrors `CrmRequirementPeriodResponse` (`PeriodContracts.cs:5-7`):
+ * no `closeNotifiedAtUtc` and no `createdAtUtc` (009b #25).
  *
  * A project holds AT MOST ONE open period at a time — `POST /periods` returns
- * `crm.periods.OpenPeriodExists` if one is already open — so `GET /periods` returns
+ * `crm.periods.AlreadyOpen` if one is already open — so `GET /periods` returns
  * the project's full history (closed periods included), not a single record.
  */
 export interface CrmPeriod {
@@ -18,9 +20,7 @@ export interface CrmPeriod {
   status: RequirementPeriodStatus;
   closesAtUtc: string;
   closedAtUtc: string | null;
-  closeNotifiedAtUtc: string | null;
   openedById: string;
-  createdAtUtc: string;
 }
 
 /**
@@ -31,15 +31,16 @@ export interface CrmPeriod {
 @Injectable({ providedIn: 'root' })
 export class CrmPeriodService extends ApiService {
   /**
-   * `POST /api/crm/projects/{projectId}/periods` → `201` with a bare `Guid`.
+   * `POST /api/crm/projects/{projectId}/periods` → `201 { periodId }` (009b #26).
    * `projectStageId` is optional — a stage-based project's period may anchor to a
    * specific stage; a free-style project passes `null`.
    */
   open(projectId: string, closesAtUtc: string, projectStageId?: string | null): Observable<string> {
-    return this.post<unknown>(`/crm/projects/${projectId}/periods`, {
-      projectStageId: projectStageId ?? null,
-      closesAtUtc,
-    }).pipe(map((r) => this.unwrap<string>(r)));
+    return this.post<unknown>(
+      `/crm/projects/${projectId}/periods`,
+      { projectStageId: projectStageId ?? null, closesAtUtc },
+      { context: handled(403) }, // FINDING-5-7: the form shows the 403's catalog message.
+    ).pipe(map((r) => this.unwrapId(r, 'periodId')));
   }
 
   /** `GET /api/crm/projects/{projectId}/periods` — the project's full period history. */
@@ -70,9 +71,7 @@ export class CrmPeriodService extends ApiService {
       status: this.field<number>(source, 'status') ?? RequirementPeriodStatus.Open,
       closesAtUtc: this.field<string>(source, 'closesAtUtc') ?? '',
       closedAtUtc: this.field<string | null>(source, 'closedAtUtc') ?? null,
-      closeNotifiedAtUtc: this.field<string | null>(source, 'closeNotifiedAtUtc') ?? null,
       openedById: this.field<string>(source, 'openedById') ?? '',
-      createdAtUtc: this.field<string>(source, 'createdAtUtc') ?? '',
     };
   }
 }

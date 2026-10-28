@@ -68,3 +68,15 @@ describe('ERROR_MESSAGES — employees, departments, users (006b-2 #28)', () => 
     expect('departments.NoEmployeesToMove' in ERROR_MESSAGES).toBe(false);
   });
 });
+
+/** FINDING-7-10: the generic validation code has an EN and an AR message. */
+describe('ERROR_MESSAGES — Validation.General (sow FINDING-7-10)', () => {
+  it('carries an English and an Arabic message', () => {
+    expect(friendlyMessage('Validation.General', 'fb', 'en')).toBe(
+      'Some values are invalid. Check the highlighted fields.',
+    );
+    expect(friendlyMessage('Validation.General', 'fb', 'ar')).toBe(
+      'بعض القيم غير صحيحة. راجع الحقول المحدَّدة.',
+    );
+  });
+});

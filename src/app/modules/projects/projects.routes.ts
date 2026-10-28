@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { PermissionGuard } from '@platform/auth/permission.guard';
+import { PERM } from '@platform/permissions';
 
 /**
  * The projects module's office-shell routes (spec 008). NEW file: its entries are the old
@@ -66,5 +67,15 @@ export const projectsRoutes: Routes = [
     data: { permission: 'stages.manage', breadcrumb: 'Workflow Builder' },
     loadComponent: () =>
       import('./ui/pages/workflow-builder.component').then((m) => m.WorkflowBuilderComponent),
+  },
+  // NEW-FEATURE-1: the project's scope of work (specs/sow-scope-of-work.md §3).
+  {
+    path: 'projects/:id/scope-of-work',
+    canActivate: [PermissionGuard],
+    data: { permission: PERM.scope.read, breadcrumb: 'Scope of work' },
+    loadComponent: () =>
+      import('./ui/scope-of-work/scope-of-work-page.component').then(
+        (m) => m.ScopeOfWorkPageComponent,
+      ),
   },
 ];

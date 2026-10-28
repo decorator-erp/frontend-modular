@@ -55,7 +55,7 @@ import { LEAD_SOURCE_KEYS, LEAD_STATUS_KEYS, LEAD_STATUS_TONE } from './lead-lab
 
 /** Maps the intake domain codes to the offending control (mirrors the backend rules). */
 const INTAKE_FIELD_MAP: Record<string, string> = {
-  'crm.leads.SectorMismatch': 'projectSector',
+  'crm.leads.ResidentialWithoutSector': 'projectSector',
   'crm.leads.DesignerExperienceWithoutUse': 'designerExperience',
   'crm.leads.ExperienceReasonWithoutExperience': 'designerExperienceReason',
 };
@@ -433,11 +433,11 @@ export class CrmLeadDetailComponent {
       const intake = this.store.intake();
       if (!intake) return;
       const r = intake.residential ?? null;
-      this.prevSector = intake.projectSector != null ? String(intake.projectSector) : '';
+      this.prevSector = intake.sector != null ? String(intake.sector) : '';
       this.form.patchValue({
         jobTitle: intake.jobTitle ?? '',
         clientAddress: intake.clientAddress ?? '',
-        projectSector: intake.projectSector != null ? String(intake.projectSector) : '',
+        projectSector: intake.sector != null ? String(intake.sector) : '',
         unitAddress: intake.unitAddress ?? '',
         areaSqm: intake.areaSqm != null ? String(intake.areaSqm) : '',
         unitType: r?.unitType != null ? String(r.unitType) : '',
@@ -550,12 +550,14 @@ export class CrmLeadDetailComponent {
     const body: LeadIntakeRequest = {
       jobTitle: v.jobTitle.trim() || null,
       clientAddress: v.clientAddress.trim() || null,
-      projectSector: sector,
+      sector,
       unitAddress: v.unitAddress.trim() || null,
       areaSqm: v.areaSqm.trim() ? Number(v.areaSqm) : null,
       usedDesignerBefore: v.usedDesignerBefore,
-      designerExperience: v.designerExperience,
-      designerExperienceReason: v.designerExperienceReason.trim() || null,
+      // C §8.1.10: experience and its reason only travel with usedDesignerBefore = true.
+      designerExperience: v.usedDesignerBefore === true ? v.designerExperience : null,
+      designerExperienceReason:
+        v.usedDesignerBefore === true ? v.designerExperienceReason.trim() || null : null,
       residential,
     };
 

@@ -78,6 +78,19 @@ export abstract class ApiService {
     return response as T;
   }
 
+  /**
+   * The created id from a 201 body. The backend answers every create with a one-property
+   * body such as `{ leadId: '…' }` (contract §1.7); an older bare-string body still reads.
+   * Read the body, never `Location`: some of its URLs point at routes that don't exist.
+   * Returns `''` when neither shape carries a string, so an object never becomes an id.
+   */
+  protected unwrapId(response: unknown, key: string): string {
+    const named = readField<unknown>(response, key);
+    if (typeof named === 'string') return named;
+    const bare = this.unwrap<unknown>(response);
+    return typeof bare === 'string' ? bare : '';
+  }
+
   protected unwrapArray<T = unknown>(response: unknown): T[] {
     const unwrapped = this.unwrap<unknown>(response);
     const value = unwrapped as Record<string, unknown> | null;

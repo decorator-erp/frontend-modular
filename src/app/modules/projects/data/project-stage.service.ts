@@ -21,8 +21,9 @@ import { ProjectService } from './project.service';
 export class ProjectStageService extends ApiService {
   private readonly projects = inject(ProjectService);
 
+  /** 008b #24: `GET /api/projects/{projectId}/stages` → `ProjectStageResponse[]` (`stages.read`). */
   getByProject(projectId: string): Observable<ProjectStage[]> {
-    return this.get<unknown>(`/project-stages/by-project/${projectId}`).pipe(
+    return this.get<unknown>(`/projects/${projectId}/stages`).pipe(
       map((r) =>
         this.unwrapArray(r)
           .map((s) => this.projects.normalizeStage(s, projectId))

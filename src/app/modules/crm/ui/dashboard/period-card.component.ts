@@ -75,7 +75,7 @@ import { CrmPeriodFormComponent } from './forms/period-form.component';
             >
           </div>
         </div>
-      } @else {
+      } @else if (!store.notFound()) {
         <div class="flex items-center gap-3 flex-wrap">
           <div class="flex-1 min-w-0">
             <div class="font-semibold text-text-primary">{{ catalog.t('period.title') }}</div>
@@ -87,6 +87,10 @@ import { CrmPeriodFormComponent } from './forms/period-form.component';
         </div>
       }
 
+      @if (store.notFound()) {
+        <!-- FINDING-5-6 (X-5): a 404 on load is "not found", never "Could not load". -->
+        <pera-alert tone="warning">{{ catalog.t('period.notFound') }}</pera-alert>
+      }
       @if (store.error(); as error) {
         <pera-alert tone="danger">{{ error }}</pera-alert>
       }
@@ -123,8 +127,8 @@ export class CrmPeriodCardComponent {
     const period = this.store.openPeriod();
     if (!period) return '';
     const locale = this.catalog.locale();
-    return this.catalog.t('period.opened', {
-      openedAt: formatCairoDateTime(period.createdAtUtc, locale),
+    // 009b #25: the response has no opened-at date, so only the close date is shown.
+    return this.catalog.t('period.closesAt', {
       closesAt: formatCairoDateTime(period.closesAtUtc, locale),
     });
   });

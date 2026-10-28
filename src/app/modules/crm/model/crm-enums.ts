@@ -24,6 +24,8 @@ export enum ApprovalState {
 export enum ApprovalDecision {
   Approved = 1,
   Rejected = 2,
+  /** 009b #42 (KNOWN-DELTA-3): `Approvals.Contracts/Enums.cs:47-52`. Needs a comment, like Rejected. */
+  ChangesRequested = 3,
 }
 
 export enum ApprovalSubjectType {
@@ -31,6 +33,8 @@ export enum ApprovalSubjectType {
   DesignBrief = 2,
   RequirementItem = 3,
   BriefSpace = 4,
+  /** 009b #42 (KNOWN-DELTA-3): `Approvals.Contracts/Enums.cs:8-15`. */
+  ProjectDocument = 5,
 }
 
 export enum ApproverKind {

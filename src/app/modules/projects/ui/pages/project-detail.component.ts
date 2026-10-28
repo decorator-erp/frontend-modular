@@ -6,7 +6,7 @@ import {
   inject,
   signal,
 } from '@angular/core';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { ProjectService } from '../../data/project.service';
@@ -121,6 +121,7 @@ const STL_GRID = 'grid grid-cols-[minmax(0,1fr)_9rem_8rem_6rem_9rem] gap-3 items
     PeraEntityHeaderCardComponent,
     PeraSkeletonComponent,
     PeraStatusBadgeComponent,
+    RouterLink,
     StageTimelineComponent,
     TasksGanttViewComponent,
     ActivityFeedComponent,
@@ -159,6 +160,8 @@ export class ProjectDetailComponent implements OnInit {
     // Mirrors the guard on the CRM dashboard route itself (`crm.routes.ts`), so the
     // affordance is absent rather than a click that lands on a 403.
     crmDashboard: PERM.crm.periods.read,
+    // sow #10: mirrors the scope-of-work route's guard (`projects.routes.ts`).
+    scope: PERM.scope.read,
   };
 
   readonly loading = signal(true);

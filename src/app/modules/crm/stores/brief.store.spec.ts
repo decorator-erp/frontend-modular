@@ -1,16 +1,11 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { NEVER, of, throwError } from 'rxjs';
+import { NEVER, Subject, of, throwError } from 'rxjs';
 import { CrmApprovalsService } from '../data/crm-approvals.service';
 import { CrmBriefService } from '../data/crm-brief.service';
-import { ApprovalState, ApprovalSubjectType } from '../model/crm-enums';
-import type {
-  ApprovalTrailItem,
-  BriefHead,
-  BriefSpace,
-  BriefSpaceRef,
-  CrmSpaceType,
-} from '../model';
+import { ApprovalState } from '../model/crm-enums';
+import type { BriefHead, BriefRound, BriefSpace, BriefSpaceRef, CrmSpaceType } from '../model';
 import { BriefStore } from './brief.store';
 
 const PROJECT_ID = 'project-1';
@@ -39,7 +34,6 @@ function head(over: Partial<BriefHead> = {}): BriefHead {
     id: 'brief-1',
     projectId: PROJECT_ID,
     projectStageId: 'stage-1',
-    decisionMakerContactId: 'contact-1',
     createdById: 'employee-1',
     unitType: 1,
     unitCondition: 1,
@@ -53,12 +47,8 @@ function head(over: Partial<BriefHead> = {}): BriefHead {
     finishingPurpose: null,
     position: null,
     elevatorStatus: null,
-    utilityMetersNote: null,
     receivesFrequentVisitors: null,
     visitorsNote: null,
-    parentsHobbies: null,
-    childrenHobbies: null,
-    hobbiesInDesign: null,
     usedDesignerBefore: null,
     designerExperience: null,
     designerExperienceReason: null,
@@ -73,7 +63,6 @@ function head(over: Partial<BriefHead> = {}): BriefHead {
     sector: null,
     status: ApprovalState.Draft,
     lastMeetingId: null,
-    createdAtUtc: '2026-07-01T00:00:00.000Z',
     ...over,
   };
 }
@@ -82,6 +71,7 @@ function space(over: Partial<BriefSpace> = {}): BriefSpace {
   return {
     id: 'space-1',
     briefId: 'brief-1',
+    spaceId: RECEPTION.id,
     space: RECEPTION,
     countOrPieces: null,
     requirements: 'L-seating for 10 guests',
@@ -90,26 +80,27 @@ function space(over: Partial<BriefSpace> = {}): BriefSpace {
     supersedesSpaceId: null,
     projectTaskId: null,
     createdById: 'employee-1',
-    createdAtUtc: '2026-07-02T00:00:00.000Z',
+    isCurrent: true,
     ...over,
   };
 }
 
-function trailItem(over: Partial<ApprovalTrailItem> = {}): ApprovalTrailItem {
-  return {
-    id: 'appr-1',
-    round: 1,
-    decision: null,
-    comment: null,
+/** `CrmBriefRoundResponse` rows, in round order (009b #14). */
+function rounds(...numbers: number[]): BriefRound[] {
+  return numbers.map((round) => ({
+    round,
+    sentAtUtc: '2026-07-01T00:00:00Z',
+    outcome: 1,
     decidedAtUtc: null,
-    decidedById: null,
-    ...over,
-  };
+  }));
 }
 
 function briefApiMock() {
   return {
-    getBrief: vi.fn().mockReturnValue(of({ head: head(), spaces: [space()] })),
+    getBrief: vi.fn().mockReturnValue(of(head())),
+    getBriefByStage: vi.fn().mockReturnValue(of(head())),
+    listSpaces: vi.fn().mockReturnValue(of([space()])),
+    createBrief: vi.fn().mockReturnValue(of('brief-new')),
     updateHead: vi.fn().mockReturnValue(of(undefined)),
     sendForConfirmation: vi.fn().mockReturnValue(of(undefined)),
     addSpace: vi.fn().mockReturnValue(of('new-space-id')),
@@ -117,6 +108,8 @@ function briefApiMock() {
     sendSpace: vi.fn().mockReturnValue(of(undefined)),
     supersedeSpace: vi.fn().mockReturnValue(of('new-space-id')),
     getHeadDiff: vi.fn(),
+    listRounds: vi.fn().mockReturnValue(of([])),
+    getMyBrief: vi.fn(),
   };
 }
 
@@ -149,11 +142,12 @@ describe('BriefStore', () => {
   const store = () => TestBed.inject(BriefStore);
 
   describe('load()', () => {
-    it('loads the head, spaces, and the head trail', () => {
+    it('loads the head, spaces, and the rounds — never the approvals trail (009b #14)', () => {
       const s = store();
       s.load(PROJECT_ID);
       expect(api.getBrief).toHaveBeenCalledWith(PROJECT_ID);
-      expect(approvals.bySubject).toHaveBeenCalledWith(ApprovalSubjectType.DesignBrief, 'brief-1');
+      expect(api.listRounds).toHaveBeenCalledWith('brief-1');
+      expect(approvals.bySubject).not.toHaveBeenCalled();
       expect(s.head()?.id).toBe('brief-1');
       expect(s.spaces()).toHaveLength(1);
       expect(s.loading()).toBe(false);
@@ -173,53 +167,278 @@ describe('BriefStore', () => {
       expect(s.error()).toBe('Could not load the brief.');
     });
 
-    it('a trail fetch failure does not blank the head — headTrail just stays empty', () => {
-      approvals.bySubject.mockReturnValue(throwError(() => new Error('boom')));
+    it("with a stage, reads that stage's brief (009b #9), then its entries by brief id (009b #11)", () => {
+      const s = store();
+      s.load(PROJECT_ID, 'stage-2');
+      expect(api.getBriefByStage).toHaveBeenCalledWith('stage-2');
+      expect(api.getBrief).not.toHaveBeenCalled();
+      expect(api.listSpaces).toHaveBeenCalledWith('brief-1', PROJECT_ID);
+      expect(s.stageId()).toBe('stage-2');
+      expect(s.spaces()).toHaveLength(1);
+    });
+
+    it('without a stage, falls back to the obsolete project route (N-11)', () => {
+      const s = store();
+      s.load(PROJECT_ID);
+      expect(api.getBrief).toHaveBeenCalledWith(PROJECT_ID);
+      expect(api.getBriefByStage).not.toHaveBeenCalled();
+      expect(s.stageId()).toBeNull();
+    });
+
+    it('reload() re-reads the same stage after a mutation', () => {
+      const s = store();
+      s.load(PROJECT_ID, 'stage-2');
+      api.getBriefByStage.mockClear();
+      s.addSpace({ spaceId: RECEPTION.id, requirements: 'x' });
+      expect(api.getBriefByStage).toHaveBeenCalledWith('stage-2');
+      expect(api.getBrief).not.toHaveBeenCalled();
+    });
+
+    it('an entries fetch failure does not blank the head — spaces just stay empty', () => {
+      api.listSpaces.mockReturnValue(throwError(() => new Error('boom')));
       const s = store();
       s.load(PROJECT_ID);
       expect(s.head()?.id).toBe('brief-1');
-      expect(s.headTrail()).toEqual([]);
+      expect(s.spaces()).toEqual([]);
+    });
+
+    it('a stage pick cancels the fallback load: a late fallback head never replaces it (FINDING-5-5)', () => {
+      const fallback$ = new Subject<BriefHead>();
+      const stage$ = new Subject<BriefHead>();
+      api.getBrief.mockReturnValue(fallback$);
+      api.getBriefByStage.mockReturnValue(stage$);
+      const s = store();
+      s.load(PROJECT_ID);
+      s.load(PROJECT_ID, 'stage-B');
+
+      stage$.next(head({ id: 'brief-B', projectStageId: 'stage-B' }));
+      fallback$.next(head({ id: 'brief-C', projectStageId: 'stage-C' }));
+
+      expect(s.head()?.id).toBe('brief-B');
+      expect(api.listSpaces).not.toHaveBeenCalledWith('brief-C', expect.anything());
+    });
+
+    it("drops a superseded load's late spaces and rounds (FINDING-5-5)", () => {
+      const spacesA$ = new Subject<BriefSpace[]>();
+      const roundsA$ = new Subject<BriefRound[]>();
+      const spacesB$ = new Subject<BriefSpace[]>();
+      const roundsB$ = new Subject<BriefRound[]>();
+      api.getBriefByStage.mockImplementation((stageId: string) =>
+        of(head({ id: `brief-${stageId}`, projectStageId: stageId })),
+      );
+      api.listSpaces.mockImplementation((briefId: string) =>
+        briefId === 'brief-A' ? spacesA$ : spacesB$,
+      );
+      api.listRounds.mockImplementation((briefId: string) =>
+        briefId === 'brief-A' ? roundsA$ : roundsB$,
+      );
+      const s = store();
+      s.load(PROJECT_ID, 'A');
+      s.load(PROJECT_ID, 'B');
+
+      spacesB$.next([space({ id: 'entry-B', briefId: 'brief-B' })]);
+      roundsB$.next(rounds(1));
+      spacesA$.next([space({ id: 'entry-A', briefId: 'brief-A' })]);
+      roundsA$.next(rounds(1, 2, 3));
+
+      expect(s.head()?.id).toBe('brief-B');
+      expect(s.spaces().map((e) => e.id)).toEqual(['entry-B']);
+      expect(s.headRound()).toBe(1);
+    });
+
+    it('a rounds fetch failure does not blank the head — rounds just stay empty', () => {
+      api.listRounds.mockReturnValue(throwError(() => new Error('boom')));
+      const s = store();
+      s.load(PROJECT_ID);
+      expect(s.head()?.id).toBe('brief-1');
+      expect(s.rounds()).toEqual([]);
+      expect(s.headRound()).toBe(0);
+    });
+  });
+
+  describe('no brief yet (009b #10)', () => {
+    const notFound = (code: string) =>
+      new HttpErrorResponse({
+        status: 404,
+        error: { title: code, status: 404, errors: { [code]: ['Design brief not found.'] } },
+      });
+
+    it('a 404 crm.briefs.NotFound is the "no brief yet" state, not an error', () => {
+      api.getBriefByStage.mockReturnValue(throwError(() => notFound('crm.briefs.NotFound')));
+      const s = store();
+      s.load(PROJECT_ID, 'stage-2');
+      expect(s.noBrief()).toBe(true);
+      expect(s.error()).toBeNull();
+      expect(s.head()).toBeNull();
+      expect(api.listSpaces).not.toHaveBeenCalled();
+    });
+
+    it('any other failure stays an error', () => {
+      api.getBriefByStage.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 500 })));
+      const s = store();
+      s.load(PROJECT_ID, 'stage-2');
+      expect(s.noBrief()).toBe(false);
+      expect(s.error()).toBe('Could not load the brief.');
+    });
+
+    it('createBrief posts { data, projectStageId } and loads the new brief by its stage', () => {
+      api.getBriefByStage.mockReturnValueOnce(throwError(() => notFound('crm.briefs.NotFound')));
+      const s = store();
+      s.load(PROJECT_ID, 'stage-2');
+
+      s.createBrief('stage-2', { unitType: 0, unitCondition: 0 });
+
+      expect(api.createBrief).toHaveBeenCalledWith(PROJECT_ID, {
+        data: { unitType: 0, unitCondition: 0 },
+        projectStageId: 'stage-2',
+      });
+      expect(api.getBriefByStage).toHaveBeenLastCalledWith('stage-2');
+      expect(s.noBrief()).toBe(false);
+      expect(s.head()?.id).toBe('brief-1');
+    });
+
+    it("a failed create shows the code's catalog message", () => {
+      api.createBrief.mockReturnValue(
+        throwError(
+          () =>
+            new HttpErrorResponse({
+              status: 400,
+              error: { errors: { 'crm.briefs.UnitDetailsRequired': ['x'] } },
+            }),
+        ),
+      );
+      const s = store();
+      s.load(PROJECT_ID, 'stage-2');
+      s.createBrief('stage-2', { unitType: 0, unitCondition: 0 });
+      expect(s.creating()).toBe(false);
+      expect(s.error()).toBe(
+        "Unit type and unit condition are required unless the lead's intake supplies them.",
+      );
+    });
+  });
+
+  describe('updateHead (009b #12)', () => {
+    const conflict = (code: string) =>
+      new HttpErrorResponse({ status: 409, error: { title: code, errors: { [code]: ['x'] } } });
+
+    it('keys the PUT by the loaded brief id and wraps the fields in { data, lastMeetingId }', () => {
+      const s = store();
+      s.load(PROJECT_ID, 'stage-1');
+      s.updateHead({ data: { unitType: 2, unitCondition: 3 }, lastMeetingId: 'm-1' });
+      expect(api.updateHead).toHaveBeenCalledWith('brief-1', {
+        data: { unitType: 2, unitCondition: 3 },
+        lastMeetingId: 'm-1',
+      });
+    });
+
+    it('409 crm.briefs.ConcurrencyConflict reloads the brief (X-3) instead of erroring', () => {
+      api.updateHead.mockReturnValue(throwError(() => conflict('crm.briefs.ConcurrencyConflict')));
+      const s = store();
+      s.load(PROJECT_ID, 'stage-1');
+      api.getBriefByStage.mockClear();
+      const onError = vi.fn();
+
+      s.updateHead({ data: { unitType: 1, unitCondition: 1 } }, { onError });
+
+      expect(api.getBriefByStage).toHaveBeenCalledWith('stage-1');
+      expect(s.error()).toBeNull();
+      expect(s.savingHead()).toBe(false);
+      expect(onError).not.toHaveBeenCalled();
+    });
+
+    it('409 crm.briefs.HeadLockedPendingApproval shows its catalog message', () => {
+      api.updateHead.mockReturnValue(
+        throwError(() => conflict('crm.briefs.HeadLockedPendingApproval')),
+      );
+      const s = store();
+      s.load(PROJECT_ID);
+      s.updateHead({ data: { unitType: 1, unitCondition: 1 } });
+      expect(s.error()).toBe(
+        "The brief head can't be edited while it is waiting for the client's decision.",
+      );
+    });
+
+    it('hands a validation failure to onError for the form', () => {
+      const validation = new HttpErrorResponse({
+        status: 400,
+        error: { title: 'Validation.General', errors: { 'Data.AreaSqm': ['Must be > 0.'] } },
+      });
+      api.updateHead.mockReturnValue(throwError(() => validation));
+      const s = store();
+      s.load(PROJECT_ID);
+      const onError = vi.fn();
+      s.updateHead({ data: { unitType: 1, unitCondition: 1 } }, { onError });
+      expect(onError).toHaveBeenCalledWith(expect.objectContaining({ status: 400 }));
+      expect(s.error()).toBe('Could not save the brief head.');
+    });
+  });
+
+  describe('sendForConfirmation errors (009b #13)', () => {
+    const conflict = (status: number, code: string) =>
+      new HttpErrorResponse({ status, error: { title: code, errors: { [code]: ['x'] } } });
+
+    it('409 crm.briefs.ConcurrentSend reloads the brief (X-3)', () => {
+      api.sendForConfirmation.mockReturnValue(
+        throwError(() => conflict(409, 'crm.briefs.ConcurrentSend')),
+      );
+      const s = store();
+      s.load(PROJECT_ID, 'stage-1');
+      api.getBriefByStage.mockClear();
+
+      s.sendForConfirmation();
+
+      expect(api.getBriefByStage).toHaveBeenCalledWith('stage-1');
+      expect(s.error()).toBeNull();
+      expect(s.sending()).toBe(false);
+    });
+
+    it.each([
+      ['crm.briefs.NotSendable', 409, 'Only a draft or rejected brief can be sent for approval.'],
+      [
+        'approvals.OpenApprovalExists',
+        409,
+        'An undecided approval already exists for this subject.',
+      ],
+      ['crm.clients.NotFound', 404, 'Client not found.'],
+    ])('%s shows its catalog message', (code, status, message) => {
+      api.sendForConfirmation.mockReturnValue(throwError(() => conflict(status, code)));
+      const s = store();
+      s.load(PROJECT_ID);
+      s.sendForConfirmation();
+      expect(s.error()).toBe(message);
     });
   });
 
   describe('headRound / isHeadRoundOutstanding', () => {
-    it('is 0 when the head has never been sent (no trail rows)', () => {
+    it('is 0 when the head has never been sent (no rounds)', () => {
       const s = store();
       s.load(PROJECT_ID);
       expect(s.headRound()).toBe(0);
       expect(s.isHeadRoundOutstanding()).toBe(false);
     });
 
-    it('reflects the highest round in the trail once sent', () => {
-      approvals.bySubject.mockReturnValue(
-        of([trailItem({ round: 1 }), trailItem({ round: 2, id: 'appr-2' })]),
-      );
-      api.getBrief.mockReturnValue(
-        of({ head: head({ status: ApprovalState.PendingApproval }), spaces: [] }),
-      );
+    it('is the last round of the list once sent (009b #14)', () => {
+      api.listRounds.mockReturnValue(of(rounds(1, 2, 3)));
+      api.getBrief.mockReturnValue(of(head({ status: ApprovalState.PendingApproval })));
       const s = store();
 
       s.load(PROJECT_ID);
 
-      expect(s.headRound()).toBe(2);
+      expect(s.headRound()).toBe(3);
       expect(s.isHeadRoundOutstanding()).toBe(true);
     });
 
-    it('an edit that returns an Approved head to PendingApproval does NOT itself create a new trail row — round is unchanged until send()', () => {
-      approvals.bySubject.mockReturnValue(of([trailItem({ round: 1 })]));
-      api.getBrief.mockReturnValueOnce(
-        of({ head: head({ status: ApprovalState.Approved }), spaces: [] }),
-      );
+    it('an edit that returns an Approved head to PendingApproval does NOT itself open a new round — round is unchanged until send()', () => {
+      api.listRounds.mockReturnValue(of(rounds(1)));
+      api.getBrief.mockReturnValueOnce(of(head({ status: ApprovalState.Approved })));
       const s = store();
       s.load(PROJECT_ID);
       expect(s.headRound()).toBe(1);
 
       // Simulate the server's real behavior: editing flips status to PendingApproval but
-      // the trail (fetched fresh on reload) still reports the SAME round — FR-009.
-      api.getBrief.mockReturnValue(
-        of({ head: head({ status: ApprovalState.PendingApproval }), spaces: [] }),
-      );
-      s.updateHead(PROJECT_ID, { unitType: 1, unitCondition: 1 });
+      // the rounds (fetched fresh on reload) still report the SAME round — FR-009.
+      api.getBrief.mockReturnValue(of(head({ status: ApprovalState.PendingApproval })));
+      s.updateHead({ data: { unitType: 1, unitCondition: 1 } });
 
       expect(api.updateHead).toHaveBeenCalled();
       expect(s.headRound()).toBe(1); // unchanged — the round only moves on send()
@@ -227,20 +446,14 @@ describe('BriefStore', () => {
     });
 
     it('sendForConfirmation() is what advances the round (FR-009)', () => {
-      approvals.bySubject.mockReturnValueOnce(of([trailItem({ round: 1 })]));
-      api.getBrief.mockReturnValueOnce(
-        of({ head: head({ status: ApprovalState.Rejected }), spaces: [] }),
-      );
+      api.listRounds.mockReturnValueOnce(of(rounds(1)));
+      api.getBrief.mockReturnValueOnce(of(head({ status: ApprovalState.Rejected })));
       const s = store();
       s.load(PROJECT_ID);
       expect(s.headRound()).toBe(1);
 
-      approvals.bySubject.mockReturnValue(
-        of([trailItem({ round: 1 }), trailItem({ id: 'appr-2', round: 2 })]),
-      );
-      api.getBrief.mockReturnValue(
-        of({ head: head({ status: ApprovalState.PendingApproval }), spaces: [] }),
-      );
+      api.listRounds.mockReturnValue(of(rounds(1, 2)));
+      api.getBrief.mockReturnValue(of(head({ status: ApprovalState.PendingApproval })));
       s.sendForConfirmation();
 
       expect(api.sendForConfirmation).toHaveBeenCalledWith('brief-1');
@@ -252,7 +465,7 @@ describe('BriefStore', () => {
     it('collects entries of the SAME space into ONE group', () => {
       const a = space({ id: 's1', space: RECEPTION });
       const b = space({ id: 's2', space: RECEPTION, requirements: 'more seating' });
-      api.getBrief.mockReturnValue(of({ head: head(), spaces: [a, b] }));
+      api.listSpaces.mockReturnValue(of([a, b]));
       const s = store();
 
       s.load(PROJECT_ID);
@@ -264,11 +477,8 @@ describe('BriefStore', () => {
     });
 
     it('splits entries into separate groups by space', () => {
-      api.getBrief.mockReturnValue(
-        of({
-          head: head(),
-          spaces: [space({ id: 's1', space: RECEPTION }), space({ id: 's2', space: KITCHEN })],
-        }),
+      api.listSpaces.mockReturnValue(
+        of([space({ id: 's1', space: RECEPTION }), space({ id: 's2', space: KITCHEN })]),
       );
       const s = store();
 
@@ -283,11 +493,8 @@ describe('BriefStore', () => {
     });
 
     it('puts null-space entries into a General group that sorts last', () => {
-      api.getBrief.mockReturnValue(
-        of({
-          head: head(),
-          spaces: [space({ id: 's1', space: null }), space({ id: 's2', space: RECEPTION })],
-        }),
+      api.listSpaces.mockReturnValue(
+        of([space({ id: 's1', space: null }), space({ id: 's2', space: RECEPTION })]),
       );
       const s = store();
 
@@ -324,6 +531,26 @@ describe('BriefStore', () => {
       expect(api.supersedeSpace).toHaveBeenCalledWith('old-space', expect.anything());
     });
 
+    it('a handled 403 shows its catalog message (FINDING-5-7)', () => {
+      const noStanding = new HttpErrorResponse({
+        status: 403,
+        error: {
+          status: 403,
+          title: 'crm.access.NoStanding',
+          errors: { 'crm.access.NoStanding': ['x'] },
+        },
+      });
+      api.addSpace.mockReturnValue(throwError(() => noStanding));
+      api.supersedeSpace.mockReturnValue(throwError(() => noStanding));
+      const s = store();
+      s.load(PROJECT_ID);
+
+      s.addSpace({ spaceId: RECEPTION.id, requirements: 'x' });
+      expect(s.error()).toBe('Your account has no active access to this area.');
+      s.supersedeSpace('space-1', { spaceId: RECEPTION.id, requirements: 'y' });
+      expect(s.error()).toBe('Your account has no active access to this area.');
+    });
+
     it('surfaces a friendly error and does not reload on failure', () => {
       api.addSpace.mockReturnValue(throwError(() => new Error('boom')));
       const s = store();
@@ -334,6 +561,48 @@ describe('BriefStore', () => {
 
       expect(s.error()).toBe('Could not add the entry.');
       expect(api.getBrief).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('loadAsClient (009b #43) — the portal brief', () => {
+    it('a null head is "nothing sent yet": no head, no error', () => {
+      api.getMyBrief.mockReturnValue(of({ head: null, spaces: [] }));
+      const s = store();
+      s.loadAsClient(PROJECT_ID);
+      expect(s.head()).toBeNull();
+      expect(s.nothingSent()).toBe(true);
+      expect(s.error()).toBeNull();
+      expect(api.listRounds).not.toHaveBeenCalled();
+    });
+
+    it("the round label comes from the sent head's round", () => {
+      api.getMyBrief.mockReturnValue(
+        of({ head: { ...head({ status: ApprovalState.PendingApproval }), round: 3 }, spaces: [] }),
+      );
+      const s = store();
+      s.loadAsClient(PROJECT_ID);
+      expect(s.nothingSent()).toBe(false);
+      expect(s.headRound()).toBe(3);
+    });
+
+    it.each([
+      [404, 'crm.portal.NotFound', 'Nothing was found for that request.'],
+      [403, 'crm.portal.NotAClient', 'This page is for clients only.'],
+      [403, 'crm.access.NoStanding', 'Your account has no active access to this area.'],
+    ])('a %s %s shows its catalog message', (status, code, message) => {
+      api.getMyBrief.mockReturnValue(
+        throwError(
+          () =>
+            new HttpErrorResponse({
+              status,
+              error: { title: code, status, errors: { [code]: ['x'] } },
+            }),
+        ),
+      );
+      const s = store();
+      s.loadAsClient(PROJECT_ID);
+      expect(s.error()).toBe(message);
+      expect(s.nothingSent()).toBe(false);
     });
   });
 });

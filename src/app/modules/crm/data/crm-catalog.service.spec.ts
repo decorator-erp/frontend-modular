@@ -24,91 +24,157 @@ describe('CrmCatalogService', () => {
   const url = (path: string) => `${environment.apiUrl}${path}`;
 
   // `itemsForSpaceType()` — REMOVED (Run B, F5) along with its sole caller,
-  // `record-items-dialog.component.ts`. The storefront that replaces it uses
-  // `getItems({ spaceTypeId })`, covered below under 'getItems() — the v2 faceted feed'.
+  // `record-items-dialog.component.ts`. `getItems()` went too (009b #35): the only item
+  // read left is `itemsByCategory()`.
 
-  describe('getCategories() — v2', () => {
-    it('normalizes spaceTypeIds and gives every row a trackKey', () => {
+  // 009b #34: CrmCatalogEndpoints.cs:83-88 serves the whole tree, flat, from GET /tree
+  // (CrmCatalogCategoryResponse, CatalogContracts.cs:5-7) — no description, image or
+  // spaceTypeIds; subtree and isActive filtering happen client-side.
+  describe('getCategories() — GET /tree (009b #34)', () => {
+    const wire = (id: string, path: string, isActive = true, parentId: string | null = null) => ({
+      id,
+      parentId,
+      code: id,
+      nameEn: id,
+      nameAr: id,
+      selectionMode: CatalogSelectionMode.None,
+      isRequired: false,
+      sortOrder: 0,
+      path,
+      depth: path.split('/').length - 3,
+      isActive,
+    });
+
+    it('reads the flat tree and normalizes it to the wire fields plus a trackKey', () => {
       let categories: CatalogCategory[] = [];
-      service.getCategories().subscribe((r) => (categories = r));
+      service.getCategories(null, true).subscribe((r) => (categories = r));
+
+      const req = http.expectOne(url('/crm/catalog/tree'));
+      expect(req.request.method).toBe('GET');
+      expect(req.request.params.keys()).toEqual([]);
+      req.flush([wire('cat-1', '/cat-1/')]);
+
+      expect(categories).toEqual([
+        {
+          id: 'cat-1',
+          parentId: null,
+          code: 'cat-1',
+          nameEn: 'cat-1',
+          nameAr: 'cat-1',
+          path: '/cat-1/',
+          depth: 0,
+          selectionMode: CatalogSelectionMode.None,
+          isRequired: false,
+          sortOrder: 0,
+          isActive: true,
+          trackKey: 'cat-1',
+        },
+      ]);
+    });
+
+    it('filters the subtree and inactive rows client-side', () => {
+      let ids: string[] = [];
+      service.getCategories('a').subscribe((r) => (ids = r.map((c) => c.id)));
 
       http
-        .expectOne((r) => r.url === url('/crm/catalog/categories'))
+        .expectOne(url('/crm/catalog/tree'))
         .flush([
-          {
-            id: 'cat-1',
-            parentId: null,
-            code: 'furniture',
-            nameEn: 'Furniture',
-            nameAr: 'أثاث',
-            descriptionEn: null,
-            descriptionAr: null,
-            imageUri: null,
-            path: '/cat-1/',
-            depth: 0,
-            selectionMode: CatalogSelectionMode.None,
-            isRequired: true,
-            sortOrder: 0,
-            isActive: true,
-            spaceTypeIds: [],
-          },
+          wire('a', '/a/'),
+          wire('b', '/a/b/', true, 'a'),
+          wire('c', '/a/c/', false, 'a'),
+          wire('d', '/d/'),
         ]);
 
-      expect(categories[0].spaceTypeIds).toEqual([]);
-      expect(categories[0].trackKey).toBe('cat-1');
+      expect(ids).toEqual(['a', 'b']);
     });
   });
 
-  describe('getItems() — the v2 faceted feed', () => {
-    it('sends the facet params and normalizes attributes keyed by attributeId', () => {
+  // 009b #35: CrmCatalogEndpoints.cs:90-96 — the only item read is per category
+  // (CrmCatalogItemResponse, CatalogContracts.cs:9-11): no facets, attributes, description
+  // or image.
+  describe('itemsByCategory() (009b #35)', () => {
+    it('GETs the category items route with no facet params', () => {
       let items: CatalogItem[] = [];
-      service
-        .getItems({ spaceTypeId: 'st-1', attributeId: 'attr-1', optionId: 'opt-1' })
-        .subscribe((r) => (items = r));
+      service.itemsByCategory('C').subscribe((r) => (items = r));
 
-      const req = http.expectOne(
-        (r) =>
-          r.url === url('/crm/catalog/items') &&
-          r.params.get('spaceTypeId') === 'st-1' &&
-          r.params.get('attributeId') === 'attr-1' &&
-          r.params.get('optionId') === 'opt-1',
-      );
+      const req = http.expectOne(url('/crm/catalog/categories/C/items'));
+      expect(req.request.method).toBe('GET');
+      expect(req.request.params.keys()).toEqual([]);
       req.flush([
         {
           id: 'item-1',
-          categoryId: 'cat-1',
+          categoryId: 'C',
           code: 'oak-wardrobe',
           nameEn: 'Oak wardrobe',
           nameAr: 'دولاب خشب',
-          descriptionEn: null,
-          descriptionAr: null,
-          imageUri: null,
           isPurchasable: true,
           sortOrder: 0,
-          isActive: true,
-          attributes: [
-            {
-              attributeId: 'attr-1',
-              code: 'style',
-              nameEn: 'Style',
-              nameAr: 'الطراز',
-              dataType: CatalogAttributeType.Select,
-              unit: null,
-              valueText: null,
-              valueNumber: null,
-              valueBool: null,
-              valueDate: null,
-              optionId: 'opt-1',
-              optionNameEn: 'Modern',
-              optionNameAr: 'حديث',
-            },
-          ],
+          isActive: false,
         },
       ]);
 
-      expect(items[0].categoryId).toBe('cat-1');
-      expect(items[0].attributes[0].attributeId).toBe('attr-1');
+      expect(items[0].categoryId).toBe('C');
+      expect(items[0].isActive).toBe(false);
+      expect(items[0].attributes).toEqual([]);
       expect(items[0].trackKey).toBe('item-1');
+    });
+  });
+
+  // 009b #38: CreateCrmCatalogItemCommand (CatalogContracts.cs:35-37) binds no description or
+  // image; CrmCatalogEndpoints.cs:49-54 answers 201 { itemId }.
+  describe('createItem() (009b #38)', () => {
+    it('posts only the bound fields and reads the 201 { itemId }', () => {
+      let id: string | undefined;
+      service
+        .createItem({ categoryId: 'C', code: 'oak', nameEn: 'Oak', nameAr: 'بلوط' })
+        .subscribe((r) => (id = r));
+
+      const req = http.expectOne(url('/crm/catalog/items'));
+      expect(req.request.method).toBe('POST');
+      expect(req.request.body).toEqual({
+        categoryId: 'C',
+        code: 'oak',
+        nameEn: 'Oak',
+        nameAr: 'بلوط',
+        isPurchasable: true,
+        sortOrder: 0,
+      });
+      req.flush({ itemId: 'I' });
+
+      expect(id).toBe('I');
+    });
+  });
+
+  // 009b #39: CrmCatalogEndpoints.cs:64-70 — the category id moved into the body
+  // (CreateCrmCatalogAttributeCommand, CatalogContracts.cs:39-41); 201 { attributeId }.
+  describe('addAttribute() (009b #39)', () => {
+    it('posts to /attributes with categoryId in the body and reads the 201 { attributeId }', () => {
+      let id: string | undefined;
+      service
+        .addAttribute('C', {
+          code: 'width',
+          nameEn: 'Width',
+          nameAr: 'العرض',
+          dataType: CatalogAttributeType.Number,
+          unit: 'mm',
+        })
+        .subscribe((r) => (id = r));
+
+      const req = http.expectOne(url('/crm/catalog/attributes'));
+      expect(req.request.method).toBe('POST');
+      expect(req.request.body).toEqual({
+        categoryId: 'C',
+        code: 'width',
+        nameEn: 'Width',
+        nameAr: 'العرض',
+        dataType: CatalogAttributeType.Number,
+        unit: 'mm',
+        isRequired: false,
+        sortOrder: 0,
+      });
+      req.flush({ attributeId: 'A' });
+
+      expect(id).toBe('A');
     });
   });
 
@@ -136,29 +202,72 @@ describe('CrmCatalogService', () => {
     });
   });
 
-  describe('normalizeAttribute() — the wire nodeId field carries a category id', () => {
-    it('exposes the wire nodeId under categoryId', () => {
-      service.effectiveAttributes('cat-1').subscribe((attrs) => {
-        expect(attrs[0].categoryId).toBe('cat-1');
+  // 009b #36: CrmCatalogEndpoints.cs:98-104 returns a category's OWN attributes only, with no
+  // options (GetCrmCatalogAttributesByCategoryQueryHandler.cs:16); the /nodes/* alias is gone.
+  describe('effectiveAttributes() — own + ancestors, walked client-side (009b #36)', () => {
+    const cat = (id: string, parentId: string | null, path: string) => ({
+      id,
+      parentId,
+      code: id,
+      nameEn: id,
+      nameAr: id,
+      selectionMode: CatalogSelectionMode.None,
+      isRequired: false,
+      sortOrder: 0,
+      path,
+      depth: 0,
+      isActive: true,
+    });
+    const attr = (id: string, categoryId: string) => ({
+      id,
+      categoryId,
+      code: id,
+      nameEn: id,
+      nameAr: id,
+      dataType: CatalogAttributeType.Select,
+      unit: null,
+      isRequired: false,
+      sortOrder: 0,
+      isActive: true,
+    });
+
+    it('reads the tree, then each ancestor and the category itself, ancestor-first', () => {
+      let ids: string[] = [];
+      let categoryIds: string[] = [];
+      service.effectiveAttributes('C').subscribe((r) => {
+        ids = r.map((a) => a.id);
+        categoryIds = r.map((a) => a.categoryId);
       });
 
       http
-        .expectOne(() => true)
-        .flush([
-          {
-            id: 'attr-1',
-            nodeId: 'cat-1',
-            code: 'style',
-            nameEn: 'Style',
-            nameAr: 'الطراز',
-            dataType: CatalogAttributeType.Select,
-            unit: null,
-            isRequired: true,
-            sortOrder: 0,
-            isActive: true,
-            options: [],
-          },
-        ]);
+        .expectOne(url('/crm/catalog/tree'))
+        .flush([cat('A', null, '/A/'), cat('B', 'A', '/A/B/'), cat('C', 'B', '/A/B/C/')]);
+      http.expectOne(url('/crm/catalog/categories/A/attributes')).flush([attr('a1', 'A')]);
+      http.expectOne(url('/crm/catalog/categories/B/attributes')).flush([]);
+      http.expectOne(url('/crm/catalog/categories/C/attributes')).flush([attr('c1', 'C')]);
+      http.expectNone((r) => r.url.includes('/nodes/'));
+
+      expect(ids).toEqual(['a1', 'c1']);
+      expect(categoryIds).toEqual(['A', 'C']);
+    });
+
+    it('falls back to the own route alone for an id missing from the tree', () => {
+      let ids: string[] = [];
+      service.effectiveAttributes('X').subscribe((r) => (ids = r.map((a) => a.id)));
+
+      http.expectOne(url('/crm/catalog/tree')).flush([]);
+      http.expectOne(url('/crm/catalog/categories/X/attributes')).flush([attr('x1', 'X')]);
+
+      expect(ids).toEqual(['x1']);
+    });
+
+    it('normalizes options to [] — no route reads them', () => {
+      let options: unknown[] | undefined;
+      service.categoryAttributes('C').subscribe((r) => (options = r[0].options));
+
+      http.expectOne(url('/crm/catalog/categories/C/attributes')).flush([attr('c1', 'C')]);
+
+      expect(options).toEqual([]);
     });
   });
 
@@ -185,73 +294,27 @@ describe('CrmCatalogService', () => {
 
       expect(categoryId).toBe('cat-1');
     });
+  });
 
-    it('categoryAncestors() normalizes the still-v1-node-shaped route into a breadcrumb', () => {
-      let ids: string[] = [];
-      service.categoryAncestors('cat-3').subscribe((r) => (ids = r.map((n) => n.id)));
-
-      http.expectOne(url('/crm/catalog/categories/cat-3/ancestors')).flush([
-        {
-          id: 'cat-1',
-          parentId: null,
-          code: 'root',
-          nameEn: 'Root',
-          nameAr: 'Root',
-          descriptionEn: null,
-          descriptionAr: null,
-          imageUri: null,
-          path: '/cat-1/',
-          depth: 0,
-          isSelectable: false,
-          selectionMode: CatalogSelectionMode.None,
-          isRequired: false,
-          isPurchasable: true,
-          sortOrder: 0,
-          isActive: true,
-        },
-      ]);
-
-      expect(ids).toEqual(['cat-1']);
-    });
-
-    it('searchCategories() sends term + take, returns v2 category shapes only', () => {
-      let categories: CatalogCategory[] = [];
-      service.searchCategories('lighting', 25).subscribe((r) => (categories = r));
-
-      const req = http.expectOne(
-        (r) =>
-          r.url === url('/crm/catalog/categories/search') &&
-          r.params.get('term') === 'lighting' &&
-          r.params.get('take') === '25',
-      );
-      req.flush([
-        {
-          id: 'cat-9',
-          parentId: null,
-          code: 'lighting',
-          nameEn: 'Lighting',
-          nameAr: 'إضاءة',
-          descriptionEn: null,
-          descriptionAr: null,
-          imageUri: null,
-          path: '/cat-9/',
-          depth: 0,
-          selectionMode: CatalogSelectionMode.None,
-          isRequired: false,
-          sortOrder: 0,
-          isActive: true,
-          spaceTypeIds: [],
-        },
-      ]);
-
-      expect(categories).toHaveLength(1);
-      expect(categories[0].code).toBe('lighting');
-    });
+  // 009b #N-7: C §2.11 — no route reads mappings, ancestors, a category search or one item.
+  it('has no mappings, ancestors, search or single-item read (009b #N-7)', () => {
+    const methods = service as unknown as Record<string, unknown>;
+    for (const name of [
+      'getCategorySpaceTypes',
+      'categoryAncestors',
+      'searchCategories',
+      'getItem',
+    ]) {
+      expect(methods[name], name).toBeUndefined();
+    }
   });
 
   describe('v2 category writes (F6)', () => {
-    it('createCategory() POSTs with defaults filled in', () => {
-      service.createCategory({ code: 'lighting', nameEn: 'Lighting', nameAr: 'إضاءة' }).subscribe();
+    it('createCategory() POSTs with defaults filled in and reads the 201 { categoryId } (009b #40)', () => {
+      let id: string | undefined;
+      service
+        .createCategory({ code: 'lighting', nameEn: 'Lighting', nameAr: 'إضاءة' })
+        .subscribe((r) => (id = r));
 
       const req = http.expectOne(url('/crm/catalog/categories'));
       expect(req.request.method).toBe('POST');
@@ -267,33 +330,29 @@ describe('CrmCatalogService', () => {
         descriptionAr: null,
         imageUri: null,
       });
-      req.flush('new-id');
+      req.flush({ categoryId: 'new-id' });
+
+      expect(id).toBe('new-id');
     });
 
-    it('updateCategory() PUTs the full replacement — selectionMode/isRequired always sent', () => {
+    it('addOption() POSTs the option and reads the 201 { optionId } (009b #40)', () => {
+      let id: string | undefined;
       service
-        .updateCategory('cat-1', {
-          code: 'lighting',
-          nameEn: 'Lighting',
-          nameAr: 'إضاءة',
-          selectionMode: CatalogSelectionMode.Single,
-          isRequired: true,
-        })
-        .subscribe();
+        .addOption('A', { code: 'oak', nameEn: 'Oak', nameAr: 'بلوط' })
+        .subscribe((r) => (id = r));
 
-      const req = http.expectOne(url('/crm/catalog/categories/cat-1'));
-      expect(req.request.method).toBe('PUT');
+      const req = http.expectOne(url('/crm/catalog/attributes/A/options'));
+      expect(req.request.method).toBe('POST');
       expect(req.request.body).toEqual({
-        code: 'lighting',
-        nameEn: 'Lighting',
-        nameAr: 'إضاءة',
-        selectionMode: CatalogSelectionMode.Single,
-        isRequired: true,
-        descriptionEn: null,
-        descriptionAr: null,
+        code: 'oak',
+        nameEn: 'Oak',
+        nameAr: 'بلوط',
         imageUri: null,
+        sortOrder: 0,
       });
-      req.flush(null);
+      req.flush({ optionId: 'O' });
+
+      expect(id).toBe('O');
     });
 
     it('moveCategory() PUTs to /parent, null = move to root', () => {
@@ -305,52 +364,50 @@ describe('CrmCatalogService', () => {
       req.flush(null);
     });
 
-    it('reorderCategories() sends parentId as a query param, omitted for root siblings', () => {
-      service.reorderCategories(null, { items: [{ id: 'cat-1', sortOrder: 0 }] }).subscribe();
-      const req = http.expectOne((r) => r.url === url('/crm/catalog/categories/reorder'));
-      expect(req.request.method).toBe('PUT');
-      req.flush(null);
-    });
-
-    it('setCategoryActive() PUTs isActive', () => {
-      service.setCategoryActive('cat-1', false).subscribe();
-      const req = http.expectOne(url('/crm/catalog/categories/cat-1/active'));
-      expect(req.request.body).toEqual({ isActive: false });
-      req.flush(null);
-    });
-
-    it('cloneCategory() POSTs newParentId/newCode and returns the new id', () => {
-      let newId: string | undefined;
-      service
-        .cloneCategory('cat-1', { newParentId: 'cat-2', newCode: 'lighting_copy' })
-        .subscribe((id) => (newId = id));
-
-      const req = http.expectOne(url('/crm/catalog/categories/cat-1/clone'));
-      expect(req.request.method).toBe('POST');
-      expect(req.request.body).toEqual({ newParentId: 'cat-2', newCode: 'lighting_copy' });
-      req.flush('cloned-id');
-
-      expect(newId).toBe('cloned-id');
-    });
-
-    it('deleteCategory() DELETEs the category route', () => {
-      service.deleteCategory('cat-1').subscribe();
-      const req = http.expectOne(url('/crm/catalog/categories/cat-1'));
-      expect(req.request.method).toBe('DELETE');
-      req.flush(null);
-    });
-
-    it('mapCategorySpaceType() / unmapCategorySpaceType() hit the space-types sub-route', () => {
+    // 009b #37: CrmCatalogEndpoints.cs:42-47 takes the space type in the path, binds no body.
+    it('mapCategorySpaceType() hits the space-types sub-route', () => {
       service.mapCategorySpaceType('cat-1', 'st-1').subscribe();
-      const mapReq = http.expectOne(url('/crm/catalog/categories/cat-1/space-types'));
+      const mapReq = http.expectOne(url('/crm/catalog/categories/cat-1/space-types/st-1'));
       expect(mapReq.request.method).toBe('POST');
-      expect(mapReq.request.body).toEqual({ spaceTypeId: 'st-1' });
+      expect(mapReq.request.body).toBeNull();
       mapReq.flush(null);
-
-      service.unmapCategorySpaceType('cat-1', 'st-1').subscribe();
-      const unmapReq = http.expectOne(url('/crm/catalog/categories/cat-1/space-types/st-1'));
-      expect(unmapReq.request.method).toBe('DELETE');
-      unmapReq.flush(null);
     });
+  });
+
+  // 009b #N-8: CrmCatalogEndpoints.cs:27-47 maps category create, move and map only (C §2.11).
+  it('has no category update, reorder, activate, clone, delete or unmap (009b #N-8)', () => {
+    const methods = service as unknown as Record<string, unknown>;
+    for (const name of [
+      'updateCategory',
+      'reorderCategories',
+      'setCategoryActive',
+      'cloneCategory',
+      'deleteCategory',
+      'unmapCategorySpaceType',
+    ]) {
+      expect(methods[name], name).toBeUndefined();
+    }
+  });
+
+  // 009b #N-9: CrmCatalogEndpoints.cs:49-62 maps item create and attribute-values only (C §2.11).
+  it('has no item update, move, activate or delete (009b #N-9)', () => {
+    const methods = service as unknown as Record<string, unknown>;
+    for (const name of ['updateItem', 'moveItemToCategory', 'setItemActive', 'deleteItem']) {
+      expect(methods[name], name).toBeUndefined();
+    }
+  });
+
+  // 009b #N-10: CrmCatalogEndpoints.cs:64-81 maps attribute and option add only (C §2.11).
+  it('has no attribute or option update, delete or reorder (009b #N-10)', () => {
+    const methods = service as unknown as Record<string, unknown>;
+    for (const name of [
+      'updateAttribute',
+      'deleteAttribute',
+      'updateOption',
+      'deleteOption',
+      'reorderOptions',
+    ]) {
+      expect(methods[name], name).toBeUndefined();
+    }
   });
 });

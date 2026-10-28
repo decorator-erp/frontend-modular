@@ -26,3 +26,19 @@ export interface UpdateStageTemplateRequest {
   description?: string | null;
   isDefault?: boolean;
 }
+
+/**
+ * Mirrors StageResponse — one stage of a stage template, `GET /api/stage-templates/{id}/stages`
+ * (008b #10, KNOWN-DELTA-3). `defaultFee: null` = no default fee (a scope item picking it starts
+ * at 0); `taskCount` is the number of template tasks under the stage.
+ */
+export interface TemplateStage {
+  id: string;
+  stageTemplateId: string;
+  name: string;
+  description: string | null;
+  order: number;
+  weightPercent: number;
+  defaultFee: number | null;
+  taskCount: number;
+}

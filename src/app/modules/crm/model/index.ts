@@ -14,7 +14,6 @@ import {
   ApprovalState,
   ApprovalDecision,
   ApprovalSubjectType,
-  ApproverKind,
   ContactRole,
   FinishingPurpose,
   MeetingSlotStatus,
@@ -22,7 +21,6 @@ import {
   MeetingType,
   PastExperience,
   ProjectSector,
-  RequirementCategory,
   RequirementPeriodStatus,
   UnitCondition,
   UnitType,
@@ -33,8 +31,9 @@ import {
 //
 // The backend `SpaceType` enum is deleted; only frozen migration artifacts
 // remain. Mirroring it would re-introduce the coupling the 2026-07-12 amendment
-// removed. `sortOrder` / `isActive` exist server-side but are not on the wire —
-// the server filters and orders; the client renders the list as received.
+// removed. `CrmSpaceTypeResponse` (`SpaceContracts.cs:5-6`) carries `sortOrder` and
+// `isActive`: the server orders by `sortOrder` but returns inactive types too, so
+// pickers for new rows filter `isActive` themselves (009b #27).
 // ---------------------------------------------------------------------------
 
 export interface CrmSpaceType {
@@ -43,6 +42,13 @@ export interface CrmSpaceType {
   code: string;
   nameEn: string;
   nameAr: string;
+  /**
+   * Set by the `/crm/space-types` lookup; absent on the `spaceType` refs embedded in other
+   * responses, which never carry them.
+   */
+  sortOrder?: number;
+  /** An item create/update rejects an inactive type (400 `crm.items.UnknownSpaceType`). */
+  isActive?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -61,13 +67,13 @@ export * from './space.model';
 // §3a — Lead intake: qualification data captured at the lead stage.
 //
 // 1:1 with the lead, upserted separately (`PUT /api/crm/leads/{id}/intake`).
-// Sector-aware: exactly zero or one detail block, matching `projectSector`. Only
+// Sector-aware: exactly zero or one detail block, matching `sector`. Only
 // `residential` ships today — future sectors add their own optional block the same
 // way. Enum fields carry their real enum types here (not bare `number`) because the
 // shared validators and both intake forms switch on them.
 // ---------------------------------------------------------------------------
 
-/** Residential sector block (مدلول السكني) — present only when `projectSector === Residential`. */
+/** Residential sector block (مدلول السكني) — present only when `sector === Residential`. */
 export interface ResidentialIntakeRequest {
   unitType?: UnitType | null;
   unitCondition?: UnitCondition | null;
@@ -80,7 +86,8 @@ export interface LeadIntakeRequest {
   /** → `Client` on convert (fill-blanks). */
   jobTitle?: string | null;
   clientAddress?: string | null;
-  projectSector?: ProjectSector | null;
+  /** `CrmLeadIntakeData.Sector` (`LeadContracts.cs:17`); the wire name is `sector` (009b #6). */
+  sector?: ProjectSector | null;
   /** → brief head at period-open (copy-once). */
   unitAddress?: string | null;
   areaSqm?: number | null;
@@ -94,17 +101,64 @@ export interface LeadIntakeRequest {
 export type LeadIntakeResponse = LeadIntakeRequest;
 
 /**
- * Anonymous public submission (`POST /api/crm/public/leads`) — creates the lead +
- * intake in one transaction. `website` is a HONEYPOT: always leave empty/hidden and
- * never render it as a real field.
+ * `GET /api/crm/leads/status-counts` (`LeadContracts.cs:71`): one count per status under the
+ * list's owner and search filters (009b #2). `total` is the sum.
+ */
+export interface CrmLeadStatusCounts {
+  total: number;
+  new: number;
+  contacted: number;
+  qualified: number;
+  unqualified: number;
+  converted: number;
+}
+
+/**
+ * The convert picker's slice of `ClientListItemResponse` (`ClientContracts.cs:85-87`), read by
+ * the CRM-side `CrmLeadService.searchClients` (009b #31, D-c). `displayName`/`email` come from
+ * the portal login and may be absent.
+ */
+export interface CrmClientOption {
+  id: string;
+  displayName: string | null;
+  email: string | null;
+}
+
+/**
+ * `GET /api/clients/{id}` → `ClientResponse` (`ClientContracts.cs:12-21`), read by the CRM-side
+ * `CrmClientService.getClient` for the client hub (009b #30, D-b). It carries **no name, email
+ * or phone**: the hub's display name comes from the primary contact.
+ */
+export interface CrmClient {
+  id: string;
+  appUserId: string;
+  address: string;
+  notes: string | null;
+  jobTitle: string | null;
+  maritalStatus: string | null;
+  representativeName: string | null;
+  children: CrmClientChild[];
+  isActive: boolean;
+}
+
+/** `ClientChildResponse(Id, Gender, Age)`; `gender` is a one-character string. */
+export interface CrmClientChild {
+  id: string;
+  gender: string;
+  age: number;
+}
+
+/**
+ * Anonymous public submission (`POST /api/crm/public/leads`) — creates the lead only.
+ * `PublicLeadRequest(FirstName, LastName, Email?, Phone?, Notes?)` (`CrmPublicEndpoints.cs:80`):
+ * no intake and no honeypot are bound (009b #8, D-a).
  */
 export interface PublicLeadSubmissionRequest {
   firstName: string;
   lastName: string;
-  phone?: string | null;
-  email?: string | null;
-  website?: string | null;
-  intake: LeadIntakeRequest;
+  email: string | null;
+  phone: string | null;
+  notes: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -128,11 +182,16 @@ export interface PublicLeadSubmissionRequest {
 //     `designerExperienceReason`, `preferredStyle`, `preferredColors`.
 // ---------------------------------------------------------------------------
 
+/**
+ * `CrmDesignBriefResponse` (`BriefContracts.cs:38-40`) flattened: its `id`/`projectId`/`projectStageId`/
+ * `createdById`/`lastMeetingId`/`status` with the nested `head: CrmBriefHeadData` fields (009b #9). The
+ * response has no `createdAtUtc`, no `decisionMakerContactId`, and the head no `utilityMetersNote`,
+ * `parentsHobbies`, `childrenHobbies` or `hobbiesInDesign`.
+ */
 export interface BriefHead {
   id: string;
   projectId: string;
   projectStageId: string | null;
-  decisionMakerContactId: string;
   createdById: string;
 
   unitType: number;
@@ -149,12 +208,8 @@ export interface BriefHead {
   finishingPurpose: number | null;
   position: number | null;
   elevatorStatus: number | null;
-  utilityMetersNote: string | null;
   receivesFrequentVisitors: boolean | null;
   visitorsNote: string | null;
-  parentsHobbies: string | null;
-  childrenHobbies: string | null;
-  hobbiesInDesign: boolean | null;
   usedDesignerBefore: boolean | null;
   designerExperience: number | null;
   designerExperienceReason: string | null;
@@ -172,11 +227,24 @@ export interface BriefHead {
   sector: number | null;
   status: ApprovalState;
   lastMeetingId: string | null;
-  createdAtUtc: string;
 }
 
-/** `PUT /api/crm/projects/{projectId}/brief/head` body — `UpdateBriefHeadRequest`. */
+/**
+ * `PUT /api/crm/briefs/{briefId}/head` body (009b #12): a **full replace** of `data`, except that an
+ * omitted `sector` (and `lastMeetingId`) keeps its stored value. Editing an Approved/Rejected head
+ * returns it to Draft; a PendingApproval head is locked (409 `crm.briefs.HeadLockedPendingApproval`).
+ */
 export interface UpdateBriefHeadRequest {
+  data: BriefHeadData;
+  lastMeetingId?: string | null;
+}
+
+/**
+ * `CrmBriefHeadData` (`BriefContracts.cs:10-36`) — every editable head field in one carrier. On
+ * create, `unitType`/`unitCondition` may be `0` only when the client's converted lead intake can seed
+ * them (else 400 `crm.briefs.UnitDetailsRequired`); an omitted `sector` is seeded too.
+ */
+export interface BriefHeadData {
   unitType: number;
   unitCondition: number;
   address?: string | null;
@@ -185,17 +253,10 @@ export interface UpdateBriefHeadRequest {
   areaSqm?: number | null;
   buildingKind?: number | null;
   isLicensed?: boolean | null;
-  /** إيجار/ملك + الغرض من التشطيب — editable head fields (sector is NOT — it is seeded, read-only). */
-  isRented?: boolean | null;
-  finishingPurpose?: number | null;
   position?: number | null;
   elevatorStatus?: number | null;
-  utilityMetersNote?: string | null;
   receivesFrequentVisitors?: boolean | null;
   visitorsNote?: string | null;
-  parentsHobbies?: string | null;
-  childrenHobbies?: string | null;
-  hobbiesInDesign?: boolean | null;
   usedDesignerBefore?: boolean | null;
   designerExperience?: number | null;
   designerExperienceReason?: string | null;
@@ -207,7 +268,15 @@ export interface UpdateBriefHeadRequest {
   timelinePressure?: number | null;
   architecturalRequests?: string | null;
   otherNeeds?: string | null;
-  lastMeetingId?: string | null;
+  isRented?: boolean | null;
+  finishingPurpose?: number | null;
+  sector?: number | null;
+}
+
+/** `POST /api/crm/projects/{projectId}/brief` body (009b #10) — one brief per stage. */
+export interface CreateBriefRequest {
+  data: BriefHeadData;
+  projectStageId: string;
 }
 
 /**
@@ -231,7 +300,9 @@ export interface BriefSpaceRef {
 export interface BriefSpace {
   id: string;
   briefId: string;
-  /** The referenced space — `null` = a general, project-wide entry. */
+  /** The wire `spaceId` (009b #11) — `null` = a general, project-wide entry. */
+  spaceId: string | null;
+  /** The referenced space, resolved for display from the project's spaces — `null` = general. */
   space: BriefSpaceRef | null;
   countOrPieces: number | null;
   /** The freeform body. */
@@ -243,7 +314,8 @@ export interface BriefSpace {
   /** Entries anchor to a TASK. */
   projectTaskId: string | null;
   createdById: string;
-  createdAtUtc: string;
+  /** `false` once another entry supersedes this one (C §8.2.10). No `createdAtUtc`: order is the server's, newest first. */
+  isCurrent: boolean;
 }
 
 /** The write shape for add / update / supersede — one shape for all three. */
@@ -256,10 +328,35 @@ export interface BriefSpaceRequest {
   projectTaskId?: string | null;
 }
 
-/** `GET /api/crm/projects/{projectId}/brief` — the head AND every entry in one call. */
-export interface BriefView {
-  head: BriefHead;
+/**
+ * The portal head (`BriefHeadBlock`, `PortalContracts.cs:20-28`, 009b #43): the latest **sent** snapshot
+ * plus the brief's live status. `id` is the wire `briefId`; `round` is the sent round. The block has no
+ * `expectedBudget`, `lastMeetingId` or `createdById`, so those read `null` / `''`.
+ */
+export interface PortalBriefHead extends BriefHead {
+  round: number;
+}
+
+/**
+ * `GET /api/crm/portal/projects/{projectId}/brief[?stageId]` → `PortalBriefViewResponse`
+ * (`PortalContracts.cs:48-54`, 009b #43). `head` is `null` until the head is first sent; `spaces` holds
+ * no Drafts and carries no meeting, task or author link.
+ */
+export interface PortalBriefView {
+  head: PortalBriefHead | null;
   spaces: BriefSpace[];
+}
+
+/**
+ * `CrmBriefRoundResponse` (`BriefContracts.cs:149`, 009b #14): one sent round of the head, in round
+ * order, Voided rounds included. `outcome` is `CrmBriefRoundOutcome` (1 Pending, 2 Approved,
+ * 3 ChangesRequested, 4 Voided, 5 Unknown).
+ */
+export interface BriefRound {
+  round: number;
+  sentAtUtc: string;
+  outcome: number;
+  decidedAtUtc: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -305,7 +402,9 @@ export interface RequirementItem {
   projectId: string;
   periodId: string;
   category: number;
-  /** Free text — NOT a `CrmSpaceType` FK (that abstraction does not exist here). */
+  /** The item's `CrmSpaceType`, when set (009b #23); `room` stays free text beside it. */
+  spaceTypeId: string | null;
+  /** Free text. */
   room: string | null;
   title: string;
   details: string | null;
@@ -320,21 +419,23 @@ export interface RequirementItem {
   /** Author is XOR — exactly one of these two is set. */
   createdByEmployeeId: string | null;
   createdByContactId: string | null;
+  /** No `createdAtUtc` (009b #23): the server order is newest first. */
   projectTaskId: string | null;
-  createdAtUtc: string;
 }
 
 /**
- * `POST /api/crm/projects/{projectId}/requirement-items` body — `AddItemRequest`.
- * When `sourceType` is set, exactly the matching FK must be set too
- * (`ck_crm_requirement_items_source_matches`); when omitted, all three FKs must be
- * null. The manual add-item form (T043) only ever offers the `Meeting` source.
+ * `POST /api/crm/periods/{periodId}/items` body — `CreateItemRequest` (009b #22): the period is
+ * the path, the project is in the body. When `sourceType` is set, exactly the matching FK must be
+ * set too (`crm.items.InvalidSource`); when omitted, all three FKs must be null. The manual
+ * add-item form (T043) only ever offers the `Meeting` source.
  */
 export interface AddRequirementItemRequest {
-  periodId: string;
+  projectId: string;
   category: number;
   title: string;
   priority: number;
+  /** An active `CrmSpaceType` id (`crm.items.UnknownSpaceType` otherwise). */
+  spaceTypeId?: string | null;
   room?: string | null;
   description?: string | null;
   sourceType?: number | null;
@@ -347,12 +448,14 @@ export interface AddRequirementItemRequest {
 /**
  * `PUT /api/crm/requirement-items/{itemId}` AND `POST .../supersede` body —
  * `UpdateItemRequest`. ⚠️ No `periodId` — unlike add, update/supersede never move an
- * item to a different period.
+ * item to a different period. Both bind every field positionally, so an omitted `spaceTypeId`
+ * CLEARS the item's space type: callers carry the item's own value (009b #24, FINDING-4-5).
  */
 export interface UpdateRequirementItemRequest {
   category: number;
   title: string;
   priority: number;
+  spaceTypeId?: string | null;
   room?: string | null;
   description?: string | null;
   sourceType?: number | null;
@@ -381,36 +484,23 @@ export interface ClientAddRequirementItemRequest {
 // boundary — these are the POST-normalization shapes.
 // ---------------------------------------------------------------------------
 
+/**
+ * `PendingApprovalResponse` (`Approvals.Contracts/Approvals/ApprovalContracts.cs:20-22`, 009b #41).
+ * The wire carries no project, owner or gate label; screens render those as "not available".
+ */
 export interface PendingApproval {
   id: string;
   subjectType: ApprovalSubjectType;
   subjectId: string;
+  /** `ApprovalType` on the wire: 1 = ManagerApproval, 2 = ClientReview. */
+  type: number;
   round: number;
-  approverKind: ApproverKind;
-  assignedContactId: string | null;
-  requestedAtUtc: string;
-  // Documented `PendingApprovalResponse` fields (office "mine" inbox) — used by the
-  // dashboard "Needs attention" widget. Additive; older callers ignore them.
-  projectId: string;
-  projectName: string;
-  ownerKind: string;
-  ownerName: string;
-  gateLabel: string | null;
+  dueAtUtc: string | null;
   /** Render-only `@for` key — synthetic when the server omitted `id`. Never send it. */
   trackKey: string;
 }
 
-export interface ApprovalTrailItem {
-  id: string;
-  round: number;
-  /** `null` ⇒ undecided. */
-  decision: ApprovalDecision | null;
-  comment: string | null;
-  decidedAtUtc: string | null;
-  decidedById: string | null;
-}
-
-/** Reject comment is mandatory; whitespace-only counts as empty; max 2000. */
+/** Reject and ChangesRequested comments are mandatory; whitespace-only counts as empty; max 2000. */
 export interface DecideApprovalRequest {
   decision: ApprovalDecision;
   comment: string | null;
@@ -474,18 +564,21 @@ export interface SlotRequest {
   endsAtUtc: string;
 }
 
+/** `CrmMeetingSlotResponse` — no employee id and no hold timestamp (009b #19). */
 export interface CrmMeetingSlot {
   id: string;
   meetingId: string;
-  employeeId: string;
   startsAtUtc: string;
   endsAtUtc: string;
   status: MeetingSlotStatus;
   /** XOR-by-convention with `proposedByContactId` — whoever put this slot forward. */
   proposedByEmployeeId: string | null;
   proposedByContactId: string | null;
-  /** Set while `status = Proposed` and the hold has not yet lapsed. */
-  holdExpiresAtUtc: string | null;
+  /**
+   * Portal reads only (`PortalMeetingSlotResponse.ProposedByMe`, 009b #44): whether the client's side
+   * proposed the slot. The portal carries no proposer ids, so they read `null` there; absent on office reads.
+   */
+  proposedByMe?: boolean;
 }
 
 export interface CrmMeeting {
@@ -507,7 +600,41 @@ export interface CrmMeeting {
   slots: CrmMeetingSlot[];
 }
 
-/** `POST /api/crm/meetings/propose` body. `targetEmployeeId` is always `project.productOwnerId`. */
+/**
+ * `PortalMeetingResponse` (`PortalContracts.cs:13-14`, 009b #44): one row of the client's paged
+ * `GET /api/crm/portal/meetings` — no type and no slots; `portalGetById` reads those.
+ */
+export interface PortalMeeting {
+  id: string;
+  projectId: string;
+  title: string;
+  status: MeetingStatus;
+  scheduledAtUtc: string | null;
+}
+
+/** `PortalMeetingSlotResponse` (`PortalContracts.cs:40-41`): no proposer ids, only `proposedByMe`. */
+export interface PortalMeetingSlot {
+  id: string;
+  startsAtUtc: string;
+  endsAtUtc: string;
+  status: MeetingSlotStatus;
+  proposedByMe: boolean;
+}
+
+/** `PortalMeetingDetailResponse` (`PortalContracts.cs:35-38`, 009b #44): `GET /api/crm/portal/meetings/{id}`. */
+export interface PortalMeetingDetail extends PortalMeeting {
+  type: MeetingType;
+  durationMinutes: number | null;
+  location: string | null;
+  canceledAtUtc: string | null;
+  cancelReason: string | null;
+  slots: PortalMeetingSlot[];
+}
+
+/**
+ * `POST /api/crm/meetings/propose` body — `ProposeMeetingRequest(ProjectId, Title, Type, Slots, PeriodId?,
+ * Location?, DurationMinutes?)`. The proposer is the caller's token (009b #20: no `targetEmployeeId`).
+ */
 export interface ProposeMeetingRequest {
   projectId: string;
   periodId?: string | null;
@@ -515,7 +642,6 @@ export interface ProposeMeetingRequest {
   type: MeetingType;
   location?: string | null;
   durationMinutes?: number | null;
-  targetEmployeeId: string;
   slots: SlotRequest[];
 }
 
@@ -532,7 +658,7 @@ export interface CancelMeetingRequest {
 /**
  * `POST /api/crm/portal/meetings/request` body — the client requests ONE specific
  * slot directly (picked from the free-slot grid), not a proposal list. Lands the
- * meeting `Requested`, with one `Proposed` slot held under `holdExpiresAtUtc`.
+ * meeting `Requested`, with one `Proposed` slot, acceptable until it starts (009b #19).
  */
 export interface RequestMeetingByClientRequest {
   projectId: string;
@@ -618,125 +744,20 @@ export interface ClientProfileProject {
 }
 
 // ---------------------------------------------------------------------------
-// The designer profile (T120–T127, FR-018/FR-019/FR-030) — mirrors
-// `ClientDesignProfileResponse`. **The server has already done the two things
-// that make this surface safe**: it structurally excludes money (`BriefHeadBlock`
-// carries no `ExpectedBudget` property at all; Budget-category items are filtered
-// out server-side) and unconfirmed content (only an Approved head; only
-// Approved, un-superseded spaces; only Approved/NotRequired, un-superseded
-// items — verified against `GetClientDesignProfileQueryHandler`). The client
-// MUST NOT re-derive either exclusion (T125/T126) — it renders exactly what
-// arrives, read-only throughout.
+// The designer profile (T120–T127, FR-030) — mirrors `ClientDesignProfileResponse`
+// (`DesignProfileContracts.cs:8-10`, 009b #17): the latest brief's design preferences only.
+// The server excludes money (`ExpectedBudget` is never on it). Client metadata, the primary
+// contact, the rest of the head, spaces, items and attachments are no longer served.
 // ---------------------------------------------------------------------------
 
-export interface DesignProfileChild {
-  gender: string;
-  age: number;
-}
-
-/** No `notes` field exists here either — same FR-016 shape as `ClientIdentity`. */
-export interface DesignProfileClient {
-  clientId: string;
-  fullName: string | null;
-  jobTitle: string | null;
-  maritalStatus: string | null;
-  address: string | null;
-  children: DesignProfileChild[];
-}
-
-export interface DesignProfilePrimaryContact {
-  id: string;
-  firstName: string;
-  lastName: string;
-  email: string | null;
-  phone: string | null;
-  mobile: string | null;
-  role: ContactRole;
-}
-
-/**
- * The confirmed brief head, money-free. **Deliberately no `expectedBudget` field
- * — never add one**; the wire has none to normalize (FR-018). `null` overall ⇒
- * no head has been Approved yet (T124's empty-profile edge case).
- */
-export interface DesignProfileBriefHead {
-  id: string;
-  unitType: number;
-  unitCondition: number;
-  address: string | null;
-  floorNo: number | null;
-  unitsPerFloor: number | null;
-  areaSqm: number | null;
-  buildingKind: number | null;
-  isLicensed: boolean | null;
-  position: number | null;
-  elevatorStatus: number | null;
-  utilityMetersNote: string | null;
-  receivesFrequentVisitors: boolean | null;
-  visitorsNote: string | null;
-  parentsHobbies: string | null;
-  childrenHobbies: string | null;
-  hobbiesInDesign: boolean | null;
-  usedDesignerBefore: boolean | null;
-  designerExperience: number | null;
-  designerExperienceReason: string | null;
-  hiringReasons: number;
+/** `GET /api/crm/projects/{projectId}/design-profile` — 404 `crm.briefs.NotFound` when there is no brief. */
+export interface ClientDesignProfile {
+  projectId: string;
   preferredStyle: string | null;
   preferredColors: string | null;
   furnitureStatus: number | null;
-  timelinePressure: number | null;
+  /** `[Flags]` — bitwise AND, never `===`. */
+  hiringReasons: number;
   architecturalRequests: string | null;
   otherNeeds: string | null;
-  /** Sector-aware head fields (mirror the office head block); `sector` is read-only. */
-  sector: number | null;
-  isRented: boolean | null;
-  finishingPurpose: number | null;
-}
-
-/** Already Approved, un-superseded — no `approvalStatus` field exists on the wire. */
-export interface DesignProfileSpace {
-  id: string;
-  /** The referenced space — `null` = a general, project-wide entry (feature 006). */
-  space: BriefSpaceRef | null;
-  countOrPieces: number | null;
-  requirements: string | null;
-  meetingId: string | null;
-  projectTaskId: string | null;
-}
-
-export interface DesignProfileItem {
-  id: string;
-  room: string | null;
-  title: string;
-  description: string | null;
-  priority: number;
-  approvalStatus: ApprovalState;
-  projectTaskId: string | null;
-}
-
-export interface DesignProfileAttachment {
-  linkId: string;
-  documentId: string;
-  fileName: string;
-  contentType: string;
-  fileSizeBytes: number;
-  subjectKind: 'Brief' | 'BriefSpace' | 'RequirementItem' | 'Meeting';
-  subjectId: string;
-}
-
-/**
- * `GET /api/crm/projects/{projectId}/design-profile` — permission
- * `crm.design_profile.read`. `itemsByCategory` arrives as a JSON OBJECT (a
- * serialized C# `Dictionary<RequirementCategory, ...>`), its keys bare-integer
- * STRINGS — normalized here into a `RequirementCategory`-keyed map, never left
- * as string keys for a component to re-parse.
- */
-export interface ClientDesignProfile {
-  projectId: string;
-  client: DesignProfileClient;
-  primaryContact: DesignProfilePrimaryContact | null;
-  briefHead: DesignProfileBriefHead | null;
-  spaces: DesignProfileSpace[];
-  itemsByCategory: Partial<Record<RequirementCategory, DesignProfileItem[]>>;
-  attachments: DesignProfileAttachment[];
 }

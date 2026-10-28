@@ -6,6 +6,7 @@ import { CatalogService } from '@platform/i18n/catalog.service';
 import { Project } from '@modules/projects';
 import {
   ModalService,
+  PeraAlertComponent,
   PeraButtonComponent,
   PeraPageHeaderComponent,
   PeraSkeletonComponent,
@@ -31,6 +32,7 @@ import { CrmSlotGridComponent } from './slot-grid.component';
   providers: [MeetingsStore, PeriodStore],
   imports: [
     CanDirective,
+    PeraAlertComponent,
     PeraButtonComponent,
     PeraPageHeaderComponent,
     PeraSkeletonComponent,
@@ -57,6 +59,14 @@ import { CrmSlotGridComponent } from './slot-grid.component';
     }
 
     <div class="p-6 flex flex-col gap-4">
+      @if (meetings.notFound()) {
+        <!-- 009b #18 (X-5): the project's meetings are outside the caller's scope (404). -->
+        <pera-alert tone="warning">{{ catalog.t('sched.notFound') }}</pera-alert>
+      }
+      @if (meetings.error(); as error) {
+        <!-- 009b #21: a refused slot action (e.g. 403 NotCounterparty) shows its message. -->
+        <pera-alert tone="danger">{{ error }}</pera-alert>
+      }
       <app-crm-incoming-requests
         [requests]="meetings.incomingRequests()"
         (accept)="meetings.acceptSlot($event)"
@@ -102,14 +112,12 @@ export class CrmSchedulerComponent implements OnInit {
   }
 
   protected async openPropose(): Promise<void> {
-    const p = this.project();
-    if (!p) return;
+    if (!this.project()) return;
     const ok = await this.modal
       .open<boolean>(CrmProposeSlotsComponent, {
         size: 'lg',
         data: {
           projectId: this.projectId(),
-          targetEmployeeId: p.productOwnerId,
           periodId: this.period.openPeriod()?.id ?? null,
         },
       })

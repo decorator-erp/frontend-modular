@@ -3,14 +3,15 @@ import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { ApiService } from '@platform/http/api.service';
 
-/** Mirrors DocumentFolderResponse (api-docs/09). */
+/** Mirrors DocumentFolderResponse (Documents.Contracts/Folders/FolderContracts.cs:8-15; 008b #6). */
 export interface DocumentFolder {
   id: string;
   projectId: string;
   name: string;
   parentFolderId: string | null;
-  createdAtUtc: string;
-  updatedAtUtc: string | null;
+  projectStageId: string | null;
+  projectTaskId: string | null;
+  isDefault: boolean;
 }
 
 /** Mirrors ProjectDocumentListResponse / ProjectDocumentResponse (api-docs/09). */
@@ -42,9 +43,9 @@ export class DocumentFoldersService extends ApiService {
     }).pipe(map((r) => this.unwrap<string>(r)));
   }
 
-  /** GET /by-project/{projectId} — root-level folders. */
+  /** `GET /api/projects/{projectId}/document-folders` — ALL active folders of the project, by name (008b #6). */
   getByProject(projectId: string): Observable<DocumentFolder[]> {
-    return this.get<unknown>(`/document-folders/by-project/${projectId}`).pipe(
+    return this.get<unknown>(`/projects/${projectId}/document-folders`).pipe(
       map((r) => this.unwrapArray(r).map((f) => this.normalizeFolder(f))),
     );
   }
@@ -77,8 +78,9 @@ export class DocumentFoldersService extends ApiService {
       projectId: this.field<string>(source, 'projectId') ?? '',
       name: this.field<string>(source, 'name') ?? '',
       parentFolderId: this.field<string | null>(source, 'parentFolderId') ?? null,
-      createdAtUtc: this.field<string>(source, 'createdAtUtc') ?? '',
-      updatedAtUtc: this.field<string | null>(source, 'updatedAtUtc') ?? null,
+      projectStageId: this.field<string | null>(source, 'projectStageId') ?? null,
+      projectTaskId: this.field<string | null>(source, 'projectTaskId') ?? null,
+      isDefault: this.field<boolean>(source, 'isDefault') ?? false,
     };
   }
 }
@@ -90,8 +92,9 @@ export class DocumentFoldersService extends ApiService {
 @Injectable({ providedIn: 'root' })
 export class ProjectDocumentsService extends ApiService {
   /**
-   * `POST /api/project-documents` — `multipart/form-data`, permission
-   * `projects.manage_documents`. Returns `201` with a bare `Guid` body.
+   * `POST /api/projects/{projectId}/documents` — `multipart/form-data` (`file`, `folderId?`,
+   * `description?`), permission `documents.upload`. Returns `200 { documentId }`; an empty file
+   * is a 400 (008b #8).
    *
    * ⚠️ **The file part must be named exactly `file`.** The endpoint binds by part name,
    * so `files`, `upload` or `document` bind to nothing and the request fails as an empty
@@ -112,12 +115,13 @@ export class ProjectDocumentsService extends ApiService {
     description?: string | null,
   ): Observable<string> {
     const form = new FormData();
-    form.append('projectId', projectId);
     form.append('file', file);
     if (folderId) form.append('folderId', folderId);
     if (description) form.append('description', description);
 
-    return this.post<unknown>('/project-documents', form).pipe(map((r) => this.unwrap<string>(r)));
+    return this.post<unknown>(`/projects/${projectId}/documents`, form).pipe(
+      map((r) => this.unwrapId(r, 'documentId')),
+    );
   }
 
   getByProject(projectId: string): Observable<ProjectDocument[]> {
@@ -126,8 +130,9 @@ export class ProjectDocumentsService extends ApiService {
     );
   }
 
+  /** `GET /api/document-folders/{folderId}/documents` (008b #7). */
   getByFolder(folderId: string): Observable<ProjectDocument[]> {
-    return this.get<unknown>(`/project-documents/by-folder/${folderId}`).pipe(
+    return this.get<unknown>(`/document-folders/${folderId}/documents`).pipe(
       map((r) => this.unwrapArray(r).map((d) => this.normalizeDocument(d))),
     );
   }
@@ -146,6 +151,7 @@ export class ProjectDocumentsService extends ApiService {
     return this.delete(`/project-documents/${id}`);
   }
 
+  /** ProjectDocumentResponse names first, the old ones as fallbacks (008b #9). */
   private normalizeDocument(source: unknown): ProjectDocument {
     return {
       id: this.field<string>(source, 'id') ?? '',
@@ -153,10 +159,10 @@ export class ProjectDocumentsService extends ApiService {
       folderId: this.field<string | null>(source, 'folderId') ?? null,
       fileName: this.field<string>(source, 'fileName') ?? '',
       contentType: this.field<string>(source, 'contentType') ?? '',
-      sizeBytes: this.field<number>(source, 'sizeBytes') ?? 0,
+      sizeBytes: this.field<number>(source, 'fileSizeBytes', 'sizeBytes') ?? 0,
       description: this.field<string | null>(source, 'description') ?? null,
-      uploadedByUserId: this.field<string>(source, 'uploadedByUserId') ?? '',
-      createdAtUtc: this.field<string>(source, 'createdAtUtc') ?? '',
+      uploadedByUserId: this.field<string>(source, 'uploadedById', 'uploadedByUserId') ?? '',
+      createdAtUtc: this.field<string>(source, 'uploadedOnUtc', 'createdAtUtc') ?? '',
     };
   }
 }

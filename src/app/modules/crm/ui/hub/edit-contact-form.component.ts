@@ -144,6 +144,11 @@ export class CrmEditContactFormComponent {
         lastName: v.lastName.trim(),
         role: Number(v.role) as ContactRole,
         phone: v.phone.trim() || null,
+        // The PUT overwrites all seven fields (`UpdateCrmContactCommandHandler.cs:46-48`), so
+        // the ones this form does not edit travel unchanged from the stored contact.
+        email: this.data.contact.email,
+        mobile: this.data.contact.mobile,
+        notes: this.data.contact.notes,
       })
       .subscribe({
         next: () => {

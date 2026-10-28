@@ -70,17 +70,6 @@ export interface ProjectQuickCreateDialogData {
         >
           <pera-input formControlName="address" [error]="errorOf('address')" />
         </pera-form-field>
-        <pera-form-field
-          [label]="catalog.t('brief.fBudget')"
-          [required]="true"
-          [error]="errorOf('estimatedBudget')"
-        >
-          <pera-input
-            formControlName="estimatedBudget"
-            [error]="errorOf('estimatedBudget')"
-            dir="ltr"
-          />
-        </pera-form-field>
       </div>
     </pera-form-modal>
   `,
@@ -98,7 +87,6 @@ export class CrmProjectQuickCreateComponent {
     name: ['', [Validators.required, PeraValidators.trimmedLength(2, 200)]],
     code: ['', [Validators.required, PeraValidators.trimmedLength(2, 32)]],
     address: ['', [Validators.required, PeraValidators.trimmedLength(5, 300)]],
-    estimatedBudget: ['', [Validators.required, PeraValidators.money]],
   });
 
   readonly serverError = signal<ParsedApiError | null>(null);
@@ -126,12 +114,10 @@ export class CrmProjectQuickCreateComponent {
       code: v.code.trim(),
       name: v.name.trim(),
       address: v.address.trim(),
-      estimatedBudget: Number(v.estimatedBudget),
       clientId: this.data.clientId,
-      status: 'Draft',
       workflowType: 'FreeStyle',
       stageTemplateId: null,
-    } as unknown as CreateProjectRequest;
+    } satisfies CreateProjectRequest;
 
     this.projects.create(payload).subscribe({
       next: (id) => {

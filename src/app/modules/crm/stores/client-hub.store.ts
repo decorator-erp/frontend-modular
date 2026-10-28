@@ -1,16 +1,17 @@
 import { computed, inject } from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
 import { patchState, signalStore, withComputed, withMethods, withState } from '@ngrx/signals';
-import { ClientService } from '@modules/clients';
 import { ProjectService } from '@modules/projects';
+import { CrmClientService } from '../data/crm-client.service';
 import { CrmContact, CrmContactService } from '../data/crm-contact.service';
 import { CrmNote, CrmNoteService } from '../data/crm-note.service';
 import type { CatalogKey } from '@platform/i18n/catalog/en';
-import type { ClientResponse } from '@modules/clients';
+import type { CrmClient } from '../model';
 import type { Project } from '@modules/projects';
 
 interface ClientHubState {
   clientId: string;
-  client: ClientResponse | null;
+  client: CrmClient | null;
   contacts: CrmContact[];
   projects: Project[];
   notes: CrmNote[];
@@ -49,6 +50,14 @@ export const ClientHubStore = signalStore(
 
   withComputed((store) => ({
     primaryContact: computed(() => store.contacts().find((c) => c.isPrimary) ?? null),
+    /**
+     * `ClientResponse` carries no name (009b #30, D-b): the hub names the client after its
+     * primary contact, `''` until one exists.
+     */
+    clientName: computed(() => {
+      const primary = store.contacts().find((c) => c.isPrimary);
+      return primary ? `${primary.firstName} ${primary.lastName}`.trim() : '';
+    }),
     selectedProject: computed(
       () => store.projects().find((p) => p.id === store.selectedProjectId()) ?? null,
     ),
@@ -57,7 +66,7 @@ export const ClientHubStore = signalStore(
   withMethods(
     (
       store,
-      clientApi = inject(ClientService),
+      clientApi = inject(CrmClientService),
       projectApi = inject(ProjectService),
       contactApi = inject(CrmContactService),
       noteApi = inject(CrmNoteService),
@@ -65,11 +74,21 @@ export const ClientHubStore = signalStore(
       load(clientId: string): void {
         if (store.loading()) return;
         patchState(store, { clientId, loading: true, error: null });
-        clientApi.getById(clientId).subscribe({
+        clientApi.getClient(clientId).subscribe({
           next: (client) => {
             patchState(store, { client, loading: false, loaded: true });
           },
-          error: () => patchState(store, { loading: false, loaded: true, error: 'hub.loadError' }),
+          // A 404 (`crm.clients.NotFound`, unknown or out-of-scope id — contract §1.3) is the
+          // hub's "client not found" state (009b #30); anything else stays the generic error.
+          error: (err: unknown) =>
+            patchState(store, {
+              loading: false,
+              loaded: true,
+              error:
+                err instanceof HttpErrorResponse && err.status === 404
+                  ? 'hub.clientNotFound'
+                  : 'hub.loadError',
+            }),
         });
         projectApi.getByClient(clientId).subscribe({
           next: (projects) =>

@@ -9,12 +9,12 @@ import {
 import { Router } from '@angular/router';
 import { BriefStore } from '../../stores/brief.store';
 import { ClientProfileStore } from '../../stores/client-profile.store';
-import { ItemsStore } from '../../stores/items.store';
 import { MeetingsStore } from '../../stores/meetings.store';
 import { CatalogService } from '@platform/i18n/catalog.service';
 import type { CatalogKey } from '@platform/i18n/catalog/en';
 import { formatCairoDateTime } from '@platform/i18n/intl-locale';
-import { ApprovalState, RequirementCategory, RequirementPriority } from '../../model/crm-enums';
+import { CanDirective, PERM } from '@platform/permissions';
+import { ApprovalState } from '../../model/crm-enums';
 import type { ClientProfileProject } from '../../model';
 import { isUnconfirmed, trustChip } from '../trust/trust-chip';
 import {
@@ -32,25 +32,6 @@ import { CrmIdentityCardComponent } from './identity-card.component';
 
 type ProfileTab = 'overview' | 'brief' | 'requirements' | 'meetings';
 
-const CATEGORY_LABEL_KEYS: Record<RequirementCategory, CatalogKey> = {
-  [RequirementCategory.SpaceLayout]: 'item.catLayout',
-  [RequirementCategory.Style]: 'item.catSelStyle',
-  [RequirementCategory.ColorPalette]: 'item.catSelColorPalette',
-  [RequirementCategory.Materials]: 'item.catSelMaterials',
-  [RequirementCategory.Furniture]: 'item.catFurn1',
-  [RequirementCategory.Lighting]: 'item.catLighting',
-  [RequirementCategory.Budget]: 'item.catSelBudget',
-  [RequirementCategory.Timeline]: 'item.catSelTimeline',
-  [RequirementCategory.Technical]: 'item.catSelTechnical',
-  [RequirementCategory.Other]: 'common.other',
-};
-const PRIORITY_LABEL_KEYS: Record<RequirementPriority, CatalogKey> = {
-  [RequirementPriority.Low]: 'item.prLow',
-  [RequirementPriority.Medium]: 'item.prMed',
-  [RequirementPriority.High]: 'item.prHigh',
-  [RequirementPriority.Urgent]: 'item.prUrgent',
-};
-
 /**
  * The client profile (T109–T112, FR-028) — identity card, organized contacts (the
  * primary badge), and **adaptive projects**: one project renders flat, several render
@@ -66,7 +47,7 @@ const PRIORITY_LABEL_KEYS: Record<RequirementPriority, CatalogKey> = {
 @Component({
   selector: 'app-crm-client-profile',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  providers: [ClientProfileStore, BriefStore, ItemsStore, MeetingsStore],
+  providers: [ClientProfileStore, BriefStore, MeetingsStore],
   imports: [
     PeraAlertComponent,
     PeraBadgeComponent,
@@ -77,6 +58,7 @@ const PRIORITY_LABEL_KEYS: Record<RequirementPriority, CatalogKey> = {
     PeraSpinnerComponent,
     PeraStatusBadgeComponent,
     CrmIdentityCardComponent,
+    CanDirective,
   ],
   host: { class: 'flex flex-col gap-4' },
   template: `
@@ -193,13 +175,22 @@ const PRIORITY_LABEL_KEYS: Record<RequirementPriority, CatalogKey> = {
                     <pera-button variant="secondary" size="sm" (click)="requestMeeting(project)">{{
                       catalog.t('nav.cSched')
                     }}</pera-button>
-                    <pera-button variant="secondary" size="sm" (click)="addRequirement(project)">{{
-                      catalog.t('nav.cAdd')
-                    }}</pera-button>
+                    <!-- 009b #46: the portal item route needs requirements.submit_own. -->
+                    <pera-button
+                      *peraCan="PERM.requirements.submitOwn"
+                      variant="secondary"
+                      size="sm"
+                      (click)="addRequirement(project)"
+                      >{{ catalog.t('nav.cAdd') }}</pera-button
+                    >
                   </div>
                 }
                 @case ('brief') {
-                  @if (brief.head(); as head) {
+                  @if (brief.error(); as message) {
+                    <pera-alert tone="warning">{{ message }}</pera-alert>
+                  } @else if (brief.nothingSent()) {
+                    <pera-empty [title]="catalog.t('client.briefNotSent')" />
+                  } @else if (brief.head(); as head) {
                     <div class="flex items-center gap-2">
                       <span
                         [class.pera-unconfirmed]="isUnconfirmedHead()"
@@ -215,40 +206,14 @@ const PRIORITY_LABEL_KEYS: Record<RequirementPriority, CatalogKey> = {
                   }
                 }
                 @case ('requirements') {
-                  @if (items.items().length) {
-                    <ul class="flex flex-col gap-2 m-0 p-0 list-none">
-                      @for (item of items.items(); track item.id) {
-                        <li
-                          [class.pera-unconfirmed]="isUnconfirmedItem(item.approvalStatus)"
-                          [attr.data-wm]="
-                            isUnconfirmedItem(item.approvalStatus)
-                              ? catalog.t('trust.unconfirmed')
-                              : null
-                          "
-                        >
-                          <div
-                            [class.pera-unconfirmed-content]="
-                              isUnconfirmedItem(item.approvalStatus)
-                            "
-                            class="flex items-center justify-between gap-2 p-2 border border-border fs-body-sm"
-                          >
-                            <div class="min-w-0">
-                              <div class="text-text-primary">{{ item.title }}</div>
-                              <div class="fs-caption text-text-secondary">
-                                {{ catalog.t(categoryLabel(item.category)) }} ·
-                                {{ catalog.t(priorityLabel(item.priority)) }}
-                              </div>
-                            </div>
-                          </div>
-                        </li>
-                      }
-                    </ul>
-                  } @else {
-                    <pera-empty [title]="catalog.t('client.tabReqs')" />
-                  }
+                  <!-- 009b #N-3: no portal items read exists on the backend. -->
+                  <pera-alert tone="info">{{ catalog.t('client.reqsNotAvailable') }}</pera-alert>
                 }
                 @case ('meetings') {
-                  @if (meetings.agenda().length) {
+                  @if (meetings.error(); as message) {
+                    <!-- FINDING-5-7: a handled 403 on the portal meetings read shows its message. -->
+                    <pera-alert tone="warning">{{ message }}</pera-alert>
+                  } @else if (meetings.agenda().length) {
                     <ul class="flex flex-col gap-2 m-0 p-0 list-none">
                       @for (m of meetings.agenda(); track m.id) {
                         <li
@@ -285,10 +250,10 @@ export class CrmClientProfileComponent {
   protected readonly catalog = inject(CatalogService);
   protected readonly profile = inject(ClientProfileStore);
   protected readonly brief = inject(BriefStore);
-  protected readonly items = inject(ItemsStore);
   protected readonly meetings = inject(MeetingsStore);
   protected readonly MEETING_TYPE_KEYS = MEETING_TYPE_KEYS;
   protected readonly MEETING_STATUS_CHIP = MEETING_STATUS_CHIP;
+  protected readonly PERM = PERM;
 
   protected readonly tabs: ProfileTab[] = ['overview', 'brief', 'requirements', 'meetings'];
   protected readonly selectedProjectId = signal<string | null>(null);
@@ -327,7 +292,6 @@ export class CrmClientProfileComponent {
       if (!id || loadedFor === id) return;
       loadedFor = id;
       this.brief.loadAsClient(id);
-      this.items.loadPortal(id);
       this.meetings.loadPortal(id);
     });
   }
@@ -343,16 +307,6 @@ export class CrmClientProfileComponent {
       case 'meetings':
         return 'client.tabMeetings';
     }
-  }
-
-  protected categoryLabel(c: RequirementCategory): CatalogKey {
-    return CATEGORY_LABEL_KEYS[c];
-  }
-  protected priorityLabel(p: RequirementPriority): CatalogKey {
-    return PRIORITY_LABEL_KEYS[p];
-  }
-  protected isUnconfirmedItem(status: number): boolean {
-    return isUnconfirmed(status, false);
   }
 
   protected whenLabel(iso: string): string {
