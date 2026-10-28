@@ -267,7 +267,7 @@ export const CatalogAdminStore = signalStore(
           });
         },
 
-        // ── Attributes + options (v1 routes — no v2 equivalent exists) ─────
+        // ── Attributes + options (009b #39: add is POST /attributes { categoryId }) ─────
         addAttribute(
           categoryId: string,
           request: AddCatalogAttributeRequest,

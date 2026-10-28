@@ -352,9 +352,14 @@ export class CrmCatalogService extends ApiService {
 
   // ── Attributes + options ───────────────────────────────────────────────
 
-  /** `POST /api/crm/catalog/nodes/{nodeId}/attributes` → `201` bare `Guid` — `crm.catalog.manage`. */
-  addAttribute(nodeId: string, request: AddCatalogAttributeRequest): Observable<string> {
-    return this.post<unknown>(`/crm/catalog/nodes/${nodeId}/attributes`, {
+  /**
+   * `POST /api/crm/catalog/attributes` → `201 { attributeId }` — `crm.catalog.manage`
+   * (009b #39). The declaring category travels in the body as `categoryId`. `404
+   * crm.catalog.CategoryNotFound`, `400 crm.catalog.InvalidData`.
+   */
+  addAttribute(categoryId: string, request: AddCatalogAttributeRequest): Observable<string> {
+    return this.post<unknown>('/crm/catalog/attributes', {
+      categoryId,
       code: request.code,
       nameEn: request.nameEn,
       nameAr: request.nameAr,
@@ -362,7 +367,7 @@ export class CrmCatalogService extends ApiService {
       unit: request.unit ?? null,
       isRequired: request.isRequired ?? false,
       sortOrder: request.sortOrder ?? 0,
-    }).pipe(map((r) => this.unwrap<string>(r)));
+    }).pipe(map((r) => this.unwrapId(r, 'attributeId')));
   }
 
   /** `PUT /api/crm/catalog/attributes/{attributeId}` → `204` — `crm.catalog.manage`. */

@@ -145,6 +145,39 @@ describe('CrmCatalogService', () => {
     });
   });
 
+  // 009b #39: CrmCatalogEndpoints.cs:64-70 — the category id moved into the body
+  // (CreateCrmCatalogAttributeCommand, CatalogContracts.cs:39-41); 201 { attributeId }.
+  describe('addAttribute() (009b #39)', () => {
+    it('posts to /attributes with categoryId in the body and reads the 201 { attributeId }', () => {
+      let id: string | undefined;
+      service
+        .addAttribute('C', {
+          code: 'width',
+          nameEn: 'Width',
+          nameAr: 'العرض',
+          dataType: CatalogAttributeType.Number,
+          unit: 'mm',
+        })
+        .subscribe((r) => (id = r));
+
+      const req = http.expectOne(url('/crm/catalog/attributes'));
+      expect(req.request.method).toBe('POST');
+      expect(req.request.body).toEqual({
+        categoryId: 'C',
+        code: 'width',
+        nameEn: 'Width',
+        nameAr: 'العرض',
+        dataType: CatalogAttributeType.Number,
+        unit: 'mm',
+        isRequired: false,
+        sortOrder: 0,
+      });
+      req.flush({ attributeId: 'A' });
+
+      expect(id).toBe('A');
+    });
+  });
+
   describe('setItemAttributeValues() — replace-all', () => {
     it('PUTs to the item attribute-values route with null-filled optional members', () => {
       service
