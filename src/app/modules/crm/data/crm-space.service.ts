@@ -1,7 +1,8 @@
-import { Injectable } from '@angular/core';
-import { Observable } from 'rxjs';
-import { map } from 'rxjs/operators';
+import { Injectable, inject } from '@angular/core';
+import { Observable, forkJoin, of } from 'rxjs';
+import { catchError, map } from 'rxjs/operators';
 import { ApiService } from '@platform/http/api.service';
+import { CrmLookupService } from './crm-lookup.service';
 import { CrmProvisionStatus } from '../model/crm-enums';
 import type {
   CatalogReorderRequest,
@@ -20,10 +21,24 @@ import type {
  */
 @Injectable({ providedIn: 'root' })
 export class CrmSpaceService extends ApiService {
-  /** `GET /api/crm/projects/{projectId}/spaces?includeInactive=` — `crm.spaces.read`. */
+  private readonly lookup = inject(CrmLookupService);
+
+  /**
+   * `GET /api/crm/projects/{projectId}/spaces` — `crm.spaces.read` (009b #28). The route binds
+   * no `includeInactive` and always returns inactive spaces, so they are dropped here unless
+   * `includeInactive`. `CrmSpaceResponse` carries a flat `spaceTypeId`: each row's `spaceType`
+   * is resolved from the `/crm/space-types` list (an unresolvable id keeps blank names).
+   */
   list(projectId: string, includeInactive = false): Observable<CrmSpace[]> {
-    return this.get<unknown>(`/crm/projects/${projectId}/spaces`, { includeInactive }).pipe(
-      map((r) => this.unwrapArray<unknown>(r).map((s) => this.normalizeSpace(s))),
+    return forkJoin([
+      this.get<unknown>(`/crm/projects/${projectId}/spaces`),
+      this.lookup.spaceTypes().pipe(catchError(() => of<CrmSpaceType[]>([]))),
+    ]).pipe(
+      map(([r, types]) =>
+        this.unwrapArray<unknown>(r)
+          .map((s) => this.normalizeSpace(s, types))
+          .filter((s) => includeInactive || s.isActive),
+      ),
     );
   }
 
@@ -103,24 +118,21 @@ export class CrmSpaceService extends ApiService {
     }).pipe(map((r) => this.unwrapArray<unknown>(r).map((s) => this.normalizeProvisionSummary(s))));
   }
 
-  private normalizeSpace(source: unknown): CrmSpace {
+  private normalizeSpace(source: unknown, types: readonly CrmSpaceType[]): CrmSpace {
+    const spaceTypeId = this.field<string>(source, 'spaceTypeId') ?? '';
     return {
       id: this.field<string>(source, 'id') ?? '',
       projectId: this.field<string>(source, 'projectId') ?? '',
-      spaceType: this.normalizeSpaceType(this.field<unknown>(source, 'spaceType')),
+      spaceType: types.find((t) => t.id === spaceTypeId) ?? {
+        id: spaceTypeId,
+        code: '',
+        nameEn: '',
+        nameAr: '',
+      },
       name: this.field<string>(source, 'name') ?? '',
       sortOrder: this.field<number>(source, 'sortOrder') ?? 0,
       isActive: this.field<boolean>(source, 'isActive') ?? true,
       description: this.field<string | null>(source, 'description') ?? null,
-    };
-  }
-
-  private normalizeSpaceType(source: unknown): CrmSpaceType {
-    return {
-      id: this.field<string>(source, 'id') ?? '',
-      code: this.field<string>(source, 'code') ?? '',
-      nameEn: this.field<string>(source, 'nameEn') ?? '',
-      nameAr: this.field<string>(source, 'nameAr') ?? '',
     };
   }
 

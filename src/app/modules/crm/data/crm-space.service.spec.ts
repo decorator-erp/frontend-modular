@@ -23,6 +23,74 @@ describe('CrmSpaceService', () => {
 
   const url = (path: string) => `${environment.apiUrl}${path}`;
 
+  /** `list()` resolves each row's `spaceType` from `/crm/space-types` (009b #28). */
+  const flushTypes = (): void =>
+    http.expectOne(url('/crm/space-types')).flush([
+      {
+        id: 'st-1',
+        code: 'kitchen',
+        nameEn: 'Kitchen',
+        nameAr: 'المطبخ',
+        sortOrder: 1,
+        isActive: true,
+      },
+      { id: 'st-2', code: 'attic', nameEn: 'Attic', nameAr: 'علية', sortOrder: 2, isActive: false },
+    ]);
+
+  describe('list (009b #28) — flat spaceTypeId, no includeInactive binding', () => {
+    const rows = [
+      {
+        id: 'space-1',
+        projectId: 'P',
+        spaceTypeId: 'st-1',
+        name: 'Kitchen',
+        description: null,
+        sortOrder: 0,
+        isActive: true,
+      },
+      {
+        id: 'space-2',
+        projectId: 'P',
+        spaceTypeId: 'st-2',
+        name: 'Old attic',
+        description: null,
+        sortOrder: 1,
+        isActive: false,
+      },
+    ];
+
+    it('sends no includeInactive param and resolves spaceType from the types list', () => {
+      let spaces: CrmSpace[] = [];
+      service.list('P').subscribe((r) => (spaces = r));
+
+      const req = http.expectOne((r) => r.url === url('/crm/projects/P/spaces'));
+      expect(req.request.method).toBe('GET');
+      expect(req.request.params.keys()).toEqual([]);
+      req.flush(rows);
+      flushTypes();
+
+      expect(spaces.map((s) => s.id)).toEqual(['space-1']);
+      expect(spaces[0].spaceType.id).toBe('st-1');
+      expect(spaces[0].spaceType.nameEn).toBe('Kitchen');
+      expect(spaces[0].spaceType.nameAr).toBe('المطبخ');
+    });
+
+    it('keeps inactive spaces only when includeInactive is true', () => {
+      let spaces: CrmSpace[] = [];
+      service.list('P', true).subscribe((r) => (spaces = r));
+
+      const req = http.expectOne((r) => r.url === url('/crm/projects/P/spaces'));
+      expect(req.request.params.keys()).toEqual([]);
+      req.flush(rows);
+      flushTypes();
+
+      expect(spaces.map((s) => [s.id, s.isActive, s.spaceType.nameEn])).toEqual([
+        ['space-1', true, 'Kitchen'],
+        ['space-2', false, 'Attic'],
+      ]);
+    });
+  });
+
   describe('includeCustom — honored on both provisioning reads as of backend f743454', () => {
     it('sends includeCustom=true on the buy list', () => {
       service.provisioning('project-1').subscribe();
@@ -52,19 +120,19 @@ describe('CrmSpaceService', () => {
       let spaces: CrmSpace[] = [];
       service.list('project-1').subscribe((r) => (spaces = r));
 
-      http
-        .expectOne(() => true)
-        .flush([
-          {
-            id: 'space-1',
-            projectId: 'project-1',
-            spaceType: { id: 'st-1', code: 'kitchen', nameEn: 'Kitchen', nameAr: 'المطبخ' },
-            name: 'Kitchen',
-            sortOrder: 0,
-            isActive: true,
-            description: 'North-facing, keep the built-in wardrobe.',
-          },
-        ]);
+      http.expectOne(url('/crm/projects/project-1/spaces')).flush([
+        {
+          id: 'space-1',
+          projectId: 'project-1',
+          spaceTypeId: 'st-1',
+          name: 'Kitchen',
+          sortOrder: 0,
+          isActive: true,
+          description: 'North-facing, keep the built-in wardrobe.',
+        },
+      ]);
+
+      flushTypes();
 
       expect(spaces[0].description).toBe('North-facing, keep the built-in wardrobe.');
     });
@@ -73,18 +141,18 @@ describe('CrmSpaceService', () => {
       let spaces: CrmSpace[] = [];
       service.list('project-1').subscribe((r) => (spaces = r));
 
-      http
-        .expectOne(() => true)
-        .flush([
-          {
-            id: 'space-1',
-            projectId: 'project-1',
-            spaceType: { id: 'st-1', code: 'kitchen', nameEn: 'Kitchen', nameAr: 'المطبخ' },
-            name: 'Kitchen',
-            sortOrder: 0,
-            isActive: true,
-          },
-        ]);
+      http.expectOne(url('/crm/projects/project-1/spaces')).flush([
+        {
+          id: 'space-1',
+          projectId: 'project-1',
+          spaceTypeId: 'st-1',
+          name: 'Kitchen',
+          sortOrder: 0,
+          isActive: true,
+        },
+      ]);
+
+      flushTypes();
 
       expect(spaces[0].description).toBeNull();
     });
