@@ -169,7 +169,7 @@ export class CrmItemFormComponent {
   readonly submitting = signal(false);
 
   protected eyebrow(): string {
-    if (this.mode === 'add') return 'POST /api/crm/projects/{projectId}/requirement-items';
+    if (this.mode === 'add') return 'POST /api/crm/periods/{periodId}/items';
     if (this.mode === 'supersede') return 'POST /api/crm/requirement-items/{itemId}/supersede';
     return 'PUT /api/crm/requirement-items/{itemId}';
   }
@@ -213,8 +213,8 @@ export class CrmItemFormComponent {
 
     let call: Observable<unknown>;
     if (this.mode === 'add') {
-      call = this.items.create(this.data.projectId, {
-        periodId: this.data.periodId,
+      call = this.items.create(this.data.periodId, {
+        projectId: this.data.projectId,
         ...updateRequest,
       });
     } else if (this.mode === 'supersede') {

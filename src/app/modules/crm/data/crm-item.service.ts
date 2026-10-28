@@ -17,13 +17,18 @@ import type {
  */
 @Injectable({ providedIn: 'root' })
 export class CrmItemService extends ApiService {
-  /** `POST /` → `201` with a bare `Guid`. Lands `Draft` — sending for approval is a later action. */
-  create(projectId: string, request: AddRequirementItemRequest): Observable<string> {
-    return this.post<unknown>(`/crm/projects/${projectId}/requirement-items`, {
-      periodId: request.periodId,
+  /**
+   * `POST /api/crm/periods/{periodId}/items` → `201 { itemId }` (009b #22). Lands `Draft` — sending
+   * for approval is a later action. 404 `crm.periods.NotFound`; 409 `crm.periods.NotOpen` /
+   * `crm.projects.Inactive`; 400 `crm.items.ProjectMismatch` / `UnknownSpaceType` / `InvalidSource`.
+   */
+  create(periodId: string, request: AddRequirementItemRequest): Observable<string> {
+    return this.post<unknown>(`/crm/periods/${periodId}/items`, {
+      projectId: request.projectId,
       category: request.category,
       title: request.title,
       priority: request.priority,
+      spaceTypeId: request.spaceTypeId ?? null,
       room: request.room ?? null,
       description: request.description ?? null,
       sourceType: request.sourceType ?? null,
@@ -31,7 +36,7 @@ export class CrmItemService extends ApiService {
       briefId: request.briefId ?? null,
       noteId: request.noteId ?? null,
       projectTaskId: request.projectTaskId ?? null,
-    } satisfies Record<string, unknown>).pipe(map((r) => this.unwrap<string>(r)));
+    } satisfies Record<string, unknown>).pipe(map((r) => this.unwrapId(r, 'itemId')));
   }
 
   /** `PUT /requirement-items/{itemId}` → `204`. Blocked once decided (`ItemLocked`/`NotPending`). */

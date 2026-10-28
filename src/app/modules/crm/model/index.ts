@@ -410,16 +410,18 @@ export interface RequirementItem {
 }
 
 /**
- * `POST /api/crm/projects/{projectId}/requirement-items` body — `AddItemRequest`.
- * When `sourceType` is set, exactly the matching FK must be set too
- * (`ck_crm_requirement_items_source_matches`); when omitted, all three FKs must be
- * null. The manual add-item form (T043) only ever offers the `Meeting` source.
+ * `POST /api/crm/periods/{periodId}/items` body — `CreateItemRequest` (009b #22): the period is
+ * the path, the project is in the body. When `sourceType` is set, exactly the matching FK must be
+ * set too (`crm.items.InvalidSource`); when omitted, all three FKs must be null. The manual
+ * add-item form (T043) only ever offers the `Meeting` source.
  */
 export interface AddRequirementItemRequest {
-  periodId: string;
+  projectId: string;
   category: number;
   title: string;
   priority: number;
+  /** An active `CrmSpaceType` id (`crm.items.UnknownSpaceType` otherwise). */
+  spaceTypeId?: string | null;
   room?: string | null;
   description?: string | null;
   sourceType?: number | null;
