@@ -73,6 +73,37 @@ describe('SowTemplatePickerComponent (sow #4)', () => {
     expect(document.activeElement).toBe(now);
   });
 
+  it('FINDING-7-13: busy clears before the reload; focus follows once the row flips', () => {
+    render();
+    const add = stageRows()[0].querySelector<HTMLButtonElement>('button')!;
+    add.focus();
+    add.click();
+    fixture.componentRef.setInput('busy', true);
+    fixture.detectChanges();
+    fixture.componentRef.setInput('busy', false); // the store's saving:false, reload pending
+    fixture.detectChanges();
+    fixture.componentRef.setInput('pickedStageIds', ['r1']); // the reload lands
+    fixture.detectChanges();
+    const now = stageRows()[0].querySelector<HTMLButtonElement>('button')!;
+    expect(now.textContent!.trim()).toBe(EN['sow.addedRemove']);
+    expect(document.activeElement).toBe(now);
+  });
+
+  it('FINDING-7-13: a failed Add (settled, no flip) drops the target; a later flip keeps focus', () => {
+    render();
+    const add = stageRows()[0].querySelector<HTMLButtonElement>('button')!;
+    add.focus();
+    add.click();
+    fixture.componentRef.setInput('pending', true);
+    fixture.detectChanges();
+    fixture.componentRef.setInput('pending', false); // failed: no reload
+    fixture.detectChanges();
+    add.blur();
+    fixture.componentRef.setInput('pickedStageIds', ['r1']); // e.g. a later whole-template add
+    fixture.detectChanges();
+    expect(document.activeElement).toBe(document.body);
+  });
+
   it('renders one pill per template, the selected one pressed', () => {
     render();
     const pills = Array.from(el.querySelectorAll<HTMLButtonElement>('[role="group"] button'));

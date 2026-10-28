@@ -420,6 +420,18 @@ describe('ScopeOfWorkStore — template picker (sow #4)', () => {
     expect(api['getScope']).toHaveBeenCalledTimes(2);
   });
 
+  it('FINDING-7-13: reloading stays true after saving clears, until the reload lands', () => {
+    const reload = new Subject<ReturnType<typeof sowScope>>();
+    const s = store();
+    s.load('p1');
+    api['getScope'].mockReturnValueOnce(reload);
+    s.addStage('s9');
+    expect(s.saving()).toBe(false);
+    expect(s.reloading()).toBe(true);
+    reload.next(sowScope({ items }));
+    expect(s.reloading()).toBe(false);
+  });
+
   it('removeStage deletes the item whose sourceStageId matches', () => {
     const s = store();
     s.load('p1');

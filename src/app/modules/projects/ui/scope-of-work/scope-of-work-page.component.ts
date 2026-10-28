@@ -116,6 +116,7 @@ const TOGGLE_BUTTON =
                 [pickedStageIds]="store.pickedStageIds()"
                 [loading]="store.templatesLoading()"
                 [busy]="store.saving()"
+                [pending]="store.saving() || store.reloading()"
                 (selectTemplate)="store.selectTemplate($event)"
                 (addStage)="store.addStage($event)"
                 (removeStage)="store.removeStage($event)"

@@ -87,7 +87,7 @@ const ROW_ADDED = 'bg-surface text-text-primary border-border hover:bg-surface-m
               class="${ROW_BUTTON} ${ROW_ADDED}"
               [disabled]="busy()"
               [attr.aria-label]="catalog.t('sow.addedRemove') + ' ' + s.name"
-              (click)="refocus = s.id; removeStage.emit(s.id)"
+              (click)="press(s.id); removeStage.emit(s.id)"
             >
               {{ catalog.t('sow.addedRemove') }}
             </button>
@@ -97,7 +97,7 @@ const ROW_ADDED = 'bg-surface text-text-primary border-border hover:bg-surface-m
               class="${ROW_BUTTON} ${ROW_ADD}"
               [disabled]="busy()"
               [attr.aria-label]="catalog.t('sow.add') + ' ' + s.name"
-              (click)="refocus = s.id; addStage.emit(s.id)"
+              (click)="press(s.id); addStage.emit(s.id)"
             >
               {{ catalog.t('sow.add') }}
             </button>
@@ -119,6 +119,8 @@ export class SowTemplatePickerComponent {
   readonly loading = input(false);
   /** A write is in flight: the buttons wait. */
   readonly busy = input(false);
+  /** FINDING-7-13: a write or the reload after it is in flight (the store's saving || reloading). */
+  readonly pending = input(false);
 
   readonly selectTemplate = output<string>();
   /** `POST …/items { sourceStageIds: [id] }`. */
@@ -130,19 +132,33 @@ export class SowTemplatePickerComponent {
 
   protected readonly picked = computed(() => new Set(this.pickedStageIds()));
 
-  /** FINDING-7-6: the stage whose Add / Added · remove was pressed, refocused once not busy. */
-  protected refocus: string | null = null;
+  /**
+   * FINDING-7-6/7-13: the stage whose Add / Added · remove was pressed and its picked state
+   * then. Refocused once that state flips (the reload landed, the button was swapped); dropped
+   * if the write settles (`pending` seen, then false) with no flip.
+   */
+  private refocus: { id: string; picked: boolean; armed: boolean } | null = null;
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
 
   constructor() {
     afterRenderEffect(() => {
-      this.picked();
-      if (this.busy() || !this.refocus) return;
-      const id = this.refocus;
+      const picked = this.picked();
+      const pending = this.pending();
+      const target = this.refocus;
+      if (!target) return;
+      if (picked.has(target.id) === target.picked) {
+        if (pending) target.armed = true;
+        else if (target.armed) this.refocus = null;
+        return;
+      }
       this.refocus = null;
       this.host.nativeElement
-        .querySelector<HTMLElement>(`[data-stage-row="${id}"] button`)
+        .querySelector<HTMLElement>(`[data-stage-row="${target.id}"] button`)
         ?.focus();
     });
+  }
+
+  protected press(id: string): void {
+    this.refocus = { id, picked: this.picked().has(id), armed: false };
   }
 }

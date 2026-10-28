@@ -31,6 +31,8 @@ interface ScopeOfWorkState {
   notFound: boolean;
   /** A write is in flight. */
   saving: boolean;
+  /** FINDING-7-13: the newest scope reload is in flight (a write's reload lands after `saving`). */
+  reloading: boolean;
   /** The last failed action's message, already localized (B14), or null. */
   error: string | null;
   /**
@@ -63,6 +65,7 @@ const INITIAL: ScopeOfWorkState = {
   loading: false,
   notFound: false,
   saving: false,
+  reloading: false,
   error: null,
   confirmError: null,
   templates: [],
@@ -127,11 +130,13 @@ export const ScopeOfWorkStore = signalStore(
         const projectId = store.projectId();
         if (!projectId) return;
         const seq = ++lastReload;
+        patchState(store, { reloading: true });
         api.getScope(projectId).subscribe({
           next: (scope) => {
             if (seq !== lastReload) return;
             patchState(store, {
               scope,
+              reloading: false,
               headerDraft: lanes.has('header') ? store.headerDraft() : null,
               itemDrafts: Object.fromEntries(
                 Object.entries(store.itemDrafts()).filter(([id]) => lanes.has(`item:${id}`)),
@@ -142,9 +147,9 @@ export const ScopeOfWorkStore = signalStore(
           error: (err: unknown) => {
             if (seq !== lastReload) return;
             if (err instanceof HttpErrorResponse && err.status === 404) {
-              patchState(store, { scope: null, notFound: true });
+              patchState(store, { scope: null, notFound: true, reloading: false });
             } else {
-              patchState(store, { error: catalog.t('sow.loadFailed') });
+              patchState(store, { error: catalog.t('sow.loadFailed'), reloading: false });
             }
           },
         });
