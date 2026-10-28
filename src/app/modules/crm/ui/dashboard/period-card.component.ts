@@ -87,6 +87,10 @@ import { CrmPeriodFormComponent } from './forms/period-form.component';
         </div>
       }
 
+      @if (store.notFound()) {
+        <!-- FINDING-5-6 (X-5): a 404 on load is "not found", never "Could not load". -->
+        <pera-alert tone="warning">{{ catalog.t('period.notFound') }}</pera-alert>
+      }
       @if (store.error(); as error) {
         <pera-alert tone="danger">{{ error }}</pera-alert>
       }

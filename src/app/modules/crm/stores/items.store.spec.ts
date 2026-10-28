@@ -83,6 +83,37 @@ describe('ItemsStore', () => {
       s.load(PROJECT_ID);
       expect(s.error()).toBe('Could not load requirement items.');
     });
+
+    it('a 404 crm.periods.NotFound is notFound, not an error (FINDING-5-6, X-5)', () => {
+      api.listByProject.mockReturnValue(
+        throwError(
+          () =>
+            new HttpErrorResponse({
+              status: 404,
+              error: {
+                status: 404,
+                title: 'crm.periods.NotFound',
+                errors: { 'crm.periods.NotFound': ['Requirement period not found.'] },
+              },
+            }),
+        ),
+      );
+      const s = store();
+      s.load(PROJECT_ID);
+      expect(s.notFound()).toBe(true);
+      expect(s.error()).toBeNull();
+      expect(s.loading()).toBe(false);
+    });
+
+    it('a fresh successful load clears notFound', () => {
+      api.listByProject.mockReturnValueOnce(
+        throwError(() => new HttpErrorResponse({ status: 404 })),
+      );
+      const s = store();
+      s.load(PROJECT_ID);
+      s.load(PROJECT_ID);
+      expect(s.notFound()).toBe(false);
+    });
   });
 
   describe('FR-012 — the client-authored asymmetry', () => {

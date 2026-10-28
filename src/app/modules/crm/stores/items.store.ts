@@ -27,6 +27,8 @@ interface ItemsState {
   loading: boolean;
   mutating: boolean;
   error: string | null;
+  /** 404 on load (FINDING-5-6, X-5): the project's periods are outside the caller's scope or gone. */
+  notFound: boolean;
 }
 
 const INITIAL: ItemsState = {
@@ -37,6 +39,7 @@ const INITIAL: ItemsState = {
   loading: false,
   mutating: false,
   error: null,
+  notFound: false,
 };
 
 /** The requirement-items board for one project — feature-scoped, fresh per visit. */
@@ -89,11 +92,13 @@ export const ItemsStore = signalStore(
          * the project's periods, then each period's items (009b #23).
          */
         load(projectId: string): void {
-          patchState(store, { loading: true, error: null, projectId });
+          patchState(store, { loading: true, error: null, notFound: false, projectId });
           api.listByProject(projectId).subscribe({
             next: (items) => patchState(store, { items, loading: false }),
-            error: () =>
-              patchState(store, { loading: false, error: 'Could not load requirement items.' }),
+            error: (err: unknown) =>
+              err instanceof HttpErrorResponse && err.status === 404
+                ? patchState(store, { items: [], loading: false, notFound: true })
+                : patchState(store, { loading: false, error: 'Could not load requirement items.' }),
           });
         },
 

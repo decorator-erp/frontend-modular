@@ -920,6 +920,7 @@ export const AR: Partial<Record<CatalogKey, string>> = {
   'period.daysLeft': 'يوماً متبقياً',
   'period.extend': 'تمديد ٧ أيام',
   'period.hint': 'التمديد لاحقاً يعني تحريك هذا التاريخ فقط. الإغلاق يرسل للعميل الرسالة المعتادة.',
+  'period.notFound': 'لم يتم العثور على فترة المتطلبات هذه.',
   'period.open': 'مفتوحة',
   'period.openAsPage': 'فتح كصفحة مستقلة',
   'period.openBoard': 'فتح اللوحة',

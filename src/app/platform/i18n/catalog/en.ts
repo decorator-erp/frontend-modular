@@ -982,6 +982,7 @@ export const EN = {
   'period.extend': 'Extend +7 days',
   'period.hint':
     'Extending later just moves this date. Closing sends the client the standard message.',
+  'period.notFound': 'This requirement period was not found.',
   'period.open': 'Open',
   'period.openAsPage': 'Open as full page',
   'period.openBoard': 'Open board',

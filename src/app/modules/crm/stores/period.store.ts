@@ -15,6 +15,8 @@ interface PeriodState {
   extending: boolean;
   closing: boolean;
   error: string | null;
+  /** 404 on load (FINDING-5-6, X-5): the project's periods are outside the caller's scope or gone. */
+  notFound: boolean;
 }
 
 const INITIAL: PeriodState = {
@@ -24,6 +26,7 @@ const INITIAL: PeriodState = {
   extending: false,
   closing: false,
   error: null,
+  notFound: false,
 };
 
 /**
@@ -77,11 +80,16 @@ export const PeriodStore = signalStore(
     ) => ({
       /** Load the project's period history. */
       load(projectId: string): void {
-        patchState(store, { loading: true, error: null, projectId });
+        patchState(store, { loading: true, error: null, notFound: false, projectId });
         api.list(projectId).subscribe({
           next: (periods) => patchState(store, { periods, loading: false }),
-          error: () =>
-            patchState(store, { loading: false, error: 'Could not load the requirement period.' }),
+          error: (err: unknown) =>
+            err instanceof HttpErrorResponse && err.status === 404
+              ? patchState(store, { periods: [], loading: false, notFound: true })
+              : patchState(store, {
+                  loading: false,
+                  error: 'Could not load the requirement period.',
+                }),
         });
       },
 
