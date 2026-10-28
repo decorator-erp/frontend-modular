@@ -7,8 +7,13 @@ import { MeetingSlotStatus, MeetingStatus, MeetingType } from '../model/crm-enum
 import { ERROR_MESSAGES } from '@platform/errors/error-catalog';
 import { ToastService } from '@platform/feedback/toast.service';
 import type { PagedResult } from '@platform/types';
-import type { CrmMeeting, CrmMeetingSlot } from '../model';
-import { isSlotHeld, isSlotHoldExpired, MeetingsStore } from './meetings.store';
+import type { CrmMeeting, CrmMeetingSlot, PortalMeeting, PortalMeetingDetail } from '../model';
+import {
+  isSlotAnswerableByClient,
+  isSlotHeld,
+  isSlotHoldExpired,
+  MeetingsStore,
+} from './meetings.store';
 
 const PROJECT_ID = 'project-1';
 
@@ -51,10 +56,48 @@ function page(items: CrmMeeting[]): PagedResult<CrmMeeting> {
   return { items, totalCount: items.length, page: 1, pageSize: 50, totalPages: 1 };
 }
 
+/** 009b #44: the portal list row (no type, no slots) and its detail. */
+function portalRow(over: Partial<PortalMeeting> = {}): PortalMeeting {
+  return {
+    id: 'meeting-1',
+    projectId: PROJECT_ID,
+    title: 'Kick-off',
+    status: MeetingStatus.Requested,
+    scheduledAtUtc: null,
+    ...over,
+  };
+}
+
+function portalDetail(over: Partial<PortalMeetingDetail> = {}): PortalMeetingDetail {
+  return {
+    ...portalRow(),
+    type: MeetingType.Online,
+    durationMinutes: 60,
+    location: null,
+    canceledAtUtc: null,
+    cancelReason: null,
+    slots: [
+      {
+        id: 'slot-1',
+        startsAtUtc: '2026-07-20T10:00:00.000Z',
+        endsAtUtc: '2026-07-20T11:00:00.000Z',
+        status: MeetingSlotStatus.Proposed,
+        proposedByMe: false,
+      },
+    ],
+    ...over,
+  };
+}
+
+function portalPage(items: PortalMeeting[]): PagedResult<PortalMeeting> {
+  return { items, totalCount: items.length, page: 1, pageSize: 50, totalPages: 1 };
+}
+
 function apiMock() {
   return {
     search: vi.fn().mockReturnValue(of(page([meeting()]))),
-    portalList: vi.fn().mockReturnValue(of([meeting()])),
+    portalList: vi.fn().mockReturnValue(of(portalPage([portalRow()]))),
+    portalGetById: vi.fn((id: string) => of(portalDetail({ id }))),
     freeSlots: vi.fn().mockReturnValue(of([])),
     propose: vi.fn().mockReturnValue(of('new-id')),
     acceptSlot: vi.fn().mockReturnValue(of(undefined)),
@@ -230,13 +273,48 @@ describe('MeetingsStore', () => {
 
   describe('portal methods', () => {
     it('loadPortal filters the client’s meetings to one project', () => {
-      const other = meeting({ id: 'm-other', projectId: 'project-2' });
-      api.portalList.mockReturnValue(of([meeting(), other]));
+      const other = portalRow({ id: 'm-other', projectId: 'project-2' });
+      api.portalList.mockReturnValue(of(portalPage([portalRow(), other])));
       const s = store();
 
       s.loadPortal(PROJECT_ID);
 
       expect(s.meetings().map((m) => m.id)).toEqual(['meeting-1']);
+    });
+
+    it('loadPortal reads each of the project’s meetings through portalGetById (009b #44)', () => {
+      const other = portalRow({ id: 'm-other', projectId: 'project-2' });
+      api.portalList.mockReturnValue(of(portalPage([portalRow(), other])));
+      const s = store();
+
+      s.loadPortal(PROJECT_ID);
+
+      expect(api.portalGetById).toHaveBeenCalledTimes(1);
+      expect(api.portalGetById).toHaveBeenCalledWith('meeting-1');
+      const [m] = s.meetings();
+      expect(m.type).toBe(MeetingType.Online);
+      expect(m.slots).toEqual([
+        {
+          id: 'slot-1',
+          meetingId: 'meeting-1',
+          startsAtUtc: '2026-07-20T10:00:00.000Z',
+          endsAtUtc: '2026-07-20T11:00:00.000Z',
+          status: MeetingSlotStatus.Proposed,
+          proposedByEmployeeId: null,
+          proposedByContactId: null,
+          proposedByMe: false,
+        },
+      ]);
+    });
+
+    it('a failed detail read keeps the bare row, with no slots', () => {
+      api.portalGetById.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 404 })));
+      const s = store();
+
+      s.loadPortal(PROJECT_ID);
+
+      expect(s.meetings().map((m) => [m.id, m.slots.length])).toEqual([['meeting-1', 0]]);
+      expect(s.error()).toBeNull();
     });
 
     it('portalRequestSlot calls the api and reloads the portal list', () => {
@@ -382,5 +460,32 @@ describe('isSlotHeld / isSlotHoldExpired (009b #19: the slot start is the expiry
     const now = new Date('2026-07-19T10:00:00.000Z').getTime();
     expect(isSlotHeld(s, now)).toBe(false);
     expect(isSlotHoldExpired(s, now)).toBe(false);
+  });
+});
+
+describe('isSlotAnswerableByClient (009b #44: !proposedByMe replaces the proposer-id test)', () => {
+  const NOW = Date.parse('2026-07-20T09:00:00.000Z');
+
+  it('a held slot the office proposed (proposedByMe false) is answerable', () => {
+    expect(isSlotAnswerableByClient(slot({ proposedByMe: false }), NOW)).toBe(true);
+  });
+
+  it("the client's own slot (proposedByMe true) is not", () => {
+    expect(isSlotAnswerableByClient(slot({ proposedByMe: true }), NOW)).toBe(false);
+  });
+
+  it('a slot that has started, or is no longer Proposed, is not', () => {
+    expect(
+      isSlotAnswerableByClient(
+        slot({ proposedByMe: false }),
+        Date.parse('2026-07-20T10:00:00.000Z'),
+      ),
+    ).toBe(false);
+    expect(
+      isSlotAnswerableByClient(
+        slot({ proposedByMe: false, status: MeetingSlotStatus.Declined }),
+        NOW,
+      ),
+    ).toBe(false);
   });
 });

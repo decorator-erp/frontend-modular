@@ -588,6 +588,11 @@ export interface CrmMeetingSlot {
   /** XOR-by-convention with `proposedByContactId` — whoever put this slot forward. */
   proposedByEmployeeId: string | null;
   proposedByContactId: string | null;
+  /**
+   * Portal reads only (`PortalMeetingSlotResponse.ProposedByMe`, 009b #44): whether the client's side
+   * proposed the slot. The portal carries no proposer ids, so they read `null` there; absent on office reads.
+   */
+  proposedByMe?: boolean;
 }
 
 export interface CrmMeeting {
@@ -607,6 +612,37 @@ export interface CrmMeeting {
   cancelReason: string | null;
   createdAtUtc: string;
   slots: CrmMeetingSlot[];
+}
+
+/**
+ * `PortalMeetingResponse` (`PortalContracts.cs:13-14`, 009b #44): one row of the client's paged
+ * `GET /api/crm/portal/meetings` — no type and no slots; `portalGetById` reads those.
+ */
+export interface PortalMeeting {
+  id: string;
+  projectId: string;
+  title: string;
+  status: MeetingStatus;
+  scheduledAtUtc: string | null;
+}
+
+/** `PortalMeetingSlotResponse` (`PortalContracts.cs:40-41`): no proposer ids, only `proposedByMe`. */
+export interface PortalMeetingSlot {
+  id: string;
+  startsAtUtc: string;
+  endsAtUtc: string;
+  status: MeetingSlotStatus;
+  proposedByMe: boolean;
+}
+
+/** `PortalMeetingDetailResponse` (`PortalContracts.cs:35-38`, 009b #44): `GET /api/crm/portal/meetings/{id}`. */
+export interface PortalMeetingDetail extends PortalMeeting {
+  type: MeetingType;
+  durationMinutes: number | null;
+  location: string | null;
+  canceledAtUtc: string | null;
+  cancelReason: string | null;
+  slots: PortalMeetingSlot[];
 }
 
 /**

@@ -6,7 +6,7 @@ import type { PagedResult } from '@platform/types';
 import { environment } from '../../../../environments/environment';
 import { HANDLED_ERROR_STATUSES } from '@platform/http/handled-errors';
 import { MeetingSlotStatus, MeetingType } from '../model/crm-enums';
-import type { CrmMeeting } from '../model';
+import type { CrmMeeting, PortalMeeting, PortalMeetingDetail } from '../model';
 import { CrmMeetingService } from './crm-meeting.service';
 
 describe('CrmMeetingService', () => {
@@ -146,6 +146,70 @@ describe('CrmMeetingService', () => {
         expect(req.request.context.get(HANDLED_ERROR_STATUSES)).toEqual([403]);
         req.flush(null);
       }
+    });
+  });
+
+  describe('portal reads (009b #44)', () => {
+    it('portalList sends pageNumber/pageSize and reads the paged PortalMeetingResponse rows', () => {
+      let page: PagedResult<PortalMeeting> | undefined;
+      service.portalList().subscribe((p) => (page = p));
+
+      const req = http.expectOne((r) => r.url === url('/crm/portal/meetings'));
+      expect(req.request.method).toBe('GET');
+      expect(req.request.params.get('pageNumber')).toBe('1');
+      expect(req.request.params.get('pageSize')).toBe('50');
+      req.flush({
+        items: [{ id: 'M', projectId: 'P', title: 'Kick-off', status: 2, scheduledAtUtc: null }],
+        pageNumber: 1,
+        pageSize: 50,
+        totalCount: 1,
+        totalPages: 1,
+      });
+
+      expect(page?.totalCount).toBe(1);
+      expect(page?.items).toEqual([
+        { id: 'M', projectId: 'P', title: 'Kick-off', status: 2, scheduledAtUtc: null },
+      ]);
+    });
+
+    it('portalGetById reads the detail with its slots and proposedByMe', () => {
+      let detail: PortalMeetingDetail | undefined;
+      service.portalGetById('M').subscribe((d) => (detail = d));
+
+      const req = http.expectOne(url('/crm/portal/meetings/M'));
+      expect(req.request.method).toBe('GET');
+      req.flush({
+        id: 'M',
+        projectId: 'P',
+        title: 'Kick-off',
+        type: MeetingType.Online,
+        status: 1,
+        scheduledAtUtc: null,
+        durationMinutes: 60,
+        location: null,
+        canceledAtUtc: null,
+        cancelReason: null,
+        slots: [
+          {
+            id: 'S1',
+            startsAtUtc: '2026-07-20T10:00:00Z',
+            endsAtUtc: '2026-07-20T11:00:00Z',
+            status: MeetingSlotStatus.Proposed,
+            proposedByMe: false,
+          },
+        ],
+      });
+
+      expect(detail?.type).toBe(MeetingType.Online);
+      expect(detail?.slots).toEqual([
+        {
+          id: 'S1',
+          startsAtUtc: '2026-07-20T10:00:00Z',
+          endsAtUtc: '2026-07-20T11:00:00Z',
+          status: MeetingSlotStatus.Proposed,
+          proposedByMe: false,
+        },
+      ]);
     });
   });
 });

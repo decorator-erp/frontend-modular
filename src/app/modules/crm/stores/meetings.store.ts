@@ -1,16 +1,19 @@
 import { computed, inject } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
-import type { Observable } from 'rxjs';
+import { forkJoin, of, type Observable } from 'rxjs';
+import { catchError, map, switchMap } from 'rxjs/operators';
 import { injectReloadOnConflict } from '@platform/http/concurrency';
 import { ErrorHandlerService, friendly } from '@platform/http/error-handler.service';
 import { patchState, signalStore, withComputed, withMethods, withState } from '@ngrx/signals';
 import { CrmMeetingService } from '../data/crm-meeting.service';
-import { MeetingSlotStatus, MeetingStatus } from '../model/crm-enums';
+import { MeetingSlotStatus, MeetingStatus, MeetingType } from '../model/crm-enums';
 import type {
   CrmMeeting,
   CrmMeetingSlot,
   DeclineSlotRequest,
   FreeSlot,
+  PortalMeeting,
+  PortalMeetingDetail,
   ProposeMeetingRequest,
   RequestMeetingByClientRequest,
   SlotRequest,
@@ -58,6 +61,52 @@ export function isSlotHeld(slot: CrmMeetingSlot, nowMs: number = Date.now()): bo
 export function isSlotHoldExpired(slot: CrmMeetingSlot, nowMs: number = Date.now()): boolean {
   if (slot.status !== MeetingSlotStatus.Proposed) return false;
   return new Date(slot.startsAtUtc).getTime() <= nowMs;
+}
+
+/**
+ * 009b #44: the client can answer (accept / decline) a slot the OTHER side proposed — `proposedByMe`
+ * false on the portal detail — while it is still held (not started). Replaces the proposer-id test.
+ */
+export function isSlotAnswerableByClient(
+  slot: CrmMeetingSlot,
+  nowMs: number = Date.now(),
+): boolean {
+  return slot.proposedByMe === false && isSlotHeld(slot, nowMs);
+}
+
+/**
+ * A portal meeting in the store's `CrmMeeting` shape (009b #44). The portal never carries the period,
+ * the requester or proposer ids, or `createdAtUtc`; a list row whose detail could not be read has no
+ * type or slots either.
+ */
+function fromPortalMeeting(m: PortalMeeting | PortalMeetingDetail): CrmMeeting {
+  const detail = 'slots' in m ? m : null;
+  return {
+    id: m.id,
+    projectId: m.projectId,
+    periodId: null,
+    title: m.title,
+    type: detail?.type ?? MeetingType.InOffice,
+    status: m.status,
+    scheduledAtUtc: m.scheduledAtUtc,
+    durationMinutes: detail?.durationMinutes ?? null,
+    location: detail?.location ?? null,
+    requestedByEmployeeId: null,
+    requestedByContactId: null,
+    canceledAtUtc: detail?.canceledAtUtc ?? null,
+    cancelReason: detail?.cancelReason ?? null,
+    createdAtUtc: '',
+    slots: (detail?.slots ?? []).map((x) => ({
+      id: x.id,
+      meetingId: m.id,
+      startsAtUtc: x.startsAtUtc,
+      endsAtUtc: x.endsAtUtc,
+      status: x.status,
+      proposedByEmployeeId: null,
+      proposedByContactId: null,
+      proposedByMe: x.proposedByMe,
+    })),
+  };
 }
 
 /**
@@ -149,18 +198,34 @@ export const MeetingsStore = signalStore(
           });
         },
 
-        /** The client's own meetings, filtered to one project (portal has no project param). */
+        /**
+         * The client's own meetings, filtered to one project (portal has no project param). 009b #44: the
+         * paged list has no type or slots, so each of the project's meetings is re-read through
+         * `portalGetById`; a failed detail read keeps the bare row.
+         */
         loadPortal(projectId: string): void {
           patchState(store, { loading: true, error: null, projectId });
-          api.portalList().subscribe({
-            next: (meetings) =>
-              patchState(store, {
-                meetings: meetings.filter((m) => m.projectId === projectId),
-                loading: false,
+          api
+            .portalList()
+            .pipe(
+              switchMap((page) => {
+                const mine = page.items.filter((m) => m.projectId === projectId);
+                if (!mine.length) return of<CrmMeeting[]>([]);
+                return forkJoin(
+                  mine.map((m) =>
+                    api.portalGetById(m.id).pipe(
+                      map(fromPortalMeeting),
+                      catchError(() => of(fromPortalMeeting(m))),
+                    ),
+                  ),
+                );
               }),
-            error: () =>
-              patchState(store, { loading: false, error: 'Could not load your meetings.' }),
-          });
+            )
+            .subscribe({
+              next: (meetings) => patchState(store, { meetings, loading: false }),
+              error: () =>
+                patchState(store, { loading: false, error: 'Could not load your meetings.' }),
+            });
         },
 
         /** The server-computed free-slot grid — the client derives nothing. */

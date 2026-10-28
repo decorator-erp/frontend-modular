@@ -11,6 +11,8 @@ import type {
   CrmMeetingSlot,
   DeclineSlotRequest,
   FreeSlot,
+  PortalMeeting,
+  PortalMeetingDetail,
   ProposeMeetingRequest,
   RequestMeetingByClientRequest,
   SlotRequest,
@@ -126,7 +128,7 @@ export class CrmMeetingService extends ApiService {
     );
   }
 
-  // ── Client portal — gated on `crm.portal`, not the office `crm.meetings.*` ──
+  // ── Client portal — gated on `crm.meetings.{view_own,request_own,respond_own}` ──
 
   /**
    * `POST /portal/meetings/request` → `201` `Guid`. The client requests ONE specific
@@ -175,11 +177,65 @@ export class CrmMeetingService extends ApiService {
     } satisfies CancelMeetingRequest);
   }
 
-  /** `GET /portal/meetings` — the client's own meetings, every status. */
-  portalList(): Observable<CrmMeeting[]> {
-    return this.get<unknown>('/crm/portal/meetings').pipe(
-      map((r) => this.unwrapArray<unknown>(r).map((m) => this.normalizeMeeting(m))),
+  /**
+   * `GET /portal/meetings?pageNumber&pageSize` → `PagedResult<PortalMeetingResponse>`, newest first —
+   * `crm.meetings.view_own` (009b #44). The rows carry no type and no slots: `portalGetById` reads those.
+   */
+  portalList(pageNumber = 1, pageSize = 50): Observable<PagedResult<PortalMeeting>> {
+    return this.get<unknown>('/crm/portal/meetings', { pageNumber, pageSize }).pipe(
+      map((r) => {
+        const page = this.unwrap(r);
+        const items = this.unwrapArray<unknown>(page).map((m) => this.normalizePortalMeeting(m));
+        const size = this.field<number>(page, 'pageSize') ?? pageSize;
+        const totalCount = this.field<number>(page, 'totalCount') ?? items.length;
+        return {
+          items,
+          totalCount,
+          page: this.field<number>(page, 'pageNumber') ?? pageNumber,
+          pageSize: size,
+          totalPages:
+            this.field<number>(page, 'totalPages') ?? (size ? Math.ceil(totalCount / size) : 1),
+        };
+      }),
     );
+  }
+
+  /**
+   * `GET /portal/meetings/{meetingId}` → `PortalMeetingDetailResponse` — `crm.meetings.view_own`
+   * (009b #44): the client's own meeting with its slots, each with `proposedByMe` and no proposer ids.
+   * 404 for another client's meeting or an unknown one.
+   */
+  portalGetById(meetingId: string): Observable<PortalMeetingDetail> {
+    return this.get<unknown>(`/crm/portal/meetings/${meetingId}`).pipe(
+      map((r) => {
+        const source = this.unwrap(r);
+        return {
+          ...this.normalizePortalMeeting(source),
+          type: this.field<number>(source, 'type') ?? MeetingType.InOffice,
+          durationMinutes: this.field<number | null>(source, 'durationMinutes') ?? null,
+          location: this.field<string | null>(source, 'location') ?? null,
+          canceledAtUtc: this.field<string | null>(source, 'canceledAtUtc') ?? null,
+          cancelReason: this.field<string | null>(source, 'cancelReason') ?? null,
+          slots: (this.field<unknown[]>(source, 'slots') ?? []).map((x) => ({
+            id: this.field<string>(x, 'id') ?? '',
+            startsAtUtc: this.field<string>(x, 'startsAtUtc') ?? '',
+            endsAtUtc: this.field<string>(x, 'endsAtUtc') ?? '',
+            status: this.field<number>(x, 'status') ?? MeetingSlotStatus.Proposed,
+            proposedByMe: this.field<boolean>(x, 'proposedByMe') ?? false,
+          })),
+        };
+      }),
+    );
+  }
+
+  private normalizePortalMeeting(source: unknown): PortalMeeting {
+    return {
+      id: this.field<string>(source, 'id') ?? '',
+      projectId: this.field<string>(source, 'projectId') ?? '',
+      title: this.field<string>(source, 'title') ?? '',
+      status: this.field<number>(source, 'status') ?? MeetingStatus.Requested,
+      scheduledAtUtc: this.field<string | null>(source, 'scheduledAtUtc') ?? null,
+    };
   }
 
   private normalizeFreeSlot(source: unknown): FreeSlot {

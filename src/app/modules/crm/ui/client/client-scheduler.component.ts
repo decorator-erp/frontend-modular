@@ -144,7 +144,7 @@ export class CrmClientSchedulerComponent {
       this.meetings
         .meetings()
         .flatMap((m) => m.slots)
-        .find((s) => s.startsAtUtc === confirmed.startsAtUtc && s.proposedByContactId) ?? null
+        .find((s) => s.startsAtUtc === confirmed.startsAtUtc && s.proposedByMe) ?? null
     );
   });
 
