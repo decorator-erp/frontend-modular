@@ -500,6 +500,8 @@ export const ERROR_MESSAGES: Record<string, string> = {
   // FINDING-5-13: an uncoded 403 (a route-permission refusal carries no code); not a backend
   // code — `friendly()` maps status 403 with no code to this key so the text can be localized.
   'http.Forbidden': "You don't have permission to do that.",
+  // FINDING-7-10: the request validator's code (SharedKernel/Error.cs `ValidationError`).
+  'Validation.General': 'Some values are invalid. Check the highlighted fields.',
 };
 
 /**
@@ -635,6 +637,8 @@ export const ERROR_MESSAGES_AR: Record<string, string> = {
   'teams.MissingHead': 'أحد الأقسام في مرحلة مختارة بلا رئيس. عيّن رئيسًا أولًا.',
   // FINDING-5-13: an uncoded 403 (route permission) — `friendly()` maps it to this key.
   'http.Forbidden': 'ليس لديك صلاحية للقيام بذلك.',
+  // FINDING-7-10: the request validator's code.
+  'Validation.General': 'بعض القيم غير صحيحة. راجع الحقول المحدَّدة.',
 };
 
 /**

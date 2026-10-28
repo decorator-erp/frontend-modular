@@ -81,11 +81,12 @@ describe('SowTemplatePickerComponent (sow #4)', () => {
     render();
     const [first, second] = stageRows();
     expect(first.textContent).toContain('Concept design');
-    expect(first.textContent).toContain('6 tasks');
+    // FINDING-7-10: plural-safe ("Tasks: 1", not "1 tasks").
+    expect(first.textContent).toContain('Tasks: 6');
     expect(first.textContent).toContain(EN['sow.defaultFee']);
     expect(first.querySelector('pera-currency')?.textContent).toContain('25,000');
     expect(first.querySelector('pera-currency')?.textContent).toContain('EGP');
-    expect(second.textContent).toContain('9 tasks');
+    expect(second.textContent).toContain('Tasks: 9');
     expect(second.textContent).not.toContain(EN['sow.defaultFee']);
     expect(second.querySelector('pera-currency')).toBeNull();
   });

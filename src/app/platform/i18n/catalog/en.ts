@@ -1187,7 +1187,7 @@ export const EN = {
   'sow.stageTemplates': 'Stage templates',
   'sow.templates': 'Templates',
   'sow.addWholeTemplate': 'Add whole template',
-  'sow.stageTasks': '{count} tasks',
+  'sow.stageTasks': 'Tasks: {count}',
   'sow.defaultFee': 'default fee',
   'sow.add': 'Add',
   'sow.addedRemove': 'Added · remove',

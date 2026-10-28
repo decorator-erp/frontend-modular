@@ -1114,7 +1114,7 @@ export const AR: Partial<Record<CatalogKey, string>> = {
   'sow.stageTemplates': 'قوالب المراحل',
   'sow.templates': 'القوالب',
   'sow.addWholeTemplate': 'إضافة القالب كاملًا',
-  'sow.stageTasks': '{count} مهام',
+  'sow.stageTasks': 'المهام: {count}',
   'sow.defaultFee': 'الأتعاب الافتراضية',
   'sow.add': 'إضافة',
   'sow.addedRemove': 'مُضاف · حذف',
