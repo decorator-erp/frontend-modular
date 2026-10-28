@@ -49,3 +49,62 @@ describe('ProjectCreateComponent — no budget/status (008b FINDING-6-1)', () =>
     expect(create).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('ProjectCreateComponent — POST body (008b FINDING-6-2)', () => {
+  it('sends exactly the CreateProjectRequest keys for a Stage project', () => {
+    const { c, create } = setup();
+    c.form.patchValue({
+      code: ' AM-04 ',
+      name: ' Al Maha ',
+      address: ' Zamalek, Cairo ',
+      clientId: 'c1',
+      workflowType: 'Stage',
+      stageTemplateId: 't1',
+      estimatedStartDate: '2026-07-01',
+      estimatedEndDate: '2027-04-12',
+      description: ' Scope ',
+      notes: ' Internal ',
+    });
+    c.submit();
+    expect(create.mock.calls[0]).toStrictEqual([
+      {
+        code: 'AM-04',
+        name: 'Al Maha',
+        address: 'Zamalek, Cairo',
+        clientId: 'c1',
+        workflowType: 'Stage',
+        stageTemplateId: 't1',
+        estimatedStartDate: '2026-07-01',
+        estimatedEndDate: '2027-04-12',
+        description: 'Scope',
+        notes: 'Internal',
+      },
+    ]);
+  });
+
+  it('sends nulls for the optional fields of a FreeStyle project', () => {
+    const { c, create } = setup();
+    c.form.patchValue({
+      code: 'AM-04',
+      name: 'Al Maha',
+      address: 'Zamalek, Cairo',
+      clientId: 'c1',
+      workflowType: 'FreeStyle',
+    });
+    c.submit();
+    expect(create.mock.calls[0]).toStrictEqual([
+      {
+        code: 'AM-04',
+        name: 'Al Maha',
+        address: 'Zamalek, Cairo',
+        clientId: 'c1',
+        workflowType: 'FreeStyle',
+        stageTemplateId: null,
+        estimatedStartDate: null,
+        estimatedEndDate: null,
+        description: null,
+        notes: null,
+      },
+    ]);
+  });
+});

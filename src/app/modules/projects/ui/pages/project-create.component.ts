@@ -134,13 +134,14 @@ export class ProjectCreateComponent implements OnInit {
   }
 
   submit(): void {
-    if (this.form.invalid) {
+    const v = this.form.getRawValue();
+    // clientId is Validators.required, so a valid form never has it null; the check narrows the type.
+    if (this.form.invalid || v.clientId === null) {
       this.form.markAllAsTouched();
       return;
     }
     this.submitting.set(true);
     this.serverError.set(null);
-    const v = this.form.getRawValue();
     const payload = {
       code: v.code.trim(),
       name: v.name.trim(),
@@ -152,7 +153,7 @@ export class ProjectCreateComponent implements OnInit {
       estimatedEndDate: v.estimatedEndDate || null,
       description: v.description.trim() || null,
       notes: v.notes.trim() || null,
-    } as unknown as CreateProjectRequest;
+    } satisfies CreateProjectRequest;
 
     this.projects.create(payload).subscribe({
       next: (id) => {

@@ -39,3 +39,21 @@ describe('CrmProjectQuickCreateComponent — no budget (008b FINDING-6-1)', () =
     expect(close).toHaveBeenCalledWith('new-id');
   });
 });
+
+describe('CrmProjectQuickCreateComponent — POST body (008b FINDING-6-2)', () => {
+  it('sends exactly a FreeStyle CreateProjectRequest for the hub client', () => {
+    const { c, create } = setup();
+    c.form.patchValue({ name: ' Villa ', code: ' VL-01 ', address: ' New Cairo, Cairo ' });
+    c.submit();
+    expect(create.mock.calls[0]).toStrictEqual([
+      {
+        code: 'VL-01',
+        name: 'Villa',
+        address: 'New Cairo, Cairo',
+        clientId: 'C',
+        workflowType: 'FreeStyle',
+        stageTemplateId: null,
+      },
+    ]);
+  });
+});

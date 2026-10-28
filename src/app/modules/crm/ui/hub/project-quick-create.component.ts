@@ -117,7 +117,7 @@ export class CrmProjectQuickCreateComponent {
       clientId: this.data.clientId,
       workflowType: 'FreeStyle',
       stageTemplateId: null,
-    } as unknown as CreateProjectRequest;
+    } satisfies CreateProjectRequest;
 
     this.projects.create(payload).subscribe({
       next: (id) => {
