@@ -19,7 +19,8 @@ const MAX_PAGE_SIZE = 200;
 /**
  * Requirement items — `/api/crm/periods/{periodId}/items`, `/api/crm/project-tasks/{taskId}/requirement-items`
  * and `/api/crm/requirement-items/{itemId}` (office), `/api/crm/portal/requirement-items` (client). `crm.items.create/update/send/supersede` on office mutations,
- * `crm.items.read` to search, `crm.portal` on the client's own add.
+ * `crm.items.read` to search, `requirements.submit_own` on the client's own add
+ * (`CrmPortalEndpoints.cs:70`).
  */
 @Injectable({ providedIn: 'root' })
 export class CrmItemService extends ApiService {

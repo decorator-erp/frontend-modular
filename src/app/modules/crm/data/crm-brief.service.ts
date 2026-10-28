@@ -186,9 +186,11 @@ export class CrmBriefService extends ApiService {
   }
 
   /**
-   * `GET /briefs/{briefId}/rounds/{round}/diff` — permission `crm.portal`. Raw facts:
-   * `field` is the exact PascalCase property name; values are bare-integer-string enums,
-   * never prose. Round 1 → `previousRound: null`, empty `changes`.
+   * `GET /briefs/{briefId}/rounds/{round}/diff` — two audiences on one route: `crm.briefs.read` is
+   * the office, else `crm.briefs.view_own` is the client (own projects, no budget); neither is 403
+   * (`CrmBriefEndpoints.cs:148-176`). Raw facts: `field` is the exact PascalCase property name;
+   * values are bare-integer-string enums, never prose. Round 1 → `previousRound: null`, and
+   * `changes` lists every set field with a `null` previous value (`CrmBriefHeadSnapshot.DiffFrom`).
    */
   getHeadDiff(briefId: string, round: number): Observable<BriefHeadDiff> {
     return this.get<unknown>(`/crm/briefs/${briefId}/rounds/${round}/diff`).pipe(
