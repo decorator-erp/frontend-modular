@@ -29,6 +29,12 @@ const SOURCE_KEYS: Record<LeadSource, CatalogKey> = {
   [LeadSource.Other]: 'common.other',
 };
 
+/** Create-lead domain codes that belong to one control (009b #3, `Errors.cs:57,84`). */
+const CREATE_FIELD_MAP: Record<string, 'ownerId' | 'firstName'> = {
+  'crm.leads.OwnerNotFound': 'ownerId',
+  'crm.leads.NameRequired': 'firstName',
+};
+
 /** New lead (T040, FR-021). A slim intake — the lead is qualified/converted elsewhere. */
 @Component({
   selector: 'app-crm-lead-form',
@@ -186,7 +192,7 @@ export class CrmLeadFormComponent {
         email: v.email.trim() || null,
         phone: v.phone.trim() || null,
         notes: v.notes.trim() || null,
-        ownerId: v.ownerId,
+        ownerId: v.ownerId ?? '',
       })
       .subscribe({
         next: () => {
@@ -195,7 +201,15 @@ export class CrmLeadFormComponent {
         },
         error: (err) => {
           const parsed = this.errorHandler.parse(err);
-          this.serverError.set({ ...parsed, generalMessage: friendly(parsed) });
+          const message = friendly(parsed);
+          this.serverError.set({ ...parsed, generalMessage: message });
+          const field = parsed.code ? CREATE_FIELD_MAP[parsed.code] : undefined;
+          if (field) {
+            // `server`, not `serverError`: the [serverErrors] directive clears only its own key.
+            const control = this.form.controls[field];
+            control.setErrors({ ...(control.errors ?? {}), server: message });
+            control.markAsTouched();
+          }
           this.submitting.set(false);
         },
       });

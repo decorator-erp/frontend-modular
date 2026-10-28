@@ -42,7 +42,8 @@ export interface CreateLeadRequest {
   email?: string | null;
   phone?: string | null;
   notes?: string | null;
-  ownerId?: string | null;
+  /** Required: an active HR employee (400 `crm.leads.OwnerNotFound`). */
+  ownerId: string;
 }
 
 export interface UpdateLeadRequest {
@@ -67,9 +68,9 @@ export interface ConvertLeadRequest {
  */
 @Injectable({ providedIn: 'root' })
 export class CrmLeadService extends ApiService {
-  /** `POST /` → `201` with a bare `Guid`. */
+  /** `POST /` → `201 { leadId }` (`CrmLeadEndpoints.cs:26-31`). */
   create(request: CreateLeadRequest): Observable<string> {
-    return this.post<unknown>('/crm/leads', request).pipe(map((r) => this.unwrap<string>(r)));
+    return this.post<unknown>('/crm/leads', request).pipe(map((r) => this.unwrapId(r, 'leadId')));
   }
 
   /** `PUT /{id}` → `204`. */

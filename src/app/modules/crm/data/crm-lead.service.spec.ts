@@ -113,4 +113,20 @@ describe('CrmLeadService', () => {
       });
     });
   });
+
+  describe('create (009b #3) — 201 { leadId }, ownerId required', () => {
+    it('emits the id read off the one-property 201 body', () => {
+      let id: string | undefined;
+      service
+        .create({ firstName: 'Mona', lastName: 'Adel', source: LeadSource.Phone, ownerId: 'E1' })
+        .subscribe((v) => (id = v));
+
+      const req = http.expectOne(url('/crm/leads'));
+      expect(req.request.method).toBe('POST');
+      expect(req.request.body.ownerId).toBe('E1');
+      req.flush({ leadId: 'L1' }, { status: 201, statusText: 'Created' });
+
+      expect(id).toBe('L1');
+    });
+  });
 });
