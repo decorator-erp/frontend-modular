@@ -24,15 +24,6 @@ import type {
   UpdateCatalogItemRequest,
 } from '../model';
 
-/** Facets for the item feed. `optionId` is only honored together with `attributeId`. */
-export interface CatalogItemQuery {
-  spaceTypeId?: string | null;
-  categoryId?: string | null;
-  attributeId?: string | null;
-  optionId?: string | null;
-  includeInactive?: boolean;
-}
-
 /**
  * Global catalog master data — `/api/crm/catalog/*`. Permission-gated but NOT
  * project-scoped: reads need `crm.catalog.read`, writes `crm.catalog.manage`.
@@ -232,20 +223,15 @@ export class CrmCatalogService extends ApiService {
   }
 
   /**
-   * `GET /api/crm/catalog/items?spaceTypeId=&categoryId=&attributeId=&optionId=&includeInactive=`
-   * — `crm.catalog.read`. The faceted item feed.
-   *
-   * `optionId` is only applied **together with** `attributeId`; alone it is silently
-   * ignored, so send the pair or neither.
+   * `GET /api/crm/catalog/categories/{categoryId}/items` — `crm.catalog.read` (009b #35).
+   * The category's own items, inactive included, ordered by `sortOrder`; an unknown
+   * category gives `[]`. No facets: the space-type/attribute/option feed is gone, and the
+   * wire carries no attribute values, description or image (they normalise to `[]`/`null`).
    */
-  getItems(query: CatalogItemQuery = {}): Observable<CatalogItem[]> {
-    return this.get<unknown>('/crm/catalog/items', {
-      spaceTypeId: query.spaceTypeId ?? undefined,
-      categoryId: query.categoryId ?? undefined,
-      attributeId: query.attributeId ?? undefined,
-      optionId: query.optionId ?? undefined,
-      includeInactive: query.includeInactive ?? false,
-    }).pipe(map((r) => this.unwrapArray<unknown>(r).map((i) => this.normalizeItem(i))));
+  itemsByCategory(categoryId: string): Observable<CatalogItem[]> {
+    return this.get<unknown>(`/crm/catalog/categories/${categoryId}/items`).pipe(
+      map((r) => this.unwrapArray<unknown>(r).map((i) => this.normalizeItem(i))),
+    );
   }
 
   /** `GET /api/crm/catalog/items/{itemId}` — `crm.catalog.read`. */

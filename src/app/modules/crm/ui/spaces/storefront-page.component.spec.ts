@@ -68,6 +68,7 @@ describe('CrmStorefrontPageComponent', () => {
     loadItemsForSpaceType: ReturnType<typeof vi.fn>;
     itemsForSpaceType: ReturnType<typeof vi.fn>;
     poolLoading: ReturnType<typeof vi.fn>;
+    poolError: ReturnType<typeof vi.fn>;
   };
   let router: { navigate: ReturnType<typeof vi.fn> };
 
@@ -88,6 +89,7 @@ describe('CrmStorefrontPageComponent', () => {
       loadItemsForSpaceType: vi.fn(),
       itemsForSpaceType: vi.fn().mockReturnValue(undefined),
       poolLoading: vi.fn().mockReturnValue(false),
+      poolError: vi.fn().mockReturnValue(null),
     };
     router = { navigate: vi.fn() };
 
@@ -121,6 +123,16 @@ describe('CrmStorefrontPageComponent', () => {
     make();
     expect(store.load).toHaveBeenCalledWith('project-1');
     expect(catalogStore.loadCategories).toHaveBeenCalled();
+  });
+
+  it('renders the pool as "not available" when the store says so (009b #35)', () => {
+    catalogStore.poolError.mockReturnValue('cat.notAvailable');
+    const fixture = TestBed.createComponent(CrmStorefrontPageComponent);
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('[data-testid="store-pool-unavailable"]')?.textContent).toContain(
+      'Not available yet.',
+    );
   });
 
   it('loads the pool for the resolved space type once the space itself resolves', () => {

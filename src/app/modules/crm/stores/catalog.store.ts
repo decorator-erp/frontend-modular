@@ -197,7 +197,7 @@ export const CatalogStore = signalStore(
       loadItemsForCategory(categoryId: string, nowMs: number = Date.now(), force = false): void {
         const entry = store.itemsByCategory()[categoryId];
         if (!force && entry && nowMs - entry.fetchedAtMs < CATALOG_TTL_MS) return;
-        api.getItems({ categoryId }).subscribe({
+        api.itemsByCategory(categoryId).subscribe({
           next: (items) =>
             patchState(store, (s) => ({
               itemsByCategory: {
@@ -216,39 +216,18 @@ export const CatalogStore = signalStore(
       // ── v2 items by space type — the storefront's whole pool ─────────────
 
       /**
-       * Every item for one space type, fetched ONCE and held in memory. Facet counts in
-       * the storefront are self-excluding — each group's count is computed with that
-       * group's own selection dropped but every other filter still applied — which a
-       * server-filtered response cannot answer, because the filtering has already thrown
-       * away the rows a count would need. So filtering happens entirely client-side over
-       * this pool; `getItems({ spaceTypeId })` is the only network call, on facet change
-       * or search the pool is just re-derived in memory.
-       *
-       * BOUND THIS ASSUMES: the catalog is master data in the hundreds per space type —
-       * the same assumption `categories` already makes for the whole tree. Past a
-       * few thousand items for one space type, this fetch and the per-keystroke recount
-       * become the cost. The fix then is server-side paging PLUS a server-computed
-       * facet-count endpoint — paging alone cannot restore self-excluding counts, which
-       * need the full unfiltered set to answer "how many WOULD match without my own
-       * selection". Nothing in this store enforces the bound; it is a design assumption,
-       * recorded here so the first large catalog has an explanation rather than a mystery.
+       * The storefront's whole item pool for one space type — **not available** (009b #35).
+       * The backend's only item read is per category (`GET /categories/{id}/items`), with no
+       * space-type, attribute or option facet, and no route reads a category's space-type
+       * mappings, so the pool cannot be built. No request is made; `poolError` carries the
+       * catalog's "not available" key. The signature stays for the storefront page.
        */
-      loadItemsForSpaceType(spaceTypeId: string, nowMs: number = Date.now(), force = false): void {
-        const entry = store.itemsBySpaceType()[spaceTypeId];
-        if (!force && entry && nowMs - entry.fetchedAtMs < CATALOG_TTL_MS) return;
-        patchState(store, { poolLoading: true, poolError: null });
-        api.getItems({ spaceTypeId }).subscribe({
-          next: (items) =>
-            patchState(store, (s) => ({
-              itemsBySpaceType: {
-                ...s.itemsBySpaceType,
-                [spaceTypeId]: { items, fetchedAtMs: nowMs },
-              },
-              poolLoading: false,
-              poolError: null,
-            })),
-          error: () => patchState(store, { poolLoading: false, poolError: 'cat.itemsLoadFailed' }),
-        });
+      loadItemsForSpaceType(
+        _spaceTypeId: string,
+        _nowMs: number = Date.now(),
+        _force = false,
+      ): void {
+        patchState(store, { poolLoading: false, poolError: 'cat.notAvailable' });
       },
 
       itemsForSpaceType(spaceTypeId: string): CatalogItem[] | undefined {

@@ -445,9 +445,6 @@ import {
                     [dot]="false"
                   />
                 }
-                <span class="fs-micro text-text-muted truncate max-w-[40%]" dir="auto">{{
-                  itemSpecSummary(item)
-                }}</span>
                 <button
                   type="button"
                   class="p-1 rounded hover:bg-surface-muted"
@@ -709,24 +706,6 @@ export class CrmCatalogCategoryDetailComponent {
     return this.catalog.t('cat.inheritedFrom', {
       name: owner ? this.name(owner) : attr.categoryId,
     });
-  }
-
-  /** A resolved-spec preview for the Items list — item values only, unit appended. */
-  itemSpecSummary(item: CatalogItem): string {
-    if (item.attributes.length === 0) return '';
-    return item.attributes
-      .map((v) => {
-        const value =
-          (this.catalog.locale() === 'ar' ? v.optionNameAr : v.optionNameEn) ??
-          v.valueText ??
-          (v.valueNumber != null ? String(v.valueNumber) + (v.unit ? ' ' + v.unit : '') : null) ??
-          (v.valueBool != null ? String(v.valueBool) : null) ??
-          v.valueDate;
-        if (value == null) return null;
-        return `${this.name(v)}: ${value}`;
-      })
-      .filter((s): s is string => s !== null)
-      .join(' · ');
   }
 
   moveOptions(category: CatalogCategory): SelectOption[] {

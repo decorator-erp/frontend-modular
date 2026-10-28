@@ -51,7 +51,7 @@ function apiMock() {
     setItemActive: vi.fn().mockReturnValue(of(undefined)),
     deleteItem: vi.fn().mockReturnValue(of(undefined)),
     effectiveAttributes: vi.fn().mockReturnValue(of([])),
-    getItems: vi.fn().mockReturnValue(of([])),
+    itemsByCategory: vi.fn().mockReturnValue(of([])),
     addAttribute: vi.fn().mockReturnValue(of('attr-id')),
     updateAttribute: vi.fn().mockReturnValue(of(undefined)),
     deleteAttribute: vi.fn().mockReturnValue(of(undefined)),

@@ -24,8 +24,8 @@ describe('CrmCatalogService', () => {
   const url = (path: string) => `${environment.apiUrl}${path}`;
 
   // `itemsForSpaceType()` — REMOVED (Run B, F5) along with its sole caller,
-  // `record-items-dialog.component.ts`. The storefront that replaces it uses
-  // `getItems({ spaceTypeId })`, covered below under 'getItems() — the v2 faceted feed'.
+  // `record-items-dialog.component.ts`. `getItems()` went too (009b #35): the only item
+  // read left is `itemsByCategory()`.
 
   // 009b #34: CrmCatalogEndpoints.cs:83-88 serves the whole tree, flat, from GET /tree
   // (CrmCatalogCategoryResponse, CatalogContracts.cs:5-7) — no description, image or
@@ -89,55 +89,33 @@ describe('CrmCatalogService', () => {
     });
   });
 
-  describe('getItems() — the v2 faceted feed', () => {
-    it('sends the facet params and normalizes attributes keyed by attributeId', () => {
+  // 009b #35: CrmCatalogEndpoints.cs:90-96 — the only item read is per category
+  // (CrmCatalogItemResponse, CatalogContracts.cs:9-11): no facets, attributes, description
+  // or image.
+  describe('itemsByCategory() (009b #35)', () => {
+    it('GETs the category items route with no facet params', () => {
       let items: CatalogItem[] = [];
-      service
-        .getItems({ spaceTypeId: 'st-1', attributeId: 'attr-1', optionId: 'opt-1' })
-        .subscribe((r) => (items = r));
+      service.itemsByCategory('C').subscribe((r) => (items = r));
 
-      const req = http.expectOne(
-        (r) =>
-          r.url === url('/crm/catalog/items') &&
-          r.params.get('spaceTypeId') === 'st-1' &&
-          r.params.get('attributeId') === 'attr-1' &&
-          r.params.get('optionId') === 'opt-1',
-      );
+      const req = http.expectOne(url('/crm/catalog/categories/C/items'));
+      expect(req.request.method).toBe('GET');
+      expect(req.request.params.keys()).toEqual([]);
       req.flush([
         {
           id: 'item-1',
-          categoryId: 'cat-1',
+          categoryId: 'C',
           code: 'oak-wardrobe',
           nameEn: 'Oak wardrobe',
           nameAr: 'دولاب خشب',
-          descriptionEn: null,
-          descriptionAr: null,
-          imageUri: null,
           isPurchasable: true,
           sortOrder: 0,
-          isActive: true,
-          attributes: [
-            {
-              attributeId: 'attr-1',
-              code: 'style',
-              nameEn: 'Style',
-              nameAr: 'الطراز',
-              dataType: CatalogAttributeType.Select,
-              unit: null,
-              valueText: null,
-              valueNumber: null,
-              valueBool: null,
-              valueDate: null,
-              optionId: 'opt-1',
-              optionNameEn: 'Modern',
-              optionNameAr: 'حديث',
-            },
-          ],
+          isActive: false,
         },
       ]);
 
-      expect(items[0].categoryId).toBe('cat-1');
-      expect(items[0].attributes[0].attributeId).toBe('attr-1');
+      expect(items[0].categoryId).toBe('C');
+      expect(items[0].isActive).toBe(false);
+      expect(items[0].attributes).toEqual([]);
       expect(items[0].trackKey).toBe('item-1');
     });
   });

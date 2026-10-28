@@ -162,6 +162,14 @@ interface ActiveChip {
 
           @if (poolLoading()) {
             <div class="flex justify-center py-12"><pera-spinner size="md" tone="accent" /></div>
+          } @else if (poolError(); as key) {
+            <!-- 009b #35: no route serves an item pool per space type. -->
+            <p
+              class="fs-caption text-text-muted text-center py-12 m-0"
+              data-testid="store-pool-unavailable"
+            >
+              {{ catalog.t(key) }}
+            </p>
           } @else if (sortedItems().length === 0) {
             <p class="fs-caption text-text-muted text-center py-12 m-0">
               {{ catalog.t('store.noResults') }}
@@ -267,6 +275,7 @@ export class CrmStorefrontPageComponent {
 
   readonly board = computed(() => this.store.board(this.spaceId()));
   readonly poolLoading = this.catalogStore.poolLoading;
+  readonly poolError = this.catalogStore.poolError;
 
   // ── Filter state ──────────────────────────────────────────────────────
   readonly categoryIds = signal<Set<string>>(new Set());

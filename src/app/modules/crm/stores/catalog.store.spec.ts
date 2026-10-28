@@ -52,7 +52,7 @@ function apiMock() {
   return {
     effectiveAttributes: vi.fn().mockReturnValue(of([])),
     getCategories: vi.fn().mockReturnValue(of(CAT_TREE)),
-    getItems: vi.fn().mockReturnValue(of([catalogItem('sofa-1', 'seating')])),
+    itemsByCategory: vi.fn().mockReturnValue(of([catalogItem('sofa-1', 'seating')])),
   };
 }
 
@@ -140,7 +140,7 @@ describe('CatalogStore', () => {
     it('fetches by categoryId and caches under that key', () => {
       const s = store();
       s.loadItemsForCategory('seating', t0);
-      expect(api.getItems).toHaveBeenCalledWith({ categoryId: 'seating' });
+      expect(api.itemsByCategory).toHaveBeenCalledWith('seating');
       expect(s.itemsForCategory('seating')?.map((i) => i.id)).toEqual(['sofa-1']);
     });
 
@@ -153,49 +153,27 @@ describe('CatalogStore', () => {
       const s = store();
       s.loadItemsForCategory('seating', t0);
       s.loadItemsForCategory('seating', t0 + CATALOG_TTL_MS - 1);
-      expect(api.getItems).toHaveBeenCalledTimes(1);
+      expect(api.itemsByCategory).toHaveBeenCalledTimes(1);
     });
 
     it('`force` refetches even inside the TTL', () => {
       const s = store();
       s.loadItemsForCategory('seating', t0);
       s.loadItemsForCategory('seating', t0, true);
-      expect(api.getItems).toHaveBeenCalledTimes(2);
+      expect(api.itemsByCategory).toHaveBeenCalledTimes(2);
     });
   });
 
-  describe('v2 items — the storefront pool, whole set per space type', () => {
-    it('fetches by spaceTypeId and caches under that key', () => {
+  // 009b #35: the only item read is GET /categories/{id}/items — no space-type, attribute
+  // or option facet. The storefront's per-space-type pool is "not available"; the fetch,
+  // TTL and force cases went with the route.
+  describe('v2 items — the storefront pool is not available (009b #35)', () => {
+    it('issues no request and reports cat.notAvailable', () => {
       const s = store();
       s.loadItemsForSpaceType('st-1', t0);
-      expect(api.getItems).toHaveBeenCalledWith({ spaceTypeId: 'st-1' });
-      expect(s.itemsForSpaceType('st-1')?.map((i) => i.id)).toEqual(['sofa-1']);
-    });
-
-    it('is undefined for a space type never loaded — not an empty array', () => {
-      const s = store();
+      expect(api.itemsByCategory).not.toHaveBeenCalled();
       expect(s.itemsForSpaceType('st-1')).toBeUndefined();
-    });
-
-    it('does not refetch inside the TTL for the same space type', () => {
-      const s = store();
-      s.loadItemsForSpaceType('st-1', t0);
-      s.loadItemsForSpaceType('st-1', t0 + CATALOG_TTL_MS - 1);
-      expect(api.getItems).toHaveBeenCalledTimes(1);
-    });
-
-    it('`force` refetches even inside the TTL', () => {
-      const s = store();
-      s.loadItemsForSpaceType('st-1', t0);
-      s.loadItemsForSpaceType('st-1', t0, true);
-      expect(api.getItems).toHaveBeenCalledTimes(2);
-    });
-
-    it('tracks poolLoading/poolError independently of the tree fetch', () => {
-      api.getItems.mockReturnValueOnce(throwError(() => new Error('boom')));
-      const s = store();
-      s.loadItemsForSpaceType('st-1', t0);
-      expect(s.poolError()).toBe('cat.itemsLoadFailed');
+      expect(s.poolError()).toBe('cat.notAvailable');
       expect(s.poolLoading()).toBe(false);
       expect(s.treeLoading()).toBe(false);
     });
