@@ -3,7 +3,11 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { forkJoin, of, type Observable } from 'rxjs';
 import { catchError, map, switchMap } from 'rxjs/operators';
 import { injectReloadOnConflict } from '@platform/http/concurrency';
-import { ErrorHandlerService, friendly } from '@platform/http/error-handler.service';
+import {
+  ErrorHandlerService,
+  friendly,
+  hasCatalogMessage,
+} from '@platform/http/error-handler.service';
 import { patchState, signalStore, withComputed, withMethods, withState } from '@ngrx/signals';
 import { CrmMeetingService } from '../data/crm-meeting.service';
 import { MeetingSlotStatus, MeetingStatus, MeetingType } from '../model/crm-enums';
@@ -162,7 +166,10 @@ export const MeetingsStore = signalStore(
           return;
         }
         const parsed = err instanceof HttpErrorResponse ? errors.parse(err) : null;
-        patchState(store, { mutating: false, error: parsed?.code ? friendly(parsed) : fallback });
+        patchState(store, {
+          mutating: false,
+          error: parsed && hasCatalogMessage(parsed) ? friendly(parsed) : fallback,
+        });
       };
       const officeReload = (): (() => void) | null => {
         const projectId = store.projectId();
@@ -232,7 +239,10 @@ export const MeetingsStore = signalStore(
                 const parsed = err instanceof HttpErrorResponse ? errors.parse(err) : null;
                 patchState(store, {
                   loading: false,
-                  error: parsed?.code ? friendly(parsed) : 'Could not load your meetings.',
+                  error:
+                    parsed && hasCatalogMessage(parsed)
+                      ? friendly(parsed)
+                      : 'Could not load your meetings.',
                 });
               },
             });

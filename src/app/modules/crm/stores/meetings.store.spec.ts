@@ -273,6 +273,18 @@ describe('MeetingsStore', () => {
   });
 
   describe('portal methods', () => {
+    // FINDING-5-13: a route-claim 403 (no code) shows the permission message, not "Could not load".
+    it('loadPortal shows the permission message on an uncoded 403', () => {
+      api.portalList.mockReturnValue(
+        throwError(() => new HttpErrorResponse({ status: 403, error: null })),
+      );
+      const s = store();
+
+      s.loadPortal(PROJECT_ID);
+
+      expect(s.error()).toBe("You don't have permission to do that.");
+    });
+
     it('loadPortal filters the client’s meetings to one project', () => {
       const other = portalRow({ id: 'm-other', projectId: 'project-2' });
       api.portalList.mockReturnValue(of(portalPage([portalRow(), other])));

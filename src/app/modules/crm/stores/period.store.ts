@@ -2,7 +2,11 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { computed, inject } from '@angular/core';
 import { patchState, signalStore, withComputed, withMethods, withState } from '@ngrx/signals';
 import { injectReloadOnConflict } from '@platform/http/concurrency';
-import { ErrorHandlerService, friendly } from '@platform/http/error-handler.service';
+import {
+  ErrorHandlerService,
+  friendly,
+  hasCatalogMessage,
+} from '@platform/http/error-handler.service';
 import { CrmPeriod, CrmPeriodService } from '../data/crm-period.service';
 import { RequirementPeriodStatus } from '../model/crm-enums';
 
@@ -149,5 +153,5 @@ export const PeriodStore = signalStore(
 function codedMessage(err: unknown, errors: ErrorHandlerService): string | null {
   if (!(err instanceof HttpErrorResponse)) return null;
   const parsed = errors.parse(err);
-  return parsed.code ? friendly(parsed) : null;
+  return hasCatalogMessage(parsed) ? friendly(parsed) : null;
 }

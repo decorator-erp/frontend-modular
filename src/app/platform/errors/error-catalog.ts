@@ -496,6 +496,9 @@ export const ERROR_MESSAGES: Record<string, string> = {
   'projects.scope.ItemNotFound': 'That item is not in the scope of work.',
   'projects.scope.NegativeFee': 'A fee cannot be negative.',
   'teams.MissingHead': 'A department in a picked stage has no head. Assign one first.',
+  // FINDING-5-13: an uncoded 403 (a route-permission refusal carries no code); not a backend
+  // code — `friendly()` maps status 403 with no code to this key so the text can be localized.
+  'http.Forbidden': "You don't have permission to do that.",
 };
 
 /**
@@ -628,6 +631,8 @@ export const ERROR_MESSAGES_AR: Record<string, string> = {
   'projects.scope.NegativeFee': 'لا يمكن أن تكون الأتعاب سالبة.',
   'stage_templates.NotFound': 'قالب المرحلة غير موجود.',
   'teams.MissingHead': 'أحد الأقسام في مرحلة مختارة بلا رئيس. عيّن رئيسًا أولًا.',
+  // FINDING-5-13: an uncoded 403 (route permission) — `friendly()` maps it to this key.
+  'http.Forbidden': 'ليس لديك صلاحية للقيام بذلك.',
 };
 
 /**

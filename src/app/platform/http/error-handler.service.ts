@@ -165,7 +165,17 @@ export interface FormError {
  * Arabic under the Arabic locale, where the catalog has it (009b X-2).
  */
 export function friendly(error: ParsedApiError): string {
-  return friendlyMessage(error.code, error.generalMessage, activeLocale());
+  // FINDING-5-13: a route-permission 403 carries no code; give it the localized catalog text.
+  const code = error.code ?? (error.status === 403 ? 'http.Forbidden' : null);
+  return friendlyMessage(code, error.generalMessage, activeLocale());
+}
+
+/**
+ * True when `friendly()` has a catalog message for this error: a coded error, or an uncoded 403
+ * (FINDING-5-13). Callers with their own fixed fallback copy use it to choose between the two.
+ */
+export function hasCatalogMessage(error: ParsedApiError): boolean {
+  return !!error.code || error.status === 403;
 }
 
 export function toLegacyFormError(parsed: ParsedApiError): FormError {

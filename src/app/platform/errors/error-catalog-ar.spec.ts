@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { ERROR_MESSAGES, ERROR_MESSAGES_AR, friendlyMessage } from './error-catalog';
-import { friendly } from '../http/error-handler.service';
+import { friendly, hasCatalogMessage } from '../http/error-handler.service';
 import { LocaleService } from '../i18n/locale.service';
 import type { ParsedApiError } from '../types/api-error';
 
@@ -178,5 +178,22 @@ describe('friendly() follows the active locale (009b X-2)', () => {
   it('keeps the backend message for an unknown code in either locale', () => {
     locale.locale.set('ar');
     expect(friendly(parsed('no.such.Code'))).toBe('raw detail');
+  });
+
+  // FINDING-5-13: a route-claim 403 carries no code; it still gets the catalog's localized text.
+  it('maps an uncoded 403 to the localized permission message', () => {
+    const forbidden: ParsedApiError = {
+      status: 403,
+      generalMessage: "You don't have permission to perform this action.",
+      fieldErrors: {},
+      code: null,
+      raw: null,
+    };
+    locale.locale.set('ar');
+    expect(friendly(forbidden)).toBe(ERROR_MESSAGES_AR['http.Forbidden']);
+    locale.locale.set('en');
+    expect(friendly(forbidden)).toBe(ERROR_MESSAGES['http.Forbidden']);
+    expect(hasCatalogMessage(forbidden)).toBe(true);
+    expect(hasCatalogMessage({ ...forbidden, status: 500 })).toBe(false);
   });
 });

@@ -4,7 +4,11 @@ import { patchState, signalStore, withComputed, withMethods, withState } from '@
 import { Subscription, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { CrmBriefService } from '../data/crm-brief.service';
-import { ErrorHandlerService, friendly } from '@platform/http/error-handler.service';
+import {
+  ErrorHandlerService,
+  friendly,
+  hasCatalogMessage,
+} from '@platform/http/error-handler.service';
 import { injectReloadOnConflict } from '@platform/http/concurrency';
 import type { ParsedApiError } from '@platform/types';
 import { ApprovalState } from '../model/crm-enums';
@@ -223,7 +227,10 @@ export const BriefStore = signalStore(
               loading: false,
               head: null,
               spaces: [],
-              error: parsed?.code ? friendly(parsed) : 'Could not load your brief.',
+              error:
+                parsed && hasCatalogMessage(parsed)
+                  ? friendly(parsed)
+                  : 'Could not load your brief.',
             });
           },
         });
@@ -255,7 +262,10 @@ export const BriefStore = signalStore(
             const parsed = err instanceof HttpErrorResponse ? errors.parse(err) : null;
             patchState(store, {
               savingHead: false,
-              error: parsed?.code ? friendly(parsed) : 'Could not save the brief head.',
+              error:
+                parsed && hasCatalogMessage(parsed)
+                  ? friendly(parsed)
+                  : 'Could not save the brief head.',
             });
             if (parsed) handlers?.onError?.(parsed);
           },
@@ -287,7 +297,10 @@ export const BriefStore = signalStore(
             const parsed = err instanceof HttpErrorResponse ? errors.parse(err) : null;
             patchState(store, {
               sending: false,
-              error: parsed?.code ? friendly(parsed) : 'Could not send the brief for confirmation.',
+              error:
+                parsed && hasCatalogMessage(parsed)
+                  ? friendly(parsed)
+                  : 'Could not send the brief for confirmation.',
             });
           },
         });
@@ -366,5 +379,5 @@ export const BriefStore = signalStore(
 /** FINDING-5-7: a coded failure (e.g. a handled 403) shows its catalog message, else `fallback`. */
 function codedOr(err: unknown, errors: ErrorHandlerService, fallback: string): string {
   const parsed = err instanceof HttpErrorResponse ? errors.parse(err) : null;
-  return parsed?.code ? friendly(parsed) : fallback;
+  return parsed && hasCatalogMessage(parsed) ? friendly(parsed) : fallback;
 }

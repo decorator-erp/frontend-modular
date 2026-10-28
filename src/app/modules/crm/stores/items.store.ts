@@ -2,7 +2,11 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { computed, inject } from '@angular/core';
 import { patchState, signalStore, withComputed, withMethods, withState } from '@ngrx/signals';
 import { injectReloadOnConflict } from '@platform/http/concurrency';
-import { ErrorHandlerService, friendly } from '@platform/http/error-handler.service';
+import {
+  ErrorHandlerService,
+  friendly,
+  hasCatalogMessage,
+} from '@platform/http/error-handler.service';
 import { CrmItemService } from '../data/crm-item.service';
 import { RequirementCategory } from '../model/crm-enums';
 import type {
@@ -84,7 +88,7 @@ export const ItemsStore = signalStore(
       const failure = (err: unknown, projectId: string | null, fallback: string): string | null => {
         if (projectId && reloadOnConflict(err, () => methods.load(projectId))) return null;
         const parsed = err instanceof HttpErrorResponse ? errors.parse(err) : null;
-        return parsed?.code ? friendly(parsed) : fallback;
+        return parsed && hasCatalogMessage(parsed) ? friendly(parsed) : fallback;
       };
       const methods = {
         /**
