@@ -22,7 +22,7 @@ import {
   UpdateProjectRequest,
   WorkflowType,
 } from '../model/project.model';
-import {
+import type {
   BoqSnapshotResponse,
   InvoiceResponse,
   LedgerMovementResponse,

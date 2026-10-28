@@ -7,7 +7,7 @@ import {
   TaskDetails,
   UpdateProjectTaskRequest,
 } from '../model/project.model';
-import {
+import type {
   LedgerMovementResponse,
   TaskBoqLineResponse,
   TaskInvoiceLineResponse,
