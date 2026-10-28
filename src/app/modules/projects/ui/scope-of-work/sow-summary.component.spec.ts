@@ -108,6 +108,15 @@ describe('SowSummaryComponent — duration and dates (sow #5)', () => {
     expect(el.textContent).not.toContain(EN['sow.durationInvalid']);
   });
 
+  it('FINDING-7-3: an unparsable duration (badInput) is invalid, not a clear', () => {
+    render(scope());
+    const input = durationInput();
+    Object.defineProperty(input, 'validity', { value: { badInput: true }, configurable: true });
+    change(input, '');
+    expect(emitted).toEqual([]);
+    expect(el.textContent).toContain(EN['sow.durationInvalid']);
+  });
+
   it('a start outside 2000-01-01..2100-12-31 is blocked (B7)', () => {
     render(scope());
     change(startInput(), '1999-12-31');

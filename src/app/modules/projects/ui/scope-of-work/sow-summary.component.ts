@@ -272,6 +272,11 @@ export class SowSummaryComponent {
 
   protected onDuration(event: Event): void {
     if (!this.editable()) return;
+    // FINDING-7-3: an unparsable number reads as '' (badInput); it is invalid, not a clear.
+    if ((event.target as HTMLInputElement | null)?.validity?.badInput) {
+      this.setError('duration', 'sow.durationInvalid');
+      return;
+    }
     const raw = valueOf(event).trim();
     const days = raw === '' ? null : Number(raw);
     if (days !== null && (!Number.isInteger(days) || days < DURATION_MIN || days > DURATION_MAX)) {
