@@ -165,3 +165,117 @@ describe('SowSummaryComponent — duration and dates (sow #5)', () => {
     expect(startInput().getAttribute('aria-label')).toBe(EN['sow.plannedStart']);
   });
 });
+
+describe('SowSummaryComponent — fees and adjustment (sow #6)', () => {
+  let fixture: ComponentFixture<SowSummaryComponent>;
+  let el: HTMLElement;
+  let emitted: UpdateScopeOfWorkHeaderRequest[];
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({ imports: [SowSummaryComponent] });
+  });
+
+  function render(s: ScopeOfWork, editable = true) {
+    fixture = TestBed.createComponent(SowSummaryComponent);
+    fixture.componentRef.setInput('scope', s);
+    fixture.componentRef.setInput('editable', editable);
+    emitted = [];
+    fixture.componentInstance.headerChange.subscribe((r) => emitted.push(r));
+    fixture.detectChanges();
+    el = fixture.nativeElement;
+  }
+
+  const adjustmentInput = () => el.querySelector<HTMLInputElement>('pera-money-input input')!;
+  const noteField = () => el.querySelector('[data-adjustment-note]');
+  const noteInput = () => el.querySelector<HTMLInputElement>('[data-adjustment-note] input')!;
+  const notesInput = () => el.querySelector<HTMLTextAreaElement>('pera-textarea textarea')!;
+  const text = (sel: string) => el.querySelector(sel)!.textContent!.replace(/\s+/g, '');
+
+  function change(input: HTMLInputElement | HTMLTextAreaElement, value: string) {
+    input.value = value;
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+    fixture.detectChanges();
+  }
+
+  it('subtotal and total are the server values, in EGP via pera-currency (B8)', () => {
+    // Items 30,000 + 25,000 would be 55,000; the server's numbers are shown, not recomputed.
+    render(scope({ subtotal: 54321, adjustmentAmount: -321, total: 54000 }));
+    expect(el.querySelector('pera-currency[data-subtotal]')).not.toBeNull();
+    expect(text('[data-subtotal]')).toBe('54,321.00EGP');
+    expect(text('[data-total]')).toBe('54,000.00EGP');
+  });
+
+  it('the reason field shows only while the adjustment is not 0 (B8)', () => {
+    render(scope({ adjustmentAmount: 0, adjustmentNote: null }));
+    expect(noteField()).toBeNull();
+    change(adjustmentInput(), '-5000');
+    expect(noteField()).not.toBeNull();
+    expect(noteInput().getAttribute('aria-label')).toBe(EN['sow.adjustmentNote']);
+    change(adjustmentInput(), '0');
+    expect(noteField()).toBeNull();
+  });
+
+  it('a stored non-zero adjustment shows its reason', async () => {
+    render(scope());
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(noteInput().value).toBe('Early-payment discount');
+  });
+
+  it('a negative adjustment (a discount) sends the full header (B8, B9)', () => {
+    render(scope({ adjustmentAmount: 0, adjustmentNote: null }));
+    change(adjustmentInput(), '-7,500');
+    expect(emitted).toEqual([
+      {
+        durationDays: 120,
+        plannedStartDate: '2026-11-01',
+        adjustmentAmount: -7500,
+        adjustmentNote: null,
+        notes: 'Fees exclude furniture.',
+      },
+    ]);
+  });
+
+  it('an adjustment beyond ±1e12 is blocked', () => {
+    render(scope());
+    change(adjustmentInput(), '-1000000000001');
+    expect(emitted).toEqual([]);
+    expect(el.textContent).toContain(EN['sow.adjustmentInvalid']);
+  });
+
+  it('the reason sends the full header; over 500 characters is blocked (B8)', () => {
+    render(scope());
+    change(noteInput(), 'x'.repeat(501));
+    expect(emitted).toEqual([]);
+    expect(el.textContent).toContain(EN['sow.adjustmentNoteInvalid']);
+    change(noteInput(), 'Loyalty discount');
+    expect(emitted).toEqual([
+      {
+        durationDays: 120,
+        plannedStartDate: '2026-11-01',
+        adjustmentAmount: -5000,
+        adjustmentNote: 'Loyalty discount',
+        notes: 'Fees exclude furniture.',
+      },
+    ]);
+  });
+
+  it('notes send the full header; over 2000 characters is blocked; empty is null (B8)', () => {
+    render(scope());
+    expect(notesInput().getAttribute('aria-label')).toBe(EN['sow.notes']);
+    change(notesInput(), 'y'.repeat(2001));
+    expect(emitted).toEqual([]);
+    expect(el.textContent).toContain(EN['sow.notesInvalid']);
+    change(notesInput(), '   ');
+    expect(emitted).toHaveLength(1);
+    expect(emitted[0].notes).toBeNull();
+    expect(emitted[0].adjustmentAmount).toBe(-5000);
+  });
+
+  it('read-only: the fee inputs are disabled', () => {
+    render(scope(), false);
+    expect(adjustmentInput().disabled).toBe(true);
+    expect(noteInput().disabled).toBe(true);
+    expect(notesInput().disabled).toBe(true);
+  });
+});

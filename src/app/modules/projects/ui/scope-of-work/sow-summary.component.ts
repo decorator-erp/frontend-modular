@@ -4,11 +4,19 @@ import {
   computed,
   inject,
   input,
+  linkedSignal,
   output,
   signal,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { PeraDateInputComponent, PeraFormFieldComponent, PeraInputComponent } from '@ds';
+import {
+  PeraCurrencyComponent,
+  PeraDateInputComponent,
+  PeraFormFieldComponent,
+  PeraInputComponent,
+  PeraMoneyInputComponent,
+  PeraTextareaComponent,
+} from '@ds';
 import type { CatalogKey } from '@platform/i18n/catalog/en';
 import { CatalogService } from '@platform/i18n/catalog.service';
 import { formatCairoDate } from '@platform/i18n/intl-locale';
@@ -21,14 +29,19 @@ const DURATION_MIN = 1;
 const DURATION_MAX = 3650;
 const START_MIN = '2000-01-01';
 const START_MAX = '2100-12-31';
+const ADJUSTMENT_MAX = 1_000_000_000_000;
+const ADJUSTMENT_NOTE_MAX = 500;
+const NOTES_MAX = 2000;
 
 const CARD = 'bg-surface border border-border p-5 flex flex-col gap-3 min-w-0';
 const HEADING = 'm-0 fs-h3 font-semibold text-text-primary';
 
-type HeaderField = 'duration' | 'start';
+type HeaderField = 'duration' | 'start' | 'adjustment' | 'adjustmentNote' | 'notes';
 
 /**
- * The scope-of-work header (B7, B9): duration, planned start and the server's estimated end.
+ * The scope-of-work header (B7-B9): duration, planned start and the server's estimated end;
+ * the server's subtotal and total, the adjustment (negative = discount) with its reason, and
+ * the notes.
  * Presentational: every change emits ONE full header (all five fields, `adjustmentAmount`
  * always), built from the stored values plus the change, and the page calls the store. There
  * is no "Save draft": each change saves itself and the quiet status says so (C §8.4.6-7).
@@ -39,9 +52,12 @@ type HeaderField = 'duration' | 'start';
   imports: [
     FormsModule,
     InnerInputLabelDirective,
+    PeraCurrencyComponent,
     PeraDateInputComponent,
     PeraFormFieldComponent,
     PeraInputComponent,
+    PeraMoneyInputComponent,
+    PeraTextareaComponent,
   ],
   host: { class: 'flex flex-col gap-4 min-w-0' },
   template: `
@@ -79,6 +95,57 @@ type HeaderField = 'duration' | 'start';
         <strong class="text-text-primary" data-estimated-end>{{ endText() }}</strong>
       </div>
     </section>
+
+    <section class="${CARD}" aria-labelledby="sow-fees-heading">
+      <h2 id="sow-fees-heading" class="${HEADING}">{{ catalog.t('sow.fees') }}</h2>
+      <div class="flex items-center justify-between gap-3">
+        <span class="text-text-secondary">{{ catalog.t('sow.subtotal') }}</span>
+        <pera-currency data-subtotal [amount]="scope().subtotal" code="EGP" />
+      </div>
+      <pera-form-field [label]="catalog.t('sow.adjustment')" [error]="errorText('adjustment')">
+        <pera-money-input
+          [appInnerInputLabel]="catalog.t('sow.adjustment')"
+          [allowNegative]="true"
+          [ngModel]="scope().adjustmentAmount"
+          [disabled]="!editable()"
+          [error]="errors()['adjustment'] ? 'invalid' : undefined"
+          (change)="onAdjustment($event)"
+        />
+      </pera-form-field>
+      @if (adjustment() !== 0) {
+        <pera-form-field
+          data-adjustment-note
+          [label]="catalog.t('sow.adjustmentNote')"
+          [error]="errorText('adjustmentNote')"
+        >
+          <pera-input
+            [appInnerInputLabel]="catalog.t('sow.adjustmentNote')"
+            [placeholder]="catalog.t('sow.adjustmentNotePlaceholder')"
+            [ngModel]="scope().adjustmentNote ?? ''"
+            [disabled]="!editable()"
+            [error]="errors()['adjustmentNote'] ? 'invalid' : undefined"
+            (change)="onAdjustmentNote($event)"
+          />
+        </pera-form-field>
+      }
+      <div class="flex items-center justify-between gap-3 border-t border-border pt-3 mt-1">
+        <strong class="text-text-primary">{{ catalog.t('sow.total') }}</strong>
+        <pera-currency data-total [amount]="scope().total" code="EGP" />
+      </div>
+    </section>
+
+    <section class="${CARD}">
+      <pera-form-field [label]="catalog.t('sow.notes')" [error]="errorText('notes')">
+        <pera-textarea
+          [appInnerInputLabel]="catalog.t('sow.notes')"
+          [rows]="3"
+          [ngModel]="scope().notes ?? ''"
+          [disabled]="!editable()"
+          [error]="errors()['notes'] ? 'invalid' : undefined"
+          (change)="onNotes($event)"
+        />
+      </pera-form-field>
+    </section>
   `,
 })
 export class SowSummaryComponent {
@@ -98,6 +165,12 @@ export class SowSummaryComponent {
 
   /** Client-side check failures (they block the call, B7). */
   protected readonly errors = signal<Partial<Record<HeaderField, CatalogKey>>>({});
+
+  /**
+   * B8: the adjustment as last entered (the stored one until then), so the reason field shows
+   * as soon as the adjustment is ≠ 0.
+   */
+  protected readonly adjustment = linkedSignal(() => this.scope().adjustmentAmount);
 
   protected readonly statusText = computed(() => {
     const status = this.saveStatus();
@@ -147,6 +220,46 @@ export class SowSummaryComponent {
     if (date !== this.scope().plannedStartDate) this.emit({ plannedStartDate: date });
   }
 
+  /** B8: negative allowed (a discount), ±1e12. */
+  protected onAdjustment(event: Event): void {
+    if (!this.editable()) return;
+    const raw = valueOf(event).replace(/[,\s]/g, '');
+    const amount = raw === '' ? 0 : Number(raw);
+    if (!Number.isFinite(amount) || Math.abs(amount) > ADJUSTMENT_MAX) {
+      this.setError('adjustment', 'sow.adjustmentInvalid');
+      return;
+    }
+    this.setError('adjustment', null);
+    this.adjustment.set(amount);
+    if (amount !== this.scope().adjustmentAmount) this.emit({ adjustmentAmount: amount });
+  }
+
+  /** B8: the reason for the adjustment, ≤500. */
+  protected onAdjustmentNote(event: Event): void {
+    this.onText(event, 'adjustmentNote', ADJUSTMENT_NOTE_MAX, 'sow.adjustmentNoteInvalid');
+  }
+
+  /** B8: the notes, ≤2000. */
+  protected onNotes(event: Event): void {
+    this.onText(event, 'notes', NOTES_MAX, 'sow.notesInvalid');
+  }
+
+  private onText(
+    event: Event,
+    field: 'adjustmentNote' | 'notes',
+    max: number,
+    invalid: CatalogKey,
+  ): void {
+    if (!this.editable()) return;
+    const text = valueOf(event).trim() || null;
+    if (text !== null && text.length > max) {
+      this.setError(field, invalid);
+      return;
+    }
+    this.setError(field, null);
+    if (text !== this.scope()[field]) this.emit({ [field]: text });
+  }
+
   /** The stored header plus `change`: all five fields, every time (a full replace, C §8.4.6). */
   private emit(change: Partial<UpdateScopeOfWorkHeaderRequest>): void {
     const s = this.scope();
@@ -171,6 +284,6 @@ export class SowSummaryComponent {
 }
 
 function valueOf(event: Event): string {
-  const target = event.target as HTMLInputElement | null;
+  const target = event.target as HTMLInputElement | HTMLTextAreaElement | null;
   return target?.value ?? '';
 }

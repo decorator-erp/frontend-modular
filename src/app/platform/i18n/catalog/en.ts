@@ -1202,6 +1202,16 @@ export const EN = {
   'sow.startInvalid': 'Enter a date from 2000-01-01 to 2100-12-31.',
   'sow.saving': 'Saving…',
   'sow.saved': 'Saved',
+  'sow.fees': 'Fees',
+  'sow.subtotal': 'Items subtotal',
+  'sow.adjustment': 'Adjustment (negative = discount)',
+  'sow.adjustmentNote': 'Reason for the adjustment',
+  'sow.adjustmentNotePlaceholder': 'e.g. early-payment discount',
+  'sow.total': 'Total fees',
+  'sow.notes': 'Notes',
+  'sow.adjustmentInvalid': 'Enter an amount from -1,000,000,000,000 to 1,000,000,000,000.',
+  'sow.adjustmentNoteInvalid': 'Keep the reason to 500 characters or fewer.',
+  'sow.notesInvalid': 'Keep the notes to 2,000 characters or fewer.',
 } as const;
 
 /** The key set of record. Every catalog lookup is typed against this. */
