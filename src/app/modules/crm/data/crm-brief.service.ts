@@ -114,9 +114,16 @@ export class CrmBriefService extends ApiService {
     };
   }
 
-  /** `PUT /brief/head` → `204`. Editing returns the head to PendingApproval — the round does NOT move. */
-  updateHead(projectId: string, request: UpdateBriefHeadRequest): Observable<void> {
-    return this.put<void>(`/crm/projects/${projectId}/brief/head`, request);
+  /**
+   * `PUT /api/crm/briefs/{briefId}/head` `{ data, lastMeetingId }` → `204` — `crm.briefs.manage`
+   * (009b #12). Editing never moves the round; only `sendForConfirmation()` does. Validation keys
+   * arrive as `Data.<Field>`.
+   */
+  updateHead(briefId: string, request: UpdateBriefHeadRequest): Observable<void> {
+    return this.put<void>(`/crm/briefs/${briefId}/head`, {
+      data: request.data,
+      lastMeetingId: request.lastMeetingId ?? null,
+    });
   }
 
   /** `PUT /briefs/{briefId}/send-for-confirmation` → `204`. THIS is what advances the round. */

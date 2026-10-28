@@ -277,6 +277,62 @@ describe('BriefStore', () => {
     });
   });
 
+  describe('updateHead (009b #12)', () => {
+    const conflict = (code: string) =>
+      new HttpErrorResponse({ status: 409, error: { title: code, errors: { [code]: ['x'] } } });
+
+    it('keys the PUT by the loaded brief id and wraps the fields in { data, lastMeetingId }', () => {
+      const s = store();
+      s.load(PROJECT_ID, 'stage-1');
+      s.updateHead({ data: { unitType: 2, unitCondition: 3 }, lastMeetingId: 'm-1' });
+      expect(api.updateHead).toHaveBeenCalledWith('brief-1', {
+        data: { unitType: 2, unitCondition: 3 },
+        lastMeetingId: 'm-1',
+      });
+    });
+
+    it('409 crm.briefs.ConcurrencyConflict reloads the brief (X-3) instead of erroring', () => {
+      api.updateHead.mockReturnValue(throwError(() => conflict('crm.briefs.ConcurrencyConflict')));
+      const s = store();
+      s.load(PROJECT_ID, 'stage-1');
+      api.getBriefByStage.mockClear();
+      const onError = vi.fn();
+
+      s.updateHead({ data: { unitType: 1, unitCondition: 1 } }, { onError });
+
+      expect(api.getBriefByStage).toHaveBeenCalledWith('stage-1');
+      expect(s.error()).toBeNull();
+      expect(s.savingHead()).toBe(false);
+      expect(onError).not.toHaveBeenCalled();
+    });
+
+    it('409 crm.briefs.HeadLockedPendingApproval shows its catalog message', () => {
+      api.updateHead.mockReturnValue(
+        throwError(() => conflict('crm.briefs.HeadLockedPendingApproval')),
+      );
+      const s = store();
+      s.load(PROJECT_ID);
+      s.updateHead({ data: { unitType: 1, unitCondition: 1 } });
+      expect(s.error()).toBe(
+        "The brief head can't be edited while it is waiting for the client's decision.",
+      );
+    });
+
+    it('hands a validation failure to onError for the form', () => {
+      const validation = new HttpErrorResponse({
+        status: 400,
+        error: { title: 'Validation.General', errors: { 'Data.AreaSqm': ['Must be > 0.'] } },
+      });
+      api.updateHead.mockReturnValue(throwError(() => validation));
+      const s = store();
+      s.load(PROJECT_ID);
+      const onError = vi.fn();
+      s.updateHead({ data: { unitType: 1, unitCondition: 1 } }, { onError });
+      expect(onError).toHaveBeenCalledWith(expect.objectContaining({ status: 400 }));
+      expect(s.error()).toBe('Could not save the brief head.');
+    });
+  });
+
   describe('headRound / isHeadRoundOutstanding', () => {
     it('is 0 when the head has never been sent (no trail rows)', () => {
       const s = store();
@@ -308,7 +364,7 @@ describe('BriefStore', () => {
       // Simulate the server's real behavior: editing flips status to PendingApproval but
       // the trail (fetched fresh on reload) still reports the SAME round — FR-009.
       api.getBrief.mockReturnValue(of(head({ status: ApprovalState.PendingApproval })));
-      s.updateHead(PROJECT_ID, { unitType: 1, unitCondition: 1 });
+      s.updateHead({ data: { unitType: 1, unitCondition: 1 } });
 
       expect(api.updateHead).toHaveBeenCalled();
       expect(s.headRound()).toBe(1); // unchanged — the round only moves on send()

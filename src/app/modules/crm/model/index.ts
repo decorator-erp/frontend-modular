@@ -231,34 +231,13 @@ export interface BriefHead {
   lastMeetingId: string | null;
 }
 
-/** `PUT /api/crm/projects/{projectId}/brief/head` body — `UpdateBriefHeadRequest`. */
+/**
+ * `PUT /api/crm/briefs/{briefId}/head` body (009b #12): a **full replace** of `data`, except that an
+ * omitted `sector` (and `lastMeetingId`) keeps its stored value. Editing an Approved/Rejected head
+ * returns it to Draft; a PendingApproval head is locked (409 `crm.briefs.HeadLockedPendingApproval`).
+ */
 export interface UpdateBriefHeadRequest {
-  unitType: number;
-  unitCondition: number;
-  address?: string | null;
-  floorNo?: number | null;
-  unitsPerFloor?: number | null;
-  areaSqm?: number | null;
-  buildingKind?: number | null;
-  isLicensed?: boolean | null;
-  /** إيجار/ملك + الغرض من التشطيب — editable head fields (sector is NOT — it is seeded, read-only). */
-  isRented?: boolean | null;
-  finishingPurpose?: number | null;
-  position?: number | null;
-  elevatorStatus?: number | null;
-  receivesFrequentVisitors?: boolean | null;
-  visitorsNote?: string | null;
-  usedDesignerBefore?: boolean | null;
-  designerExperience?: number | null;
-  designerExperienceReason?: string | null;
-  hiringReasons?: number;
-  preferredStyle?: string | null;
-  preferredColors?: string | null;
-  furnitureStatus?: number | null;
-  expectedBudget?: number | null;
-  timelinePressure?: number | null;
-  architecturalRequests?: string | null;
-  otherNeeds?: string | null;
+  data: BriefHeadData;
   lastMeetingId?: string | null;
 }
 

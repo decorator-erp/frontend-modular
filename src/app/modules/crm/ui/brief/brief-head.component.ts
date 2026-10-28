@@ -23,8 +23,10 @@ import {
   UnitPosition,
   UnitType,
 } from '../../model/crm-enums';
+import type { BriefHeadData } from '../../model';
 import { CanDirective, PERM } from '@platform/permissions';
-import { firstErrorMessage } from '@shared/forms';
+import { ServerErrorsDirective, firstErrorMessage } from '@shared/forms';
+import type { ParsedApiError } from '@platform/types';
 import {
   PeraAlertComponent,
   PeraButtonComponent,
@@ -99,6 +101,22 @@ export const FINISHING_PURPOSE_KEYS: Record<FinishingPurpose, CatalogKey> = {
   [FinishingPurpose.Renovation]: 'finishing.renovation',
 };
 
+/**
+ * The head's validation keys arrive as `Data.<Field>` (`Data.AreaSqm`, C §1.1). The platform parser
+ * keeps only the first segment (`data`), so read the raw keys and name the head form's control
+ * (`areaSqm`) instead (009b #12). Keys outside `Data.` are dropped.
+ */
+export function headFieldErrors(parsed: ParsedApiError): Record<string, string[]> {
+  const fieldErrors: Record<string, string[]> = {};
+  for (const [key, messages] of Object.entries(parsed.raw?.errors ?? {})) {
+    const match = /^Data\.(\w+)/i.exec(key);
+    if (!match || !Array.isArray(messages) || !messages.length) continue;
+    const control = match[1].charAt(0).toLowerCase() + match[1].slice(1);
+    fieldErrors[control] = [...(fieldErrors[control] ?? []), ...messages];
+  }
+  return fieldErrors;
+}
+
 function enumOptions<T extends number>(
   keys: Record<T, CatalogKey>,
   catalog: CatalogService,
@@ -122,6 +140,7 @@ function enumOptions<T extends number>(
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     ReactiveFormsModule,
+    ServerErrorsDirective,
     CanDirective,
     PeraAlertComponent,
     PeraButtonComponent,
@@ -218,38 +237,55 @@ function enumOptions<T extends number>(
         <pera-alert tone="info">{{ catalog.t('ws.sentNote') }}</pera-alert>
       }
 
-      <form [formGroup]="form" class="flex flex-col gap-6">
+      <form [formGroup]="form" [serverErrors]="serverError()" class="flex flex-col gap-6">
         <section class="flex flex-col gap-3">
           <div class="fs-label uppercase tracking-wide text-text-muted font-semibold">
             {{ catalog.t('brief.secUnit') }}
           </div>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
-            <pera-form-field [label]="catalog.t('brief.fUnitType')" [required]="true">
+            <pera-form-field
+              [label]="catalog.t('brief.fUnitType')"
+              [required]="true"
+              [error]="errorOf('unitType')"
+            >
               <pera-select formControlName="unitType" [options]="unitTypeOptions" />
             </pera-form-field>
-            <pera-form-field [label]="catalog.t('brief.fCondition')" [required]="true">
+            <pera-form-field
+              [label]="catalog.t('brief.fCondition')"
+              [required]="true"
+              [error]="errorOf('unitCondition')"
+            >
               <pera-select formControlName="unitCondition" [options]="unitConditionOptions" />
             </pera-form-field>
-            <pera-form-field [label]="catalog.t('brief.fAddress')">
+            <pera-form-field [label]="catalog.t('brief.sectorBadge')" [error]="errorOf('sector')">
+              <pera-select formControlName="sector" [options]="sectorOptions" placeholder="—" />
+            </pera-form-field>
+            <pera-form-field [label]="catalog.t('brief.fAddress')" [error]="errorOf('address')">
               <pera-input formControlName="address" />
             </pera-form-field>
-            <pera-form-field [label]="catalog.t('brief.fArea')">
+            <pera-form-field [label]="catalog.t('brief.fArea')" [error]="errorOf('areaSqm')">
               <pera-input type="number" formControlName="areaSqm" />
             </pera-form-field>
-            <pera-form-field [label]="catalog.t('brief.fFloorNo')">
+            <pera-form-field [label]="catalog.t('brief.fFloorNo')" [error]="errorOf('floorNo')">
               <pera-input type="number" formControlName="floorNo" />
             </pera-form-field>
-            <pera-form-field [label]="catalog.t('brief.fUnitsPerFloor')">
+            <pera-form-field
+              [label]="catalog.t('brief.fUnitsPerFloor')"
+              [error]="errorOf('unitsPerFloor')"
+            >
               <pera-input type="number" formControlName="unitsPerFloor" />
             </pera-form-field>
-            <pera-form-field [label]="catalog.t('brief.fBuildingKind')">
+            <pera-form-field
+              [label]="catalog.t('brief.fBuildingKind')"
+              [error]="errorOf('buildingKind')"
+            >
               <pera-select
                 formControlName="buildingKind"
                 [options]="buildingKindOptions"
                 placeholder="—"
               />
             </pera-form-field>
-            <pera-form-field [label]="catalog.t('brief.fFloorLic')">
+            <pera-form-field [label]="catalog.t('brief.fFloorLic')" [error]="errorOf('isLicensed')">
               <pera-switch formControlName="isLicensed">{{
                 catalog.t('brief.fFloorLic')
               }}</pera-switch>
@@ -278,10 +314,13 @@ function enumOptions<T extends number>(
                 placeholder="—"
               />
             </div>
-            <pera-form-field [label]="catalog.t('brief.fPosition')">
+            <pera-form-field [label]="catalog.t('brief.fPosition')" [error]="errorOf('position')">
               <pera-select formControlName="position" [options]="positionOptions" placeholder="—" />
             </pera-form-field>
-            <pera-form-field [label]="catalog.t('brief.fElevator')">
+            <pera-form-field
+              [label]="catalog.t('brief.fElevator')"
+              [error]="errorOf('elevatorStatus')"
+            >
               <pera-select
                 formControlName="elevatorStatus"
                 [options]="elevatorOptions"
@@ -299,7 +338,10 @@ function enumOptions<T extends number>(
             <pera-switch formControlName="receivesFrequentVisitors">{{
               catalog.t('brief.fVisitorsFreq')
             }}</pera-switch>
-            <pera-form-field [label]="catalog.t('brief.fVisitors')">
+            <pera-form-field
+              [label]="catalog.t('brief.fVisitors')"
+              [error]="errorOf('visitorsNote')"
+            >
               <pera-input formControlName="visitorsNote" />
             </pera-form-field>
           </div>
@@ -313,14 +355,21 @@ function enumOptions<T extends number>(
             <pera-switch formControlName="usedDesignerBefore">{{
               catalog.t('brief.fUsedBefore')
             }}</pera-switch>
-            <pera-form-field [label]="catalog.t('brief.fExperience')">
+            <pera-form-field
+              [label]="catalog.t('brief.fExperience')"
+              [error]="errorOf('designerExperience')"
+            >
               <pera-select
                 formControlName="designerExperience"
                 [options]="experienceOptions"
                 placeholder="—"
               />
             </pera-form-field>
-            <pera-form-field class="sm:col-span-2" [label]="catalog.t('brief.fDesignerExpReason')">
+            <pera-form-field
+              class="sm:col-span-2"
+              [label]="catalog.t('brief.fDesignerExpReason')"
+              [error]="errorOf('designerExperienceReason')"
+            >
               <pera-input formControlName="designerExperienceReason" />
             </pera-form-field>
             <div class="sm:col-span-2 flex flex-col gap-2">
@@ -347,23 +396,38 @@ function enumOptions<T extends number>(
             {{ catalog.t('brief.secPrefs') }}
           </div>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
-            <pera-form-field [label]="catalog.t('brief.fStyle')">
+            <pera-form-field
+              [label]="catalog.t('brief.fStyle')"
+              [error]="errorOf('preferredStyle')"
+            >
               <pera-input formControlName="preferredStyle" />
             </pera-form-field>
-            <pera-form-field [label]="catalog.t('brief.fColors')">
+            <pera-form-field
+              [label]="catalog.t('brief.fColors')"
+              [error]="errorOf('preferredColors')"
+            >
               <pera-input formControlName="preferredColors" />
             </pera-form-field>
-            <pera-form-field [label]="catalog.t('brief.fFurniture')">
+            <pera-form-field
+              [label]="catalog.t('brief.fFurniture')"
+              [error]="errorOf('furnitureStatus')"
+            >
               <pera-select
                 formControlName="furnitureStatus"
                 [options]="furnitureOptions"
                 placeholder="—"
               />
             </pera-form-field>
-            <pera-form-field [label]="catalog.t('brief.fBudget')">
+            <pera-form-field
+              [label]="catalog.t('brief.fBudget')"
+              [error]="errorOf('expectedBudget')"
+            >
               <pera-money-input formControlName="expectedBudget" />
             </pera-form-field>
-            <pera-form-field [label]="catalog.t('brief.fTimeline')">
+            <pera-form-field
+              [label]="catalog.t('brief.fTimeline')"
+              [error]="errorOf('timelinePressure')"
+            >
               <pera-select
                 formControlName="timelinePressure"
                 [options]="timelineOptions"
@@ -377,10 +441,13 @@ function enumOptions<T extends number>(
           <div class="fs-label uppercase tracking-wide text-text-muted font-semibold">
             {{ catalog.t('brief.secArch') }}
           </div>
-          <pera-form-field [label]="catalog.t('brief.secArch')">
+          <pera-form-field
+            [label]="catalog.t('brief.secArch')"
+            [error]="errorOf('architecturalRequests')"
+          >
             <pera-textarea formControlName="architecturalRequests" />
           </pera-form-field>
-          <pera-form-field [label]="catalog.t('brief.fOtherNeeds')">
+          <pera-form-field [label]="catalog.t('brief.fOtherNeeds')" [error]="errorOf('otherNeeds')">
             <pera-textarea formControlName="otherNeeds" />
           </pera-form-field>
         </section>
@@ -413,6 +480,10 @@ export class CrmBriefHeadComponent {
   protected readonly furnitureOptions = enumOptions(FURNITURE_KEYS, this.catalog);
   protected readonly timelineOptions = enumOptions(TIMELINE_KEYS, this.catalog);
   protected readonly finishingPurposeOptions = enumOptions(FINISHING_PURPOSE_KEYS, this.catalog);
+  /** 009b #12: the head update carries `sector` — changeable here, never cleared (blank = omitted). */
+  protected readonly sectorOptions = enumOptions(SECTOR_KEYS, this.catalog);
+  /** The last save's error, its `Data.<Field>` keys placed on the controls (009b #12). */
+  protected readonly serverError = signal<ParsedApiError | null>(null);
   protected readonly tenureOptions: RadioOption[] = [
     { value: true, label: this.catalog.t('tenure.rent') },
     { value: false, label: this.catalog.t('tenure.own') },
@@ -439,6 +510,7 @@ export class CrmBriefHeadComponent {
   readonly form = this.fb.nonNullable.group({
     unitType: [String(UnitType.Apartment), [Validators.required]],
     unitCondition: [String(UnitCondition.BareBrick), [Validators.required]],
+    sector: [''],
     address: [''],
     areaSqm: [''],
     floorNo: [''],
@@ -480,6 +552,7 @@ export class CrmBriefHeadComponent {
       this.form.patchValue({
         unitType: String(head.unitType),
         unitCondition: String(head.unitCondition),
+        sector: head.sector != null ? String(head.sector) : '',
         address: head.address ?? '',
         areaSqm: head.areaSqm != null ? String(head.areaSqm) : '',
         floorNo: head.floorNo != null ? String(head.floorNo) : '',
@@ -531,8 +604,8 @@ export class CrmBriefHeadComponent {
   }
 
   save(): void {
-    const projectId = this.store.head()?.projectId;
-    if (!projectId) return;
+    const head = this.store.head();
+    if (!head) return;
     const v = this.form.getRawValue();
 
     let hiringReasons = HiringReason.None;
@@ -542,7 +615,8 @@ export class CrmBriefHeadComponent {
 
     const num = (s: string): number | null => (s.trim() ? Number(s) : null);
 
-    this.store.updateHead(projectId, {
+    this.serverError.set(null);
+    const data: BriefHeadData = {
       unitType: Number(v.unitType),
       unitCondition: Number(v.unitCondition),
       address: v.address.trim() || null,
@@ -568,7 +642,17 @@ export class CrmBriefHeadComponent {
       timelinePressure: v.timelinePressure ? Number(v.timelinePressure) : null,
       architecturalRequests: v.architecturalRequests.trim() || null,
       otherNeeds: v.otherNeeds.trim() || null,
-    });
+    };
+    // An omitted sector keeps the stored one (C §2.6): blank is never sent as a clear.
+    if (v.sector) data.sector = Number(v.sector);
+
+    this.store.updateHead(
+      { data, lastMeetingId: head.lastMeetingId },
+      {
+        onError: (parsed) =>
+          this.serverError.set({ ...parsed, fieldErrors: headFieldErrors(parsed) }),
+      },
+    );
   }
 
   send(): void {

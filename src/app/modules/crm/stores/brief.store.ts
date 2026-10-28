@@ -6,6 +6,8 @@ import { catchError } from 'rxjs/operators';
 import { CrmApprovalsService } from '../data/crm-approvals.service';
 import { CrmBriefService } from '../data/crm-brief.service';
 import { ErrorHandlerService, friendly } from '@platform/http/error-handler.service';
+import { injectReloadOnConflict } from '@platform/http/concurrency';
+import type { ParsedApiError } from '@platform/types';
 import { ApprovalState, ApprovalSubjectType } from '../model/crm-enums';
 import type {
   ApprovalTrailItem,
@@ -110,6 +112,7 @@ export const BriefStore = signalStore(
       api = inject(CrmBriefService),
       approvals = inject(CrmApprovalsService),
       errors = inject(ErrorHandlerService),
+      reloadOnConflict = injectReloadOnConflict(),
     ) => ({
       /**
        * Loads the stage's brief head (009b #9) — or, with no stage, the project's latest through the
@@ -192,16 +195,36 @@ export const BriefStore = signalStore(
         });
       },
 
-      /** Edit the head — returns it to PendingApproval, but the round does NOT move (FR-009). */
-      updateHead(projectId: string, request: UpdateBriefHeadRequest): void {
+      /**
+       * Edit the loaded head (009b #12, keyed by its brief id) — the round does NOT move (FR-009).
+       * 409 `crm.briefs.ConcurrencyConflict` reloads (X-3); a coded failure (e.g.
+       * `HeadLockedPendingApproval`) shows its catalog message; `onError` gets the parsed error so
+       * the form can place the `Data.<Field>` validation keys.
+       */
+      updateHead(
+        request: UpdateBriefHeadRequest,
+        handlers?: { onError?: (error: ParsedApiError) => void },
+      ): void {
+        const head = store.head();
+        if (!head) return;
         patchState(store, { savingHead: true, error: null });
-        api.updateHead(projectId, request).subscribe({
+        api.updateHead(head.id, request).subscribe({
           next: () => {
             patchState(store, { savingHead: false });
             this.reload();
           },
-          error: () =>
-            patchState(store, { savingHead: false, error: 'Could not save the brief head.' }),
+          error: (err: unknown) => {
+            if (reloadOnConflict(err, () => this.reload())) {
+              patchState(store, { savingHead: false });
+              return;
+            }
+            const parsed = err instanceof HttpErrorResponse ? errors.parse(err) : null;
+            patchState(store, {
+              savingHead: false,
+              error: parsed?.code ? friendly(parsed) : 'Could not save the brief head.',
+            });
+            if (parsed) handlers?.onError?.(parsed);
+          },
         });
       },
 

@@ -104,6 +104,20 @@ describe('CrmBriefService', () => {
     });
   });
 
+  describe('updateHead (009b #12) — PUT /api/crm/briefs/{briefId}/head', () => {
+    it('keys the call by brief id and wraps the body in { data, lastMeetingId }', () => {
+      service.updateHead('B', { data: { unitType: 1, unitCondition: 2, areaSqm: 90 } }).subscribe();
+
+      const req = http.expectOne(url('/crm/briefs/B/head'));
+      expect(req.request.method).toBe('PUT');
+      expect(req.request.body).toEqual({
+        data: { unitType: 1, unitCondition: 2, areaSqm: 90 },
+        lastMeetingId: null,
+      });
+      req.flush(null, { status: 204, statusText: 'No Content' });
+    });
+  });
+
   describe('getBrief (N-11, the obsolete project fallback)', () => {
     it('reads the same flattened CrmDesignBriefResponse off the project route', () => {
       let head: BriefHead | undefined;
