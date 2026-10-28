@@ -216,7 +216,7 @@ describe('Scope of work — i18n and direction (sow #9)', () => {
   it('no physical ml-/mr-/pl-/pr-/left-/right- utility in the templates (B16)', () => {
     // Draft with the picker open, then Confirmed: between them every template branch renders.
     render();
-    const toggle = Array.from(el.querySelectorAll<HTMLButtonElement>('pera-button button')).find(
+    const toggle = Array.from(el.querySelectorAll<HTMLButtonElement>('button')).find(
       (b) => b.textContent!.trim() === EN['sow.addFromTemplates'],
     )!;
     toggle.click();

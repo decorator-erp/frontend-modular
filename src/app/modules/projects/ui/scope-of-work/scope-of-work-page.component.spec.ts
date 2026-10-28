@@ -184,7 +184,7 @@ describe('ScopeOfWorkPageComponent — items (sow #3)', () => {
   });
 
   const toggle = () =>
-    Array.from(el.querySelectorAll<HTMLButtonElement>('pera-button button')).find((b) =>
+    Array.from(el.querySelectorAll<HTMLButtonElement>('button')).find((b) =>
       ([EN['sow.addFromTemplates'], EN['sow.closeTemplates']] as string[]).includes(
         b.textContent!.trim(),
       ),
@@ -194,13 +194,14 @@ describe('ScopeOfWorkPageComponent — items (sow #3)', () => {
     render();
     expect(el.querySelector('app-sow-template-picker')).toBeNull();
     expect(toggle()!.textContent!.trim()).toBe(EN['sow.addFromTemplates']);
-    expect(el.querySelector('pera-button')!.getAttribute('aria-expanded')).toBe('false');
+    // FINDING-7-5: on the focusable <button> itself, not a wrapper host.
+    expect(toggle()!.getAttribute('aria-expanded')).toBe('false');
 
     toggle()!.click();
     fixture.detectChanges();
     expect(el.querySelector('app-sow-template-picker')).not.toBeNull();
     expect(toggle()!.textContent!.trim()).toBe(EN['sow.closeTemplates']);
-    expect(el.querySelector('pera-button')!.getAttribute('aria-expanded')).toBe('true');
+    expect(toggle()!.getAttribute('aria-expanded')).toBe('true');
     expect(templates.list).toHaveBeenCalledTimes(1);
     expect(templates.stages).toHaveBeenCalledWith('t1');
 

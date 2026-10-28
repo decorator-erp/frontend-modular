@@ -10,8 +10,8 @@ import {
 import {
   ConfirmService,
   PeraAlertComponent,
-  PeraButtonComponent,
   PeraEmptyComponent,
+  PeraIconComponent,
   PeraPageHeaderComponent,
   PeraStatusBadgeComponent,
 } from '@ds';
@@ -25,6 +25,16 @@ import { SowSummaryComponent } from './sow-summary.component';
 import { SowTemplatePickerComponent } from './sow-template-picker.component';
 
 /**
+ * FINDING-7-5: `pera-button` (secondary, md) classes on a native button, so `aria-expanded`
+ * sits on the element that takes focus (a host attribute never reaches pera-button's inner one).
+ */
+const TOGGLE_BUTTON =
+  'inline-flex items-center justify-center gap-2 h-8 px-3 text-sm font-medium whitespace-nowrap ' +
+  'select-none transition-colors cursor-pointer outline-none focus-visible:outline-2 ' +
+  'focus-visible:outline-accent focus-visible:outline-offset-2 bg-surface text-text-primary ' +
+  'border border-border hover:bg-surface-muted hover:border-border-strong';
+
+/**
  * The project's scope of work (نطاق العمل) — NEW-FEATURE-1, specs/sow-scope-of-work.md.
  * Routed at `projects/:id/scope-of-work` behind `scope.read` (§3). `id` is the route param,
  * bound by `withComponentInputBinding()` (a param, so INHERITED-TRAP-1 does not bite).
@@ -34,8 +44,8 @@ import { SowTemplatePickerComponent } from './sow-template-picker.component';
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     PeraAlertComponent,
-    PeraButtonComponent,
     PeraEmptyComponent,
+    PeraIconComponent,
     PeraPageHeaderComponent,
     PeraStatusBadgeComponent,
     SowItemsTableComponent,
@@ -86,13 +96,16 @@ import { SowTemplatePickerComponent } from './sow-template-picker.component';
                 <span class="text-text-muted font-medium">· {{ store.items().length }}</span>
               </h2>
               @if (editable()) {
-                <pera-button
-                  iconStart="plus"
+                <button
+                  type="button"
+                  data-picker-toggle
+                  class="${TOGGLE_BUTTON}"
                   [attr.aria-expanded]="pickerOpen()"
                   (click)="togglePicker()"
                 >
+                  <pera-icon name="plus" [size]="16" aria-hidden="true" />
                   {{ catalog.t(pickerOpen() ? 'sow.closeTemplates' : 'sow.addFromTemplates') }}
-                </pera-button>
+                </button>
               }
             </div>
             @if (editable() && pickerOpen()) {
