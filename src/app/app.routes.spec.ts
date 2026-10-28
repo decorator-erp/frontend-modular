@@ -10,6 +10,7 @@ import { ClientsListComponent } from '@modules/clients';
 import { AuditLogComponent } from '@modules/audit';
 import { libraryRoutes } from '@modules/library';
 import { financeRoutes } from '@modules/finance';
+import { projectsRoutes } from '@modules/projects';
 import { NotificationsPageComponent } from '@modules/notifications';
 
 /** Flatten the shell's children — the stub routes live under the app-shell route. */
@@ -18,9 +19,28 @@ function shellChildren(): Route[] {
   return shell?.children ?? [];
 }
 
-// TODO(008): restore the DMS Stage Detail GA-cutover describe block from the old
-// app.routes.spec.ts (canonical stage path + old /dms redirect) once
-// DmsStageDetailComponent lands with modules/projects.
+describe('app.routes — DMS Stage Detail GA cutover', () => {
+  const children = shellChildren();
+  const byPath = (p: string) => children.find((r) => r.path === p);
+
+  it('routes the canonical stage path to the DMS redesign component', async () => {
+    const route = byPath('projects/:projectId/stages/:stageId');
+    expect(route).toBeTruthy();
+    expect(route!.data?.['permission']).toBe('project.read');
+    const cmp = (await (route!.loadComponent as () => Promise<unknown>)!()) as { name: string };
+    // By name, not identity: the page is not in the projects barrel (it would join the initial
+    // bundle); projects.routes.spec.ts pins the identity inside the module.
+    expect(cmp.name).toContain('DmsStageDetailComponent');
+  });
+
+  it('redirects the old /dms stage path to the canonical one, preserving params', () => {
+    const route = byPath('dms/projects/:projectId/stages/:stageId');
+    expect(route).toBeTruthy();
+    expect(route!.redirectTo).toBe('projects/:projectId/stages/:stageId');
+    expect(route!.pathMatch).toBe('full');
+    expect(route!.loadComponent).toBeUndefined();
+  });
+});
 
 /**
  * Regression coverage for the catalog admin gate, carried forward from the old
@@ -97,11 +117,11 @@ describe('app.routes — the 004 shell skeleton', () => {
   // that un-stubs a route into this array should bump the constant (and rename it to _AT_0XX)
   // alongside its own app.routes.spec.ts additions — see spec 005's recipe step 4.
   // 004: '' -> dashboard redirect, 403, 500, ** (4). 006: +6 people routes. 005: +1 clients,
-  // +1 audit, +4 library, +1 notifications. 007: +1 finance.
-  const EXPECTED_SHELL_CHILDREN_AT_007 = 18;
+  // +1 audit, +4 library, +1 notifications. 007: +1 finance. 008: +8 projects.
+  const EXPECTED_SHELL_CHILDREN_AT_008 = 26;
 
   it('has exactly the expected number of real (non-stub) shell children', () => {
-    expect(shellChildren()).toHaveLength(EXPECTED_SHELL_CHILDREN_AT_007);
+    expect(shellChildren()).toHaveLength(EXPECTED_SHELL_CHILDREN_AT_008);
   });
 
   it("keeps '**' as the shell's last child", () => {
@@ -180,5 +200,14 @@ describe('app.routes — the 007 finance route', () => {
     expect(r!.canActivate).toEqual([PermissionGuard]);
     expect(r!.data).toEqual({ permission: 'finance.read', breadcrumb: 'Finance' });
     expect(await r!.loadChildren!()).toBe(financeRoutes);
+  });
+});
+
+describe('app.routes — the 008 projects routes', () => {
+  it('spreads all eight projectsRoutes into the shell, by identity (module spec covers metadata)', () => {
+    const children = shellChildren();
+    for (const r of projectsRoutes) {
+      expect(children).toContain(r);
+    }
   });
 });

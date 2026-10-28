@@ -13,7 +13,7 @@ import { combineLatest, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { BudgetLineService } from '../../data/budget-line.service';
 import { LedgerEntryService } from '../../data/ledger-entry.service';
-import { ProjectStageService } from '../shared/projects-services.todo-008'; // TODO(008): '@modules/projects'
+import { ProjectStageService } from '@modules/projects';
 import { ClientSearchService } from '@modules/clients';
 import { ErrorHandlerService } from '@platform/http/error-handler.service';
 import { ToastService } from '@platform/feedback/toast.service';

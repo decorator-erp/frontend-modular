@@ -1,0 +1,262 @@
+<!-- Translated to match A-04 BOQ data-grid density + B-01 ad-head/ad-toolbar patterns -->
+<div class="bg-bg min-h-full">
+  <!-- ============ .pg header ============ -->
+  <pera-page-header
+    title="Projects"
+    [count]="totalCount() + ' ' + (totalCount() === 1 ? 'PROJECT' : 'PROJECTS')"
+  >
+    <div actions class="flex gap-2 items-center">
+      <pera-button variant="primary" iconStart="plus" (click)="openNew()">New project</pera-button>
+    </div>
+
+    <div toolbar class="flex items-start gap-2.5 flex-wrap w-full">
+      <!-- The three chips this bar used to print were inert `<span>`s: the status,
+           type and client signals existed and reached /projects/search, but nothing
+           could set them. FilterBar wires exactly those three, and no others. -->
+      <pera-filter-bar
+        class="flex-1 min-w-0"
+        [search]="true"
+        [facets]="facets()"
+        [value]="filters()"
+        (valueChange)="onFilters($event)"
+        (clearAll)="onClearFilters()"
+      />
+      <div
+        class="inline-flex border border-border bg-surface font-mono"
+        [style.fontSize]="'var(--fs-label)'"
+      >
+        <button
+          type="button"
+          (click)="setView('cards')"
+          class="px-2.5 py-1 cursor-pointer"
+          [class.bg-accent-soft]="view() === 'cards'"
+          [class.text-accent]="view() === 'cards'"
+          [class.text-text-secondary]="view() !== 'cards'"
+        >
+          Cards
+        </button>
+        <button
+          type="button"
+          (click)="setView('table')"
+          class="px-2.5 py-1 cursor-pointer border-s border-border"
+          [class.bg-accent-soft]="view() === 'table'"
+          [class.text-accent]="view() === 'table'"
+          [class.text-text-secondary]="view() !== 'table'"
+        >
+          Table
+        </button>
+      </div>
+    </div>
+  </pera-page-header>
+
+  <!-- ============ .boq-grid ============ -->
+  <div class="bg-bg overflow-x-auto">
+    @if (loading()) {
+      <div class="p-6"><pera-skeleton [height]="360" rounded="md" /></div>
+    } @else if (!rows().length) {
+      <pera-empty
+        title="No projects found"
+        description="Adjust the filters or start a new project."
+      />
+    } @else if (view() === 'cards') {
+      <div class="p-6 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        @for (row of rows(); track row.id) {
+          <button
+            type="button"
+            (click)="open(row)"
+            class="text-start bg-surface border border-border rounded-md p-4 cursor-pointer hover:bg-surface-muted hover:shadow-sm transition-all outline-none focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2"
+          >
+            <div class="flex items-start justify-between gap-3 mb-2.5">
+              <div class="min-w-0">
+                <div class="font-mono fs-label text-text-muted">
+                  {{ row.id.slice(0, 6).toUpperCase() }}
+                </div>
+                <div class="fs-body font-semibold leading-tight truncate mt-1">
+                  {{ row.name }}
+                </div>
+              </div>
+              <span
+                class="shrink-0 inline-flex items-center gap-1.5 font-mono fs-micro font-medium px-1.5 py-0.5 border bg-bg"
+                [class.text-text-muted]="row.status === 'Draft'"
+                [class.border-border]="row.status === 'Draft'"
+                [class.text-info]="row.status === 'InProgress'"
+                [class.border-info]="row.status === 'InProgress'"
+                [class.bg-info-soft]="row.status === 'InProgress'"
+                [class.text-warning]="row.status === 'OnHold'"
+                [class.border-warning]="row.status === 'OnHold'"
+                [class.bg-warning-soft]="row.status === 'OnHold'"
+                [class.text-success]="row.status === 'Completed'"
+                [class.border-success]="row.status === 'Completed'"
+                [class.bg-success-soft]="row.status === 'Completed'"
+                [class.text-danger]="row.status === 'Cancelled'"
+                [class.border-danger]="row.status === 'Cancelled'"
+                [class.bg-danger-soft]="row.status === 'Cancelled'"
+              >
+                <span
+                  class="w-1.5 h-1.5 rounded-full"
+                  [class.bg-text-muted]="row.status === 'Draft'"
+                  [class.bg-info]="row.status === 'InProgress'"
+                  [class.bg-warning]="row.status === 'OnHold'"
+                  [class.bg-success]="row.status === 'Completed'"
+                  [class.bg-danger]="row.status === 'Cancelled'"
+                ></span>
+                {{ statusLabel(row.status) }}
+              </span>
+            </div>
+            <div class="h-1 rounded-full bg-surface-muted overflow-hidden mb-2.5">
+              <div
+                class="h-full bg-accent rounded-full"
+                [style.width.%]="row.progressPercentage"
+              ></div>
+            </div>
+            <div class="font-mono fs-label text-text-muted mb-3">
+              {{ row.progressPercentage }}% complete
+            </div>
+            <div class="grid grid-cols-2 gap-2 fs-label">
+              <div>
+                <div class="font-mono fs-micro text-text-muted uppercase mb-1">Owner</div>
+                @if (row.productOwnerName) {
+                  <div class="inline-flex items-center gap-1.5 min-w-0">
+                    <pera-avatar [name]="row.productOwnerName" size="xs" />
+                    <span class="truncate">{{ row.productOwnerName }}</span>
+                  </div>
+                } @else {
+                  <span class="text-text-muted">—</span>
+                }
+              </div>
+              <div>
+                <div class="font-mono fs-micro text-text-muted uppercase mb-1">Client</div>
+                <span class="truncate block">{{ row.clientName || '—' }}</span>
+              </div>
+              <div class="col-span-2">
+                <div class="font-mono fs-micro text-text-muted uppercase mb-1">Budget</div>
+                <span
+                  class="inline-flex items-center gap-1.5 font-mono px-1.5 py-0.5 border border-border bg-bg tabular-nums"
+                >
+                  <pera-currency [amount]="row.estimatedBudget" />
+                </span>
+              </div>
+            </div>
+          </button>
+        }
+      </div>
+      <div
+        class="px-6 py-3.5 font-mono fs-label text-text-muted border-t border-border bg-surface flex justify-between"
+      >
+        <span>Showing {{ rows().length }} of {{ totalCount() }}</span>
+        <span>Page {{ page() }}</span>
+      </div>
+    } @else {
+      <!-- The columns() computed and its six cell templates were drafted in 001 and
+           never rendered: PeraDataTableComponent was imported but missing from
+           `imports:`, so `columns()` had no consumer. Both are now live. -->
+      <div class="p-6">
+        <pera-data-table
+          density="compact"
+          [columns]="columns()"
+          [rows]="rows()"
+          [rowId]="rowId"
+          [sortBy]="sort().sortBy"
+          [sortDir]="sort().sortDir"
+          [page]="page()"
+          [pageSize]="pageSize"
+          [totalCount]="totalCount()"
+          [hasRowClick]="true"
+          (sortChange)="onSort($event)"
+          (pageChange)="onPage($event)"
+          (rowClick)="open($event)"
+        />
+      </div>
+    }
+  </div>
+</div>
+
+<!-- ============ Cell templates consumed by columns() ============ -->
+<ng-template #codeTpl let-row>
+  <span
+    class="font-mono text-text-secondary whitespace-nowrap"
+    [style.fontSize]="'var(--fs-label)'"
+  >
+    {{ row.code || row.id.slice(0, 6).toUpperCase() }}
+  </span>
+</ng-template>
+
+<ng-template #statusTpl let-row>
+  <span
+    class="inline-flex items-center gap-1.5 font-mono font-medium px-1.5 py-0.5 border bg-bg"
+    [style.fontSize]="'var(--fs-micro)'"
+    [class.text-text-muted]="row.status === 'Draft'"
+    [class.border-border]="row.status === 'Draft'"
+    [class.text-info]="row.status === 'InProgress'"
+    [class.border-info]="row.status === 'InProgress'"
+    [class.bg-info-soft]="row.status === 'InProgress'"
+    [class.text-warning]="row.status === 'OnHold'"
+    [class.border-warning]="row.status === 'OnHold'"
+    [class.bg-warning-soft]="row.status === 'OnHold'"
+    [class.text-success]="row.status === 'Completed'"
+    [class.border-success]="row.status === 'Completed'"
+    [class.bg-success-soft]="row.status === 'Completed'"
+    [class.text-danger]="row.status === 'Cancelled'"
+    [class.border-danger]="row.status === 'Cancelled'"
+    [class.bg-danger-soft]="row.status === 'Cancelled'"
+  >
+    <span
+      class="w-1.5 h-1.5 rounded-full"
+      [class.bg-text-muted]="row.status === 'Draft'"
+      [class.bg-info]="row.status === 'InProgress'"
+      [class.bg-warning]="row.status === 'OnHold'"
+      [class.bg-success]="row.status === 'Completed'"
+      [class.bg-danger]="row.status === 'Cancelled'"
+    ></span>
+    {{ statusLabel(row.status) }}
+  </span>
+</ng-template>
+
+<ng-template #typeTpl let-row>
+  @if (row.workflowType === 'Stage') {
+    <span
+      class="inline-flex items-center font-mono px-1.5 py-0.5 border border-accent bg-accent-soft text-accent"
+      [style.fontSize]="'var(--fs-micro)'"
+      >Stage</span
+    >
+  } @else {
+    <span
+      class="inline-flex items-center font-mono px-1.5 py-0.5 border border-border bg-bg text-text-secondary"
+      [style.fontSize]="'var(--fs-micro)'"
+      >Free-style</span
+    >
+  }
+</ng-template>
+
+<ng-template #progressTpl let-row>
+  <div class="inline-flex items-center gap-2">
+    <span class="inline-block h-1 w-16 bg-border relative">
+      <span
+        class="absolute inset-y-0 start-0 bg-accent"
+        [style.width.%]="row.progressPercentage"
+      ></span>
+    </span>
+    <span class="font-mono text-text-secondary tabular-nums" [style.fontSize]="'var(--fs-label)'">
+      {{ row.progressPercentage }}%
+    </span>
+  </div>
+</ng-template>
+
+<ng-template #ownerTpl let-row>
+  @if (row.productOwnerName) {
+    <span class="inline-flex items-center gap-1.5 min-w-0">
+      <pera-avatar [name]="row.productOwnerName" size="xs" />
+      <span class="truncate" [style.fontSize]="'var(--fs-caption)'">{{
+        row.productOwnerName
+      }}</span>
+    </span>
+  } @else {
+    <span class="text-text-muted">—</span>
+  }
+</ng-template>
+
+<ng-template #budgetTpl let-row>
+  <span class="flex justify-end tabular-nums">
+    <pera-currency [amount]="row.estimatedBudget" />
+  </span>
+</ng-template>

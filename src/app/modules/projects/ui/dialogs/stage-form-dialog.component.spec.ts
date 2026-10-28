@@ -1,0 +1,117 @@
+import { TestBed } from '@angular/core/testing';
+import { of } from 'rxjs';
+import { StageFormDialogComponent, StageFormDialogData } from './stage-form-dialog.component';
+import { ProjectStageService } from '../../data/project-stage.service';
+import { ErrorHandlerService } from '@platform/http/error-handler.service';
+import { ToastService } from '@platform/feedback/toast.service';
+import { PERA_MODAL_DATA, PeraModalRef } from '@ds';
+import type {
+  CreateProjectStageRequest,
+  UpdateProjectStageRequest,
+} from '../../model/project.model';
+
+describe('StageFormDialogComponent', () => {
+  let created: CreateProjectStageRequest | null;
+  let updated: { id: string; req: UpdateProjectStageRequest } | null;
+  let closedWith: unknown;
+  const modalRef = {
+    close: (r: unknown) => {
+      closedWith = r;
+    },
+  };
+
+  function make(data: StageFormDialogData): StageFormDialogComponent {
+    created = null;
+    updated = null;
+    closedWith = undefined;
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      imports: [StageFormDialogComponent],
+      providers: [
+        {
+          provide: ProjectStageService,
+          useValue: {
+            create: (req: CreateProjectStageRequest) => {
+              created = req;
+              return of('st-1');
+            },
+            update: (id: string, req: UpdateProjectStageRequest) => {
+              updated = { id, req };
+              return of(undefined);
+            },
+          },
+        },
+        {
+          provide: ErrorHandlerService,
+          useValue: {
+            parse: () => ({
+              status: 409,
+              generalMessage: 'x',
+              fieldErrors: {},
+              code: 'project_stages.CreationFailed',
+              raw: null,
+            }),
+          },
+        },
+        { provide: ToastService, useValue: { show: () => undefined } },
+        { provide: PeraModalRef, useValue: modalRef },
+        { provide: PERA_MODAL_DATA, useValue: data },
+      ],
+    });
+    return TestBed.createComponent(StageFormDialogComponent).componentInstance;
+  }
+
+  it('create posts projectId + the base stage fields, coercing order to a number', () => {
+    const c = make({ mode: 'create', projectId: 'p1', nextOrder: 40 });
+    c.form.patchValue({
+      name: 'Technical design',
+      estimatedStartDate: '2026-03-17',
+      estimatedEndDate: '2026-08-12',
+    });
+    c.submit();
+    expect(created).toEqual({
+      projectId: 'p1',
+      name: 'Technical design',
+      order: 40,
+      estimatedStartDate: '2026-03-17',
+      estimatedEndDate: '2026-08-12',
+      description: null,
+      notes: null,
+    });
+    expect(closedWith).toBe(true);
+  });
+
+  it('edit PUTs the base fields with the id (no projectId)', () => {
+    const c = make({
+      mode: 'edit',
+      projectId: 'p1',
+      stageId: 's1',
+      initial: {
+        name: 'Design phase',
+        order: 30,
+        estimatedStartDate: null,
+        estimatedEndDate: null,
+        description: 'd',
+        notes: null,
+      },
+    });
+    expect(c.isEdit).toBe(true);
+    c.form.patchValue({ name: 'Design' });
+    c.submit();
+    expect(updated?.id).toBe('s1');
+    expect(updated?.req.name).toBe('Design');
+    expect(created).toBeNull();
+  });
+
+  it('blocks submit when end date is before start date', () => {
+    const c = make({ mode: 'create', projectId: 'p1', nextOrder: 10 });
+    c.form.patchValue({
+      name: 'Stage',
+      estimatedStartDate: '2026-05-01',
+      estimatedEndDate: '2026-04-01',
+    });
+    c.submit();
+    expect(created).toBeNull();
+    expect(closedWith).toBeUndefined();
+  });
+});

@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@ang
 import { HttpErrorResponse } from '@angular/common/http';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { BoqSnapshotService } from '../../data/boq-snapshot.service';
-import { ProjectStageService } from '../shared/projects-services.todo-008'; // TODO(008): '@modules/projects'
+import { ProjectStageService } from '@modules/projects';
 import { ErrorHandlerService } from '@platform/http/error-handler.service';
 import { ToastService } from '@platform/feedback/toast.service';
 import { BoqSnapshotTypeValues } from '../../model/enums';

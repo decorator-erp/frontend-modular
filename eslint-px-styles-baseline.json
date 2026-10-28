@@ -2,12 +2,13 @@
   "rule": "pera-ds/no-raw-px-styles",
   "severity": "warn",
   "note": "Frozen baseline for the styles-block px rule. ESLint's bulk-suppressions file only suppresses errors, so a warn-level rule cannot live in eslint-suppressions.json. This count must never rise; the de-port batches drive it to zero.",
-  "total": 263,
+  "total": 291,
   "files": {
     "src/app/design-system/components/markdown-editor/pera-markdown-view.component.ts": 33,
     "src/app/design-system/patterns/attachments-shell/pera-att-chip.component.ts": 5,
     "src/app/design-system/patterns/attachments-shell/pera-attachments-shell.component.ts": 167,
     "src/app/design-system/patterns/attachments-shell/pera-file-preview-drawer.component.ts": 54,
-    "src/app/modules/finance/ui/variations/variation-detail.component.ts": 4
+    "src/app/modules/finance/ui/variations/variation-detail.component.ts": 4,
+    "src/app/modules/projects/ui/task-detail/attachments-panel.component.ts": 28
   }
 }

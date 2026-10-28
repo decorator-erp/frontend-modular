@@ -11,7 +11,7 @@ import { FormBuilder, ReactiveFormsModule, Validators, FormsModule } from '@angu
 import { combineLatest, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { BudgetLineService } from '../../data/budget-line.service';
-import { ProjectTaskService } from '../shared/projects-services.todo-008'; // TODO(008): '@modules/projects'
+import { ProjectTaskService } from '@modules/projects';
 import { VariationService } from '../../data/variation.service';
 import { ErrorHandlerService } from '@platform/http/error-handler.service';
 import { ToastService } from '@platform/feedback/toast.service';

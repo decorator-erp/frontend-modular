@@ -4,7 +4,7 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { BudgetLineService } from '../../data/budget-line.service';
 import { CostCategoryService } from '../../data/cost-category.service';
-import { ProjectStageService } from '../shared/projects-services.todo-008'; // TODO(008): '@modules/projects'
+import { ProjectStageService } from '@modules/projects';
 import { ErrorHandlerService } from '@platform/http/error-handler.service';
 import { ToastService } from '@platform/feedback/toast.service';
 import { BudgetLineResponse } from '../../model/budget-line.model';

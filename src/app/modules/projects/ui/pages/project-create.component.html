@@ -1,0 +1,220 @@
+<div class="p-4 md:p-6 max-w-[var(--w-form)] mx-auto flex flex-col gap-4">
+  <header class="flex items-end justify-between gap-3 flex-wrap">
+    <div class="flex flex-col gap-1">
+      <h1 class="m-0 text-2xl font-semibold tracking-tight">New project</h1>
+      <p class="m-0 font-mono fs-label uppercase tracking-[0.04em] text-text-muted">
+        Sectioned form · save when ready
+      </p>
+    </div>
+    <pera-button variant="ghost" size="sm" (click)="cancel()">Cancel</pera-button>
+  </header>
+
+  <div class="grid grid-cols-1 lg:grid-cols-[var(--w-column-lg)_minmax(0,1fr)] gap-6">
+    <!-- Sub-nav -->
+    <nav class="hidden lg:flex flex-col gap-1 sticky top-2 h-fit">
+      <a
+        href="#basics"
+        class="px-3 py-2 fs-body-sm border-s-2 border-s-accent text-text-primary bg-surface-muted rounded-e-md"
+        >Basics</a
+      >
+      <a
+        href="#client"
+        class="px-3 py-2 fs-body-sm border-s-2 border-s-transparent text-text-secondary hover:bg-surface-muted hover:border-s-border rounded-e-md"
+        >Client &amp; Owner</a
+      >
+      <a
+        href="#workflow"
+        class="px-3 py-2 fs-body-sm border-s-2 border-s-transparent text-text-secondary hover:bg-surface-muted hover:border-s-border rounded-e-md"
+        >Workflow</a
+      >
+      <a
+        href="#schedule"
+        class="px-3 py-2 fs-body-sm border-s-2 border-s-transparent text-text-secondary hover:bg-surface-muted hover:border-s-border rounded-e-md"
+        >Schedule</a
+      >
+    </nav>
+
+    <form
+      [formGroup]="form"
+      [serverErrors]="serverError()"
+      (ngSubmit)="submit()"
+      novalidate
+      class="flex flex-col gap-5 min-w-0"
+    >
+      <!-- Basics -->
+      <section id="basics" class="flex flex-col gap-3">
+        <div class="flex flex-col gap-1">
+          <h2 class="m-0 text-sm font-semibold uppercase tracking-[0.04em]">Basics</h2>
+          <p class="m-0 text-xs text-text-muted">Code, name, and short description.</p>
+        </div>
+        <pera-card padding="lg">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <pera-form-field
+              label="Code"
+              [required]="true"
+              [error]="errorOf('code')"
+              hint="Short reference, e.g. AM-04"
+            >
+              <pera-input formControlName="code" placeholder="AM-04" [error]="errorOf('code')" />
+            </pera-form-field>
+            <pera-form-field label="Name" [required]="true" [error]="errorOf('name')">
+              <pera-input
+                formControlName="name"
+                placeholder="Al Maha Residence"
+                [error]="errorOf('name')"
+              />
+            </pera-form-field>
+            <div class="md:col-span-2">
+              <pera-form-field label="Address" [required]="true" [error]="errorOf('address')">
+                <pera-textarea
+                  formControlName="address"
+                  [rows]="2"
+                  placeholder="District, city"
+                  [error]="errorOf('address')"
+                />
+              </pera-form-field>
+            </div>
+            <div class="md:col-span-2">
+              <pera-form-field label="Description" [error]="errorOf('description')">
+                <pera-textarea
+                  formControlName="description"
+                  [rows]="3"
+                  placeholder="Scope, ambition, key constraints"
+                  [error]="errorOf('description')"
+                />
+              </pera-form-field>
+            </div>
+          </div>
+        </pera-card>
+      </section>
+
+      <!-- Client & Owner -->
+      <section id="client" class="flex flex-col gap-3">
+        <div class="flex flex-col gap-1">
+          <h2 class="m-0 text-sm font-semibold uppercase tracking-[0.04em]">Client &amp; Owner</h2>
+          <p class="m-0 text-xs text-text-muted">Who the project is for and its budget.</p>
+        </div>
+        <pera-card padding="lg">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <pera-form-field label="Client" [required]="true" [error]="errorOf('clientId')">
+              <pera-select
+                formControlName="clientId"
+                [options]="clientOptions()"
+                placeholder="Select a client"
+                [error]="errorOf('clientId')"
+              />
+            </pera-form-field>
+            <pera-form-field label="Status" [required]="true" [error]="errorOf('status')">
+              <pera-select
+                formControlName="status"
+                [options]="statusOptions"
+                [error]="errorOf('status')"
+              />
+            </pera-form-field>
+            <pera-form-field
+              label="Estimated budget (EGP)"
+              [required]="true"
+              [error]="errorOf('estimatedBudget')"
+            >
+              <pera-input
+                type="number"
+                formControlName="estimatedBudget"
+                placeholder="1500000"
+                [error]="errorOf('estimatedBudget')"
+              />
+            </pera-form-field>
+          </div>
+        </pera-card>
+      </section>
+
+      <!-- Workflow -->
+      <section id="workflow" class="flex flex-col gap-3">
+        <div class="flex flex-col gap-1">
+          <h2 class="m-0 text-sm font-semibold uppercase tracking-[0.04em]">Workflow</h2>
+          <p class="m-0 text-xs text-text-muted">
+            Choose the workflow shape; Stage projects seed from a template.
+          </p>
+        </div>
+        <pera-card padding="lg">
+          <div class="flex flex-col gap-3">
+            <pera-form-field label="Workflow type" [required]="true">
+              <pera-radio formControlName="workflowType" [options]="workflowOptions" />
+            </pera-form-field>
+            @if (form.controls.workflowType.value === 'Stage') {
+              <pera-form-field
+                label="Stage template"
+                [required]="true"
+                [error]="errorOf('stageTemplateId')"
+                hint="Defines the stages this project starts with"
+              >
+                <pera-select
+                  formControlName="stageTemplateId"
+                  [options]="templateOptions()"
+                  placeholder="Select a template"
+                  [error]="errorOf('stageTemplateId')"
+                />
+              </pera-form-field>
+            }
+          </div>
+        </pera-card>
+      </section>
+
+      <!-- Schedule -->
+      <section id="schedule" class="flex flex-col gap-3">
+        <div class="flex flex-col gap-1">
+          <h2 class="m-0 text-sm font-semibold uppercase tracking-[0.04em]">Schedule</h2>
+          <p class="m-0 text-xs text-text-muted">Optional target dates and notes.</p>
+        </div>
+        <pera-card padding="lg">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <pera-form-field
+              label="Estimated start"
+              [error]="errorOf('estimatedStartDate')"
+              hint="YYYY-MM-DD"
+            >
+              <pera-input
+                formControlName="estimatedStartDate"
+                placeholder="2026-07-01"
+                [error]="errorOf('estimatedStartDate')"
+              />
+            </pera-form-field>
+            <pera-form-field
+              label="Estimated end"
+              [error]="errorOf('estimatedEndDate')"
+              hint="YYYY-MM-DD"
+            >
+              <pera-input
+                formControlName="estimatedEndDate"
+                placeholder="2027-04-12"
+                [error]="errorOf('estimatedEndDate')"
+              />
+            </pera-form-field>
+            <div class="md:col-span-2">
+              <pera-form-field label="Notes" [error]="errorOf('notes')">
+                <pera-textarea
+                  formControlName="notes"
+                  [rows]="2"
+                  placeholder="Internal notes"
+                  [error]="errorOf('notes')"
+                />
+              </pera-form-field>
+            </div>
+          </div>
+        </pera-card>
+      </section>
+
+      <!-- Sticky save bar -->
+      <div
+        class="sticky bottom-0 -mx-4 md:-mx-0 px-4 md:px-5 py-3 bg-surface border-t border-border rounded-b-md flex items-center justify-between gap-3"
+      >
+        <span class="text-xs text-text-muted">Required fields marked with *</span>
+        <div class="flex items-center gap-2">
+          <pera-button variant="ghost" type="button" (click)="cancel()">Cancel</pera-button>
+          <pera-button variant="primary" type="submit" [loading]="submitting()"
+            >Create project</pera-button
+          >
+        </div>
+      </div>
+    </form>
+  </div>
+</div>

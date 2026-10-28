@@ -6,10 +6,8 @@ import { ApprovalService } from '@modules/approvals';
 // import { CrmMeetingService } from '@modules/crm';
 import { InvoiceService } from '@modules/finance';
 import { VariationService } from '@modules/finance';
-// TODO(008): ProjectStageService and ProjectTaskService land with modules/projects. Restore both
-// imports, their injects below and the ProjectTask / ProjectStage cases then (default FALLBACK until).
-// import { ProjectStageService } from '@modules/projects';
-// import { ProjectTaskService } from '@modules/projects';
+import { ProjectStageService } from '@modules/projects';
+import { ProjectTaskService } from '@modules/projects';
 import { NotificationEntityType } from '../model/notification-enums';
 import { NotificationView } from '../model/notification.model';
 
@@ -29,10 +27,8 @@ const FALLBACK: RouteCommands = ['/notifications'];
  */
 @Injectable({ providedIn: 'root' })
 export class NotificationDeepLink {
-  // TODO(008): see the imports above.
-  // private readonly tasks = inject(ProjectTaskService);
-  // TODO(008): see the imports above.
-  // private readonly stages = inject(ProjectStageService);
+  private readonly tasks = inject(ProjectTaskService);
+  private readonly stages = inject(ProjectStageService);
   private readonly invoices = inject(InvoiceService);
   private readonly variations = inject(VariationService);
   private readonly approvals = inject(ApprovalService);
@@ -49,19 +45,17 @@ export class NotificationDeepLink {
         case NotificationEntityType.Project:
           return ['/projects', id]; // single id — no fetch
 
-        // TODO(008): see the imports above.
-        // case NotificationEntityType.ProjectTask: {
-        //   // getDetails returns TaskDetails { task, subTasks, gateConditions } — projectId is on task.
-        //   const details = await firstValueFrom(this.tasks.getDetails(id));
-        //   const projectId = details.task?.projectId;
-        //   return projectId ? ['/projects', projectId, 'tasks', id] : FALLBACK;
-        // }
+        case NotificationEntityType.ProjectTask: {
+          // getDetails returns TaskDetails { task, subTasks, gateConditions } — projectId is on task.
+          const details = await firstValueFrom(this.tasks.getDetails(id));
+          const projectId = details.task?.projectId;
+          return projectId ? ['/projects', projectId, 'tasks', id] : FALLBACK;
+        }
 
-        // TODO(008): see the imports above.
-        // case NotificationEntityType.ProjectStage: {
-        //   const stage = await firstValueFrom(this.stages.getDetails(id));
-        //   return stage.projectId ? ['/projects', stage.projectId, 'stages', id] : FALLBACK;
-        // }
+        case NotificationEntityType.ProjectStage: {
+          const stage = await firstValueFrom(this.stages.getDetails(id));
+          return stage.projectId ? ['/projects', stage.projectId, 'stages', id] : FALLBACK;
+        }
 
         case NotificationEntityType.Invoice: {
           const invoice = await firstValueFrom(this.invoices.getById(id));

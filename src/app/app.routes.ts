@@ -3,6 +3,7 @@ import { AuthGuard } from '@platform/auth/auth.guard';
 import { ClientOnlyGuard, NotClientGuard } from '@platform/auth/client-shell.guard';
 import { peopleRoutes } from '@modules/people';
 import { libraryRoutes } from '@modules/library';
+import { projectsRoutes } from '@modules/projects';
 import { PermissionGuard } from '@platform/auth/permission.guard';
 // TODO(009): PERM is still unused — 005's routes carry raw permission strings, as in the old
 // app; the first PERM-citing stub is a 009 route (crm, approvals, portal, admin/catalog).
@@ -144,46 +145,8 @@ export const routes: Routes = [
         data: { permission: 'audit.read', breadcrumb: 'Audit log' },
         loadComponent: () => import('@modules/audit').then((m) => m.AuditLogComponent),
       },
-      //
-      // TODO(008): 'projects' -> loadComponent: features/projects/projects-list.component
-      //   -> ProjectsListComponent, data = { breadcrumb: 'Projects' }
-      //
-      // TODO(008): 'projects/new' -> loadComponent: features/projects/project-create.component
-      //   -> ProjectCreateComponent, data = { breadcrumb: 'New project' }
-      //
-      // TODO(008): 'projects/:id' -> loadComponent: features/projects/project-detail.component
-      //   -> ProjectDetailComponent, data = { breadcrumb: 'Project' }
-      //
-      // Canonical stage page — the DMS redesign (DMS Stage Detail.dc.html) is now
-      // GA. Gated on the real backend read permission; per-panel write affordances
-      // gate on real claims inside the component. The staged-rollout umbrella flag
-      // has done its job and is dropped from the route.
-      // TODO(008): 'projects/:projectId/stages/:stageId' -> PermissionGuard,
-      //   data = { permission: 'project.read', breadcrumb: 'Stage' },
-      //   loadComponent: features/projects/stage-detail/dms/dms-stage-detail.component
-      //   -> DmsStageDetailComponent
-      //
-      // TODO(008): 'projects/:id/tasks/:taskId' -> loadComponent:
-      //   features/projects/task-detail.component -> TaskDetailComponent,
-      //   data = { breadcrumb: 'Task' }
-      //
-      // Redesigned DMS task view. Same component/data as the route above, but
-      // permission-gated for staged rollout. dms.task_detail.view is a UI-side
-      // gate only — backend ops grant it (docs/PERMISSIONS.md). Both coexist
-      // until the DMS view is GA.
-      // TODO(008): 'dms/projects/:projectId/tasks/:taskId' -> PermissionGuard,
-      //   data = { permission: 'dms.task_detail.view', breadcrumb: 'Task' },
-      //   loadComponent: features/projects/task-detail.component -> TaskDetailComponent
-      //
-      // Old DMS stage path -> permanent redirect to the canonical page (GA
-      // cutover), preserving :projectId/:stageId so existing /dms/... links work.
-      // TODO(008): 'dms/projects/:projectId/stages/:stageId' -> redirectTo:
-      //   'projects/:projectId/stages/:stageId', pathMatch: 'full'
-      //
-      // TODO(008): 'projects/:projectId/workflow/builder' -> PermissionGuard,
-      //   data = { permission: 'stages.manage', breadcrumb: 'Workflow Builder' },
-      //   loadComponent: features/projects/workflow-builder/workflow-builder.component
-      //   -> WorkflowBuilderComponent
+      // Projects (spec 008): the eight old entries, metadata verbatim, spread at their old position.
+      ...projectsRoutes,
       {
         path: '403',
         loadComponent: () =>
