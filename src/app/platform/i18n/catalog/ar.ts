@@ -904,6 +904,7 @@ export const AR: Partial<Record<CatalogKey, string>> = {
     'عند الإغلاق يُرسل النظام للعميل: «انتهى جمع المتطلبات — إن كان لديك أي متطلب فأخبرني الآن».',
   'period.closePeriod': 'إغلاق الفترة',
   'period.closed': 'الفترة مغلقة',
+  'period.closesAt': 'تُغلق في {closesAt}',
   'period.daysLeft': 'يوماً متبقياً',
   'period.extend': 'تمديد ٧ أيام',
   'period.hint': 'التمديد لاحقاً يعني تحريك هذا التاريخ فقط. الإغلاق يرسل للعميل الرسالة المعتادة.',

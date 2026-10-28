@@ -965,6 +965,7 @@ export const EN = {
     'On close, the system notifies the client: "Requirement gathering is finished — if you have any requirement, tell me now".',
   'period.closePeriod': 'Close period',
   'period.closed': 'period closed',
+  'period.closesAt': 'Closes {closesAt}',
   'period.daysLeft': 'days remaining',
   'period.extend': 'Extend +7 days',
   'period.hint':

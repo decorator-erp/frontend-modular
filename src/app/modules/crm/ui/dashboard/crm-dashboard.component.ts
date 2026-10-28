@@ -208,7 +208,8 @@ export class CrmDashboardComponent implements OnInit {
       const events: CrmActivityEntry[] = [
         {
           id: `${p.id}-opened`,
-          timestampUtc: p.createdAtUtc,
+          // 009b #25: the response has no createdAtUtc; the entry is ordered by closesAtUtc.
+          timestampUtc: p.closesAtUtc,
           label: this.catalog.t('activity.periodOpened', {
             closesAt: formatCairoDateTime(p.closesAtUtc, locale),
           }),

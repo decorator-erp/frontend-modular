@@ -79,7 +79,7 @@ export const PeriodStore = signalStore(
     /**
      * Extend the open period's close date. Refreshes from the server on success rather
      * than guessing the new record's shape locally — `extend()` returns `204`, and
-     * server-only fields (`closeNotifiedAtUtc`, etc.) are not ours to reconstruct.
+     * server-only fields (`closedAtUtc`, etc.) are not ours to reconstruct.
      */
     extend(periodId: string, newClosesAtUtc: string): void {
       const projectId = store.projectId();

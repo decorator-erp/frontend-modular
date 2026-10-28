@@ -5,7 +5,8 @@ import { ApiService } from '@platform/http/api.service';
 import { RequirementPeriodStatus } from '../model/crm-enums';
 
 /**
- * The requirement period — mirrors `PeriodResponse` (`Application/DTOs/CrmPeriods`).
+ * The requirement period — mirrors `CrmRequirementPeriodResponse` (`PeriodContracts.cs:5-7`):
+ * no `closeNotifiedAtUtc` and no `createdAtUtc` (009b #25).
  *
  * A project holds AT MOST ONE open period at a time — `POST /periods` returns
  * `crm.periods.OpenPeriodExists` if one is already open — so `GET /periods` returns
@@ -18,9 +19,7 @@ export interface CrmPeriod {
   status: RequirementPeriodStatus;
   closesAtUtc: string;
   closedAtUtc: string | null;
-  closeNotifiedAtUtc: string | null;
   openedById: string;
-  createdAtUtc: string;
 }
 
 /**
@@ -70,9 +69,7 @@ export class CrmPeriodService extends ApiService {
       status: this.field<number>(source, 'status') ?? RequirementPeriodStatus.Open,
       closesAtUtc: this.field<string>(source, 'closesAtUtc') ?? '',
       closedAtUtc: this.field<string | null>(source, 'closedAtUtc') ?? null,
-      closeNotifiedAtUtc: this.field<string | null>(source, 'closeNotifiedAtUtc') ?? null,
       openedById: this.field<string>(source, 'openedById') ?? '',
-      createdAtUtc: this.field<string>(source, 'createdAtUtc') ?? '',
     };
   }
 }

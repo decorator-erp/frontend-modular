@@ -123,8 +123,8 @@ export class CrmPeriodCardComponent {
     const period = this.store.openPeriod();
     if (!period) return '';
     const locale = this.catalog.locale();
-    return this.catalog.t('period.opened', {
-      openedAt: formatCairoDateTime(period.createdAtUtc, locale),
+    // 009b #25: the response has no opened-at date, so only the close date is shown.
+    return this.catalog.t('period.closesAt', {
       closesAt: formatCairoDateTime(period.closesAtUtc, locale),
     });
   });

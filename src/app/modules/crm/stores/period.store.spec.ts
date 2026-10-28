@@ -15,9 +15,7 @@ function period(over: Partial<CrmPeriod> = {}): CrmPeriod {
     status: RequirementPeriodStatus.Open,
     closesAtUtc: '2026-07-20T18:00:00.000Z',
     closedAtUtc: null,
-    closeNotifiedAtUtc: null,
     openedById: 'employee-1',
-    createdAtUtc: '2026-07-06T09:00:00.000Z',
     ...over,
   };
 }
