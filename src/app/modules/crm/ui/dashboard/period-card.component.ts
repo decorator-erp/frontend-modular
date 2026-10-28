@@ -75,7 +75,7 @@ import { CrmPeriodFormComponent } from './forms/period-form.component';
             >
           </div>
         </div>
-      } @else {
+      } @else if (!store.notFound()) {
         <div class="flex items-center gap-3 flex-wrap">
           <div class="flex-1 min-w-0">
             <div class="font-semibold text-text-primary">{{ catalog.t('period.title') }}</div>

@@ -1,5 +1,6 @@
 import { TestBed } from '@angular/core/testing';
-import { of } from 'rxjs';
+import { HttpErrorResponse } from '@angular/common/http';
+import { of, throwError } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
 import { ModalService } from '@ds';
 import { CrmPeriodService } from '../../data/crm-period.service';
@@ -42,5 +43,40 @@ describe('CrmPeriodCardComponent (009b #25)', () => {
     expect(text).toContain('Closes');
     expect(text).not.toContain('Opened');
     expect(text).not.toContain('Invalid');
+  });
+
+  // FINDING-5-15: a 404 load is "not found" — no Closed chip and no "Open period" beside it.
+  it('shows only the not-found state when the period load is 404', () => {
+    TestBed.configureTestingModule({
+      imports: [CrmPeriodCardComponent],
+      providers: [
+        PeriodStore,
+        { provide: ModalService, useValue: { open: vi.fn() } },
+        {
+          provide: CrmPeriodService,
+          useValue: {
+            list: vi.fn().mockReturnValue(
+              throwError(
+                () =>
+                  new HttpErrorResponse({
+                    status: 404,
+                    error: {
+                      title: 'crm.periods.NotFound',
+                      errors: { 'crm.periods.NotFound': ['x'] },
+                    },
+                  }),
+              ),
+            ),
+          },
+        },
+      ],
+    });
+    TestBed.inject(PeriodStore).load('P');
+    const fixture = TestBed.createComponent(CrmPeriodCardComponent);
+    fixture.detectChanges();
+    const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
+
+    expect(text).toContain('This requirement period was not found.');
+    expect(text).not.toContain('Closed');
   });
 });
