@@ -164,6 +164,7 @@ export interface SetCatalogItemAttributeValuesRequest {
   values: ItemAttributeValueRequest[];
 }
 
+/** `CreateCrmCatalogItemCommand` — no description or image is bound (009b #38). */
 export interface CreateCatalogItemRequest {
   categoryId: string;
   code: string;
@@ -171,9 +172,6 @@ export interface CreateCatalogItemRequest {
   nameAr: string;
   isPurchasable?: boolean;
   sortOrder?: number;
-  descriptionEn?: string | null;
-  descriptionAr?: string | null;
-  imageUri?: string | null;
 }
 
 /** `categoryId` is absent on purpose — re-filing an item is its own route. */

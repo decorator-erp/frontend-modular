@@ -40,7 +40,7 @@ const attr = (id: string, dataType: CatalogAttributeType) => ({
   isActive: true,
 });
 
-describe('CrmCatalogItemDialogComponent (009b #36)', () => {
+describe('CrmCatalogItemDialogComponent (009b #36, #38)', () => {
   let http: HttpTestingController;
 
   function render(data: CatalogItemDialogData) {
@@ -74,5 +74,30 @@ describe('CrmCatalogItemDialogComponent (009b #36)', () => {
     const unavailable = el.querySelectorAll('[data-testid="cat-options-unavailable"]');
     expect(unavailable).toHaveLength(1);
     expect(unavailable[0].textContent).toContain('Not available yet.');
+  });
+
+  it('creates without description or image and writes the specs to the returned id (009b #38)', () => {
+    const fixture = render({ categoryId: 'C' });
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('pera-textarea')).toBeNull();
+
+    const dialog = fixture.componentInstance;
+    dialog.form.patchValue({ code: 'oak', nameEn: 'Oak', nameAr: 'بلوط' });
+    dialog.submit();
+
+    const create = http.expectOne(url('/crm/catalog/items'));
+    expect(create.request.body).toEqual({
+      categoryId: 'C',
+      code: 'oak',
+      nameEn: 'Oak',
+      nameAr: 'بلوط',
+      isPurchasable: true,
+      sortOrder: 0,
+    });
+    create.flush({ itemId: 'I' });
+
+    const specs = http.expectOne(url('/crm/catalog/items/I/attribute-values'));
+    expect(specs.request.method).toBe('PUT');
+    specs.flush(null);
   });
 });

@@ -120,6 +120,31 @@ describe('CrmCatalogService', () => {
     });
   });
 
+  // 009b #38: CreateCrmCatalogItemCommand (CatalogContracts.cs:35-37) binds no description or
+  // image; CrmCatalogEndpoints.cs:49-54 answers 201 { itemId }.
+  describe('createItem() (009b #38)', () => {
+    it('posts only the bound fields and reads the 201 { itemId }', () => {
+      let id: string | undefined;
+      service
+        .createItem({ categoryId: 'C', code: 'oak', nameEn: 'Oak', nameAr: 'بلوط' })
+        .subscribe((r) => (id = r));
+
+      const req = http.expectOne(url('/crm/catalog/items'));
+      expect(req.request.method).toBe('POST');
+      expect(req.request.body).toEqual({
+        categoryId: 'C',
+        code: 'oak',
+        nameEn: 'Oak',
+        nameAr: 'بلوط',
+        isPurchasable: true,
+        sortOrder: 0,
+      });
+      req.flush({ itemId: 'I' });
+
+      expect(id).toBe('I');
+    });
+  });
+
   describe('setItemAttributeValues() — replace-all', () => {
     it('PUTs to the item attribute-values route with null-filled optional members', () => {
       service

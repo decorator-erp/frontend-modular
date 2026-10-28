@@ -30,7 +30,6 @@ import {
   PeraModalRef,
   PeraSelectComponent,
   PeraSpinnerComponent,
-  PeraTextareaComponent,
   SelectOption,
 } from '@ds';
 import { CatalogStore } from '../../../stores/catalog.store';
@@ -47,9 +46,9 @@ export interface CatalogItemDialogData {
 }
 
 /**
- * Create or edit a catalog item (F6). Identity fields are fixed (name, description,
- * image, purchasable); the SPEC fields below them are GENERATED from the category's
- * inherited attribute chain — the behavior that makes the category/attribute/item split
+ * Create or edit a catalog item (F6). Identity fields are fixed (name, purchasable — no
+ * description or image since 009b #38); the SPEC fields below them are GENERATED from the
+ * category's inherited attribute chain — the behavior that makes the category/attribute/item split
  * visible to an admin for the first time. One control per effective attribute:
  * Select → option select, Number → number + unit suffix, Text → `dir="auto"`,
  * Boolean → three-way select (unset ≠ false — completeness must be able to tell "not
@@ -73,7 +72,6 @@ export interface CatalogItemDialogData {
     PeraInputComponent,
     PeraSelectComponent,
     PeraSpinnerComponent,
-    PeraTextareaComponent,
   ],
   template: `
     <pera-form-modal
@@ -99,16 +97,8 @@ export interface CatalogItemDialogData {
           <pera-form-field [label]="catalog.t('cat.nameArL')" [required]="true">
             <pera-input formControlName="nameAr" dir="rtl" />
           </pera-form-field>
-          <pera-form-field [label]="catalog.t('cat.descEnL')">
-            <pera-textarea formControlName="descriptionEn" dir="ltr" [rows]="2" />
-          </pera-form-field>
-          <pera-form-field [label]="catalog.t('cat.descArL')">
-            <pera-textarea formControlName="descriptionAr" dir="rtl" [rows]="2" />
-          </pera-form-field>
+          <!-- 009b #38: the item create binds no description or image. -->
         </div>
-        <pera-form-field [label]="catalog.t('cat.imageUrlL')">
-          <pera-input formControlName="imageUri" dir="ltr" type="url" />
-        </pera-form-field>
         <pera-checkbox formControlName="isPurchasable">{{
           catalog.t('cat.isPurchasableL')
         }}</pera-checkbox>
@@ -186,9 +176,6 @@ export class CrmCatalogItemDialogComponent {
     code: ['', [Validators.required, Validators.pattern(/^[a-z0-9_]{1,64}$/)]],
     nameEn: ['', [Validators.required, Validators.maxLength(200)]],
     nameAr: ['', [Validators.required, Validators.maxLength(200)]],
-    descriptionEn: [''],
-    descriptionAr: [''],
-    imageUri: [''],
     isPurchasable: [true],
   });
 
@@ -206,9 +193,6 @@ export class CrmCatalogItemDialogComponent {
         code: item.code,
         nameEn: item.nameEn,
         nameAr: item.nameAr,
-        descriptionEn: item.descriptionEn ?? '',
-        descriptionAr: item.descriptionAr ?? '',
-        imageUri: item.imageUri ?? '',
         isPurchasable: item.isPurchasable,
       });
     } else if (this.data.prefillName) {
@@ -269,9 +253,6 @@ export class CrmCatalogItemDialogComponent {
       nameEn: v.nameEn.trim(),
       nameAr: v.nameAr.trim(),
       isPurchasable: v.isPurchasable,
-      descriptionEn: v.descriptionEn.trim() || null,
-      descriptionAr: v.descriptionAr.trim() || null,
-      imageUri: v.imageUri.trim() || null,
     };
 
     const existing = this.data.item;

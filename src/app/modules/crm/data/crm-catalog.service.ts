@@ -250,7 +250,10 @@ export class CrmCatalogService extends ApiService {
 
   // ── v2 item writes ─────────────────────────────────────────────────────
 
-  /** `POST /api/crm/catalog/items` → `201` bare `Guid` — `crm.catalog.manage`. */
+  /**
+   * `POST /api/crm/catalog/items` → `201 { itemId }` — `crm.catalog.manage` (009b #38).
+   * `CreateCrmCatalogItemCommand` binds no description or image, so none is sent.
+   */
   createItem(request: CreateCatalogItemRequest): Observable<string> {
     return this.post<unknown>('/crm/catalog/items', {
       categoryId: request.categoryId,
@@ -259,10 +262,7 @@ export class CrmCatalogService extends ApiService {
       nameAr: request.nameAr,
       isPurchasable: request.isPurchasable ?? true,
       sortOrder: request.sortOrder ?? 0,
-      descriptionEn: request.descriptionEn ?? null,
-      descriptionAr: request.descriptionAr ?? null,
-      imageUri: request.imageUri ?? null,
-    }).pipe(map((r) => this.unwrap<string>(r)));
+    }).pipe(map((r) => this.unwrapId(r, 'itemId')));
   }
 
   /** `PUT /api/crm/catalog/items/{itemId}` → `204` — `crm.catalog.manage`. */
