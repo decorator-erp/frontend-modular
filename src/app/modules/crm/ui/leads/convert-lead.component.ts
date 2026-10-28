@@ -163,7 +163,9 @@ export class CrmConvertLeadComponent {
     this.submitting.set(true);
     this.serverError.set(null);
     this.leads
-      .convert(this.data.leadId, { existingClientId: this.form.getRawValue().existingClientId })
+      .convert(this.data.leadId, {
+        existingClientId: this.form.getRawValue().existingClientId ?? '',
+      })
       .subscribe({
         next: () => {
           this.toast.show({ tone: 'success', message: this.catalog.t('convert.saved') });

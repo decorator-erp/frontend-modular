@@ -129,4 +129,18 @@ describe('CrmLeadService', () => {
       expect(id).toBe('L1');
     });
   });
+
+  describe('convert (009b #7) — body { existingClientId } → 200 { clientId }', () => {
+    it('sends exactly { existingClientId } and emits the client id', () => {
+      let result: unknown;
+      service.convert('L1', { existingClientId: 'C' }).subscribe((r) => (result = r));
+
+      const req = http.expectOne(url('/crm/leads/L1/convert'));
+      expect(req.request.method).toBe('POST');
+      expect(req.request.body).toEqual({ existingClientId: 'C' });
+      req.flush({ clientId: 'C' });
+
+      expect(result).toEqual({ clientId: 'C' });
+    });
+  });
 });

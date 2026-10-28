@@ -53,12 +53,13 @@ export interface UpdateLeadRequest {
   ownerId?: string | null;
 }
 
-/** Leads are converted through the dedicated `convert` action, never a status change. */
+/**
+ * Leads are converted through the dedicated `convert` action, never a status change.
+ * `ConvertRequest(Guid ExistingClientId)` (`CrmLeadEndpoints.cs:108`): the client is required;
+ * "create a new client" is not supported (C §8.1.7).
+ */
 export interface ConvertLeadRequest {
-  /** An existing client to attach this lead to, or `null` to create a new one. */
-  existingClientId?: string | null;
-  address?: string | null;
-  notes?: string | null;
+  existingClientId: string;
 }
 
 /**
@@ -91,15 +92,15 @@ export class CrmLeadService extends ApiService {
   }
 
   /**
-   * `POST /{id}/convert` → `204`. `crm.leads.InvalidStatusTransition` guards against
-   * converting via `updateStatus` instead — this is the only path.
+   * `POST /{id}/convert { existingClientId }` → `200 { clientId }` (`CrmLeadEndpoints.cs:49-61`).
+   * A client the caller can't see is 404 `crm.clients.NotFound` (D-9).
+   * `crm.leads.InvalidStatusTransition` guards against converting via `updateStatus` instead —
+   * this is the only path.
    */
-  convert(id: string, request: ConvertLeadRequest): Observable<void> {
-    return this.post<void>(`/crm/leads/${id}/convert`, {
-      existingClientId: request.existingClientId ?? null,
-      address: request.address ?? null,
-      notes: request.notes ?? null,
-    });
+  convert(id: string, request: ConvertLeadRequest): Observable<{ clientId: string }> {
+    return this.post<unknown>(`/crm/leads/${id}/convert`, {
+      existingClientId: request.existingClientId,
+    }).pipe(map((r) => ({ clientId: this.unwrapId(r, 'clientId') })));
   }
 
   /**
