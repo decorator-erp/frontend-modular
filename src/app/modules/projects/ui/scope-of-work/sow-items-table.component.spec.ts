@@ -94,6 +94,36 @@ describe('SowItemsTableComponent (sow #3)', () => {
     expect(document.activeElement).toBe(rows()[0].querySelector('[data-action="remove"]'));
   });
 
+  it('FINDING-7-14: a failed move (settled, no reload) drops the target; a later reload keeps focus', () => {
+    render(ITEMS);
+    const down = button(rows()[1], 'Move item 2 down');
+    down.focus();
+    down.click();
+    fixture.componentRef.setInput('pending', true);
+    fixture.detectChanges();
+    fixture.componentRef.setInput('pending', false); // failed: no reload
+    fixture.detectChanges();
+    down.blur();
+    render(ITEMS.map((i) => ({ ...i }))); // an unrelated reload, later
+    expect(document.activeElement).toBe(document.body);
+  });
+
+  it('FINDING-7-14: the reload does not pull focus back once it has left the table', () => {
+    const outside = document.createElement('input');
+    document.body.appendChild(outside);
+    try {
+      render(ITEMS);
+      const down = button(rows()[1], 'Move item 2 down');
+      down.focus();
+      down.click();
+      outside.focus(); // the user moved on while the move was saving
+      render([ITEMS[0], { ...ITEMS[2], order: 2 }, { ...ITEMS[1], order: 3 }]);
+      expect(document.activeElement).toBe(outside);
+    } finally {
+      outside.remove();
+    }
+  });
+
   it('renders order, name, template and fee per row; "—" when the template is gone', async () => {
     render([...ITEMS.slice(0, 2), item({ id: 'i3', order: 3, sourceTemplateName: null })]);
     await fixture.whenStable(); // ngModel writes the CVA value a microtask later

@@ -129,6 +129,7 @@ const TOGGLE_BUTTON =
               [confirmed]="store.isConfirmed()"
               [projectId]="id()"
               [drafts]="store.itemDrafts()"
+              [pending]="store.saving() || store.reloading()"
               (updateItem)="onUpdateItem($event)"
               (reorder)="store.reorder($event)"
               (remove)="store.removeItem($event)"

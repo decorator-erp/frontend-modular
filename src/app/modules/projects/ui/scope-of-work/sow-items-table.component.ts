@@ -172,6 +172,8 @@ export class SowItemsTableComponent {
   readonly projectId = input('');
   /** FINDING-7-2: each item's body as last sent and not yet reloaded (the store's `itemDrafts`). */
   readonly drafts = input<Record<string, UpdateScopeOfWorkItemRequest>>({});
+  /** FINDING-7-14: a write or the reload after it is in flight (the store's saving || reloading). */
+  readonly pending = input(false);
 
   readonly updateItem = output<SowItemUpdate>();
   /** Every item id, in the new order (B4). */
@@ -183,18 +185,34 @@ export class SowItemsTableComponent {
 
   /**
    * FINDING-7-6: the row action pressed, refocused once the reloaded rows render: the same
-   * item's button (or its other enabled one), else the row now at that index.
+   * item's button (or its other enabled one), else the row now at that index. FINDING-7-14:
+   * dropped if the action settles (`pending` seen, then false) with the rows unchanged, and
+   * restored only while focus is on <body> or still inside the table.
    */
-  private refocus: { id: string; index: number; action: string } | null = null;
+  private refocus: {
+    id: string;
+    index: number;
+    action: string;
+    items: ScopeOfWorkItem[];
+    armed: boolean;
+  } | null = null;
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
 
   constructor() {
     afterRenderEffect(() => {
-      this.items();
+      const items = this.items();
+      const pending = this.pending();
       const target = this.refocus;
       if (!target) return;
+      if (items === target.items) {
+        if (pending) target.armed = true;
+        else if (target.armed) this.refocus = null;
+        return;
+      }
       this.refocus = null;
       const root = this.host.nativeElement;
+      const active = document.activeElement;
+      if (active && active !== document.body && !root.contains(active)) return;
       const rows = root.querySelectorAll('tbody tr');
       const row =
         root.querySelector(`tr[data-item-id="${target.id}"]`) ??
@@ -205,7 +223,7 @@ export class SowItemsTableComponent {
   }
 
   protected onRemove(itemId: string, index: number): void {
-    this.refocus = { id: itemId, index, action: 'remove' };
+    this.refocus = { id: itemId, index, action: 'remove', items: this.items(), armed: false };
     this.remove.emit(itemId);
   }
 
@@ -237,7 +255,8 @@ export class SowItemsTableComponent {
     const target = index + delta;
     if (target < 0 || target >= ids.length) return;
     [ids[index], ids[target]] = [ids[target], ids[index]];
-    this.refocus = { id: ids[target], index: target, action: delta < 0 ? 'up' : 'down' };
+    const action = delta < 0 ? 'up' : 'down';
+    this.refocus = { id: ids[target], index: target, action, items: this.items(), armed: false };
     this.reorder.emit(ids);
   }
 
