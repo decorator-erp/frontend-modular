@@ -71,9 +71,10 @@ import { CrmPeriodCardComponent } from './period-card.component';
             class="text-accent hover:underline"
             [routerLink]="['/crm/clients', p.clientId]"
             dir="auto"
-            >{{ p.clientName }}</a
+            >{{ p.clientName || '—' }}</a
           >
-          · {{ catalog.t('sched.coordLbl') }}: {{ p.productOwnerName }} ·
+          <!-- 009b #47 (D-h): ProjectResponse carries neither name, so an absent one reads "—". -->
+          · {{ catalog.t('sched.coordLbl') }}: {{ p.productOwnerName || '—' }} ·
           <!--
             The way back. The PM project page is a LINK too, never an embedded surface —
             project management and requirement gathering are separate workspaces.

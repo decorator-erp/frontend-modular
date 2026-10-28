@@ -110,4 +110,33 @@ describe('CrmDashboardComponent', () => {
       expect((fixture.nativeElement as HTMLElement).textContent).not.toContain('Invalid');
     });
   });
+
+  describe('header names (009b #47, D-h)', () => {
+    it('renders "—" for the absent clientName and productOwnerName', () => {
+      const header = (create().nativeElement as HTMLElement).querySelector('[toolbar]');
+      const text = (header?.textContent ?? '').replace(/\s+/g, ' ');
+
+      expect(header?.querySelector('a')?.textContent?.trim()).toBe('—');
+      expect(text).toMatch(/: — ·/);
+    });
+
+    it('keeps the names when the response has them', () => {
+      projectsApi.getById.mockReturnValue(
+        of({
+          id: 'P',
+          code: 'PRJ-1',
+          name: 'Villa',
+          clientId: 'C',
+          clientName: 'Mona',
+          productOwnerName: 'Omar',
+        }),
+      );
+      const text =
+        (create().nativeElement as HTMLElement).querySelector('[toolbar]')?.textContent ?? '';
+
+      expect(text).toContain('Mona');
+      expect(text).toContain('Omar');
+      expect(text).not.toContain('—');
+    });
+  });
 });
