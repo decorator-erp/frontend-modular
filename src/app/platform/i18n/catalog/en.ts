@@ -1165,6 +1165,23 @@ export const EN = {
   // the ScopeOfWork.dc.html prototype's English copy (it has no L.ar dictionary); Arabic authored
   // to this file's register. Office-only, but bilingual by spec (B16). ──
   'sow.title': 'Scope of work',
+  'sow.items': 'Items',
+  'sow.colName': 'Item / stage name',
+  'sow.colFrom': 'From template',
+  'sow.colFee': 'Fee (EGP)',
+  'sow.colActions': 'Actions',
+  'sow.nameOf': 'Name of item {n}',
+  'sow.feeOf': 'Fee of item {n}',
+  'sow.moveUp': 'Move item {n} up',
+  'sow.moveDown': 'Move item {n} down',
+  'sow.remove': 'Remove item {n}',
+  'sow.empty': 'No items yet. Add items from the stage templates.',
+  'sow.sourceMissing': 'Its template stage was deleted; confirm will fail until it is removed.',
+  'sow.stageCreated': 'Stage {n} created · open',
+  'sow.nameInvalid': 'Enter a name of 1 to 200 characters.',
+  'sow.feeInvalid': 'Enter a fee from 0 to 1,000,000,000,000.',
+  'sow.loadFailed': "Couldn't load the scope of work.",
+  'sow.saveFailed': "Couldn't save the change. Try again.",
 } as const;
 
 /** The key set of record. Every catalog lookup is typed against this. */

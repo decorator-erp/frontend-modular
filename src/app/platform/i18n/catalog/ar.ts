@@ -1092,4 +1092,21 @@ export const AR: Partial<Record<CatalogKey, string>> = {
 
   // ── sow.* — scope of work, NEW-FEATURE-1 (specs/sow-scope-of-work.md). AUTHORED (see en.ts). ──
   'sow.title': 'نطاق العمل',
+  'sow.items': 'البنود',
+  'sow.colName': 'البند / اسم المرحلة',
+  'sow.colFrom': 'من القالب',
+  'sow.colFee': 'الأتعاب (ج.م)',
+  'sow.colActions': 'الإجراءات',
+  'sow.nameOf': 'اسم البند {n}',
+  'sow.feeOf': 'أتعاب البند {n}',
+  'sow.moveUp': 'نقل البند {n} لأعلى',
+  'sow.moveDown': 'نقل البند {n} لأسفل',
+  'sow.remove': 'حذف البند {n}',
+  'sow.empty': 'لا توجد بنود بعد. أضف بنودًا من قوالب المراحل.',
+  'sow.sourceMissing': 'حُذفت مرحلة القالب الخاصة بهذا البند؛ سيفشل التأكيد حتى تحذفه.',
+  'sow.stageCreated': 'أُنشئت المرحلة {n} · فتح',
+  'sow.nameInvalid': 'أدخل اسمًا من 1 إلى 200 حرف.',
+  'sow.feeInvalid': 'أدخل أتعابًا من 0 إلى 1,000,000,000,000.',
+  'sow.loadFailed': 'تعذّر تحميل نطاق العمل.',
+  'sow.saveFailed': 'تعذّر حفظ التغيير. حاول مرة أخرى.',
 };
