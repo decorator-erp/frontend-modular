@@ -1,3 +1,4 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { NEVER, of, throwError } from 'rxjs';
@@ -107,6 +108,7 @@ function briefApiMock() {
     getBrief: vi.fn().mockReturnValue(of(head())),
     getBriefByStage: vi.fn().mockReturnValue(of(head())),
     listSpaces: vi.fn().mockReturnValue(of([space()])),
+    createBrief: vi.fn().mockReturnValue(of('brief-new')),
     updateHead: vi.fn().mockReturnValue(of(undefined)),
     sendForConfirmation: vi.fn().mockReturnValue(of(undefined)),
     addSpace: vi.fn().mockReturnValue(of('new-space-id')),
@@ -211,6 +213,67 @@ describe('BriefStore', () => {
       s.load(PROJECT_ID);
       expect(s.head()?.id).toBe('brief-1');
       expect(s.headTrail()).toEqual([]);
+    });
+  });
+
+  describe('no brief yet (009b #10)', () => {
+    const notFound = (code: string) =>
+      new HttpErrorResponse({
+        status: 404,
+        error: { title: code, status: 404, errors: { [code]: ['Design brief not found.'] } },
+      });
+
+    it('a 404 crm.briefs.NotFound is the "no brief yet" state, not an error', () => {
+      api.getBriefByStage.mockReturnValue(throwError(() => notFound('crm.briefs.NotFound')));
+      const s = store();
+      s.load(PROJECT_ID, 'stage-2');
+      expect(s.noBrief()).toBe(true);
+      expect(s.error()).toBeNull();
+      expect(s.head()).toBeNull();
+      expect(api.listSpaces).not.toHaveBeenCalled();
+    });
+
+    it('any other failure stays an error', () => {
+      api.getBriefByStage.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 500 })));
+      const s = store();
+      s.load(PROJECT_ID, 'stage-2');
+      expect(s.noBrief()).toBe(false);
+      expect(s.error()).toBe('Could not load the brief.');
+    });
+
+    it('createBrief posts { data, projectStageId } and loads the new brief by its stage', () => {
+      api.getBriefByStage.mockReturnValueOnce(throwError(() => notFound('crm.briefs.NotFound')));
+      const s = store();
+      s.load(PROJECT_ID, 'stage-2');
+
+      s.createBrief('stage-2', { unitType: 0, unitCondition: 0 });
+
+      expect(api.createBrief).toHaveBeenCalledWith(PROJECT_ID, {
+        data: { unitType: 0, unitCondition: 0 },
+        projectStageId: 'stage-2',
+      });
+      expect(api.getBriefByStage).toHaveBeenLastCalledWith('stage-2');
+      expect(s.noBrief()).toBe(false);
+      expect(s.head()?.id).toBe('brief-1');
+    });
+
+    it("a failed create shows the code's catalog message", () => {
+      api.createBrief.mockReturnValue(
+        throwError(
+          () =>
+            new HttpErrorResponse({
+              status: 400,
+              error: { errors: { 'crm.briefs.UnitDetailsRequired': ['x'] } },
+            }),
+        ),
+      );
+      const s = store();
+      s.load(PROJECT_ID, 'stage-2');
+      s.createBrief('stage-2', { unitType: 0, unitCondition: 0 });
+      expect(s.creating()).toBe(false);
+      expect(s.error()).toBe(
+        "Unit type and unit condition are required unless the lead's intake supplies them.",
+      );
     });
   });
 

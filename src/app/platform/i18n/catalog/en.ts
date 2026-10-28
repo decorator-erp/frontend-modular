@@ -197,6 +197,12 @@ export const EN = {
   'brief.rReception': 'Reception',
   'brief.rRoof': 'Roof',
   'brief.rWhole': 'Whole unit',
+  'brief.noBrief': 'No brief yet',
+  'brief.noBriefSub':
+    'This stage has no design brief. Create it to start the head and the gathering log.',
+  'brief.pickStage': 'Pick a stage to create its brief.',
+  'brief.createBrief': 'Create brief',
+  'brief.fromIntake': 'From the lead intake',
   'brief.room': 'Room',
   'brief.round.chip': 'round {round} · pending approval',
   'brief.roundChip': 'round 3 · pending approval',

@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable, forkJoin, of } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 import { ApiService } from '@platform/http/api.service';
+import { handled } from '@platform/http/handled-errors';
 import { ApprovalState } from '../model/crm-enums';
 import type {
   BriefHead,
@@ -10,6 +11,7 @@ import type {
   BriefSpace,
   BriefSpaceRequest,
   BriefView,
+  CreateBriefRequest,
   CrmSpace,
   UpdateBriefHeadRequest,
 } from '../model';
@@ -40,6 +42,20 @@ export class CrmBriefService extends ApiService {
     return this.get<unknown>(`/crm/stages/${stageId}/brief`).pipe(
       map((r) => this.normalizeBrief(r)),
     );
+  }
+
+  /**
+   * `POST /api/crm/projects/{projectId}/brief` `{ data, projectStageId }` → `201 { briefId }` —
+   * `crm.briefs.manage` (009b #10). 403 `crm.access.NotAnEmployee` is the caller's to show
+   * (`handled(403)`); 400 `UnitDetailsRequired`/`StageProjectMismatch`, 404 `ProjectNotFound`, 409
+   * `AlreadyExists` come back as catalog codes.
+   */
+  createBrief(projectId: string, request: CreateBriefRequest): Observable<string> {
+    return this.post<unknown>(
+      `/crm/projects/${projectId}/brief`,
+      { data: request.data, projectStageId: request.projectStageId },
+      { context: handled(403) },
+    ).pipe(map((r) => this.unwrapId(r, 'briefId')));
   }
 
   /**

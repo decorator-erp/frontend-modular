@@ -295,7 +295,7 @@ export const ERROR_MESSAGES: Record<string, string> = {
   // Brief — the head and the append-only gathering ledger.
   'crm.briefs.NotFound': 'Design brief not found.',
   'crm.briefs.EntryNotFound': 'Gathering entry not found.',
-  'crm.briefs.AlreadyExists': 'A design brief already exists for this project.',
+  'crm.briefs.AlreadyExists': 'This stage already has a design brief.',
   'crm.briefs.NotPending': 'The brief is not pending approval.',
   'crm.briefs.EntryLocked': 'This entry is confirmed and locked. Add a new version to correct it.',
   'crm.briefs.EntryPending':
@@ -535,6 +535,8 @@ export const ERROR_MESSAGES_AR: Record<string, string> = {
   'crm.leads.DesignerExperienceWithoutUse':
     'لا يمكن تحديد تجربة المصمم إلا إذا سبق للعميل التعامل مع مصمم.',
   'crm.leads.ExperienceReasonWithoutExperience': 'يتطلب سبب التجربة تحديد تجربة المصمم أولًا.',
+  'crm.briefs.NotFound': 'موجز التصميم غير موجود.',
+  'crm.briefs.AlreadyExists': 'لهذه المرحلة موجز تصميم بالفعل.',
   'crm.briefs.UnitDetailsRequired':
     'نوع الوحدة وحالتها مطلوبان ما لم تكن بيانات العميل المحتمل تتضمّنهما.',
   'crm.briefs.HeadLockedPendingApproval': 'لا يمكن تعديل رأس الموجز وهو بانتظار قرار العميل.',

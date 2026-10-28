@@ -263,6 +263,46 @@ export interface UpdateBriefHeadRequest {
 }
 
 /**
+ * `CrmBriefHeadData` (`BriefContracts.cs:10-36`) — every editable head field in one carrier. On
+ * create, `unitType`/`unitCondition` may be `0` only when the client's converted lead intake can seed
+ * them (else 400 `crm.briefs.UnitDetailsRequired`); an omitted `sector` is seeded too.
+ */
+export interface BriefHeadData {
+  unitType: number;
+  unitCondition: number;
+  address?: string | null;
+  floorNo?: number | null;
+  unitsPerFloor?: number | null;
+  areaSqm?: number | null;
+  buildingKind?: number | null;
+  isLicensed?: boolean | null;
+  position?: number | null;
+  elevatorStatus?: number | null;
+  receivesFrequentVisitors?: boolean | null;
+  visitorsNote?: string | null;
+  usedDesignerBefore?: boolean | null;
+  designerExperience?: number | null;
+  designerExperienceReason?: string | null;
+  hiringReasons?: number;
+  preferredStyle?: string | null;
+  preferredColors?: string | null;
+  furnitureStatus?: number | null;
+  expectedBudget?: number | null;
+  timelinePressure?: number | null;
+  architecturalRequests?: string | null;
+  otherNeeds?: string | null;
+  isRented?: boolean | null;
+  finishingPurpose?: number | null;
+  sector?: number | null;
+}
+
+/** `POST /api/crm/projects/{projectId}/brief` body (009b #10) — one brief per stage. */
+export interface CreateBriefRequest {
+  data: BriefHeadData;
+  projectStageId: string;
+}
+
+/**
  * The real space an entry is written against, resolved for display (feature 006).
  * `null` on a general (project-wide) entry. Renaming a space is safe — the entry
  * references it by id.

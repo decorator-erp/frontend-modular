@@ -11,12 +11,14 @@ import { CrmBriefPageComponent } from './crm-brief-page.component';
 
 describe('CrmBriefPageComponent — stage selector (009b #9)', () => {
   const head = signal<{ id: string; projectStageId: string | null } | null>(null);
-  let store: { head: typeof head; load: ReturnType<typeof vi.fn> };
+  const noBrief = signal(false);
+  let store: { head: typeof head; noBrief: typeof noBrief; load: ReturnType<typeof vi.fn> };
   let stagesApi: { getByProject: ReturnType<typeof vi.fn> };
 
   beforeEach(() => {
     head.set(null);
-    store = { head, load: vi.fn() };
+    noBrief.set(false);
+    store = { head, noBrief, load: vi.fn() };
     stagesApi = {
       getByProject: vi.fn().mockReturnValue(
         of([
@@ -77,5 +79,21 @@ describe('CrmBriefPageComponent — stage selector (009b #9)', () => {
     page['selectStage']('S2');
     expect(store.load).toHaveBeenLastCalledWith('P1', 'S2');
     expect(page['selectedStageId']()).toBe('S2');
+  });
+
+  it('renders "Create brief" for the selected stage instead of the brief cards when there is none (009b #10)', () => {
+    const fixture = TestBed.createComponent(CrmBriefPageComponent);
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('app-crm-brief-create')).toBeNull();
+    expect(el.querySelector('app-crm-brief-head')).not.toBeNull();
+
+    noBrief.set(true);
+    fixture.componentInstance['selectStage']('S2');
+    fixture.detectChanges();
+
+    expect(el.querySelector('app-crm-brief-create')).not.toBeNull();
+    expect(el.querySelector('app-crm-brief-head')).toBeNull();
+    expect(el.querySelector('app-crm-gathering-ledger')).toBeNull();
   });
 });

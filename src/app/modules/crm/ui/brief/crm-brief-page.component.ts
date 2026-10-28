@@ -21,6 +21,7 @@ import {
 } from '@ds';
 import { BriefStore } from '../../stores/brief.store';
 import { CrmBriefAttachmentsComponent } from './brief-attachments.component';
+import { CrmBriefCreateComponent } from './brief-create.component';
 import { CrmBriefHeadComponent } from './brief-head.component';
 import { CrmGatheringLedgerComponent } from './gathering-ledger.component';
 
@@ -44,6 +45,7 @@ import { CrmGatheringLedgerComponent } from './gathering-ledger.component';
     CrmBriefHeadComponent,
     CrmGatheringLedgerComponent,
     CrmBriefAttachmentsComponent,
+    CrmBriefCreateComponent,
   ],
   host: { class: 'block bg-bg min-h-full' },
   template: `
@@ -68,9 +70,13 @@ import { CrmGatheringLedgerComponent } from './gathering-ledger.component';
     }
 
     <div class="p-6 flex flex-col gap-4">
-      <app-crm-brief-head />
-      <app-crm-gathering-ledger />
-      <app-crm-brief-attachments [projectId]="projectId()" />
+      @if (store.noBrief()) {
+        <app-crm-brief-create [stageId]="selectedStageId()" />
+      } @else {
+        <app-crm-brief-head />
+        <app-crm-gathering-ledger />
+        <app-crm-brief-attachments [projectId]="projectId()" />
+      }
     </div>
   `,
 })

@@ -2,6 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { HANDLED_ERROR_STATUSES } from '@platform/http/handled-errors';
 import { environment } from '../../../../environments/environment';
 import { ApprovalState } from '../model/crm-enums';
 import type { BriefHead, BriefSpace } from '../model';
@@ -83,6 +84,26 @@ describe('CrmBriefService', () => {
     });
   });
 
+  describe('createBrief (009b #10) — POST /api/crm/projects/{projectId}/brief', () => {
+    it('posts { data, projectStageId } and emits the id read off the 201 { briefId } body', () => {
+      let id: string | undefined;
+      service
+        .createBrief('P', { data: { unitType: 0, unitCondition: 2 }, projectStageId: 'S' })
+        .subscribe((v) => (id = v));
+
+      const req = http.expectOne(url('/crm/projects/P/brief'));
+      expect(req.request.method).toBe('POST');
+      expect(req.request.body).toEqual({
+        data: { unitType: 0, unitCondition: 2 },
+        projectStageId: 'S',
+      });
+      expect(req.request.context.get(HANDLED_ERROR_STATUSES)).toEqual([403]);
+      req.flush({ briefId: 'B' }, { status: 201, statusText: 'Created' });
+
+      expect(id).toBe('B');
+    });
+  });
+
   describe('getBrief (N-11, the obsolete project fallback)', () => {
     it('reads the same flattened CrmDesignBriefResponse off the project route', () => {
       let head: BriefHead | undefined;
@@ -109,18 +130,16 @@ describe('CrmBriefService', () => {
           isActive: false,
         },
       ]);
-      http
-        .expectOne(url('/crm/space-types'))
-        .flush([
-          {
-            id: 'st-1',
-            code: 'rec',
-            nameEn: 'Reception',
-            nameAr: 'استقبال',
-            sortOrder: 1,
-            isActive: true,
-          },
-        ]);
+      http.expectOne(url('/crm/space-types')).flush([
+        {
+          id: 'st-1',
+          code: 'rec',
+          nameEn: 'Reception',
+          nameAr: 'استقبال',
+          sortOrder: 1,
+          isActive: true,
+        },
+      ]);
     };
 
     it('keeps the server order and isCurrent, and resolves space from the project spaces (inactive too)', () => {
