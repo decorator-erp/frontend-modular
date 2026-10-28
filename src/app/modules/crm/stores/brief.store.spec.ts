@@ -39,7 +39,6 @@ function head(over: Partial<BriefHead> = {}): BriefHead {
     id: 'brief-1',
     projectId: PROJECT_ID,
     projectStageId: 'stage-1',
-    decisionMakerContactId: 'contact-1',
     createdById: 'employee-1',
     unitType: 1,
     unitCondition: 1,
@@ -53,12 +52,8 @@ function head(over: Partial<BriefHead> = {}): BriefHead {
     finishingPurpose: null,
     position: null,
     elevatorStatus: null,
-    utilityMetersNote: null,
     receivesFrequentVisitors: null,
     visitorsNote: null,
-    parentsHobbies: null,
-    childrenHobbies: null,
-    hobbiesInDesign: null,
     usedDesignerBefore: null,
     designerExperience: null,
     designerExperienceReason: null,
@@ -73,7 +68,6 @@ function head(over: Partial<BriefHead> = {}): BriefHead {
     sector: null,
     status: ApprovalState.Draft,
     lastMeetingId: null,
-    createdAtUtc: '2026-07-01T00:00:00.000Z',
     ...over,
   };
 }
@@ -82,6 +76,7 @@ function space(over: Partial<BriefSpace> = {}): BriefSpace {
   return {
     id: 'space-1',
     briefId: 'brief-1',
+    spaceId: RECEPTION.id,
     space: RECEPTION,
     countOrPieces: null,
     requirements: 'L-seating for 10 guests',
@@ -90,7 +85,7 @@ function space(over: Partial<BriefSpace> = {}): BriefSpace {
     supersedesSpaceId: null,
     projectTaskId: null,
     createdById: 'employee-1',
-    createdAtUtc: '2026-07-02T00:00:00.000Z',
+    isCurrent: true,
     ...over,
   };
 }
@@ -109,7 +104,9 @@ function trailItem(over: Partial<ApprovalTrailItem> = {}): ApprovalTrailItem {
 
 function briefApiMock() {
   return {
-    getBrief: vi.fn().mockReturnValue(of({ head: head(), spaces: [space()] })),
+    getBrief: vi.fn().mockReturnValue(of(head())),
+    getBriefByStage: vi.fn().mockReturnValue(of(head())),
+    listSpaces: vi.fn().mockReturnValue(of([space()])),
     updateHead: vi.fn().mockReturnValue(of(undefined)),
     sendForConfirmation: vi.fn().mockReturnValue(of(undefined)),
     addSpace: vi.fn().mockReturnValue(of('new-space-id')),
@@ -173,6 +170,41 @@ describe('BriefStore', () => {
       expect(s.error()).toBe('Could not load the brief.');
     });
 
+    it("with a stage, reads that stage's brief (009b #9), then its entries by brief id (009b #11)", () => {
+      const s = store();
+      s.load(PROJECT_ID, 'stage-2');
+      expect(api.getBriefByStage).toHaveBeenCalledWith('stage-2');
+      expect(api.getBrief).not.toHaveBeenCalled();
+      expect(api.listSpaces).toHaveBeenCalledWith('brief-1', PROJECT_ID);
+      expect(s.stageId()).toBe('stage-2');
+      expect(s.spaces()).toHaveLength(1);
+    });
+
+    it('without a stage, falls back to the obsolete project route (N-11)', () => {
+      const s = store();
+      s.load(PROJECT_ID);
+      expect(api.getBrief).toHaveBeenCalledWith(PROJECT_ID);
+      expect(api.getBriefByStage).not.toHaveBeenCalled();
+      expect(s.stageId()).toBeNull();
+    });
+
+    it('reload() re-reads the same stage after a mutation', () => {
+      const s = store();
+      s.load(PROJECT_ID, 'stage-2');
+      api.getBriefByStage.mockClear();
+      s.addSpace({ spaceId: RECEPTION.id, requirements: 'x' });
+      expect(api.getBriefByStage).toHaveBeenCalledWith('stage-2');
+      expect(api.getBrief).not.toHaveBeenCalled();
+    });
+
+    it('an entries fetch failure does not blank the head — spaces just stay empty', () => {
+      api.listSpaces.mockReturnValue(throwError(() => new Error('boom')));
+      const s = store();
+      s.load(PROJECT_ID);
+      expect(s.head()?.id).toBe('brief-1');
+      expect(s.spaces()).toEqual([]);
+    });
+
     it('a trail fetch failure does not blank the head — headTrail just stays empty', () => {
       approvals.bySubject.mockReturnValue(throwError(() => new Error('boom')));
       const s = store();
@@ -194,9 +226,7 @@ describe('BriefStore', () => {
       approvals.bySubject.mockReturnValue(
         of([trailItem({ round: 1 }), trailItem({ round: 2, id: 'appr-2' })]),
       );
-      api.getBrief.mockReturnValue(
-        of({ head: head({ status: ApprovalState.PendingApproval }), spaces: [] }),
-      );
+      api.getBrief.mockReturnValue(of(head({ status: ApprovalState.PendingApproval })));
       const s = store();
 
       s.load(PROJECT_ID);
@@ -207,18 +237,14 @@ describe('BriefStore', () => {
 
     it('an edit that returns an Approved head to PendingApproval does NOT itself create a new trail row — round is unchanged until send()', () => {
       approvals.bySubject.mockReturnValue(of([trailItem({ round: 1 })]));
-      api.getBrief.mockReturnValueOnce(
-        of({ head: head({ status: ApprovalState.Approved }), spaces: [] }),
-      );
+      api.getBrief.mockReturnValueOnce(of(head({ status: ApprovalState.Approved })));
       const s = store();
       s.load(PROJECT_ID);
       expect(s.headRound()).toBe(1);
 
       // Simulate the server's real behavior: editing flips status to PendingApproval but
       // the trail (fetched fresh on reload) still reports the SAME round — FR-009.
-      api.getBrief.mockReturnValue(
-        of({ head: head({ status: ApprovalState.PendingApproval }), spaces: [] }),
-      );
+      api.getBrief.mockReturnValue(of(head({ status: ApprovalState.PendingApproval })));
       s.updateHead(PROJECT_ID, { unitType: 1, unitCondition: 1 });
 
       expect(api.updateHead).toHaveBeenCalled();
@@ -228,9 +254,7 @@ describe('BriefStore', () => {
 
     it('sendForConfirmation() is what advances the round (FR-009)', () => {
       approvals.bySubject.mockReturnValueOnce(of([trailItem({ round: 1 })]));
-      api.getBrief.mockReturnValueOnce(
-        of({ head: head({ status: ApprovalState.Rejected }), spaces: [] }),
-      );
+      api.getBrief.mockReturnValueOnce(of(head({ status: ApprovalState.Rejected })));
       const s = store();
       s.load(PROJECT_ID);
       expect(s.headRound()).toBe(1);
@@ -238,9 +262,7 @@ describe('BriefStore', () => {
       approvals.bySubject.mockReturnValue(
         of([trailItem({ round: 1 }), trailItem({ id: 'appr-2', round: 2 })]),
       );
-      api.getBrief.mockReturnValue(
-        of({ head: head({ status: ApprovalState.PendingApproval }), spaces: [] }),
-      );
+      api.getBrief.mockReturnValue(of(head({ status: ApprovalState.PendingApproval })));
       s.sendForConfirmation();
 
       expect(api.sendForConfirmation).toHaveBeenCalledWith('brief-1');
@@ -252,7 +274,7 @@ describe('BriefStore', () => {
     it('collects entries of the SAME space into ONE group', () => {
       const a = space({ id: 's1', space: RECEPTION });
       const b = space({ id: 's2', space: RECEPTION, requirements: 'more seating' });
-      api.getBrief.mockReturnValue(of({ head: head(), spaces: [a, b] }));
+      api.listSpaces.mockReturnValue(of([a, b]));
       const s = store();
 
       s.load(PROJECT_ID);
@@ -264,11 +286,8 @@ describe('BriefStore', () => {
     });
 
     it('splits entries into separate groups by space', () => {
-      api.getBrief.mockReturnValue(
-        of({
-          head: head(),
-          spaces: [space({ id: 's1', space: RECEPTION }), space({ id: 's2', space: KITCHEN })],
-        }),
+      api.listSpaces.mockReturnValue(
+        of([space({ id: 's1', space: RECEPTION }), space({ id: 's2', space: KITCHEN })]),
       );
       const s = store();
 
@@ -283,11 +302,8 @@ describe('BriefStore', () => {
     });
 
     it('puts null-space entries into a General group that sorts last', () => {
-      api.getBrief.mockReturnValue(
-        of({
-          head: head(),
-          spaces: [space({ id: 's1', space: null }), space({ id: 's2', space: RECEPTION })],
-        }),
+      api.listSpaces.mockReturnValue(
+        of([space({ id: 's1', space: null }), space({ id: 's2', space: RECEPTION })]),
       );
       const s = store();
 

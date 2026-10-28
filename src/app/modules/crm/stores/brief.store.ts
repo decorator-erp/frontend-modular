@@ -23,6 +23,8 @@ export interface BriefSpaceGroup {
 
 interface BriefState {
   projectId: string | null;
+  /** The stage whose brief is loaded (009b #9); `null` = the obsolete project fallback (N-11). */
+  stageId: string | null;
   head: BriefHead | null;
   spaces: BriefSpace[];
   /** The head's own approval trail — round NUMBER lives here, not on the head itself. */
@@ -36,6 +38,7 @@ interface BriefState {
 
 const INITIAL: BriefState = {
   projectId: null,
+  stageId: null,
   head: null,
   spaces: [],
   headTrail: [],
@@ -94,19 +97,40 @@ export const BriefStore = signalStore(
   })),
 
   withMethods((store, api = inject(CrmBriefService), approvals = inject(CrmApprovalsService)) => ({
-    /** Loads the head, every entry, and the head's own approval trail (for its round). */
-    load(projectId: string): void {
-      patchState(store, { loading: true, error: null, projectId });
-      api.getBrief(projectId).subscribe({
-        next: (view) => {
-          patchState(store, { head: view.head, spaces: view.spaces, loading: false });
+    /**
+     * Loads the stage's brief head (009b #9) — or, with no stage, the project's latest through the
+     * obsolete project route (N-11) — then its entries (`GET /briefs/{id}/spaces`, 009b #11) and the
+     * head's own approval trail (for its round).
+     */
+    load(projectId: string, stageId: string | null = null): void {
+      patchState(store, { loading: true, error: null, projectId, stageId });
+      const head$ = stageId ? api.getBriefByStage(stageId) : api.getBrief(projectId);
+      head$.subscribe({
+        next: (head) => {
+          patchState(store, { head, loading: false });
+          api
+            .listSpaces(head.id, head.projectId || projectId)
+            .pipe(catchError(() => of<BriefSpace[]>([])))
+            .subscribe((spaces) => patchState(store, { spaces }));
           approvals
-            .bySubject(ApprovalSubjectType.DesignBrief, view.head.id)
+            .bySubject(ApprovalSubjectType.DesignBrief, head.id)
             .pipe(catchError(() => of([])))
             .subscribe((headTrail) => patchState(store, { headTrail }));
         },
-        error: () => patchState(store, { loading: false, error: 'Could not load the brief.' }),
+        error: () =>
+          patchState(store, {
+            loading: false,
+            head: null,
+            spaces: [],
+            error: 'Could not load the brief.',
+          }),
       });
+    },
+
+    /** Re-reads the brief that is loaded now — same project, same stage. */
+    reload(): void {
+      const projectId = store.projectId();
+      if (projectId) this.load(projectId, store.stageId());
     },
 
     /**
@@ -129,7 +153,7 @@ export const BriefStore = signalStore(
       api.updateHead(projectId, request).subscribe({
         next: () => {
           patchState(store, { savingHead: false });
-          this.load(projectId);
+          this.reload();
         },
         error: () =>
           patchState(store, { savingHead: false, error: 'Could not save the brief head.' }),
@@ -145,7 +169,7 @@ export const BriefStore = signalStore(
       api.sendForConfirmation(head.id).subscribe({
         next: () => {
           patchState(store, { sending: false });
-          this.load(projectId);
+          this.reload();
         },
         error: () =>
           patchState(store, {
@@ -164,7 +188,7 @@ export const BriefStore = signalStore(
       api.addSpace(head.id, request).subscribe({
         next: () => {
           patchState(store, { mutatingSpace: false });
-          this.load(projectId);
+          this.reload();
         },
         error: () => patchState(store, { mutatingSpace: false, error: 'Could not add the entry.' }),
       });
@@ -178,7 +202,7 @@ export const BriefStore = signalStore(
       api.updateSpace(spaceId, request).subscribe({
         next: () => {
           patchState(store, { mutatingSpace: false });
-          this.load(projectId);
+          this.reload();
         },
         error: () =>
           patchState(store, { mutatingSpace: false, error: 'Could not update the entry.' }),
@@ -193,7 +217,7 @@ export const BriefStore = signalStore(
       api.sendSpace(spaceId).subscribe({
         next: () => {
           patchState(store, { mutatingSpace: false });
-          this.load(projectId);
+          this.reload();
         },
         error: () =>
           patchState(store, { mutatingSpace: false, error: 'Could not send the entry.' }),
@@ -208,7 +232,7 @@ export const BriefStore = signalStore(
       api.supersedeSpace(spaceId, request).subscribe({
         next: () => {
           patchState(store, { mutatingSpace: false });
-          this.load(projectId);
+          this.reload();
         },
         error: () =>
           patchState(store, { mutatingSpace: false, error: 'Could not add the new version.' }),

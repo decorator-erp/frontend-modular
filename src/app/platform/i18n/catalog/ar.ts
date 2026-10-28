@@ -187,6 +187,7 @@ export const AR: Partial<Record<CatalogKey, string>> = {
   'brief.secPrefs': 'التفضيلات',
   'brief.secSpaces': 'المطلوب في كل فراغ',
   'brief.secUnit': 'بيانات الوحدة',
+  'brief.stageL': 'المرحلة',
   'brief.sub': 'وثيقة حية واحدة — تُحدَّث بعد كل اجتماع مكتمل. آخر تحديث من اجتماع:',
   'brief.title': 'موجز التصميم · استمارة التقديم',
   'brief.unmappedWarning':

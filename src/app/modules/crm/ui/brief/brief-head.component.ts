@@ -288,9 +288,6 @@ function enumOptions<T extends number>(
                 placeholder="—"
               />
             </pera-form-field>
-            <pera-form-field class="sm:col-span-2" [label]="catalog.t('brief.fUtilityMeters')">
-              <pera-input formControlName="utilityMetersNote" />
-            </pera-form-field>
           </div>
         </section>
 
@@ -305,15 +302,6 @@ function enumOptions<T extends number>(
             <pera-form-field [label]="catalog.t('brief.fVisitors')">
               <pera-input formControlName="visitorsNote" />
             </pera-form-field>
-            <pera-form-field [label]="catalog.t('brief.fParentsHobbies')">
-              <pera-input formControlName="parentsHobbies" />
-            </pera-form-field>
-            <pera-form-field [label]="catalog.t('brief.fChildrenHobbies')">
-              <pera-input formControlName="childrenHobbies" />
-            </pera-form-field>
-            <pera-switch formControlName="hobbiesInDesign">{{
-              catalog.t('brief.fHobbiesInDesign')
-            }}</pera-switch>
           </div>
         </section>
 
@@ -461,12 +449,8 @@ export class CrmBriefHeadComponent {
     finishingPurpose: [''],
     position: [''],
     elevatorStatus: [''],
-    utilityMetersNote: [''],
     receivesFrequentVisitors: [false],
     visitorsNote: [''],
-    parentsHobbies: [''],
-    childrenHobbies: [''],
-    hobbiesInDesign: [false],
     usedDesignerBefore: [false],
     designerExperience: [''],
     designerExperienceReason: [''],
@@ -506,12 +490,8 @@ export class CrmBriefHeadComponent {
         finishingPurpose: head.finishingPurpose != null ? String(head.finishingPurpose) : '',
         position: head.position != null ? String(head.position) : '',
         elevatorStatus: head.elevatorStatus != null ? String(head.elevatorStatus) : '',
-        utilityMetersNote: head.utilityMetersNote ?? '',
         receivesFrequentVisitors: !!head.receivesFrequentVisitors,
         visitorsNote: head.visitorsNote ?? '',
-        parentsHobbies: head.parentsHobbies ?? '',
-        childrenHobbies: head.childrenHobbies ?? '',
-        hobbiesInDesign: !!head.hobbiesInDesign,
         usedDesignerBefore: !!head.usedDesignerBefore,
         designerExperience: head.designerExperience != null ? String(head.designerExperience) : '',
         designerExperienceReason: head.designerExperienceReason ?? '',
@@ -575,12 +555,8 @@ export class CrmBriefHeadComponent {
       finishingPurpose: v.finishingPurpose ? Number(v.finishingPurpose) : null,
       position: v.position ? Number(v.position) : null,
       elevatorStatus: v.elevatorStatus ? Number(v.elevatorStatus) : null,
-      utilityMetersNote: v.utilityMetersNote.trim() || null,
       receivesFrequentVisitors: v.receivesFrequentVisitors,
       visitorsNote: v.visitorsNote.trim() || null,
-      parentsHobbies: v.parentsHobbies.trim() || null,
-      childrenHobbies: v.childrenHobbies.trim() || null,
-      hobbiesInDesign: v.hobbiesInDesign,
       usedDesignerBefore: v.usedDesignerBefore,
       designerExperience: v.designerExperience ? Number(v.designerExperience) : null,
       designerExperienceReason: v.designerExperienceReason.trim() || null,

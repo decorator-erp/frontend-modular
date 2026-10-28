@@ -1,6 +1,6 @@
-import { Injectable } from '@angular/core';
-import { Observable } from 'rxjs';
-import { map } from 'rxjs/operators';
+import { Injectable, inject } from '@angular/core';
+import { Observable, forkJoin, of } from 'rxjs';
+import { catchError, map } from 'rxjs/operators';
 import { ApiService } from '@platform/http/api.service';
 import { ApprovalState } from '../model/crm-enums';
 import type {
@@ -10,8 +10,10 @@ import type {
   BriefSpace,
   BriefSpaceRequest,
   BriefView,
+  CrmSpace,
   UpdateBriefHeadRequest,
 } from '../model';
+import { CrmSpaceService } from './crm-space.service';
 
 /**
  * The brief — head (editable 1:1) and the append-only gathering ledger (`BriefSpace`
@@ -28,10 +30,39 @@ import type {
  */
 @Injectable({ providedIn: 'root' })
 export class CrmBriefService extends ApiService {
-  /** `GET /api/crm/projects/{projectId}/brief` — the head AND every entry in one call. */
-  getBrief(projectId: string): Observable<BriefView> {
+  private readonly spacesApi = inject(CrmSpaceService);
+
+  /**
+   * `GET /api/crm/stages/{stageId}/brief` → `CrmDesignBriefResponse` — `crm.briefs.read` (009b #9).
+   * One brief per stage; 404 `crm.briefs.NotFound` = unknown stage, out of scope, or no brief yet.
+   */
+  getBriefByStage(stageId: string): Observable<BriefHead> {
+    return this.get<unknown>(`/crm/stages/${stageId}/brief`).pipe(
+      map((r) => this.normalizeBrief(r)),
+    );
+  }
+
+  /**
+   * `GET /api/crm/projects/{projectId}/brief` — **obsolete** (N-11): the project's most recently
+   * created brief, same `CrmDesignBriefResponse`. Kept only as the fallback when no stage is chosen.
+   */
+  getBrief(projectId: string): Observable<BriefHead> {
     return this.get<unknown>(`/crm/projects/${projectId}/brief`).pipe(
-      map((r) => this.normalizeBriefView(r)),
+      map((r) => this.normalizeBrief(r)),
+    );
+  }
+
+  /**
+   * `GET /api/crm/briefs/{briefId}/spaces` → `CrmBriefSpaceResponse[]` — `crm.briefs.read` (009b #11).
+   * Newest first, superseded entries included (`isCurrent: false`). Each entry's `space` is resolved
+   * from the project's spaces (inactive ones too); a failed spaces read leaves blank names.
+   */
+  listSpaces(briefId: string, projectId: string): Observable<BriefSpace[]> {
+    return forkJoin([
+      this.get<unknown>(`/crm/briefs/${briefId}/spaces`),
+      this.spacesApi.list(projectId, true).pipe(catchError(() => of<CrmSpace[]>([]))),
+    ]).pipe(
+      map(([r, spaces]) => this.unwrapArray<unknown>(r).map((s) => this.normalizeSpace(s, spaces))),
     );
   }
 
@@ -43,6 +74,20 @@ export class CrmBriefService extends ApiService {
     return this.get<unknown>(`/crm/portal/projects/${projectId}/brief`).pipe(
       map((r) => this.normalizeBriefView(r)),
     );
+  }
+
+  /** `CrmDesignBriefResponse`: the top-level ids/status over the nested `head: CrmBriefHeadData`. */
+  private normalizeBrief(r: unknown): BriefHead {
+    const value = this.unwrap<Record<string, unknown>>(r);
+    return {
+      ...this.normalizeHead(this.field<unknown>(value, 'head') ?? {}),
+      id: this.field<string>(value, 'id') ?? '',
+      projectId: this.field<string>(value, 'projectId') ?? '',
+      projectStageId: this.field<string | null>(value, 'projectStageId') ?? null,
+      createdById: this.field<string>(value, 'createdById') ?? '',
+      lastMeetingId: this.field<string | null>(value, 'lastMeetingId') ?? null,
+      status: this.field<number>(value, 'status') ?? ApprovalState.Draft,
+    };
   }
 
   private normalizeBriefView(r: unknown): BriefView {
@@ -118,7 +163,6 @@ export class CrmBriefService extends ApiService {
       id: this.field<string>(source, 'id') ?? '',
       projectId: this.field<string>(source, 'projectId') ?? '',
       projectStageId: this.field<string | null>(source, 'projectStageId') ?? null,
-      decisionMakerContactId: this.field<string>(source, 'decisionMakerContactId') ?? '',
       createdById: this.field<string>(source, 'createdById') ?? '',
       unitType: this.field<number>(source, 'unitType') ?? 1,
       unitCondition: this.field<number>(source, 'unitCondition') ?? 1,
@@ -132,13 +176,9 @@ export class CrmBriefService extends ApiService {
       finishingPurpose: this.field<number | null>(source, 'finishingPurpose') ?? null,
       position: this.field<number | null>(source, 'position') ?? null,
       elevatorStatus: this.field<number | null>(source, 'elevatorStatus') ?? null,
-      utilityMetersNote: this.field<string | null>(source, 'utilityMetersNote') ?? null,
       receivesFrequentVisitors:
         this.field<boolean | null>(source, 'receivesFrequentVisitors') ?? null,
       visitorsNote: this.field<string | null>(source, 'visitorsNote') ?? null,
-      parentsHobbies: this.field<string | null>(source, 'parentsHobbies') ?? null,
-      childrenHobbies: this.field<string | null>(source, 'childrenHobbies') ?? null,
-      hobbiesInDesign: this.field<boolean | null>(source, 'hobbiesInDesign') ?? null,
       usedDesignerBefore: this.field<boolean | null>(source, 'usedDesignerBefore') ?? null,
       designerExperience: this.field<number | null>(source, 'designerExperience') ?? null,
       designerExperienceReason:
@@ -154,14 +194,19 @@ export class CrmBriefService extends ApiService {
       sector: this.field<number | null>(source, 'sector') ?? null,
       status: this.field<number>(source, 'status') ?? ApprovalState.Draft,
       lastMeetingId: this.field<string | null>(source, 'lastMeetingId') ?? null,
-      createdAtUtc: this.field<string>(source, 'createdAtUtc') ?? '',
     };
   }
 
-  private normalizeSpace(source: unknown): BriefSpace {
-    // The entry carries a resolved `space` ref (null = a general, project-wide entry).
+  /**
+   * An entry carries a flat `spaceId` (009b #11); `space` is resolved from `spaces` (an unknown id keeps
+   * the id with blank names). A legacy nested `space` ref (the portal view) is still read when present.
+   */
+  private normalizeSpace(source: unknown, spaces: CrmSpace[] = []): BriefSpace {
     const spaceRef = this.field<unknown>(source, 'space');
     const refType = this.field<unknown>(spaceRef, 'spaceType');
+    const spaceId =
+      this.field<string | null>(source, 'spaceId') ?? this.field<string>(spaceRef, 'id') ?? null;
+    const known = spaces.find((s) => s.id === spaceId);
     const space = spaceRef
       ? {
           id: this.field<string>(spaceRef, 'id') ?? '',
@@ -173,10 +218,17 @@ export class CrmBriefService extends ApiService {
             nameAr: this.field<string>(refType, 'nameAr') ?? '',
           },
         }
-      : null;
+      : spaceId
+        ? {
+            id: spaceId,
+            name: known?.name ?? '',
+            spaceType: known?.spaceType ?? { id: '', code: '', nameEn: '', nameAr: '' },
+          }
+        : null;
     return {
       id: this.field<string>(source, 'id') ?? '',
       briefId: this.field<string>(source, 'briefId') ?? '',
+      spaceId,
       space,
       countOrPieces: this.field<number | null>(source, 'countOrPieces') ?? null,
       requirements: this.field<string | null>(source, 'requirements') ?? null,
@@ -185,7 +237,7 @@ export class CrmBriefService extends ApiService {
       supersedesSpaceId: this.field<string | null>(source, 'supersedesSpaceId') ?? null,
       projectTaskId: this.field<string | null>(source, 'projectTaskId') ?? null,
       createdById: this.field<string>(source, 'createdById') ?? '',
-      createdAtUtc: this.field<string>(source, 'createdAtUtc') ?? '',
+      isCurrent: this.field<boolean>(source, 'isCurrent') ?? true,
     };
   }
 

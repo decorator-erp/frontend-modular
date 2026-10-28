@@ -33,6 +33,7 @@ function entry(over: Partial<BriefSpace> = {}): BriefSpace {
   return {
     id: 'entry-1',
     briefId: 'brief-1',
+    spaceId: KITCHEN.id,
     space: KITCHEN,
     countOrPieces: null,
     requirements: 'text',
@@ -41,32 +42,29 @@ function entry(over: Partial<BriefSpace> = {}): BriefSpace {
     supersedesSpaceId: null,
     projectTaskId: null,
     createdById: 'employee-1',
-    createdAtUtc: '2026-07-01T00:00:00.000Z',
+    isCurrent: true,
     ...over,
   };
 }
 
 describe('indexCurrentEntries', () => {
-  it('keeps the NEWEST entry for a space', () => {
-    const older = entry({ id: 'a', createdAtUtc: '2026-07-01T00:00:00.000Z' });
-    const newer = entry({ id: 'b', createdAtUtc: '2026-07-05T00:00:00.000Z' });
-    expect(indexCurrentEntries([older, newer])[KITCHEN.id].id).toBe('b');
-  });
-
-  it('is order-independent — the newest wins even when listed first', () => {
-    const older = entry({ id: 'a', createdAtUtc: '2026-07-01T00:00:00.000Z' });
-    const newer = entry({ id: 'b', createdAtUtc: '2026-07-05T00:00:00.000Z' });
+  // 009b #11: entries arrive newest first and carry no createdAtUtc — the server order decides.
+  it('keeps the NEWEST entry for a space (the first in the server order)', () => {
+    const newer = entry({ id: 'b' });
+    const older = entry({ id: 'a' });
     expect(indexCurrentEntries([newer, older])[KITCHEN.id].id).toBe('b');
   });
 
-  it('excludes an entry that a newer one supersedes, even if it is the most recent by date', () => {
+  it('skips an entry the server marks isCurrent: false, wherever it is listed', () => {
+    const stale = entry({ id: 'a', isCurrent: false });
+    const live = entry({ id: 'b' });
+    expect(indexCurrentEntries([stale, live])[KITCHEN.id].id).toBe('b');
+  });
+
+  it('excludes an entry that a newer one supersedes, even when it is listed first', () => {
     // The correction chains BACK to the original; the original is history, not current.
-    const original = entry({ id: 'old', createdAtUtc: '2026-07-09T00:00:00.000Z' });
-    const correction = entry({
-      id: 'new',
-      createdAtUtc: '2026-07-02T00:00:00.000Z',
-      supersedesSpaceId: 'old',
-    });
+    const original = entry({ id: 'old' });
+    const correction = entry({ id: 'new', supersedesSpaceId: 'old' });
     expect(indexCurrentEntries([original, correction])[KITCHEN.id].id).toBe('new');
   });
 
@@ -121,7 +119,8 @@ function itemsApiMock() {
 
 function briefApiMock() {
   return {
-    getBrief: vi.fn().mockReturnValue(of({ head: { id: 'brief-1' }, spaces: [] })),
+    getBrief: vi.fn().mockReturnValue(of({ id: 'brief-1' })),
+    listSpaces: vi.fn().mockReturnValue(of([])),
     addSpace: vi.fn().mockReturnValue(of('id')),
     updateSpace: vi.fn().mockReturnValue(of(undefined)),
   };
@@ -184,12 +183,7 @@ describe('SpacesStore', () => {
 
   describe('saveSpaceNote() (A4)', () => {
     it('does not strand savingSpace when the entry is Approved', () => {
-      briefApi.getBrief.mockReturnValue(
-        of({
-          head: { id: 'brief-1' },
-          spaces: [entry({ approvalStatus: ApprovalState.Approved })],
-        }),
-      );
+      briefApi.listSpaces.mockReturnValue(of([entry({ approvalStatus: ApprovalState.Approved })]));
       const s = store();
       s.load(PROJECT_ID);
 
@@ -203,9 +197,7 @@ describe('SpacesStore', () => {
     });
 
     it('edits a Draft entry in place and clears the flag', () => {
-      briefApi.getBrief.mockReturnValue(
-        of({ head: { id: 'brief-1' }, spaces: [entry({ approvalStatus: ApprovalState.Draft })] }),
-      );
+      briefApi.listSpaces.mockReturnValue(of([entry({ approvalStatus: ApprovalState.Draft })]));
       const s = store();
       s.load(PROJECT_ID);
 

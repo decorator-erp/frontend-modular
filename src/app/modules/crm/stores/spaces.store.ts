@@ -2,6 +2,7 @@ import { computed, inject } from '@angular/core';
 import type { HttpErrorResponse } from '@angular/common/http';
 import { patchState, signalStore, withComputed, withMethods, withState } from '@ngrx/signals';
 import type { Observable } from 'rxjs';
+import { map, switchMap } from 'rxjs/operators';
 import { CrmSpaceService } from '../data/crm-space.service';
 import { CrmSpaceItemService } from '../data/crm-space-item.service';
 import { CrmBriefService } from '../data/crm-brief.service';
@@ -75,6 +76,8 @@ const INITIAL: SpacesState = {
  *
  * Exported for its spec: this encodes the ledger's trust rule (an entry chained over by a
  * newer one is history, not current) and is worth pinning down independently of the store.
+ * The entries arrive newest first and carry `isCurrent` (009b #11): there is no `createdAtUtc`, so
+ * the first current entry seen for a space is its newest.
  */
 export function indexCurrentEntries(spaces: BriefSpace[]): Record<string, BriefSpace> {
   const superseded = new Set(
@@ -83,9 +86,8 @@ export function indexCurrentEntries(spaces: BriefSpace[]): Record<string, BriefS
   const bySpace: Record<string, BriefSpace> = {};
   for (const entry of spaces) {
     const spaceId = entry.space?.id;
-    if (!spaceId || superseded.has(entry.id)) continue;
-    const existing = bySpace[spaceId];
-    if (!existing || entry.createdAtUtc > existing.createdAtUtc) bySpace[spaceId] = entry;
+    if (!spaceId || !entry.isCurrent || superseded.has(entry.id)) continue;
+    if (!bySpace[spaceId]) bySpace[spaceId] = entry;
   }
   return bySpace;
 }
@@ -203,14 +205,21 @@ export const SpacesStore = signalStore(
         loadBrief(): void {
           const projectId = store.projectId();
           if (!projectId) return;
-          briefApi.getBrief(projectId).subscribe({
-            next: (view) =>
-              patchState(store, {
-                briefId: view.head.id || null,
-                currentEntryBySpace: indexCurrentEntries(view.spaces),
-              }),
-            error: () => patchState(store, { error: 'space.briefLoadFailed' }),
-          });
+          briefApi
+            .getBrief(projectId)
+            .pipe(
+              switchMap((head) =>
+                briefApi.listSpaces(head.id, projectId).pipe(map((spaces) => ({ head, spaces }))),
+              ),
+            )
+            .subscribe({
+              next: ({ head, spaces }) =>
+                patchState(store, {
+                  briefId: head.id || null,
+                  currentEntryBySpace: indexCurrentEntries(spaces),
+                }),
+              error: () => patchState(store, { error: 'space.briefLoadFailed' }),
+            });
         },
 
         loadProvisioning(status?: CrmProvisionStatus | null): void {

@@ -184,11 +184,16 @@ export interface PublicLeadSubmissionRequest {
 //     `designerExperienceReason`, `preferredStyle`, `preferredColors`.
 // ---------------------------------------------------------------------------
 
+/**
+ * `CrmDesignBriefResponse` (`BriefContracts.cs:38-40`) flattened: its `id`/`projectId`/`projectStageId`/
+ * `createdById`/`lastMeetingId`/`status` with the nested `head: CrmBriefHeadData` fields (009b #9). The
+ * response has no `createdAtUtc`, no `decisionMakerContactId`, and the head no `utilityMetersNote`,
+ * `parentsHobbies`, `childrenHobbies` or `hobbiesInDesign`.
+ */
 export interface BriefHead {
   id: string;
   projectId: string;
   projectStageId: string | null;
-  decisionMakerContactId: string;
   createdById: string;
 
   unitType: number;
@@ -205,12 +210,8 @@ export interface BriefHead {
   finishingPurpose: number | null;
   position: number | null;
   elevatorStatus: number | null;
-  utilityMetersNote: string | null;
   receivesFrequentVisitors: boolean | null;
   visitorsNote: string | null;
-  parentsHobbies: string | null;
-  childrenHobbies: string | null;
-  hobbiesInDesign: boolean | null;
   usedDesignerBefore: boolean | null;
   designerExperience: number | null;
   designerExperienceReason: string | null;
@@ -228,7 +229,6 @@ export interface BriefHead {
   sector: number | null;
   status: ApprovalState;
   lastMeetingId: string | null;
-  createdAtUtc: string;
 }
 
 /** `PUT /api/crm/projects/{projectId}/brief/head` body — `UpdateBriefHeadRequest`. */
@@ -246,12 +246,8 @@ export interface UpdateBriefHeadRequest {
   finishingPurpose?: number | null;
   position?: number | null;
   elevatorStatus?: number | null;
-  utilityMetersNote?: string | null;
   receivesFrequentVisitors?: boolean | null;
   visitorsNote?: string | null;
-  parentsHobbies?: string | null;
-  childrenHobbies?: string | null;
-  hobbiesInDesign?: boolean | null;
   usedDesignerBefore?: boolean | null;
   designerExperience?: number | null;
   designerExperienceReason?: string | null;
@@ -287,7 +283,9 @@ export interface BriefSpaceRef {
 export interface BriefSpace {
   id: string;
   briefId: string;
-  /** The referenced space — `null` = a general, project-wide entry. */
+  /** The wire `spaceId` (009b #11) — `null` = a general, project-wide entry. */
+  spaceId: string | null;
+  /** The referenced space, resolved for display from the project's spaces — `null` = general. */
   space: BriefSpaceRef | null;
   countOrPieces: number | null;
   /** The freeform body. */
@@ -299,7 +297,8 @@ export interface BriefSpace {
   /** Entries anchor to a TASK. */
   projectTaskId: string | null;
   createdById: string;
-  createdAtUtc: string;
+  /** `false` once another entry supersedes this one (C §8.2.10). No `createdAtUtc`: order is the server's, newest first. */
+  isCurrent: boolean;
 }
 
 /** The write shape for add / update / supersede — one shape for all three. */
@@ -312,7 +311,7 @@ export interface BriefSpaceRequest {
   projectTaskId?: string | null;
 }
 
-/** `GET /api/crm/projects/{projectId}/brief` — the head AND every entry in one call. */
+/** `GET /api/crm/portal/projects/{projectId}/brief` — the client's head AND entries in one call. */
 export interface BriefView {
   head: BriefHead;
   spaces: BriefSpace[];

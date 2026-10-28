@@ -209,6 +209,7 @@ export const EN = {
   'brief.secPrefs': 'Preferences',
   'brief.secSpaces': 'Per-space needs',
   'brief.secUnit': 'Unit information',
+  'brief.stageL': 'Stage',
   'brief.sub':
     'One living document — updated after each completed meeting. Last updated from meeting:',
   'brief.title': 'Design brief · Application form',
