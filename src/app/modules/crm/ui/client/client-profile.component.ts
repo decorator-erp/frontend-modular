@@ -199,7 +199,11 @@ const PRIORITY_LABEL_KEYS: Record<RequirementPriority, CatalogKey> = {
                   </div>
                 }
                 @case ('brief') {
-                  @if (brief.head(); as head) {
+                  @if (brief.error(); as message) {
+                    <pera-alert tone="warning">{{ message }}</pera-alert>
+                  } @else if (brief.nothingSent()) {
+                    <pera-empty [title]="catalog.t('client.briefNotSent')" />
+                  } @else if (brief.head(); as head) {
                     <div class="flex items-center gap-2">
                       <span
                         [class.pera-unconfirmed]="isUnconfirmedHead()"

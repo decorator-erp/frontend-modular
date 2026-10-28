@@ -500,6 +500,7 @@ export const EN = {
   'store.hasReuseCount': 'Client has / reuse: {count}',
   'store.remove': 'Remove',
   'client.1': 'Ahmed Mansour',
+  'client.briefNotSent': 'Nothing has been sent to you yet.',
   'client.cAct1': 'Your meeting request "Kitchen & bathrooms detail" is held until 7 Jul 13:00',
   'client.cAct2': 'Nourhan sent the brief head (round 3), 2 items and 1 entry for your approval',
   'client.cAct3': 'You rejected "Guest bathroom off reception"',

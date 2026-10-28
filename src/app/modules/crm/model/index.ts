@@ -329,9 +329,22 @@ export interface BriefSpaceRequest {
   projectTaskId?: string | null;
 }
 
-/** `GET /api/crm/portal/projects/{projectId}/brief` — the client's head AND entries in one call. */
-export interface BriefView {
-  head: BriefHead;
+/**
+ * The portal head (`BriefHeadBlock`, `PortalContracts.cs:20-28`, 009b #43): the latest **sent** snapshot
+ * plus the brief's live status. `id` is the wire `briefId`; `round` is the sent round. The block has no
+ * `expectedBudget`, `lastMeetingId` or `createdById`, so those read `null` / `''`.
+ */
+export interface PortalBriefHead extends BriefHead {
+  round: number;
+}
+
+/**
+ * `GET /api/crm/portal/projects/{projectId}/brief[?stageId]` → `PortalBriefViewResponse`
+ * (`PortalContracts.cs:48-54`, 009b #43). `head` is `null` until the head is first sent; `spaces` holds
+ * no Drafts and carries no meeting, task or author link.
+ */
+export interface PortalBriefView {
+  head: PortalBriefHead | null;
   spaces: BriefSpace[];
 }
 

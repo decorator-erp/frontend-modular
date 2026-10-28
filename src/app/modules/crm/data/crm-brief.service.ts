@@ -11,9 +11,10 @@ import type {
   BriefRound,
   BriefSpace,
   BriefSpaceRequest,
-  BriefView,
   CreateBriefRequest,
   CrmSpace,
+  PortalBriefHead,
+  PortalBriefView,
   UpdateBriefHeadRequest,
 } from '../model';
 import { CrmSpaceService } from './crm-space.service';
@@ -22,8 +23,8 @@ import { CrmSpaceService } from './crm-space.service';
  * The brief — head (editable 1:1) and the append-only gathering ledger (`BriefSpace`
  * entries, each a thin wrapper referencing a real space or a general, project-wide entry).
  *
- * `crm.briefs.manage` on every mutation, `crm.briefs.read` on the office GET, `crm.portal` on
- * the client's own `getMyBrief`. T108 asked for one `CrmClientPortalService` folding
+ * `crm.briefs.manage` on every mutation, `crm.briefs.read` on the office GET, `crm.briefs.view_own`
+ * on the client's own `getMyBrief` (009b #43). T108 asked for one `CrmClientPortalService` folding
  * all ten `/api/crm/portal/*` endpoints — this repo's established precedent (T045's
  * meetings, T080's items, the existing `crm-approvals.service.ts`) is instead to fold
  * each portal variant into its OWN domain service, since it is the same domain object
@@ -84,13 +85,17 @@ export class CrmBriefService extends ApiService {
   }
 
   /**
-   * `GET /api/crm/portal/projects/{projectId}/brief` — the client's own view, same
-   * `BriefViewResponse` shape as the office GET. Gated `crm.portal`, not `crm.briefs.read`.
+   * `GET /api/crm/portal/projects/{projectId}/brief[?stageId]` → `PortalBriefViewResponse` —
+   * `crm.briefs.view_own` (009b #43). Its own shape, read by its own normalizer: a `null` head until the
+   * first send. 404 `crm.portal.NotFound` and 403 `crm.portal.NotAClient` / `crm.access.NoStanding` are
+   * the caller's to show (`handled(403, 404)`).
    */
-  getMyBrief(projectId: string): Observable<BriefView> {
-    return this.get<unknown>(`/crm/portal/projects/${projectId}/brief`).pipe(
-      map((r) => this.normalizeBriefView(r)),
-    );
+  getMyBrief(projectId: string, stageId: string | null = null): Observable<PortalBriefView> {
+    return this.get<unknown>(
+      `/crm/portal/projects/${projectId}/brief`,
+      stageId ? { stageId } : undefined,
+      { context: handled(403, 404) },
+    ).pipe(map((r) => this.normalizePortalBriefView(r)));
   }
 
   /** `CrmDesignBriefResponse`: the top-level ids/status over the nested `head: CrmBriefHeadData`. */
@@ -107,11 +112,24 @@ export class CrmBriefService extends ApiService {
     };
   }
 
-  private normalizeBriefView(r: unknown): BriefView {
+  /** `PortalBriefViewResponse` (009b #43): a nullable `BriefHeadBlock` keyed `briefId`, with a `round`. */
+  private normalizePortalBriefView(r: unknown): PortalBriefView {
     const value = this.unwrap<Record<string, unknown>>(r);
+    const head = this.field<unknown>(value, 'head') ?? null;
     return {
-      head: this.normalizeHead(this.field<unknown>(value, 'head') ?? value),
+      head: head ? this.normalizePortalHead(head) : null,
       spaces: (this.field<unknown[]>(value, 'spaces') ?? []).map((s) => this.normalizeSpace(s)),
+    };
+  }
+
+  private normalizePortalHead(source: unknown): PortalBriefHead {
+    return {
+      ...this.normalizeHead(source),
+      id: this.field<string>(source, 'briefId') ?? '',
+      createdById: '',
+      expectedBudget: null,
+      lastMeetingId: null,
+      round: this.field<number>(source, 'round') ?? 0,
     };
   }
 

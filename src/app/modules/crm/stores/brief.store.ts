@@ -36,6 +36,10 @@ interface BriefState {
   spaces: BriefSpace[];
   /** The head's rounds (`GET /briefs/{id}/rounds`, 009b #14) — the round NUMBER lives here, not on the head. */
   rounds: BriefRound[];
+  /** The client's sent round, off the portal head (009b #43) — the client never reads the rounds route. */
+  portalRound: number;
+  /** The portal brief's head is `null`: nothing has been sent to the client yet (009b #43). */
+  nothingSent: boolean;
   loading: boolean;
   savingHead: boolean;
   sending: boolean;
@@ -51,6 +55,8 @@ const INITIAL: BriefState = {
   creating: false,
   spaces: [],
   rounds: [],
+  portalRound: 0,
+  nothingSent: false,
   loading: false,
   savingHead: false,
   sending: false,
@@ -73,7 +79,7 @@ export const BriefStore = signalStore(
      * The round the head is currently on — the last entry of its rounds list (009b #14, C §8.2.2),
      * since `CrmDesignBriefResponse` carries no round. 0 ⇒ never sent (an empty list).
      */
-    headRound: computed(() => store.rounds().at(-1)?.round ?? 0),
+    headRound: computed(() => store.rounds().at(-1)?.round ?? store.portalRound()),
 
     /** Send is disabled while a round is outstanding (FR-014) — the head's own status IS that fact. */
     isHeadRoundOutstanding: computed(() => store.head()?.status === ApprovalState.PendingApproval),
@@ -180,15 +186,30 @@ export const BriefStore = signalStore(
 
       /**
        * The client's own read of their brief (T111's brief tab). Skips the rounds read — the
-       * office route is gated `crm.briefs.read` — so `headRound` stays 0 for a client caller;
-       * `isHeadRoundOutstanding` is unaffected (it reads `head.status` directly).
+       * office route is gated `crm.briefs.read` — so `headRound` is the portal head's own `round`
+       * (009b #43). A `null` head is `nothingSent`; 404 `crm.portal.NotFound` and 403
+       * `crm.portal.NotAClient` / `crm.access.NoStanding` show their catalog message.
        */
       loadAsClient(projectId: string): void {
-        patchState(store, { loading: true, error: null, projectId });
+        patchState(store, { loading: true, error: null, nothingSent: false, projectId });
         api.getMyBrief(projectId).subscribe({
           next: (view) =>
-            patchState(store, { head: view.head, spaces: view.spaces, loading: false }),
-          error: () => patchState(store, { loading: false, error: 'Could not load your brief.' }),
+            patchState(store, {
+              head: view.head,
+              spaces: view.spaces,
+              portalRound: view.head?.round ?? 0,
+              nothingSent: view.head === null,
+              loading: false,
+            }),
+          error: (err: unknown) => {
+            const parsed = err instanceof HttpErrorResponse ? errors.parse(err) : null;
+            patchState(store, {
+              loading: false,
+              head: null,
+              spaces: [],
+              error: parsed?.code ? friendly(parsed) : 'Could not load your brief.',
+            });
+          },
         });
       },
 

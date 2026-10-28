@@ -457,6 +457,7 @@ export const AR: Partial<Record<CatalogKey, string>> = {
   'store.hasReuseCount': 'لدى العميل / إعادة استخدام: {count}',
   'store.remove': 'إزالة',
   'client.1': 'أحمد منصور',
+  'client.briefNotSent': 'لم يُرسل إليك شيء بعد.',
   'client.cAct1': 'طلب اجتماعك «تفاصيل المطبخ والحمامات» محجوز حتى 7 يوليو 13:00',
   'client.cAct2': 'أرسلت نورهان رأس الموجز (الجولة 3) وبندين وقيداً لاعتمادك',
   'client.cAct3': 'رفضت «حمام الضيوف قرب الاستقبال»',

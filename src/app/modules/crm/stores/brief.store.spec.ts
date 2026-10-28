@@ -109,6 +109,7 @@ function briefApiMock() {
     supersedeSpace: vi.fn().mockReturnValue(of('new-space-id')),
     getHeadDiff: vi.fn(),
     listRounds: vi.fn().mockReturnValue(of([])),
+    getMyBrief: vi.fn(),
   };
 }
 
@@ -496,6 +497,48 @@ describe('BriefStore', () => {
 
       expect(s.error()).toBe('Could not add the entry.');
       expect(api.getBrief).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('loadAsClient (009b #43) — the portal brief', () => {
+    it('a null head is "nothing sent yet": no head, no error', () => {
+      api.getMyBrief.mockReturnValue(of({ head: null, spaces: [] }));
+      const s = store();
+      s.loadAsClient(PROJECT_ID);
+      expect(s.head()).toBeNull();
+      expect(s.nothingSent()).toBe(true);
+      expect(s.error()).toBeNull();
+      expect(api.listRounds).not.toHaveBeenCalled();
+    });
+
+    it("the round label comes from the sent head's round", () => {
+      api.getMyBrief.mockReturnValue(
+        of({ head: { ...head({ status: ApprovalState.PendingApproval }), round: 3 }, spaces: [] }),
+      );
+      const s = store();
+      s.loadAsClient(PROJECT_ID);
+      expect(s.nothingSent()).toBe(false);
+      expect(s.headRound()).toBe(3);
+    });
+
+    it.each([
+      [404, 'crm.portal.NotFound', 'Nothing was found for that request.'],
+      [403, 'crm.portal.NotAClient', 'This page is for clients only.'],
+      [403, 'crm.access.NoStanding', 'Your account has no active access to this area.'],
+    ])('a %s %s shows its catalog message', (status, code, message) => {
+      api.getMyBrief.mockReturnValue(
+        throwError(
+          () =>
+            new HttpErrorResponse({
+              status,
+              error: { title: code, status, errors: { [code]: ['x'] } },
+            }),
+        ),
+      );
+      const s = store();
+      s.loadAsClient(PROJECT_ID);
+      expect(s.error()).toBe(message);
+      expect(s.nothingSent()).toBe(false);
     });
   });
 });

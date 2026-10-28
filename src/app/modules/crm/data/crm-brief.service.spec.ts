@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { HANDLED_ERROR_STATUSES } from '@platform/http/handled-errors';
 import { environment } from '../../../../environments/environment';
 import { ApprovalState } from '../model/crm-enums';
-import type { BriefHead, BriefSpace } from '../model';
+import type { BriefHead, BriefSpace, PortalBriefView } from '../model';
 import { CrmBriefService } from './crm-brief.service';
 
 describe('CrmBriefService', () => {
@@ -289,6 +289,73 @@ describe('CrmBriefService', () => {
 
       expect(entries[0].space?.id).toBe('SP-gone');
       expect(entries[0].space?.name).toBe('');
+    });
+  });
+
+  describe('getMyBrief (009b #43) — GET /api/crm/portal/projects/{projectId}/brief', () => {
+    it('reads a null head as null (nothing sent yet), not as a head built from the whole body', () => {
+      let view: unknown;
+      service.getMyBrief('P').subscribe((v) => (view = v));
+
+      const req = http.expectOne(url('/crm/portal/projects/P/brief'));
+      expect(req.request.method).toBe('GET');
+      expect(req.request.params.has('stageId')).toBe(false);
+      expect(req.request.context.get(HANDLED_ERROR_STATUSES)).toEqual([403, 404]);
+      req.flush({ head: null, spaces: [] });
+
+      expect(view).toEqual({ head: null, spaces: [] });
+    });
+
+    it("reads the BriefHeadBlock's briefId and round, with no budget or meeting link", () => {
+      let view: PortalBriefView | undefined;
+      service.getMyBrief('P', 'S').subscribe((v) => (view = v));
+
+      const req = http.expectOne((r) => r.url === url('/crm/portal/projects/P/brief'));
+      expect(req.request.params.get('stageId')).toBe('S');
+      req.flush({
+        head: {
+          briefId: 'B',
+          projectId: 'P',
+          projectStageId: 'S',
+          status: ApprovalState.PendingApproval,
+          round: 2,
+          unitType: 2,
+          unitCondition: 3,
+          hiringReasons: 5,
+        },
+        spaces: [
+          {
+            id: 'E1',
+            briefId: 'B',
+            spaceId: null,
+            countOrPieces: 2,
+            requirements: 'Two sofas',
+            approvalStatus: ApprovalState.PendingApproval,
+            supersedesSpaceId: null,
+            isCurrent: true,
+          },
+        ],
+      });
+
+      expect(view?.head).toMatchObject({
+        id: 'B',
+        projectStageId: 'S',
+        status: ApprovalState.PendingApproval,
+        round: 2,
+        unitType: 2,
+        expectedBudget: null,
+        lastMeetingId: null,
+      });
+      expect(view?.spaces[0]).toMatchObject({
+        id: 'E1',
+        briefId: 'B',
+        spaceId: null,
+        space: null,
+        requirements: 'Two sofas',
+        approvalStatus: ApprovalState.PendingApproval,
+        meetingId: null,
+        projectTaskId: null,
+      });
     });
   });
 });
