@@ -4,8 +4,10 @@ import { signal } from '@angular/core';
 import { throwError } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
 import { ToastService } from '@platform/feedback/toast.service';
+import { ConfirmService } from '@ds';
 import { ContactRole } from '../../model/crm-enums';
 import { CrmContactService } from '../../data/crm-contact.service';
+import { CrmNoteService } from '../../data/crm-note.service';
 import type { CrmContact } from '../../data/crm-contact.service';
 import { ClientHubStore } from '../../stores/client-hub.store';
 import { ClientHubOverviewTabComponent } from './overview-tab.component';
@@ -30,13 +32,16 @@ function conflict(code: string): HttpErrorResponse {
   });
 }
 
-function make(contactsApi: Partial<CrmContactService>) {
+function make(contactsApi: Partial<CrmContactService>, notesApi: Partial<CrmNoteService> = {}) {
   const show = vi.fn();
   const reloadContacts = vi.fn();
+  const reloadNotes = vi.fn();
   TestBed.configureTestingModule({
     imports: [ClientHubOverviewTabComponent],
     providers: [
       { provide: CrmContactService, useValue: contactsApi },
+      { provide: CrmNoteService, useValue: notesApi },
+      { provide: ConfirmService, useValue: { open: () => Promise.resolve(true) } },
       { provide: ToastService, useValue: { show } },
       {
         provide: ClientHubStore,
@@ -47,14 +52,14 @@ function make(contactsApi: Partial<CrmContactService>) {
           notes: signal([]),
           selectedProjectId: signal(null),
           reloadContacts,
-          reloadNotes: vi.fn(),
+          reloadNotes,
         },
       },
     ],
   });
   const fixture = TestBed.createComponent(ClientHubOverviewTabComponent);
   fixture.detectChanges();
-  return { c: fixture.componentInstance, show, reloadContacts };
+  return { c: fixture.componentInstance, show, reloadContacts, reloadNotes };
 }
 
 describe('ClientHubOverviewTabComponent', () => {
@@ -73,6 +78,36 @@ describe('ClientHubOverviewTabComponent', () => {
       expect(show).toHaveBeenCalledWith({
         tone: 'info',
         message: 'Changed by someone else — reloaded.',
+      });
+    });
+  });
+
+  describe('deleteNote (009b #33)', () => {
+    it('shows the crm.notes.NotAuthor message on a 403 and keeps the list', async () => {
+      const notAuthor = new HttpErrorResponse({
+        status: 403,
+        error: {
+          status: 403,
+          title: 'crm.notes.NotAuthor',
+          errors: { 'crm.notes.NotAuthor': ["Only the note's author can change or delete it."] },
+        },
+      });
+      const remove = vi.fn(() => throwError(() => notAuthor));
+      const { c, show, reloadNotes } = make({}, { remove });
+
+      await c['deleteNote']({
+        id: 'N',
+        clientId: 'C',
+        projectId: null,
+        content: 'Hi',
+        writtenById: 'E2',
+      });
+
+      expect(remove).toHaveBeenCalledWith('N');
+      expect(reloadNotes).not.toHaveBeenCalled();
+      expect(show).toHaveBeenCalledExactlyOnceWith({
+        tone: 'danger',
+        message: 'Only the author can change this note.',
       });
     });
   });

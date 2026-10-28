@@ -10,7 +10,6 @@ import { CanDirective, PERM } from '@platform/permissions';
 import { CrmContact, CrmContactService } from '../../data/crm-contact.service';
 import { CrmNote, CrmNoteService } from '../../data/crm-note.service';
 import { CatalogService } from '@platform/i18n/catalog.service';
-import { formatCairoDate } from '@platform/i18n/intl-locale';
 import { ErrorHandlerService, friendly } from '@platform/http/error-handler.service';
 import { injectReloadOnConflict } from '@platform/http/concurrency';
 import { ToastService } from '@platform/feedback/toast.service';
@@ -104,7 +103,6 @@ import { CrmNoteFormComponent } from './note-form.component';
                   <p class="fs-body-sm text-text-primary m-0 whitespace-pre-wrap">
                     {{ note.content }}
                   </p>
-                  <span class="fs-label text-text-muted">{{ dateLabel(note.createdAtUtc) }}</span>
                 </div>
                 <div class="flex items-center gap-2 shrink-0" *peraCan="PERM.crm.notes.update">
                   <button
@@ -166,10 +164,6 @@ export class ClientHubOverviewTabComponent {
       action: (row) => this.setPrimary(row),
     },
   ];
-
-  protected dateLabel(iso: string): string {
-    return formatCairoDate(iso, this.catalog.locale());
-  }
 
   protected async addContact(): Promise<void> {
     const client = this.store.client();

@@ -578,6 +578,7 @@ export const ERROR_MESSAGES_AR: Record<string, string> = {
   'crm.meetings.ConcurrentUpdate': 'عدّل شخص آخر الاجتماع. أعِد التحميل وحاول مرة أخرى.',
   'crm.meetings.SlotExpired': 'مضى وقت بدء هذا الموعد. اقترح وقتًا جديدًا.',
   'crm.notes.ProjectMismatch': 'مشروع الملاحظة لا يخص هذا العميل.',
+  'crm.notes.NotAuthor': 'لا يعدّل هذه الملاحظة إلا كاتبها.',
   'crm.artifacts.DocumentNotFound': 'المستند غير موجود في هذا المشروع.',
   'crm.projects.Inactive': 'هذا المشروع غير مفعّل ولا يقبل عملًا جديدًا.',
   'approvals.ApprovalIdInUse': 'هذا الاعتماد يخص عنصرًا آخر.',
