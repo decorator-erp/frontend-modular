@@ -78,6 +78,16 @@
       "count": 2
     }
   },
+  "src/app/modules/projects/ui/task-detail/gate-condition-modal.component.ts": {
+    "@typescript-eslint/no-unused-expressions": {
+      "count": 1
+    }
+  },
+  "src/app/modules/projects/ui/workflow-builder/builder-canvas.component.ts": {
+    "@angular-eslint/no-output-native": {
+      "count": 1
+    }
+  },
   "src/app/shared/forms/server-errors.directive.ts": {
     "@angular-eslint/directive-selector": {
       "count": 1

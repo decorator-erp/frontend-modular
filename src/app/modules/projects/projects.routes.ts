@@ -1,0 +1,70 @@
+import { Routes } from '@angular/router';
+import { PermissionGuard } from '@platform/auth/permission.guard';
+
+/**
+ * The projects module's office-shell routes (spec 008). NEW file: its entries are the old
+ * app.routes.ts projects block at SOURCE_SHA (`projects` … `projects/:projectId/workflow/builder`),
+ * metadata verbatim, spread into the shell's children by app.routes.ts at the same position.
+ */
+export const projectsRoutes: Routes = [
+  {
+    path: 'projects',
+    loadComponent: () =>
+      import('./ui/pages/projects-list.component').then((m) => m.ProjectsListComponent),
+    data: { breadcrumb: 'Projects' },
+  },
+  {
+    path: 'projects/new',
+    loadComponent: () =>
+      import('./ui/pages/project-create.component').then((m) => m.ProjectCreateComponent),
+    data: { breadcrumb: 'New project' },
+  },
+  {
+    path: 'projects/:id',
+    loadComponent: () =>
+      import('./ui/pages/project-detail.component').then((m) => m.ProjectDetailComponent),
+    data: { breadcrumb: 'Project' },
+  },
+  // Canonical stage page — the DMS redesign (DMS Stage Detail.dc.html) is now
+  // GA. Gated on the real backend read permission; per-panel write affordances
+  // gate on real claims inside the component. The staged-rollout umbrella flag
+  // has done its job and is dropped from the route.
+  {
+    path: 'projects/:projectId/stages/:stageId',
+    canActivate: [PermissionGuard],
+    data: { permission: 'project.read', breadcrumb: 'Stage' },
+    loadComponent: () =>
+      import('./ui/pages/dms-stage-detail.component').then((m) => m.DmsStageDetailComponent),
+  },
+  {
+    path: 'projects/:id/tasks/:taskId',
+    loadComponent: () =>
+      import('./ui/pages/task-detail.component').then((m) => m.TaskDetailComponent),
+    data: { breadcrumb: 'Task' },
+  },
+  // Redesigned DMS task view. Same component/data as the route above, but
+  // permission-gated for staged rollout. `dms.task_detail.view` is a UI-side
+  // gate only — backend ops grant it (docs/PERMISSIONS.md). Both coexist
+  // until the DMS view is GA.
+  {
+    path: 'dms/projects/:projectId/tasks/:taskId',
+    canActivate: [PermissionGuard],
+    data: { permission: 'dms.task_detail.view', breadcrumb: 'Task' },
+    loadComponent: () =>
+      import('./ui/pages/task-detail.component').then((m) => m.TaskDetailComponent),
+  },
+  // Old DMS stage path → permanent redirect to the canonical page (GA
+  // cutover), preserving :projectId/:stageId so existing /dms/... links work.
+  {
+    path: 'dms/projects/:projectId/stages/:stageId',
+    redirectTo: 'projects/:projectId/stages/:stageId',
+    pathMatch: 'full',
+  },
+  {
+    path: 'projects/:projectId/workflow/builder',
+    canActivate: [PermissionGuard],
+    data: { permission: 'stages.manage', breadcrumb: 'Workflow Builder' },
+    loadComponent: () =>
+      import('./ui/pages/workflow-builder.component').then((m) => m.WorkflowBuilderComponent),
+  },
+];

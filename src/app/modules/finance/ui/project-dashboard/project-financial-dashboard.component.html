@@ -1,0 +1,481 @@
+<pera-page-header title="Financial dashboard">
+  <pera-button
+    actions
+    variant="secondary"
+    size="sm"
+    [routerLink]="['/finance/projects', projectId(), 'ledger']"
+    *peraCan="cap.read"
+  >
+    Open ledger
+  </pera-button>
+  <pera-button
+    actions
+    variant="primary"
+    size="sm"
+    [routerLink]="['/finance/projects', projectId(), 'budget']"
+    *peraCan="cap.manageBudget"
+  >
+    Edit budget
+  </pera-button>
+</pera-page-header>
+
+<div class="px-8 py-7 flex flex-col gap-6 max-w-screen-2xl">
+  @if (loading()) {
+    <pera-skeleton width="100%" [height]="120"></pera-skeleton>
+    <pera-skeleton width="100%" [height]="360"></pera-skeleton>
+  } @else if (error(); as msg) {
+    <pera-empty
+      iconName="alert-triangle"
+      [title]="msg"
+      description="The Financial API may be unreachable. Retry, and if it persists, check the backend logs."
+    ></pera-empty>
+  } @else if (data(); as d) {
+    <!-- KPI strip — six core metrics from the dashboard response. Values use
+         compact notation so the large numerals fit narrow columns; the full
+         precision is preserved in the tables below. -->
+    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 items-start">
+      <pera-kpi-tile caption="Allocated" [value]="fmtCompact(d.budget.totalAllocated)" />
+      <pera-kpi-tile caption="Committed" [value]="fmtCompact(d.budget.totalCommitted)" />
+      <pera-kpi-tile caption="Actual" [value]="fmtCompact(d.budget.totalActual)" />
+      <pera-kpi-tile caption="Available" [value]="fmtCompact(d.budget.totalAvailable)" />
+      <pera-kpi-tile caption="Client paid" [value]="fmtCompact(d.collection.totalClientPayments)" />
+      <!-- The prototype's `.statc`: big value + progress bar + breakdown rows.
+           The three breakdown rows are DERIVED from `invoices.byStatus[]` via
+           `invoiceRollup()` — the server sends buckets, not these figures. -->
+      <pera-stat-card
+        caption="Collection"
+        [value]="collectionPercent().toFixed(1) + '%'"
+        [progress]="collectionPercent()"
+        [breakdown]="invoiceBreakdown()"
+      />
+    </div>
+
+    <div class="grid grid-cols-1 xl:grid-cols-3 gap-5">
+      <!-- Stage funding strip (spans 2 cols on xl). -->
+      <pera-chart-card
+        class="xl:col-span-2"
+        title="Stage funding"
+        [period]="stages().length + ' stages'"
+        [state]="stages().length ? 'ready' : 'empty'"
+        emptyMessage="Stage funding appears here as soon as the project has stages and the client starts paying."
+      >
+        <ul class="divide-y divide-border -m-4">
+          @for (stage of stages(); track stage.stageId) {
+            <li
+              class="px-5 py-3 flex flex-col gap-2"
+              [routerLink]="['/projects', projectId(), 'stages', stage.stageId]"
+              role="link"
+              tabindex="0"
+            >
+              <div class="flex items-center justify-between gap-3">
+                <div class="flex items-center gap-2 min-w-0">
+                  <!-- Existing RAG boolean (stage.isFunded), rendered as the health primitive. -->
+                  <pera-health-indicator
+                    variant="pill"
+                    [state]="stage.isFunded ? 'healthy' : 'at-risk'"
+                    [label]="stage.isFunded ? 'Funded' : 'Awaiting funds'"
+                  />
+                  <span class="font-medium truncate" [style.fontSize]="'var(--fs-body)'">
+                    {{ stage.name }}
+                  </span>
+                </div>
+                <div
+                  class="font-mono text-text-muted tabular-nums flex items-baseline gap-1"
+                  [style.fontSize]="'var(--fs-label)'"
+                >
+                  <pera-currency [amount]="stage.clientPaidAmount" /> /
+                  <pera-currency [amount]="stage.requiredBudget" />
+                </div>
+              </div>
+              <div class="h-0.5 bg-border-soft relative">
+                <span
+                  class="absolute inset-y-0 start-0"
+                  [class.bg-success]="stage.isFunded"
+                  [class.bg-warning]="!stage.isFunded"
+                  [style.width.%]="stagePaidPercent(stage)"
+                ></span>
+              </div>
+            </li>
+          }
+        </ul>
+      </pera-chart-card>
+
+      <!-- Invoice summary -->
+      <pera-card padding="none" class="flex flex-col h-full">
+        <div class="flex items-center gap-2.5 px-5 py-3 border-b border-border">
+          <h3 class="font-medium text-sm text-text-primary truncate">Invoices</h3>
+        </div>
+        <div class="p-5 flex flex-col gap-3">
+          <div class="grid grid-cols-3 gap-2 font-mono fs-label text-text-muted text-center">
+            <div>
+              <div class="text-text-primary fs-h3 font-semibold tabular-nums">
+                {{ invoiceRollup().openCount }}
+              </div>
+              <div>Open</div>
+            </div>
+            <div>
+              <div class="text-text-primary fs-h3 font-semibold tabular-nums">
+                {{ invoiceRollup().paidCount }}
+              </div>
+              <div>Paid</div>
+            </div>
+            <div>
+              <div class="text-text-primary fs-h3 font-semibold tabular-nums">
+                {{ invoiceRollup().cancelledCount }}
+              </div>
+              <div>Cancelled</div>
+            </div>
+          </div>
+          <div
+            class="border-t border-border-soft pt-3 fs-caption text-text-secondary flex flex-col gap-1.5"
+          >
+            <div class="flex justify-between">
+              <span>Invoiced</span
+              ><span class="tabular-nums"
+                ><pera-currency [amount]="invoiceRollup().totalInvoiced"
+              /></span>
+            </div>
+            <div class="flex justify-between">
+              <span>Paid</span
+              ><span class="tabular-nums"
+                ><pera-currency [amount]="invoiceRollup().totalPaid"
+              /></span>
+            </div>
+            <div class="flex justify-between font-medium text-text-primary">
+              <span>Outstanding</span
+              ><span class="tabular-nums"
+                ><pera-currency [amount]="invoiceRollup().totalOutstanding"
+              /></span>
+            </div>
+          </div>
+        </div>
+        <div
+          class="px-5 py-2.5 border-t border-border flex justify-between items-center font-mono text-xs text-text-muted mt-auto"
+        >
+          <a
+            [routerLink]="['/finance/projects', projectId(), 'invoices']"
+            class="text-text-primary hover:underline"
+          >
+            Open invoices →
+          </a>
+        </div>
+      </pera-card>
+    </div>
+
+    <div class="grid grid-cols-1 xl:grid-cols-3 gap-5">
+      <!-- Budget lines (spans 2). -->
+      <pera-card padding="none" class="flex flex-col h-full xl:col-span-2">
+        <div class="flex items-center gap-2.5 px-5 py-3 border-b border-border">
+          <h3 class="font-medium text-sm text-text-primary truncate">Budget lines</h3>
+          <span class="font-mono text-xs text-text-muted px-1.5 py-px bg-selected shrink-0">{{
+            d.budgetLines.length
+          }}</span>
+        </div>
+        @if (d.budgetLines.length === 0) {
+          <pera-empty
+            iconName="ruler"
+            title="No budget lines yet"
+            description="Create cost categories and budget lines to start tracking allocation versus actuals."
+          ></pera-empty>
+        } @else {
+          <div class="overflow-x-auto">
+            <table class="w-full fs-caption">
+              <thead>
+                <tr class="font-mono fs-micro text-text-muted uppercase">
+                  <th class="text-start px-5 py-2 border-b border-border">Line</th>
+                  <th class="text-end px-3 py-2 border-b border-border tabular-nums">Allocated</th>
+                  <th class="text-end px-3 py-2 border-b border-border tabular-nums">Committed</th>
+                  <th class="text-end px-3 py-2 border-b border-border tabular-nums">Actual</th>
+                  <th class="text-end px-5 py-2 border-b border-border tabular-nums">Available</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (group of budgetGroups(); track group.name) {
+                  <tr class="bg-selected">
+                    <td
+                      colspan="5"
+                      class="px-5 py-1.5 font-mono fs-label uppercase text-text-secondary"
+                    >
+                      {{ group.name }}
+                    </td>
+                  </tr>
+                  @for (line of group.lines; track line.budgetLineId) {
+                    <tr
+                      class="border-b border-border-soft hover:bg-hover"
+                      [class.bg-danger-soft]="isLineOver(line)"
+                    >
+                      <td class="px-5 py-2 truncate">
+                        {{ line.budgetLineName }}
+                        <!-- Existing RAG boolean (isLineOver) — the row tint alone
+                             carried the meaning by colour, which FR-014 forbids. -->
+                        @if (isLineOver(line)) {
+                          <pera-health-indicator state="over" label="Over" class="ms-1.5" />
+                        }
+                      </td>
+                      <td class="text-end px-3 py-2 tabular-nums">
+                        <pera-currency [amount]="line.allocated" />
+                      </td>
+                      <td class="text-end px-3 py-2 tabular-nums">
+                        <pera-currency [amount]="line.committed" />
+                      </td>
+                      <td class="text-end px-3 py-2 tabular-nums">
+                        <pera-currency [amount]="line.actual" />
+                      </td>
+                      <td
+                        class="text-end px-5 py-2 tabular-nums"
+                        [class.text-danger]="isLineOver(line)"
+                      >
+                        <pera-currency [amount]="line.available" />
+                      </td>
+                    </tr>
+                  }
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      </pera-card>
+
+      <!-- Variations summary -->
+      <pera-card
+        padding="none"
+        class="flex flex-col h-full"
+        [style.border-color]="
+          variationRollup().pendingCount > 0
+            ? 'color-mix(in srgb, var(--warning) 30%, var(--border))'
+            : null
+        "
+      >
+        <div class="flex items-center gap-2.5 px-5 py-3 border-b border-border">
+          <h3 class="font-medium text-sm text-text-primary truncate">Variations</h3>
+          <span class="font-mono text-xs text-text-muted px-1.5 py-px bg-selected shrink-0">{{
+            variationRollup().pendingCount
+          }}</span>
+        </div>
+        <div class="p-5 flex flex-col gap-3">
+          <div class="grid grid-cols-2 gap-2 font-mono fs-label text-text-muted text-center">
+            <div>
+              <div class="text-text-primary fs-h3 font-semibold tabular-nums">
+                {{ variationRollup().clientDifferenceCount }}
+              </div>
+              <div>Client diff.</div>
+            </div>
+            <div>
+              <div class="text-text-primary fs-h3 font-semibold tabular-nums">
+                {{ variationRollup().internalChangeCount }}
+              </div>
+              <div>Internal</div>
+            </div>
+          </div>
+          <div
+            class="border-t border-border-soft pt-3 fs-caption text-text-secondary flex flex-col gap-1.5"
+          >
+            <div class="flex justify-between">
+              <span>Pending</span
+              ><span class="tabular-nums">{{ variationRollup().pendingCount }}</span>
+            </div>
+            <div class="flex justify-between">
+              <span>Applied</span
+              ><span class="tabular-nums">{{ variationRollup().appliedCount }}</span>
+            </div>
+            <div class="flex justify-between font-medium text-text-primary">
+              <span>Δ amount</span>
+              <!-- Direction is the sign of the existing signed() delta; the rendered
+                   text is the exact server decimal, never a reparse. -->
+              <pera-trend-arrow
+                [value]="signOf(d.variations.signedClientDifferenceTotal)"
+                [format]="signedFormat(d.variations.signedClientDifferenceTotal)"
+              />
+            </div>
+          </div>
+        </div>
+        <div
+          class="px-5 py-2.5 border-t border-border flex justify-between items-center font-mono text-xs text-text-muted mt-auto"
+        >
+          <a
+            [routerLink]="['/finance/projects', projectId(), 'variations']"
+            class="text-text-primary hover:underline"
+          >
+            Open inbox →
+          </a>
+        </div>
+      </pera-card>
+    </div>
+
+    <div class="grid grid-cols-1 xl:grid-cols-3 gap-5">
+      <!-- Over-budget tasks -->
+      <pera-card
+        padding="none"
+        class="flex flex-col h-full"
+        [style.border-color]="
+          overBudgetTasks().length > 0
+            ? 'color-mix(in srgb, var(--error) 30%, var(--border))'
+            : null
+        "
+      >
+        <div class="flex items-center gap-2.5 px-5 py-3 border-b border-border">
+          <h3 class="font-medium text-sm text-text-primary truncate">Over-budget tasks</h3>
+          <span class="font-mono text-xs text-text-muted px-1.5 py-px bg-selected shrink-0">{{
+            overBudgetTasks().length
+          }}</span>
+        </div>
+        @if (overBudgetTasks().length === 0) {
+          <pera-empty
+            iconName="check-circle"
+            title="No tasks over budget"
+            description="When a task's actual cost exceeds its allocation, it appears here."
+          ></pera-empty>
+        } @else {
+          <ul class="divide-y divide-border-soft">
+            @for (task of overBudgetTasks(); track task.taskId) {
+              <li
+                class="px-5 py-3 flex flex-col gap-1.5"
+                [routerLink]="['/projects', projectId(), 'tasks', task.taskId]"
+                role="link"
+                tabindex="0"
+              >
+                <div class="flex items-center justify-between gap-3">
+                  <div class="flex items-center gap-2 min-w-0">
+                    <!-- Existing RAG state: membership of overBudgetTasks IS the signal. -->
+                    <pera-health-indicator state="over" label="Over" />
+                    <span class="font-medium truncate" [style.fontSize]="'var(--fs-body-sm)'">{{
+                      task.name
+                    }}</span>
+                  </div>
+                  <!-- No pera-trend-arrow here: overBudgetAmount is always positive, and
+                       TrendArrow paints "up" as success — green for an over-budget figure.
+                       The exact signed decimal carries the meaning instead. -->
+                  <span
+                    class="font-mono text-danger tabular-nums shrink-0"
+                    [style.fontSize]="'var(--fs-label)'"
+                  >
+                    {{ signed(task.overrun) }}
+                  </span>
+                </div>
+                <div class="h-0.5 bg-border-soft relative">
+                  <span
+                    class="absolute inset-y-0 start-0 bg-danger"
+                    [style.width.%]="overByPercent(task)"
+                  ></span>
+                </div>
+                <div class="flex justify-between font-mono fs-label text-text-muted">
+                  <span>Allocated <pera-currency [amount]="task.allocated" /></span>
+                  <span>Actual <pera-currency [amount]="task.actual" /></span>
+                </div>
+              </li>
+            }
+          </ul>
+        }
+      </pera-card>
+
+      <!-- Recent ledger (spans 2) -->
+      <pera-card padding="none" class="flex flex-col h-full xl:col-span-2">
+        <div class="flex items-center gap-2.5 px-5 py-3 border-b border-border">
+          <h3 class="font-medium text-sm text-text-primary truncate">Recent ledger</h3>
+          <span class="font-mono text-xs text-text-muted px-1.5 py-px bg-selected shrink-0">{{
+            recentActivity().length
+          }}</span>
+        </div>
+        @if (recentActivity().length === 0) {
+          <pera-empty
+            iconName="receipt"
+            title="No ledger entries yet"
+            description="Money movements show here as they're posted."
+          ></pera-empty>
+        } @else {
+          <div class="overflow-x-auto">
+            <table class="w-full fs-caption">
+              <thead>
+                <tr class="font-mono fs-micro text-text-muted uppercase">
+                  <th class="text-start px-5 py-2 border-b border-border">Date</th>
+                  <th class="text-start px-3 py-2 border-b border-border">Type</th>
+                  <th class="text-start px-3 py-2 border-b border-border">Direction</th>
+                  <th class="text-end px-5 py-2 border-b border-border tabular-nums">Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (entry of recentActivity(); track entry.ledgerEntryId) {
+                  <tr class="border-b border-border-soft hover:bg-hover">
+                    <td class="px-5 py-2 font-mono fs-label text-text-secondary">
+                      {{ formatDate(entry.occurredOn) }}
+                    </td>
+                    <td class="px-3 py-2">{{ ledgerTypeLabel(entry) }}</td>
+                    <td class="px-3 py-2">
+                      <pera-badge
+                        [tone]="entry.direction === 'In' ? 'success' : 'warning'"
+                        size="micro"
+                      >
+                        {{ ledgerDirectionLabel(entry) }}
+                      </pera-badge>
+                    </td>
+                    <!-- No reversal strike-through: RecentLedgerRow carries no
+                         isReversed/reversalOfId — "Open full ledger →" reaches the
+                         full LedgerEntryResponse, which does. -->
+                    <td class="text-end px-5 py-2 tabular-nums">
+                      <pera-currency [amount]="entry.amount" />
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+        <div
+          class="px-5 py-2.5 border-t border-border flex justify-between items-center font-mono text-xs text-text-muted mt-auto"
+        >
+          <a
+            [routerLink]="['/finance/projects', projectId(), 'ledger']"
+            class="text-text-primary hover:underline"
+          >
+            Open full ledger →
+          </a>
+        </div>
+      </pera-card>
+    </div>
+
+    <!-- Latest BOQ snapshot -->
+    @if (d.boq; as boq) {
+      <pera-card padding="none" class="flex flex-col h-full">
+        <div class="flex items-center gap-2.5 px-5 py-3 border-b border-border">
+          <h3 class="font-medium text-sm text-text-primary truncate">Latest BOQ snapshot</h3>
+          <span class="font-mono text-xs text-text-muted px-1.5 py-px bg-selected shrink-0">{{
+            'v' + boq.version
+          }}</span>
+        </div>
+        <div class="p-5 grid grid-cols-2 md:grid-cols-4 gap-4 fs-body-sm">
+          <div>
+            <div class="font-mono fs-label text-text-muted uppercase mb-1">Budgeted</div>
+            <div class="tabular-nums"><pera-currency [amount]="boq.budgetedTotal" /></div>
+          </div>
+          <div>
+            <div class="font-mono fs-label text-text-muted uppercase mb-1">Purchase</div>
+            <div class="tabular-nums"><pera-currency [amount]="boq.purchaseTotal" /></div>
+          </div>
+          <div>
+            <div class="font-mono fs-label text-text-muted uppercase mb-1">Difference</div>
+            <div class="tabular-nums">
+              <pera-trend-arrow
+                [value]="signOf(boq.differenceTotal)"
+                [format]="signedFormat(boq.differenceTotal)"
+              />
+            </div>
+          </div>
+          <div>
+            <div class="font-mono fs-label text-text-muted uppercase mb-1">Actual</div>
+            <div class="tabular-nums"><pera-currency [amount]="boq.actualTotal" /></div>
+          </div>
+        </div>
+        <div
+          class="px-5 py-2.5 border-t border-border flex justify-between items-center font-mono text-xs text-text-muted mt-auto"
+        >
+          <span>Generated {{ formatDate(boq.generatedAt) }}</span>
+          <a
+            [routerLink]="['/finance/projects', projectId(), 'boq', boq.snapshotId]"
+            class="text-text-primary hover:underline"
+            >Open snapshot →</a
+          >
+        </div>
+      </pera-card>
+    }
+  }
+</div>

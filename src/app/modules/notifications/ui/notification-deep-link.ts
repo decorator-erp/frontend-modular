@@ -1,17 +1,11 @@
 import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { ApprovalService } from '@modules/approvals';
-// TODO(009): CrmMeetingService lands with modules/crm. Restore the import, its inject below and
-// the Meeting case then; until it does, a Meeting notification takes the default FALLBACK.
-// import { CrmMeetingService } from '@modules/crm';
-// TODO(007): InvoiceService and VariationService land with modules/finance. Restore both imports,
-// their injects below and the Invoice / Variation cases then (default FALLBACK until).
-// import { InvoiceService } from '@modules/finance';
-// import { VariationService } from '@modules/finance';
-// TODO(008): ProjectStageService and ProjectTaskService land with modules/projects. Restore both
-// imports, their injects below and the ProjectTask / ProjectStage cases then (default FALLBACK until).
-// import { ProjectStageService } from '@modules/projects';
-// import { ProjectTaskService } from '@modules/projects';
+import { CrmMeetingService } from '@modules/crm';
+import { InvoiceService } from '@modules/finance';
+import { VariationService } from '@modules/finance';
+import { ProjectStageService } from '@modules/projects';
+import { ProjectTaskService } from '@modules/projects';
 import { NotificationEntityType } from '../model/notification-enums';
 import { NotificationView } from '../model/notification.model';
 
@@ -31,17 +25,12 @@ const FALLBACK: RouteCommands = ['/notifications'];
  */
 @Injectable({ providedIn: 'root' })
 export class NotificationDeepLink {
-  // TODO(008): see the imports above.
-  // private readonly tasks = inject(ProjectTaskService);
-  // TODO(008): see the imports above.
-  // private readonly stages = inject(ProjectStageService);
-  // TODO(007): see the imports above.
-  // private readonly invoices = inject(InvoiceService);
-  // TODO(007): see the imports above.
-  // private readonly variations = inject(VariationService);
+  private readonly tasks = inject(ProjectTaskService);
+  private readonly stages = inject(ProjectStageService);
+  private readonly invoices = inject(InvoiceService);
+  private readonly variations = inject(VariationService);
   private readonly approvals = inject(ApprovalService);
-  // TODO(009): see the imports above.
-  // private readonly meetings = inject(CrmMeetingService);
+  private readonly meetings = inject(CrmMeetingService);
 
   async resolve(view: NotificationView): Promise<RouteCommands> {
     const id = view.entityId;
@@ -53,35 +42,31 @@ export class NotificationDeepLink {
         case NotificationEntityType.Project:
           return ['/projects', id]; // single id — no fetch
 
-        // TODO(008): see the imports above.
-        // case NotificationEntityType.ProjectTask: {
-        //   // getDetails returns TaskDetails { task, subTasks, gateConditions } — projectId is on task.
-        //   const details = await firstValueFrom(this.tasks.getDetails(id));
-        //   const projectId = details.task?.projectId;
-        //   return projectId ? ['/projects', projectId, 'tasks', id] : FALLBACK;
-        // }
+        case NotificationEntityType.ProjectTask: {
+          // getDetails returns TaskDetails { task, subTasks, gateConditions } — projectId is on task.
+          const details = await firstValueFrom(this.tasks.getDetails(id));
+          const projectId = details.task?.projectId;
+          return projectId ? ['/projects', projectId, 'tasks', id] : FALLBACK;
+        }
 
-        // TODO(008): see the imports above.
-        // case NotificationEntityType.ProjectStage: {
-        //   const stage = await firstValueFrom(this.stages.getDetails(id));
-        //   return stage.projectId ? ['/projects', stage.projectId, 'stages', id] : FALLBACK;
-        // }
+        case NotificationEntityType.ProjectStage: {
+          const stage = await firstValueFrom(this.stages.getDetails(id));
+          return stage.projectId ? ['/projects', stage.projectId, 'stages', id] : FALLBACK;
+        }
 
-        // TODO(007): see the imports above.
-        // case NotificationEntityType.Invoice: {
-        //   const invoice = await firstValueFrom(this.invoices.getById(id));
-        //   return invoice.projectId
-        //     ? ['/finance', 'projects', invoice.projectId, 'invoices', id]
-        //     : FALLBACK;
-        // }
+        case NotificationEntityType.Invoice: {
+          const invoice = await firstValueFrom(this.invoices.getById(id));
+          return invoice.projectId
+            ? ['/finance', 'projects', invoice.projectId, 'invoices', id]
+            : FALLBACK;
+        }
 
-        // TODO(007): see the imports above.
-        // case NotificationEntityType.Variation: {
-        //   const variation = await firstValueFrom(this.variations.getById(id));
-        //   return variation.projectId
-        //     ? ['/finance', 'projects', variation.projectId, 'variations', id]
-        //     : FALLBACK;
-        // }
+        case NotificationEntityType.Variation: {
+          const variation = await firstValueFrom(this.variations.getById(id));
+          return variation.projectId
+            ? ['/finance', 'projects', variation.projectId, 'variations', id]
+            : FALLBACK;
+        }
 
         case NotificationEntityType.Approval: {
           // The band that ACTUALLY carries CRM approval traffic (FR-039): the backend raises
@@ -95,13 +80,12 @@ export class NotificationDeepLink {
           return this.routeForCrmSubject(match.projectId, match.subjectType ?? null);
         }
 
-        // TODO(009): see the imports above.
-        // case NotificationEntityType.Meeting: {
-        //   // Live and working: every CrmMeeting* notification (500–508) carries the meeting's own
-        //   // id as entityId (verified against the backend working tree).
-        //   const meeting = await firstValueFrom(this.meetings.getById(id));
-        //   return meeting.projectId ? ['/crm/projects', meeting.projectId, 'scheduler'] : FALLBACK;
-        // }
+        case NotificationEntityType.Meeting: {
+          // Live and working: every CrmMeeting* notification (500–508) carries the meeting's own
+          // id as entityId (verified against the backend working tree).
+          const meeting = await firstValueFrom(this.meetings.getById(id));
+          return meeting.projectId ? ['/crm/projects', meeting.projectId, 'scheduler'] : FALLBACK;
+        }
 
         case NotificationEntityType.DesignBrief:
         case NotificationEntityType.RequirementItem:
