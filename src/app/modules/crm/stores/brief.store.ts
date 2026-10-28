@@ -228,7 +228,10 @@ export const BriefStore = signalStore(
         });
       },
 
-      /** Send the head for confirmation — THIS is what advances the round (FR-009). */
+      /**
+       * Send the head for confirmation (`PUT /briefs/{id}/send`, 009b #13) — THIS is what advances
+       * the round (FR-009): it opens round n+1.
+       */
       sendForConfirmation(): void {
         const head = store.head();
         const projectId = store.projectId();
@@ -239,11 +242,20 @@ export const BriefStore = signalStore(
             patchState(store, { sending: false });
             this.reload();
           },
-          error: () =>
+          error: (err: unknown) => {
+            // 409 crm.briefs.ConcurrentSend / ConcurrencyConflict: reload (X-3, 009b #13).
+            if (reloadOnConflict(err, () => this.reload())) {
+              patchState(store, { sending: false });
+              return;
+            }
+            // NotSendable, TooManyVoidedRounds, NotPending, approvals.OpenApprovalExists /
+            // ApprovalIdInUse, 404 crm.clients.NotFound: the code's catalog message.
+            const parsed = err instanceof HttpErrorResponse ? errors.parse(err) : null;
             patchState(store, {
               sending: false,
-              error: 'Could not send the brief for confirmation.',
-            }),
+              error: parsed?.code ? friendly(parsed) : 'Could not send the brief for confirmation.',
+            });
+          },
         });
       },
 

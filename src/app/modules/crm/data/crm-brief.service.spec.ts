@@ -118,6 +118,15 @@ describe('CrmBriefService', () => {
     });
   });
 
+  describe('sendForConfirmation (009b #13) — PUT /api/crm/briefs/{briefId}/send', () => {
+    it('calls the renamed send route', () => {
+      service.sendForConfirmation('B').subscribe();
+      const req = http.expectOne(url('/crm/briefs/B/send'));
+      expect(req.request.method).toBe('PUT');
+      req.flush(null, { status: 204, statusText: 'No Content' });
+    });
+  });
+
   describe('getBrief (N-11, the obsolete project fallback)', () => {
     it('reads the same flattened CrmDesignBriefResponse off the project route', () => {
       let head: BriefHead | undefined;

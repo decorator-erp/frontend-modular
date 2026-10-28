@@ -126,9 +126,12 @@ export class CrmBriefService extends ApiService {
     });
   }
 
-  /** `PUT /briefs/{briefId}/send-for-confirmation` → `204`. THIS is what advances the round. */
+  /**
+   * `PUT /api/crm/briefs/{briefId}/send` → `204` — `crm.briefs.send` (009b #13); it binds no body. THIS is
+   * what advances the round: it opens round n+1.
+   */
   sendForConfirmation(briefId: string): Observable<void> {
-    return this.put<void>(`/crm/briefs/${briefId}/send-for-confirmation`, {});
+    return this.put<void>(`/crm/briefs/${briefId}/send`, {});
   }
 
   /** `POST /briefs/{briefId}/spaces` → `201` with a bare `Guid`. Add a gathering entry. */

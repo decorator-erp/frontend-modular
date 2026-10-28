@@ -333,6 +333,42 @@ describe('BriefStore', () => {
     });
   });
 
+  describe('sendForConfirmation errors (009b #13)', () => {
+    const conflict = (status: number, code: string) =>
+      new HttpErrorResponse({ status, error: { title: code, errors: { [code]: ['x'] } } });
+
+    it('409 crm.briefs.ConcurrentSend reloads the brief (X-3)', () => {
+      api.sendForConfirmation.mockReturnValue(
+        throwError(() => conflict(409, 'crm.briefs.ConcurrentSend')),
+      );
+      const s = store();
+      s.load(PROJECT_ID, 'stage-1');
+      api.getBriefByStage.mockClear();
+
+      s.sendForConfirmation();
+
+      expect(api.getBriefByStage).toHaveBeenCalledWith('stage-1');
+      expect(s.error()).toBeNull();
+      expect(s.sending()).toBe(false);
+    });
+
+    it.each([
+      ['crm.briefs.NotSendable', 409, 'Only a draft or rejected brief can be sent for approval.'],
+      [
+        'approvals.OpenApprovalExists',
+        409,
+        'An undecided approval already exists for this subject.',
+      ],
+      ['crm.clients.NotFound', 404, 'Client not found.'],
+    ])('%s shows its catalog message', (code, status, message) => {
+      api.sendForConfirmation.mockReturnValue(throwError(() => conflict(status, code)));
+      const s = store();
+      s.load(PROJECT_ID);
+      s.sendForConfirmation();
+      expect(s.error()).toBe(message);
+    });
+  });
+
   describe('headRound / isHeadRoundOutstanding', () => {
     it('is 0 when the head has never been sent (no trail rows)', () => {
       const s = store();
