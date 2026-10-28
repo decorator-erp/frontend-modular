@@ -238,7 +238,8 @@ describe('app.routes — the 009 CRM routes', () => {
   it('wires the four portal children with their own-scope permissions', () => {
     const portal = routes.find((r) => r.path === 'portal')!;
     const expected: [string, string, unknown][] = [
-      ['', PERM.portal.profileViewOwn, crmPages.clientProfile],
+      // 009b X-7: no portal.profile.view_own exists; the profile route is gated on the shell flag.
+      ['', PERM.crm.portal, crmPages.clientProfile],
       ['schedule', PERM.crm.meetings.viewOwn, crmPages.clientSchedule],
       ['add-requirement', PERM.requirements.submitOwn, crmPages.clientAddRequirement],
       ['approvals', PERM.crm.approvals.viewOwn, crmPages.clientApprovals],

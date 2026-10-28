@@ -241,10 +241,6 @@ export const PERM = {
     viewOwn: 'requirements.view_own',
     submitOwn: 'requirements.submit_own',
   },
-  portal: {
-    /** GET /api/crm/portal/profile — the client's identity card (client + contacts + projects). */
-    profileViewOwn: 'portal.profile.view_own',
-  },
   // UI-side gate for the redesigned DMS task-detail route. Not in the backend catalog
   // (`AllDefaultPermissions`); a staged-rollout claim backend ops grant explicitly —
   // see docs/PERMISSIONS.md. Kept in the app's live snake_case claim spelling.
@@ -465,5 +461,4 @@ export const ALL_PERMISSIONS: { group: string; key: string; displayName: string 
     key: PERM.requirements.submitOwn,
     displayName: 'Submit Own Requirement',
   },
-  { group: 'Portal', key: PERM.portal.profileViewOwn, displayName: 'View Own Portal Profile' },
 ];

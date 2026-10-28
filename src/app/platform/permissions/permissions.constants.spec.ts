@@ -19,6 +19,16 @@ describe('PERM catalog', () => {
     }
   });
 
+  it('has no portal.profile.view_own — the backend declares no such claim (009b X-7, FINDING-4-8)', () => {
+    expect(collectPermStrings(PERM)).not.toContain('portal.profile.view_own');
+    expect(Object.keys(PERM)).not.toContain('portal');
+  });
+
+  it('adds neither crm.notes.manage_all nor crm.clients.read_all (009b D-e)', () => {
+    expect(collectPermStrings(PERM)).not.toContain('crm.notes.manage_all');
+    expect(collectPermStrings(PERM)).not.toContain('crm.clients.read_all');
+  });
+
   it('exposes the UI-only DMS task-detail gate in its live claim spelling', () => {
     expect(PERM.dms.taskDetail.view).toBe('dms.task_detail.view');
   });
