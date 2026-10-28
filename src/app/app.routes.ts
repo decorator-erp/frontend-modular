@@ -127,7 +127,7 @@ export const routes: Routes = [
       {
         path: 'crm',
         data: { breadcrumb: 'CRM' },
-        loadChildren: () => import('@modules/crm').then((m) => m.crmRoutes),
+        loadChildren: crmPages.routes,
       },
       // Office "my approvals" inbox — the dashboard "Needs attention" widget's "View all" target.
       {

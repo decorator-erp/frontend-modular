@@ -12,7 +12,7 @@ import { libraryRoutes } from '@modules/library';
 import { financeRoutes } from '@modules/finance';
 import { projectsRoutes } from '@modules/projects';
 import { NotificationsPageComponent } from '@modules/notifications';
-import { CatalogAdminStore, crmPages, crmRoutes } from '@modules/crm';
+import { CatalogAdminStore, crmPages } from '@modules/crm';
 
 /** Flatten the shell's children — the stub routes live under the app-shell route. */
 function shellChildren(): Route[] {
@@ -260,11 +260,12 @@ describe('app.routes — the 009 CRM routes', () => {
     expect(route.loadComponent).toBe(crmPages.catalogAdmin);
   });
 
-  it('lazy-loads crmRoutes under crm with no parent permission gate', async () => {
+  it('lazy-loads crmRoutes under crm with no parent permission gate', () => {
     const route = byPath('crm')!;
     expect(route.canActivate).toBeUndefined();
     expect(route.data).toEqual({ breadcrumb: 'CRM' });
-    expect(await (route.loadChildren as () => Promise<unknown>)()).toBe(crmRoutes);
+    // The loader, not a barrel import: crmRoutes must stay out of the initial bundle (FINDING-3-1).
+    expect(route.loadChildren).toBe(crmPages.routes);
   });
 
   it('gates the office approvals inbox on approvals.read', () => {

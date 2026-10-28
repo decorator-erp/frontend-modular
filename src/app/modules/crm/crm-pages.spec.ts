@@ -1,4 +1,5 @@
 import { crmPages } from './crm-pages';
+import { crmRoutes } from './crm.routes';
 import { IntakePageComponent } from './ui/public/intake-page.component';
 import { CrmClientProfileComponent } from './ui/client/client-profile.component';
 import { CrmClientSchedulePageComponent } from './ui/client/client-schedule-page.component';
@@ -9,8 +10,14 @@ import { ApprovalsListComponent } from './ui/office-approvals/approvals-list.com
 import { CrmDesignProfileComponent } from './ui/designer/design-profile.component';
 
 describe('crmPages — the lazy loaders app.routes.ts routes through', () => {
-  it('resolves each loader to its page class', async () => {
-    const expected: [keyof typeof crmPages, unknown][] = [
+  it('resolves the routes loader to crmRoutes and its 11 children', async () => {
+    const routes = await crmPages.routes();
+    expect(routes).toBe(crmRoutes);
+    expect(routes).toHaveLength(11);
+  });
+
+  it('resolves each page loader to its page class', async () => {
+    const expected: [Exclude<keyof typeof crmPages, 'routes'>, unknown][] = [
       ['intake', IntakePageComponent],
       ['clientProfile', CrmClientProfileComponent],
       ['clientSchedule', CrmClientSchedulePageComponent],
@@ -20,7 +27,7 @@ describe('crmPages — the lazy loaders app.routes.ts routes through', () => {
       ['officeApprovals', ApprovalsListComponent],
       ['designProfile', CrmDesignProfileComponent],
     ];
-    expect(Object.keys(crmPages)).toHaveLength(expected.length);
+    expect(Object.keys(crmPages)).toHaveLength(expected.length + 1);
     for (const [key, cmp] of expected) {
       expect(await crmPages[key]()).toBe(cmp);
     }

@@ -1,9 +1,11 @@
-// Lazy loaders for the CRM pages app.routes.ts routes outside crmRoutes (intake, the four portal
+// Lazy loaders for crmRoutes and for the CRM pages app.routes.ts routes outside it (intake, the four portal
 // children, admin/catalog, the office approvals inbox, the designer profile). The barrel exports
 // these instead of the page classes: app.config.ts and app.routes.ts import the barrel statically,
 // so a class exported from it lands in the initial bundle, while each loader keeps its page in its
 // own lazy chunk exactly as the old app's `import('./features/crm/…')` did.
 export const crmPages = {
+  // The office shell's `crm` child: its 11 children and their route-level stores stay lazy.
+  routes: () => import('./crm.routes').then((m) => m.crmRoutes),
   intake: () => import('./ui/public/intake-page.component').then((m) => m.IntakePageComponent),
   clientProfile: () =>
     import('./ui/client/client-profile.component').then((m) => m.CrmClientProfileComponent),
