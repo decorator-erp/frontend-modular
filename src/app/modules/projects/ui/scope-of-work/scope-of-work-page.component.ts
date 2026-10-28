@@ -114,6 +114,7 @@ import { SowTemplatePickerComponent } from './sow-template-picker.component';
               [editable]="editable()"
               [confirmed]="store.isConfirmed()"
               [projectId]="id()"
+              [drafts]="store.itemDrafts()"
               (updateItem)="onUpdateItem($event)"
               (reorder)="store.reorder($event)"
               (remove)="store.removeItem($event)"

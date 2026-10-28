@@ -56,6 +56,8 @@ interface ScopeOfWorkState {
    * stored header is current). The next header edit builds on it, never on a stale read.
    */
   headerDraft: UpdateScopeOfWorkHeaderRequest | null;
+  /** FINDING-7-2: the same, per item id: the item body as last sent, until a reload lands. */
+  itemDrafts: Record<string, UpdateScopeOfWorkItemRequest>;
 }
 
 const INITIAL: ScopeOfWorkState = {
@@ -74,6 +76,7 @@ const INITIAL: ScopeOfWorkState = {
   headerStatus: 'idle',
   confirmedByName: null,
   headerDraft: null,
+  itemDrafts: {},
 };
 
 /**
@@ -126,6 +129,9 @@ export const ScopeOfWorkStore = signalStore(
             patchState(store, {
               scope,
               headerDraft: lanes.has('header') ? store.headerDraft() : null,
+              itemDrafts: Object.fromEntries(
+                Object.entries(store.itemDrafts()).filter(([id]) => lanes.has(`item:${id}`)),
+              ),
             });
             resolveConfirmer(scope);
           },
@@ -249,9 +255,21 @@ export const ScopeOfWorkStore = signalStore(
           );
         },
 
-        /** B3 `PUT …/items/{itemId}`: the caller re-sends the stored `description`. */
+        /**
+         * B3 `PUT …/items/{itemId}`: the caller re-sends the stored `description`.
+         * FINDING-7-2: one item's writes are serialized and `itemDrafts` holds its last body.
+         */
         updateItem(itemId: string, req: UpdateScopeOfWorkItemRequest): void {
-          write((projectId) => api.updateItem(projectId, itemId, req));
+          patchState(store, { itemDrafts: { ...store.itemDrafts(), [itemId]: req } });
+          serial(
+            `item:${itemId}`,
+            (projectId) => api.updateItem(projectId, itemId, req),
+            (ok) => {
+              if (ok) return;
+              const { [itemId]: _dropped, ...rest } = store.itemDrafts();
+              patchState(store, { itemDrafts: rest });
+            },
+          );
         },
 
         /** B4 `PUT …/items/order`: **every** item id, in the new order. */

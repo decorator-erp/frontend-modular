@@ -145,6 +145,30 @@ describe('ScopeOfWorkPageComponent — items (sow #3)', () => {
     });
   });
 
+  it('FINDING-7-2: a fee edit made while the name save is in flight keeps the new name', () => {
+    const first = new Subject<void>();
+    api['updateItem'].mockReturnValueOnce(first);
+    render();
+    const name = rows()[0].querySelector<HTMLInputElement>('pera-input input')!;
+    name.value = 'Concept';
+    name.dispatchEvent(new Event('change', { bubbles: true }));
+    fixture.detectChanges();
+    const fee = rows()[0].querySelector<HTMLInputElement>('pera-money-input input')!;
+    fee.value = '30000';
+    fee.dispatchEvent(new Event('change', { bubbles: true }));
+    fixture.detectChanges();
+    expect(api['updateItem']).toHaveBeenCalledTimes(1);
+    first.next();
+    first.complete();
+    fixture.detectChanges();
+    expect(api['updateItem']).toHaveBeenCalledTimes(2);
+    expect(api['updateItem']).toHaveBeenLastCalledWith('p1', 'i1', {
+      name: 'Concept',
+      description: 'Mood boards',
+      fee: 30000,
+    });
+  });
+
   it('move down sends the full order; remove deletes (B4, B5)', () => {
     render();
     rows()[0].querySelector<HTMLButtonElement>('button[aria-label^="Move item 1 down"]')!.click();

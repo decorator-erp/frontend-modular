@@ -158,6 +158,8 @@ export class SowItemsTableComponent {
   /** Confirmed: each item links to the stage confirm created (B11). */
   readonly confirmed = input(false);
   readonly projectId = input('');
+  /** FINDING-7-2: each item's body as last sent and not yet reloaded (the store's `itemDrafts`). */
+  readonly drafts = input<Record<string, UpdateScopeOfWorkItemRequest>>({});
 
   readonly updateItem = output<SowItemUpdate>();
   /** Every item id, in the new order (B4). */
@@ -175,7 +177,7 @@ export class SowItemsTableComponent {
       return;
     }
     this.setError(`${item.id}:name`, null);
-    if (name !== item.name) this.emitUpdate(item, { name });
+    if (name !== this.current(item).name) this.emitUpdate(item, { name });
   }
 
   protected onFee(item: ScopeOfWorkItem, event: Event): void {
@@ -187,7 +189,7 @@ export class SowItemsTableComponent {
       return;
     }
     this.setError(`${item.id}:fee`, null);
-    if (fee !== item.fee) this.emitUpdate(item, { fee });
+    if (fee !== this.current(item).fee) this.emitUpdate(item, { fee });
   }
 
   protected move(index: number, delta: -1 | 1): void {
@@ -198,11 +200,16 @@ export class SowItemsTableComponent {
     this.reorder.emit(ids);
   }
 
+  /** FINDING-7-2: the item's latest body: its unsaved draft, else the stored values. */
+  private current(item: ScopeOfWorkItem): UpdateScopeOfWorkItemRequest {
+    return (
+      this.drafts()[item.id] ?? { name: item.name, description: item.description, fee: item.fee }
+    );
+  }
+
+  /** FINDING-7-2: built on the draft, so a fee edit made before a name save reloads keeps it. */
   private emitUpdate(item: ScopeOfWorkItem, change: Partial<UpdateScopeOfWorkItemRequest>): void {
-    this.updateItem.emit({
-      itemId: item.id,
-      request: { name: item.name, description: item.description, fee: item.fee, ...change },
-    });
+    this.updateItem.emit({ itemId: item.id, request: { ...this.current(item), ...change } });
   }
 
   private setError(key: string, value: CatalogKey | null): void {
