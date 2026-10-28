@@ -56,16 +56,21 @@ export class CrmMeetingService extends ApiService {
     ).pipe(map((r) => this.unwrapId(r, 'meetingId')));
   }
 
-  /** `PUT /slots/{slotId}/accept` → `204`. Permission `crm.meetings.respond_slot` (counterparty-checked server-side). */
+  /**
+   * `PUT /slots/{slotId}/accept` → `204`. Permission `crm.meetings.respond_slot` (counterparty-checked
+   * server-side): 403 `crm.meetings.NotCounterparty` is handled by the store's message (009b #21).
+   */
   acceptSlot(slotId: string): Observable<void> {
-    return this.put<void>(`/crm/meetings/slots/${slotId}/accept`, {});
+    return this.put<void>(`/crm/meetings/slots/${slotId}/accept`, {}, { context: handled(403) });
   }
 
   /** `PUT /slots/{slotId}/decline` → `204` — an optional counter-proposal, never a reason. */
   declineSlot(slotId: string, request?: DeclineSlotRequest): Observable<void> {
-    return this.put<void>(`/crm/meetings/slots/${slotId}/decline`, {
-      counterSlots: request?.counterSlots ?? null,
-    });
+    return this.put<void>(
+      `/crm/meetings/slots/${slotId}/decline`,
+      { counterSlots: request?.counterSlots ?? null },
+      { context: handled(403) },
+    );
   }
 
   /** `PUT /{meetingId}/reschedule` → `204` — a NEW slot proposal, an offer, no reason (FR-023 amended). */
@@ -140,16 +145,22 @@ export class CrmMeetingService extends ApiService {
     }).pipe(map((r) => this.unwrap<string>(r)));
   }
 
-  /** `PUT /portal/meetings/slots/{slotId}/accept` → `204` — the client accepts a proposed slot. */
+  /** `PUT /portal/meetings/slots/{slotId}/accept` → `204` — the client accepts a proposed slot. 403 handled (009b #21). */
   portalAcceptSlot(slotId: string): Observable<void> {
-    return this.put<void>(`/crm/portal/meetings/slots/${slotId}/accept`, {});
+    return this.put<void>(
+      `/crm/portal/meetings/slots/${slotId}/accept`,
+      {},
+      { context: handled(403) },
+    );
   }
 
   /** `PUT /portal/meetings/slots/{slotId}/decline` → `204` — optional counter-proposal. */
   portalDeclineSlot(slotId: string, request?: DeclineSlotRequest): Observable<void> {
-    return this.put<void>(`/crm/portal/meetings/slots/${slotId}/decline`, {
-      counterSlots: request?.counterSlots ?? null,
-    });
+    return this.put<void>(
+      `/crm/portal/meetings/slots/${slotId}/decline`,
+      { counterSlots: request?.counterSlots ?? null },
+      { context: handled(403) },
+    );
   }
 
   /** `PUT /portal/meetings/{meetingId}/reschedule` → `204` — no reason, an offer. */

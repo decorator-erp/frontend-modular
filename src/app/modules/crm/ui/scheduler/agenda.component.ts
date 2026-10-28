@@ -98,7 +98,13 @@ export class CrmAgendaComponent {
     return MEETING_STATUS_CHIP[m.status];
   }
 
-  protected canAct(m: CrmMeeting): boolean {
-    return m.status === MeetingStatus.Scheduled || m.status === MeetingStatus.Rescheduled;
+  /**
+   * Complete / No-show are offered only once the meeting has started: before `scheduledAtUtc` the
+   * server refuses both with 409 `crm.meetings.InvalidStateTransition` (009b #21, contract §8.3.10).
+   */
+  protected canAct(m: CrmMeeting, nowMs: number = Date.now()): boolean {
+    if (m.status !== MeetingStatus.Scheduled && m.status !== MeetingStatus.Rescheduled)
+      return false;
+    return !!m.scheduledAtUtc && new Date(m.scheduledAtUtc).getTime() <= nowMs;
   }
 }

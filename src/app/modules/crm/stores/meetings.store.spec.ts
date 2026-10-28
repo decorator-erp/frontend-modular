@@ -4,6 +4,8 @@ import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { NEVER, of, throwError } from 'rxjs';
 import { CrmMeetingService } from '../data/crm-meeting.service';
 import { MeetingSlotStatus, MeetingStatus, MeetingType } from '../model/crm-enums';
+import { ERROR_MESSAGES } from '@platform/errors/error-catalog';
+import { ToastService } from '@platform/feedback/toast.service';
 import type { PagedResult } from '@platform/types';
 import type { CrmMeeting, CrmMeetingSlot } from '../model';
 import { isSlotHeld, isSlotHoldExpired, MeetingsStore } from './meetings.store';
@@ -75,7 +77,11 @@ describe('MeetingsStore', () => {
   beforeEach(() => {
     api = apiMock();
     TestBed.configureTestingModule({
-      providers: [MeetingsStore, { provide: CrmMeetingService, useValue: api }],
+      providers: [
+        MeetingsStore,
+        { provide: CrmMeetingService, useValue: api },
+        { provide: ToastService, useValue: { show: vi.fn() } },
+      ],
     });
   });
 
@@ -247,6 +253,89 @@ describe('MeetingsStore', () => {
       expect(api.portalRequest).toHaveBeenCalled();
       expect(api.portalList).toHaveBeenCalled();
     });
+  });
+});
+
+describe('MeetingsStore mutation errors (009b #21)', () => {
+  let api: ReturnType<typeof apiMock>;
+
+  beforeEach(() => {
+    api = apiMock();
+    TestBed.configureTestingModule({
+      providers: [
+        MeetingsStore,
+        { provide: CrmMeetingService, useValue: api },
+        { provide: ToastService, useValue: { show: vi.fn() } },
+      ],
+    });
+  });
+
+  const store = () => TestBed.inject(MeetingsStore);
+
+  function coded(status: number, code: string): HttpErrorResponse {
+    return new HttpErrorResponse({
+      status,
+      error: { status, title: code, errors: { [code]: ['x'] } },
+    });
+  }
+
+  it('acceptSlot: 409 crm.meetings.ConcurrentUpdate reloads the list (X-3), no error', () => {
+    api.acceptSlot.mockReturnValue(throwError(() => coded(409, 'crm.meetings.ConcurrentUpdate')));
+    const s = store();
+    s.load(PROJECT_ID);
+    api.search.mockClear();
+
+    s.acceptSlot('slot-1');
+
+    expect(api.search).toHaveBeenCalledWith(PROJECT_ID);
+    expect(s.error()).toBeNull();
+    expect(s.mutating()).toBe(false);
+  });
+
+  it('portalAcceptSlot: a ConcurrentUpdate reloads the portal list', () => {
+    api.portalAcceptSlot.mockReturnValue(
+      throwError(() => coded(409, 'crm.meetings.ConcurrentUpdate')),
+    );
+    const s = store();
+    s.loadPortal(PROJECT_ID);
+    api.portalList.mockClear();
+
+    s.portalAcceptSlot('slot-1');
+
+    expect(api.portalList).toHaveBeenCalled();
+    expect(s.error()).toBeNull();
+  });
+
+  it('declineSlot: a handled 403 crm.meetings.NotCounterparty shows its message', () => {
+    api.declineSlot.mockReturnValue(throwError(() => coded(403, 'crm.meetings.NotCounterparty')));
+    const s = store();
+    s.load(PROJECT_ID);
+    api.search.mockClear();
+
+    s.declineSlot('slot-1');
+
+    expect(s.error()).toBe(ERROR_MESSAGES['crm.meetings.NotCounterparty']);
+    expect(api.search).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['acceptSlot', 409, 'crm.meetings.SlotExpired'],
+    ['complete', 409, 'crm.meetings.InvalidStateTransition'],
+    ['noShow', 409, 'crm.meetings.InvalidStateTransition'],
+    ['acceptSlot', 404, 'crm.meetings.SlotNotFound'],
+    ['portalDeclineSlot', 404, 'crm.portal.NotFound'],
+  ] as const)('%s: %i %s shows its catalog message', (method, status, code) => {
+    api[method].mockReturnValue(throwError(() => coded(status, code)));
+    const s = store();
+    s.load(PROJECT_ID);
+
+    (s[method] as (id: string) => void)('x');
+
+    expect(s.error()).toBe(ERROR_MESSAGES[code]);
+  });
+
+  it('the dead crm.meetings.SlotUnavailable code is gone from the catalog', () => {
+    expect(ERROR_MESSAGES['crm.meetings.SlotUnavailable']).toBeUndefined();
   });
 });
 

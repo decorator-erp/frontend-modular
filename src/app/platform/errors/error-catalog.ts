@@ -367,7 +367,6 @@ export const ERROR_MESSAGES: Record<string, string> = {
   'crm.meetings.InvalidProposer': 'Exactly one proposer must be provided.',
   'crm.meetings.InvalidSlotRange': 'The slot must end after it starts.',
   'crm.meetings.SlotNotProposed': 'Only a proposed slot can be accepted or declined.',
-  'crm.meetings.SlotUnavailable': 'That time is no longer available. Please pick another slot.',
   'crm.meetings.AlreadyStarted': 'This meeting has already started and can no longer be changed.',
   'crm.meetings.CancelReasonRequired': 'A reason is required when cancelling a meeting.',
   'crm.meetings.NotCounterparty': 'Only the other party can respond to this slot.',
@@ -585,6 +584,10 @@ export const ERROR_MESSAGES_AR: Record<string, string> = {
   'crm.meetings.NoSlotsProvided': 'اقترح موعدًا واحدًا على الأقل.',
   'crm.periods.NotFound': 'فترة جمع المتطلبات غير موجودة.',
   'crm.periods.NotOpen': 'فترة جمع المتطلبات ليست مفتوحة.',
+  // 009b #21: the slot and meeting actions' codes.
+  'crm.meetings.InvalidStateTransition': 'لا يمكن نقل الاجتماع إلى هذه الحالة.',
+  'crm.meetings.NotCounterparty': 'لا يردّ على هذا الموعد إلا الطرف الآخر.',
+  'crm.meetings.SlotNotFound': 'الموعد غير موجود.',
   'crm.meetings.ConcurrentUpdate': 'عدّل شخص آخر الاجتماع. أعِد التحميل وحاول مرة أخرى.',
   'crm.meetings.SlotExpired': 'مضى وقت بدء هذا الموعد. اقترح وقتًا جديدًا.',
   'crm.notes.ProjectMismatch': 'مشروع الملاحظة لا يخص هذا العميل.',

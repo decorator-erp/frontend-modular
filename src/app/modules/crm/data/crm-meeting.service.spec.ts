@@ -128,4 +128,24 @@ describe('CrmMeetingService', () => {
       expect(id).toBe('M');
     });
   });
+
+  describe('slot actions mark 403 handled (009b #21)', () => {
+    it('acceptSlot, declineSlot, portalAcceptSlot and portalDeclineSlot', () => {
+      service.acceptSlot('S').subscribe();
+      service.declineSlot('S').subscribe();
+      service.portalAcceptSlot('S').subscribe();
+      service.portalDeclineSlot('S').subscribe();
+
+      for (const path of [
+        '/crm/meetings/slots/S/accept',
+        '/crm/meetings/slots/S/decline',
+        '/crm/portal/meetings/slots/S/accept',
+        '/crm/portal/meetings/slots/S/decline',
+      ]) {
+        const req = http.expectOne({ method: 'PUT', url: url(path) });
+        expect(req.request.context.get(HANDLED_ERROR_STATUSES)).toEqual([403]);
+        req.flush(null);
+      }
+    });
+  });
 });

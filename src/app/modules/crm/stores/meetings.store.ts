@@ -1,5 +1,8 @@
 import { computed, inject } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
+import type { Observable } from 'rxjs';
+import { injectReloadOnConflict } from '@platform/http/concurrency';
+import { ErrorHandlerService, friendly } from '@platform/http/error-handler.service';
 import { patchState, signalStore, withComputed, withMethods, withState } from '@ngrx/signals';
 import { CrmMeetingService } from '../data/crm-meeting.service';
 import { MeetingSlotStatus, MeetingStatus } from '../model/crm-enums';
@@ -88,196 +91,177 @@ export const MeetingsStore = signalStore(
     ),
   })),
 
-  withMethods((store, api = inject(CrmMeetingService)) => ({
-    /** Load every meeting for the project (office side). */
-    load(projectId: string): void {
-      patchState(store, { loading: true, error: null, notFound: false, projectId });
-      api.search(projectId).subscribe({
-        next: (page) => patchState(store, { meetings: page.items, loading: false }),
-        error: (err: unknown) =>
-          err instanceof HttpErrorResponse && err.status === 404
-            ? patchState(store, { meetings: [], loading: false, notFound: true })
-            : patchState(store, { loading: false, error: 'Could not load meetings.' }),
-      });
-    },
-
-    /** The client's own meetings, filtered to one project (portal has no project param). */
-    loadPortal(projectId: string): void {
-      patchState(store, { loading: true, error: null, projectId });
-      api.portalList().subscribe({
-        next: (meetings) =>
-          patchState(store, {
-            meetings: meetings.filter((m) => m.projectId === projectId),
-            loading: false,
-          }),
-        error: () => patchState(store, { loading: false, error: 'Could not load your meetings.' }),
-      });
-    },
-
-    /** The server-computed free-slot grid — the client derives nothing. */
-    loadFreeSlots(projectId: string, fromUtc: string, toUtc: string): void {
-      patchState(store, { loadingSlots: true, error: null });
-      api.freeSlots(projectId, fromUtc, toUtc).subscribe({
-        next: (freeSlots) => patchState(store, { freeSlots, loadingSlots: false }),
-        error: () =>
-          patchState(store, { loadingSlots: false, error: 'Could not load free slots.' }),
-      });
-    },
-
-    /** Employee proposes one or more slots (T050). Refreshes the meeting list on success. */
-    propose(request: ProposeMeetingRequest): void {
-      patchState(store, { mutating: true, error: null });
-      api.propose(request).subscribe({
-        next: () => {
+  withMethods(
+    (
+      store,
+      api = inject(CrmMeetingService),
+      errors = inject(ErrorHandlerService),
+      reloadOnConflict = injectReloadOnConflict(),
+    ) => {
+      /**
+       * 009b #21: a mutation's failure. 409 `crm.meetings.ConcurrentUpdate` (an accept racing a
+       * decline) reloads the list (X-3) and leaves no error; a coded error (`SlotExpired`,
+       * `InvalidStateTransition`, a handled 403 `NotCounterparty`, `SlotNotFound`,
+       * `crm.portal.NotFound`, …) shows its catalog message; anything else keeps the old text.
+       */
+      const fail = (err: unknown, reload: (() => void) | null, fallback: string): void => {
+        if (reload && reloadOnConflict(err, reload)) {
           patchState(store, { mutating: false });
-          this.load(request.projectId);
-        },
-        error: () =>
-          patchState(store, { mutating: false, error: 'Could not propose the meeting.' }),
-      });
-    },
+          return;
+        }
+        const parsed = err instanceof HttpErrorResponse ? errors.parse(err) : null;
+        patchState(store, { mutating: false, error: parsed?.code ? friendly(parsed) : fallback });
+      };
+      const officeReload = (): (() => void) | null => {
+        const projectId = store.projectId();
+        return projectId ? () => methods.load(projectId) : null;
+      };
+      const portalReload = (): (() => void) | null => {
+        const projectId = store.projectId();
+        return projectId ? () => methods.loadPortal(projectId) : null;
+      };
+      /** Runs one mutation: on success refresh through `reload`, on failure `fail`. */
+      const mutate = (
+        call: Observable<unknown>,
+        reload: (() => void) | null,
+        fallback: string,
+      ): void => {
+        patchState(store, { mutating: true, error: null });
+        call.subscribe({
+          next: () => {
+            patchState(store, { mutating: false });
+            reload?.();
+          },
+          error: (err: unknown) => fail(err, reload, fallback),
+        });
+      };
 
-    /** Accept one slot — the meeting becomes Scheduled; competing holds are released server-side. */
-    acceptSlot(slotId: string): void {
-      const projectId = store.projectId();
-      patchState(store, { mutating: true, error: null });
-      api.acceptSlot(slotId).subscribe({
-        next: () => {
-          patchState(store, { mutating: false });
-          if (projectId) this.load(projectId);
+      const methods = {
+        /** Load every meeting for the project (office side). */
+        load(projectId: string): void {
+          patchState(store, { loading: true, error: null, notFound: false, projectId });
+          api.search(projectId).subscribe({
+            next: (page) => patchState(store, { meetings: page.items, loading: false }),
+            error: (err: unknown) =>
+              err instanceof HttpErrorResponse && err.status === 404
+                ? patchState(store, { meetings: [], loading: false, notFound: true })
+                : patchState(store, { loading: false, error: 'Could not load meetings.' }),
+          });
         },
-        error: () => patchState(store, { mutating: false, error: 'Could not accept the slot.' }),
-      });
-    },
 
-    /** Decline one slot, releasing its hold — optionally with a counter-proposal, never a reason. */
-    declineSlot(slotId: string, request?: DeclineSlotRequest): void {
-      const projectId = store.projectId();
-      patchState(store, { mutating: true, error: null });
-      api.declineSlot(slotId, request).subscribe({
-        next: () => {
-          patchState(store, { mutating: false });
-          if (projectId) this.load(projectId);
+        /** The client's own meetings, filtered to one project (portal has no project param). */
+        loadPortal(projectId: string): void {
+          patchState(store, { loading: true, error: null, projectId });
+          api.portalList().subscribe({
+            next: (meetings) =>
+              patchState(store, {
+                meetings: meetings.filter((m) => m.projectId === projectId),
+                loading: false,
+              }),
+            error: () =>
+              patchState(store, { loading: false, error: 'Could not load your meetings.' }),
+          });
         },
-        error: () => patchState(store, { mutating: false, error: 'Could not decline the slot.' }),
-      });
-    },
 
-    /** Reschedule — a NEW slot proposal, an offer, no reason (FR-023 amended). */
-    reschedule(meetingId: string, slot: SlotRequest): void {
-      const projectId = store.projectId();
-      patchState(store, { mutating: true, error: null });
-      api.reschedule(meetingId, slot).subscribe({
-        next: () => {
-          patchState(store, { mutating: false });
-          if (projectId) this.load(projectId);
+        /** The server-computed free-slot grid — the client derives nothing. */
+        loadFreeSlots(projectId: string, fromUtc: string, toUtc: string): void {
+          patchState(store, { loadingSlots: true, error: null });
+          api.freeSlots(projectId, fromUtc, toUtc).subscribe({
+            next: (freeSlots) => patchState(store, { freeSlots, loadingSlots: false }),
+            error: () =>
+              patchState(store, { loadingSlots: false, error: 'Could not load free slots.' }),
+          });
         },
-        error: () =>
-          patchState(store, { mutating: false, error: 'Could not reschedule the meeting.' }),
-      });
-    },
 
-    /** Cancel — the ONE action whose reason is mandatory (enforced by the form, not here). */
-    cancel(meetingId: string, reason: string): void {
-      const projectId = store.projectId();
-      patchState(store, { mutating: true, error: null });
-      api.cancel(meetingId, reason).subscribe({
-        next: () => {
-          patchState(store, { mutating: false });
-          if (projectId) this.load(projectId);
+        /** Employee proposes one or more slots (T050). Refreshes the meeting list on success. */
+        propose(request: ProposeMeetingRequest): void {
+          patchState(store, { mutating: true, error: null });
+          api.propose(request).subscribe({
+            next: () => {
+              patchState(store, { mutating: false });
+              methods.load(request.projectId);
+            },
+            error: () =>
+              patchState(store, { mutating: false, error: 'Could not propose the meeting.' }),
+          });
         },
-        error: () => patchState(store, { mutating: false, error: 'Could not cancel the meeting.' }),
-      });
-    },
 
-    complete(meetingId: string): void {
-      const projectId = store.projectId();
-      patchState(store, { mutating: true, error: null });
-      api.complete(meetingId).subscribe({
-        next: () => {
-          patchState(store, { mutating: false });
-          if (projectId) this.load(projectId);
+        /** Accept one slot — the meeting becomes Scheduled; competing holds are released server-side. */
+        acceptSlot(slotId: string): void {
+          mutate(api.acceptSlot(slotId), officeReload(), 'Could not accept the slot.');
         },
-        error: () =>
-          patchState(store, { mutating: false, error: 'Could not complete the meeting.' }),
-      });
-    },
 
-    noShow(meetingId: string): void {
-      const projectId = store.projectId();
-      patchState(store, { mutating: true, error: null });
-      api.noShow(meetingId).subscribe({
-        next: () => {
-          patchState(store, { mutating: false });
-          if (projectId) this.load(projectId);
+        /** Decline one slot, releasing its hold — optionally with a counter-proposal, never a reason. */
+        declineSlot(slotId: string, request?: DeclineSlotRequest): void {
+          mutate(api.declineSlot(slotId, request), officeReload(), 'Could not decline the slot.');
         },
-        error: () =>
-          patchState(store, { mutating: false, error: 'Could not mark the meeting no-show.' }),
-      });
-    },
 
-    // ── Client portal ──
-
-    /** The client taps a free slot and requests it directly — lands Requested + Held (FR-023). */
-    portalRequestSlot(request: RequestMeetingByClientRequest): void {
-      patchState(store, { mutating: true, error: null });
-      api.portalRequest(request).subscribe({
-        next: () => {
-          patchState(store, { mutating: false });
-          this.loadPortal(request.projectId);
+        /** Reschedule — a NEW slot proposal, an offer, no reason (FR-023 amended). */
+        reschedule(meetingId: string, slot: SlotRequest): void {
+          mutate(
+            api.reschedule(meetingId, slot),
+            officeReload(),
+            'Could not reschedule the meeting.',
+          );
         },
-        error: () =>
-          patchState(store, { mutating: false, error: 'Could not request the meeting.' }),
-      });
-    },
 
-    portalAcceptSlot(slotId: string): void {
-      const projectId = store.projectId();
-      patchState(store, { mutating: true, error: null });
-      api.portalAcceptSlot(slotId).subscribe({
-        next: () => {
-          patchState(store, { mutating: false });
-          if (projectId) this.loadPortal(projectId);
+        /** Cancel — the ONE action whose reason is mandatory (enforced by the form, not here). */
+        cancel(meetingId: string, reason: string): void {
+          mutate(api.cancel(meetingId, reason), officeReload(), 'Could not cancel the meeting.');
         },
-        error: () => patchState(store, { mutating: false, error: 'Could not accept the slot.' }),
-      });
-    },
 
-    portalDeclineSlot(slotId: string, request?: DeclineSlotRequest): void {
-      const projectId = store.projectId();
-      patchState(store, { mutating: true, error: null });
-      api.portalDeclineSlot(slotId, request).subscribe({
-        next: () => {
-          patchState(store, { mutating: false });
-          if (projectId) this.loadPortal(projectId);
+        complete(meetingId: string): void {
+          mutate(api.complete(meetingId), officeReload(), 'Could not complete the meeting.');
         },
-        error: () => patchState(store, { mutating: false, error: 'Could not decline the slot.' }),
-      });
-    },
 
-    portalReschedule(meetingId: string, slot: SlotRequest): void {
-      const projectId = store.projectId();
-      patchState(store, { mutating: true, error: null });
-      api.portalReschedule(meetingId, slot).subscribe({
-        next: () => {
-          patchState(store, { mutating: false });
-          if (projectId) this.loadPortal(projectId);
+        noShow(meetingId: string): void {
+          mutate(api.noShow(meetingId), officeReload(), 'Could not mark the meeting no-show.');
         },
-        error: () =>
-          patchState(store, { mutating: false, error: 'Could not reschedule the meeting.' }),
-      });
-    },
 
-    portalCancel(meetingId: string, reason: string): void {
-      const projectId = store.projectId();
-      patchState(store, { mutating: true, error: null });
-      api.portalCancel(meetingId, reason).subscribe({
-        next: () => {
-          patchState(store, { mutating: false });
-          if (projectId) this.loadPortal(projectId);
+        // ── Client portal ──
+
+        /** The client taps a free slot and requests it directly — lands Requested + Held (FR-023). */
+        portalRequestSlot(request: RequestMeetingByClientRequest): void {
+          patchState(store, { mutating: true, error: null });
+          api.portalRequest(request).subscribe({
+            next: () => {
+              patchState(store, { mutating: false });
+              methods.loadPortal(request.projectId);
+            },
+            error: () =>
+              patchState(store, { mutating: false, error: 'Could not request the meeting.' }),
+          });
         },
-        error: () => patchState(store, { mutating: false, error: 'Could not cancel the meeting.' }),
-      });
+
+        portalAcceptSlot(slotId: string): void {
+          mutate(api.portalAcceptSlot(slotId), portalReload(), 'Could not accept the slot.');
+        },
+
+        portalDeclineSlot(slotId: string, request?: DeclineSlotRequest): void {
+          mutate(
+            api.portalDeclineSlot(slotId, request),
+            portalReload(),
+            'Could not decline the slot.',
+          );
+        },
+
+        portalReschedule(meetingId: string, slot: SlotRequest): void {
+          mutate(
+            api.portalReschedule(meetingId, slot),
+            portalReload(),
+            'Could not reschedule the meeting.',
+          );
+        },
+
+        portalCancel(meetingId: string, reason: string): void {
+          mutate(
+            api.portalCancel(meetingId, reason),
+            portalReload(),
+            'Could not cancel the meeting.',
+          );
+        },
+      };
+      return methods;
     },
-  })),
+  ),
 );
