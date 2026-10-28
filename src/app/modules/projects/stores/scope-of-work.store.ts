@@ -269,7 +269,8 @@ export const ScopeOfWorkStore = signalStore(
             (projectId) => api.updateItem(projectId, itemId, req),
             (ok) => {
               if (ok) return;
-              const { [itemId]: _dropped, ...rest } = store.itemDrafts();
+              const rest = { ...store.itemDrafts() };
+              delete rest[itemId];
               patchState(store, { itemDrafts: rest });
             },
           );
