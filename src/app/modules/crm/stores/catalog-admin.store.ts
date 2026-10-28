@@ -34,9 +34,8 @@ export type { MutationHandlers };
  * exactly as a v1 node id does, since ids were preserved across the split. This is not a
  * gap Run B left open; there is nothing on the v2 surface to repoint to.
  *
- * Space-type targeting is now READ + WRITE — `getCategorySpaceTypes` didn't exist when
- * Run A shipped the write-only card. It is fetched directly here (small, route-scoped
- * display data) rather than added to `CatalogStore`'s cache, since nothing else needs it.
+ * 009b #N-7: no route reads a category's space-type mappings or searches categories, so
+ * targeting is write-only again and the search filters the cached `/tree` client-side.
  *
  * Reorder is optimistic against the cache with rollback; all other mutations refetch.
  * This store is deliberately URL-agnostic — it never imports the Router. A mutation that
@@ -49,9 +48,6 @@ interface CatalogAdminState {
   /** Non-empty ⇒ the page shows results instead of the current level's children. */
   searchTerm: string;
   searchResults: CatalogCategory[];
-  /** The current category's OWN mappings (not inherited) — `[]` = global. */
-  spaceTypeIds: string[];
-  spaceTypesLoading: boolean;
   /** A catalog KEY, never prose — every consumer renders `catalog.t(error()!)`. */
   error: CatalogKey | null;
 }
@@ -61,8 +57,6 @@ const INITIAL: CatalogAdminState = {
   saving: false,
   searchTerm: '',
   searchResults: [],
-  spaceTypeIds: [],
-  spaceTypesLoading: false,
   error: null,
 };
 
@@ -106,14 +100,6 @@ export const CatalogAdminStore = signalStore(
       cache = inject(CatalogStore),
       errors = inject(ErrorHandlerService),
     ) => {
-      const loadSpaceTypes = (categoryId: string): void => {
-        patchState(store, { spaceTypesLoading: true });
-        api.getCategorySpaceTypes(categoryId).subscribe({
-          next: (spaceTypeIds) => patchState(store, { spaceTypeIds, spaceTypesLoading: false }),
-          error: () => patchState(store, { spaceTypeIds: [], spaceTypesLoading: false }),
-        });
-      };
-
       /** Refetch the cache after a structural mutation and reload the current level's data. */
       const refresh = (): void => {
         cache.invalidate();
@@ -157,11 +143,10 @@ export const CatalogAdminStore = signalStore(
         },
 
         selectCategory(categoryId: string | null): void {
-          patchState(store, { currentCategoryId: categoryId, spaceTypeIds: [] });
+          patchState(store, { currentCategoryId: categoryId });
           if (categoryId) {
             cache.loadEffectiveAttributes(categoryId);
             cache.loadItemsForCategory(categoryId);
-            loadSpaceTypes(categoryId);
           }
         },
 
@@ -171,9 +156,9 @@ export const CatalogAdminStore = signalStore(
         },
 
         /**
-         * Server-side search across code, nameEn AND nameAr — the client-side tree can't
-         * match Arabic names against an English query the way the backend index does.
-         * Empty term clears the results and returns the page to normal drill-down.
+         * Search across code, nameEn AND nameAr of the cached `/tree` (009b #N-7: no search
+         * route exists), case-insensitive. Empty term clears the results and returns the
+         * page to normal drill-down.
          */
         search(term: string): void {
           const trimmed = term.trim();
@@ -181,11 +166,13 @@ export const CatalogAdminStore = signalStore(
             patchState(store, { searchTerm: '', searchResults: [] });
             return;
           }
-          patchState(store, { searchTerm: trimmed });
-          api.searchCategories(trimmed).subscribe({
-            next: (searchResults) => patchState(store, { searchResults }),
-            error: () => patchState(store, { error: 'cat.loadFailed', searchResults: [] }),
-          });
+          const needle = trimmed.toLocaleLowerCase();
+          const searchResults = cache
+            .categories()
+            .filter((c) =>
+              [c.code, c.nameEn, c.nameAr].some((v) => v.toLocaleLowerCase().includes(needle)),
+            );
+          patchState(store, { searchTerm: trimmed, searchResults });
         },
 
         // ── Category structure (v2) ───────────────────────────────────────
@@ -328,12 +315,12 @@ export const CatalogAdminStore = signalStore(
           );
         },
 
-        // ── Space-type targeting (v2 — now read + write) ──────────────────
+        // ── Space-type targeting (write-only: no mappings read, 009b #N-7) ──
         mapSpaceType(categoryId: string, spaceTypeId: string, handlers?: MutationHandlers): void {
           run(
             api.mapCategorySpaceType(categoryId, spaceTypeId),
             'cat.targetingFailed',
-            () => loadSpaceTypes(categoryId),
+            () => undefined,
             handlers,
           );
         },
@@ -341,7 +328,7 @@ export const CatalogAdminStore = signalStore(
           run(
             api.unmapCategorySpaceType(categoryId, spaceTypeId),
             'cat.targetingFailed',
-            () => loadSpaceTypes(categoryId),
+            () => undefined,
             handlers,
           );
         },

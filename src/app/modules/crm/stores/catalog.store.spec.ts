@@ -178,4 +178,12 @@ describe('CatalogStore', () => {
       expect(s.treeLoading()).toBe(false);
     });
   });
+
+  // 009b #N-7: GET /api/crm/catalog/items/{id} has no route (C §2.11).
+  it('has no single-item read (009b #N-7)', () => {
+    const s = store() as unknown as Record<string, unknown>;
+    expect(s['loadItem']).toBeUndefined();
+    expect(s['item']).toBeUndefined();
+    expect(s['itemsById']).toBeUndefined();
+  });
 });

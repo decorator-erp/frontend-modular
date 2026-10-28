@@ -294,68 +294,19 @@ describe('CrmCatalogService', () => {
 
       expect(categoryId).toBe('cat-1');
     });
+  });
 
-    it('categoryAncestors() normalizes the still-v1-node-shaped route into a breadcrumb', () => {
-      let ids: string[] = [];
-      service.categoryAncestors('cat-3').subscribe((r) => (ids = r.map((n) => n.id)));
-
-      http.expectOne(url('/crm/catalog/categories/cat-3/ancestors')).flush([
-        {
-          id: 'cat-1',
-          parentId: null,
-          code: 'root',
-          nameEn: 'Root',
-          nameAr: 'Root',
-          descriptionEn: null,
-          descriptionAr: null,
-          imageUri: null,
-          path: '/cat-1/',
-          depth: 0,
-          isSelectable: false,
-          selectionMode: CatalogSelectionMode.None,
-          isRequired: false,
-          isPurchasable: true,
-          sortOrder: 0,
-          isActive: true,
-        },
-      ]);
-
-      expect(ids).toEqual(['cat-1']);
-    });
-
-    it('searchCategories() sends term + take, returns v2 category shapes only', () => {
-      let categories: CatalogCategory[] = [];
-      service.searchCategories('lighting', 25).subscribe((r) => (categories = r));
-
-      const req = http.expectOne(
-        (r) =>
-          r.url === url('/crm/catalog/categories/search') &&
-          r.params.get('term') === 'lighting' &&
-          r.params.get('take') === '25',
-      );
-      req.flush([
-        {
-          id: 'cat-9',
-          parentId: null,
-          code: 'lighting',
-          nameEn: 'Lighting',
-          nameAr: 'إضاءة',
-          descriptionEn: null,
-          descriptionAr: null,
-          imageUri: null,
-          path: '/cat-9/',
-          depth: 0,
-          selectionMode: CatalogSelectionMode.None,
-          isRequired: false,
-          sortOrder: 0,
-          isActive: true,
-          spaceTypeIds: [],
-        },
-      ]);
-
-      expect(categories).toHaveLength(1);
-      expect(categories[0].code).toBe('lighting');
-    });
+  // 009b #N-7: C §2.11 — no route reads mappings, ancestors, a category search or one item.
+  it('has no mappings, ancestors, search or single-item read (009b #N-7)', () => {
+    const methods = service as unknown as Record<string, unknown>;
+    for (const name of [
+      'getCategorySpaceTypes',
+      'categoryAncestors',
+      'searchCategories',
+      'getItem',
+    ]) {
+      expect(methods[name], name).toBeUndefined();
+    }
   });
 
   describe('v2 category writes (F6)', () => {

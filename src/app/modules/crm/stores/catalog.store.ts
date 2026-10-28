@@ -19,12 +19,9 @@ import type { CatalogAttribute, CatalogCategory, CatalogItem } from '../model';
  * such bound (it is catalog-wide SKUs, not branches), so it is a per-query cache instead of
  * a whole-table fetch.
  *
- * Four side caches: the v2 item feed keyed by category (F6's admin Items card); the
+ * Three side caches: the v2 item feed keyed by category (F6's admin Items card); the
  * storefront's whole item pool keyed by space type (`itemsBySpaceType` — see
- * `loadItemsForSpaceType`'s own docblock); v2 items keyed by their OWN id (`itemsById` —
- * the board's room-override chip needs an item's default attribute values, which the
- * space-item wire does not carry: the backend joins only the room's own override table,
- * never the catalog item's); and effective attributes keyed by node id — this last one
+ * `loadItemsForSpaceType`'s own docblock); and effective attributes keyed by node id — this last one
  * already accepts a v2 category id or item id interchangeably, since
  * `GET /nodes/{id}/attributes` does (verified: the same ancestor-inclusive query backs
  * both `/nodes/{id}/attributes` and the v2 `/categories/{id}/attributes`). Any admin
@@ -60,15 +57,6 @@ interface CatalogState {
    * admin's category-tree fetch race independently. */
   poolLoading: boolean;
   poolError: CatalogKey | null;
-  /**
-   * v2 items by their OWN id, no TTL (load-once, same idiom as `attrsByNode`) — the
-   * board's room-override chip needs an item's own default attribute values, and the
-   * space-item wire only carries the room's OVERRIDE values (verified against
-   * `GetSpaceItemsQueryHandler`: it joins `CrmSpaceItemAttributeValues` alone, never the
-   * catalog item's own value table). So the item defaults are a second fetch, cached
-   * here by item id, merged client-side against the room's `SpaceItem.attributes`.
-   */
-  itemsById: Record<string, CatalogItem>;
   /** Effective (own + inherited) attribute definitions per node. Cleared on invalidate. */
   attrsByNode: Record<string, CatalogAttribute[]>;
   /** The category-tree fetch (`loadCategories`). Kept separate from `poolLoading` — see
@@ -83,7 +71,6 @@ const INITIAL: CatalogState = {
   categoriesFetchedAtMs: null,
   itemsByCategory: {},
   itemsBySpaceType: {},
-  itemsById: {},
   attrsByNode: {},
   treeLoading: false,
   poolLoading: false,
@@ -120,7 +107,6 @@ export const CatalogStore = signalStore(
           categoriesFetchedAtMs: null,
           itemsByCategory: {},
           itemsBySpaceType: {},
-          itemsById: {},
           attrsByNode: {},
         });
       },
@@ -156,12 +142,8 @@ export const CatalogStore = signalStore(
       },
 
       /**
-       * Root-to-category breadcrumb, resolved locally by walking `parentId`.
-       * `GET /categories/{id}/ancestors` exists on the backend too
-       * ({@link CrmCatalogService.categoryAncestors}), but this derives client-side
-       * while the cache holds the whole tree — the round trip is redundant against a
-       * cache that already has the answer. If the cache ever goes partial or paged,
-       * `categoryAncestors()` is the fallback to reach for.
+       * Root-to-category breadcrumb, resolved locally by walking `parentId` — the only way:
+       * no ancestors route exists (009b #N-7).
        */
       categoryAncestorsOf(id: string): CatalogCategory[] {
         const byId = new Map(store.categories().map((c) => [c.id, c]));
@@ -232,24 +214,6 @@ export const CatalogStore = signalStore(
 
       itemsForSpaceType(spaceTypeId: string): CatalogItem[] | undefined {
         return store.itemsBySpaceType()[spaceTypeId]?.items;
-      },
-
-      // ── v2 items by id — for resolving an item's own default attribute values ──
-
-      /** Load-once, same idiom as `loadEffectiveAttributes` — no in-flight guard needed
-       * beyond the cache check, since a second call before the first resolves just
-       * re-requests the same (idempotent) read. */
-      loadItem(itemId: string): void {
-        if (store.itemsById()[itemId]) return;
-        api.getItem(itemId).subscribe({
-          next: (item) =>
-            patchState(store, (s) => ({ itemsById: { ...s.itemsById, [itemId]: item } })),
-          error: () => patchState(store, { error: 'cat.itemsLoadFailed' }),
-        });
-      },
-
-      item(itemId: string): CatalogItem | undefined {
-        return store.itemsById()[itemId];
       },
 
       // ── Effective attributes per category ─

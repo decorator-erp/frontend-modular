@@ -35,9 +35,10 @@ describe('CrmCatalogCategoryDetailComponent — targeting picker (009b #27)', ()
     return TestBed.createComponent(CrmCatalogCategoryDetailComponent).componentInstance;
   }
 
-  it('offers only active, unmapped types for a new mapping', () => {
+  // 009b #N-7: the current mappings cannot be read, so every active type is offered.
+  it('offers every active type for a new mapping (009b #N-7)', () => {
     const c = make(['T3']);
-    expect(c.unmappedSpaceTypeOptions().map((o) => o.value)).toEqual(['T1']);
+    expect(c.unmappedSpaceTypeOptions().map((o) => o.value)).toEqual(['T1', 'T3']);
   });
 
   it('still names an inactive type on an existing mapping', () => {

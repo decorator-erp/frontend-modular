@@ -55,8 +55,7 @@ import {
  * nothing left for the field to mean here), and the Specs card (F6c — a category has no
  * spec values of its own; only its items do, edited through the item dialog below).
  *
- * Targeting is now READ + WRITE — `getCategorySpaceTypes` didn't exist when Run A shipped
- * this card write-only.
+ * Targeting is write-only: no route reads a category's mappings (009b #34, #N-7).
  */
 @Component({
   selector: 'app-crm-catalog-category-detail',
@@ -589,13 +588,13 @@ export class CrmCatalogCategoryDetailComponent {
   readonly targetType = signal<string>('');
 
   /**
-   * Only space types NOT already mapped — mapping the same one twice is `DuplicateMapping` —
-   * and active (009b #27). `spaceTypeName` still names an inactive type on a mapping.
+   * Every active space type (009b #27). The current mappings cannot be read (009b #N-7), so
+   * an already-mapped type is offered too and answers 409 `DuplicateMapping`.
+   * `spaceTypeName` still names an inactive type.
    */
   readonly unmappedSpaceTypeOptions = computed<SelectOption[]>(() => {
-    const mapped = new Set(this.store.spaceTypeIds());
     return this.spaceTypes()
-      .filter((s) => s.isActive !== false && !mapped.has(s.id))
+      .filter((s) => s.isActive !== false)
       .map((s) => ({
         value: s.id,
         label: this.catalog.locale() === 'ar' ? s.nameAr || s.nameEn : s.nameEn,

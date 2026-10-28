@@ -37,8 +37,6 @@ function category(id: string, over: Partial<CatalogCategory> = {}): CatalogCateg
 function apiMock() {
   return {
     getCategories: vi.fn().mockReturnValue(of([])),
-    getCategorySpaceTypes: vi.fn().mockReturnValue(of([])),
-    searchCategories: vi.fn().mockReturnValue(of([])),
     createCategory: vi.fn().mockReturnValue(of('new-id')),
     updateCategory: vi.fn().mockReturnValue(of(undefined)),
     setCategoryActive: vi.fn().mockReturnValue(of(undefined)),
@@ -74,48 +72,51 @@ describe('CatalogAdminStore', () => {
 
   const store = () => TestBed.inject(CatalogAdminStore);
 
-  describe('selectCategory() — space-type targeting is now read + write', () => {
-    it('fetches the category own mappings when a category is selected', () => {
-      api.getCategorySpaceTypes.mockReturnValue(of(['st-1', 'st-2']));
+  // 009b #N-7: no route reads a category's mappings or searches categories (C §2.11).
+  describe('selectCategory() and search() read no unmapped route (009b #N-7)', () => {
+    it('selects a category without a mappings read', () => {
       const s = store();
       s.selectCategory('cat-1');
 
-      expect(api.getCategorySpaceTypes).toHaveBeenCalledWith('cat-1');
-      expect(s.spaceTypeIds()).toEqual(['st-1', 'st-2']);
-      expect(s.spaceTypesLoading()).toBe(false);
+      expect(s.currentCategoryId()).toBe('cat-1');
+      expect((s as unknown as Record<string, unknown>)['spaceTypeIds']).toBeUndefined();
     });
 
-    it('clears spaceTypeIds and issues no request when selecting the root (null)', () => {
-      const s = store();
-      s.selectCategory(null);
-
-      expect(api.getCategorySpaceTypes).not.toHaveBeenCalled();
-      expect(s.spaceTypeIds()).toEqual([]);
-    });
-
-    it('mapSpaceType reloads the mappings on success, not the whole cache alone', () => {
-      api.getCategorySpaceTypes
-        .mockReturnValueOnce(of([])) // initial selectCategory load
-        .mockReturnValueOnce(of(['st-1'])); // reload after map
+    it('mapSpaceType maps and reads nothing back', () => {
       const s = store();
       s.selectCategory('cat-1');
+      const onDone = vi.fn();
 
-      s.mapSpaceType('cat-1', 'st-1');
+      s.mapSpaceType('cat-1', 'st-1', { onDone });
 
       expect(api.mapCategorySpaceType).toHaveBeenCalledWith('cat-1', 'st-1');
-      expect(api.getCategorySpaceTypes).toHaveBeenCalledTimes(2);
-      expect(s.spaceTypeIds()).toEqual(['st-1']);
+      expect(onDone).toHaveBeenCalled();
     });
 
-    it('unmapSpaceType reloads the mappings on success', () => {
-      api.getCategorySpaceTypes.mockReturnValueOnce(of(['st-1'])).mockReturnValueOnce(of([]));
+    it('unmapSpaceType unmaps and reads nothing back', () => {
       const s = store();
-      s.selectCategory('cat-1');
-
       s.unmapSpaceType('cat-1', 'st-1');
 
       expect(api.unmapCategorySpaceType).toHaveBeenCalledWith('cat-1', 'st-1');
-      expect(s.spaceTypeIds()).toEqual([]);
+    });
+
+    it('searches the cached tree by code, nameEn and nameAr, case-insensitively', () => {
+      api.getCategories.mockReturnValue(
+        of([
+          category('lighting', { nameEn: 'Lighting', nameAr: 'إضاءة' }),
+          category('seating', { nameEn: 'Seating', nameAr: 'جلوس' }),
+        ]),
+      );
+      const s = store();
+      s.init(null);
+
+      s.search('LIGHT');
+      expect(s.searchResults().map((c) => c.id)).toEqual(['lighting']);
+      s.search('جلوس');
+      expect(s.searchResults().map((c) => c.id)).toEqual(['seating']);
+      s.search('  ');
+      expect(s.searchTerm()).toBe('');
+      expect(s.searchResults()).toEqual([]);
     });
   });
 
@@ -141,8 +142,7 @@ describe('CatalogAdminStore', () => {
 
       expect(api.deleteCategory).toHaveBeenCalledWith('cat-1');
       expect(onDone).toHaveBeenCalledOnce();
-      // Reselecting the parent triggers its own space-types fetch.
-      expect(api.getCategorySpaceTypes).toHaveBeenCalledWith('parent-1');
+      expect(s.currentCategoryId()).toBe('parent-1');
     });
 
     it('deleteCategory() surfaces cat.nodeInUse on failure', () => {

@@ -8,7 +8,6 @@ import type {
   AddCatalogAttributeRequest,
   CatalogAttribute,
   CatalogAttributeOption,
-  CatalogBreadcrumb,
   CatalogCategory,
   CatalogItem,
   CatalogReorderRequest,
@@ -51,6 +50,10 @@ import type {
  * space-type map/unmap — are now wrapped and are what `catalog-admin.store.ts` calls.
  * They did not exist when Run A shipped; verified against
  * `API/Endpoints/CrmCatalogV2Endpoints.cs:103–217` at backend `5849c08`.
+ *
+ * 009b #N-7: the mappings read, the ancestors read, the category search and the single-item
+ * read have no route (C §2.11), so `getCategorySpaceTypes`/`categoryAncestors`/
+ * `searchCategories`/`getItem` are gone; ancestors and search derive from `/tree`.
  */
 @Injectable({ providedIn: 'root' })
 export class CrmCatalogService extends ApiService {
@@ -80,16 +83,6 @@ export class CrmCatalogService extends ApiService {
   }
 
   /**
-   * `GET /api/crm/catalog/categories/{categoryId}/space-types` — `crm.catalog.read`.
-   * The category's OWN mappings, as bare ids. Empty anywhere in the chain ⇒ global.
-   */
-  getCategorySpaceTypes(categoryId: string): Observable<string[]> {
-    return this.get<unknown>(`/crm/catalog/categories/${categoryId}/space-types`).pipe(
-      map((r) => this.unwrapArray<string>(r)),
-    );
-  }
-
-  /**
    * `GET /api/crm/catalog/categories/{categoryId}/attributes` — `crm.catalog.read`.
    * The category's OWN attributes only, ordered by `sortOrder`, with **no options** — no
    * route reads options (009b #36). {@link effectiveAttributes} adds the ancestors.
@@ -97,31 +90,6 @@ export class CrmCatalogService extends ApiService {
   categoryAttributes(categoryId: string): Observable<CatalogAttribute[]> {
     return this.get<unknown>(`/crm/catalog/categories/${categoryId}/attributes`).pipe(
       map((r) => this.unwrapArray<unknown>(r).map((a) => this.normalizeAttribute(a))),
-    );
-  }
-
-  /**
-   * `GET /api/crm/catalog/categories/{categoryId}/ancestors` — `crm.catalog.read`.
-   * Root-to-parent. The route's response is still the v1 node shape underneath
-   * (unchanged from `/nodes/{id}/ancestors`, and outside this run's scope to change) —
-   * only `{id, code, nameEn, nameAr}` survive normalization, since that is all an
-   * ancestor breadcrumb ever needed. `CatalogNode` itself retired from the frontend in
-   * F7; this route did not need the full type to begin with.
-   */
-  categoryAncestors(categoryId: string): Observable<CatalogBreadcrumb[]> {
-    return this.get<unknown>(`/crm/catalog/categories/${categoryId}/ancestors`).pipe(
-      map((r) => this.unwrapArray<unknown>(r).map((n) => this.normalizeBreadcrumb(n))),
-    );
-  }
-
-  /**
-   * `GET /api/crm/catalog/categories/search?term=&take=` — `crm.catalog.read`.
-   * Categories only (contrast the v1 `search()` above, which mixes categories and items).
-   * `term` empty is a 400; `take` outside 1–200 is a 400 — both server-side.
-   */
-  searchCategories(term: string, take = 50): Observable<CatalogCategory[]> {
-    return this.get<unknown>('/crm/catalog/categories/search', { term, take }).pipe(
-      map((r) => this.unwrapArray<unknown>(r).map((c) => this.normalizeCategory(c))),
     );
   }
 
@@ -241,13 +209,6 @@ export class CrmCatalogService extends ApiService {
   itemsByCategory(categoryId: string): Observable<CatalogItem[]> {
     return this.get<unknown>(`/crm/catalog/categories/${categoryId}/items`).pipe(
       map((r) => this.unwrapArray<unknown>(r).map((i) => this.normalizeItem(i))),
-    );
-  }
-
-  /** `GET /api/crm/catalog/items/{itemId}` — `crm.catalog.read`. */
-  getItem(itemId: string): Observable<CatalogItem> {
-    return this.get<unknown>(`/crm/catalog/items/${itemId}`).pipe(
-      map((r) => this.normalizeItem(this.unwrap<unknown>(r))),
     );
   }
 
@@ -484,17 +445,6 @@ export class CrmCatalogService extends ApiService {
       optionId: this.field<string | null>(source, 'optionId') ?? null,
       optionNameEn: this.field<string | null>(source, 'optionNameEn') ?? null,
       optionNameAr: this.field<string | null>(source, 'optionNameAr') ?? null,
-    };
-  }
-
-  /** Root-to-parent breadcrumb — the only shape `categoryAncestors()` needs from the
-   * still-node-shaped ancestors route. See that method's own doc comment. */
-  private normalizeBreadcrumb(source: unknown): CatalogBreadcrumb {
-    return {
-      id: this.field<string>(source, 'id') ?? '',
-      code: this.field<string>(source, 'code') ?? '',
-      nameEn: this.field<string>(source, 'nameEn') ?? '',
-      nameAr: this.field<string>(source, 'nameAr') ?? '',
     };
   }
 
