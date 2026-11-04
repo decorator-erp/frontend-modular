@@ -1234,6 +1234,11 @@ export const EN = {
   'lead.changeStatus': 'Change status',
   'lead.statusChanged': 'Lead status updated.',
   'lead.statusChangeFailed': 'Could not change the lead status.',
+  'common.retry': 'Retry',
+  'leads.loadFailed': 'Could not load the leads.',
+  'leads.loadLeadFailed': 'Could not load the lead.',
+  'leads.notFound': 'Lead not found',
+  'leads.notFoundHint': 'The lead is missing or outside your scope.',
 } as const;
 
 /** The key set of record. Every catalog lookup is typed against this. */

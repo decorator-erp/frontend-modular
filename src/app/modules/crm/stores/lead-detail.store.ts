@@ -17,6 +17,10 @@ interface LeadDetailState {
   loading: boolean;
   savingIntake: boolean;
   changingStatus: boolean;
+  /** The last load answered 404 (unknown or out-of-scope lead). */
+  notFound: boolean;
+  /** The last load failed for any other reason. */
+  loadFailed: boolean;
   error: string | null;
 }
 
@@ -27,6 +31,8 @@ const INITIAL: LeadDetailState = {
   loading: false,
   savingIntake: false,
   changingStatus: false,
+  notFound: false,
+  loadFailed: false,
   error: null,
 };
 
@@ -68,11 +74,26 @@ export const LeadDetailStore = signalStore(
       reloadOnConflict = injectReloadOnConflict(),
     ) => ({
       load(id: string): void {
-        patchState(store, { loading: true, error: null, leadId: id });
+        patchState(store, {
+          loading: true,
+          error: null,
+          notFound: false,
+          loadFailed: false,
+          leadId: id,
+        });
         forkJoin({ lead: api.getById(id), intake: api.getIntake(id) }).subscribe({
           next: ({ lead, intake }) =>
             patchState(store, { lead, intakeData: intake, loading: false }),
-          error: () => patchState(store, { loading: false, error: 'Could not load the lead.' }),
+          error: (err: unknown) => {
+            const notFound = err instanceof HttpErrorResponse && err.status === 404;
+            patchState(store, {
+              loading: false,
+              notFound,
+              loadFailed: !notFound,
+              ...(notFound ? { lead: null, intakeData: null } : {}),
+              error: 'Could not load the lead.',
+            });
+          },
         });
       },
 

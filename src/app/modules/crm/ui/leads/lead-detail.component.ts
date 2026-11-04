@@ -35,10 +35,12 @@ import {
   PeraAlertComponent,
   PeraButtonComponent,
   PeraCardComponent,
+  PeraEmptyComponent,
   PeraFormFieldComponent,
   PeraInputComponent,
   PeraRadioComponent,
   PeraSelectComponent,
+  PeraSkeletonComponent,
   PeraStatusBadgeComponent,
   PeraTextareaComponent,
   RadioOption,
@@ -82,10 +84,12 @@ const INTAKE_FIELD_MAP: Record<string, string> = {
     PeraAlertComponent,
     PeraButtonComponent,
     PeraCardComponent,
+    PeraEmptyComponent,
     PeraFormFieldComponent,
     PeraInputComponent,
     PeraRadioComponent,
     PeraSelectComponent,
+    PeraSkeletonComponent,
     PeraStatusBadgeComponent,
     PeraTextareaComponent,
   ],
@@ -98,7 +102,28 @@ const INTAKE_FIELD_MAP: Record<string, string> = {
         >← {{ catalog.t('leads.back') }}</a
       >
 
-      @if (store.lead(); as lead) {
+      @if (store.notFound()) {
+        <pera-empty
+          data-testid="lead-not-found"
+          [title]="catalog.t('leads.notFound')"
+          [description]="catalog.t('leads.notFoundHint')"
+          iconName="inbox"
+        />
+      } @else if (store.loading() && !store.lead()) {
+        <div class="flex flex-col gap-5" data-testid="lead-skeleton">
+          <pera-skeleton [height]="96" rounded="sm" />
+          <pera-skeleton [height]="360" rounded="sm" />
+        </div>
+      } @else if (store.loadFailed() && !store.lead()) {
+        <pera-alert tone="danger" data-testid="lead-load-error">
+          <div class="flex items-center justify-between gap-3 flex-wrap">
+            <span>{{ catalog.t('leads.loadLeadFailed') }}</span>
+            <pera-button size="sm" variant="secondary" (click)="store.load(leadId())">{{
+              catalog.t('common.retry')
+            }}</pera-button>
+          </div>
+        </pera-alert>
+      } @else if (store.lead(); as lead) {
         <!-- header -->
         <pera-card>
           <div class="flex items-start justify-between gap-3 flex-wrap">

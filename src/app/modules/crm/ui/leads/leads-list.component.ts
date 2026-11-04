@@ -25,6 +25,7 @@ import {
   FilterState,
   ModalService,
   PeraAvatarComponent,
+  PeraAlertComponent,
   PeraButtonComponent,
   PeraDataTableComponent,
   PeraEmptyComponent,
@@ -61,6 +62,7 @@ const STATUS_ORDER: LeadStatus[] = [
     CanDirective,
     FormsModule,
     PeraAvatarComponent,
+    PeraAlertComponent,
     PeraButtonComponent,
     PeraDataTableComponent,
     PeraEmptyComponent,
@@ -115,6 +117,15 @@ const STATUS_ORDER: LeadStatus[] = [
         } @else {
           <pera-skeleton [height]="360" rounded="sm" />
         }
+      } @else if (loadError()) {
+        <pera-alert tone="danger" data-testid="leads-load-error">
+          <div class="flex items-center justify-between gap-3 flex-wrap">
+            <span>{{ catalog.t('leads.loadFailed') }}</span>
+            <pera-button size="sm" variant="secondary" (click)="retry()">{{
+              catalog.t('common.retry')
+            }}</pera-button>
+          </div>
+        </pera-alert>
       } @else if (!rows().length) {
         <pera-empty
           [title]="catalog.t('leads.empty')"
@@ -238,6 +249,8 @@ export class CrmLeadsListComponent implements OnInit {
   private readonly statusTpl = viewChild.required<TemplateRef<unknown>>('statusTpl');
 
   readonly loading = signal(true);
+  /** The last page fetch failed: say so with a Retry, never render it as "no leads". */
+  readonly loadError = signal(false);
   /** One server page (009b #1): status and search filter server-side, newest first. */
   readonly paged = signal<PagedResult<CrmLead>>(emptyPage<CrmLead>());
   readonly pageSize = 50;
@@ -350,6 +363,7 @@ export class CrmLeadsListComponent implements OnInit {
     const status = this.filters().facets?.['status']?.at(-1);
     this.listSub?.unsubscribe();
     this.loading.set(true);
+    this.loadError.set(false);
     this.listSub = this.leads
       .search({
         pageNumber: this.page(),
@@ -357,11 +371,22 @@ export class CrmLeadsListComponent implements OnInit {
         status: status ? (Number(status) as LeadStatus) : undefined,
         search: this.filters().search,
       })
-      .pipe(catchError(() => of(emptyPage<CrmLead>())))
+      .pipe(
+        catchError(() => {
+          this.loadError.set(true);
+          return of(emptyPage<CrmLead>());
+        }),
+      )
       .subscribe((paged) => {
         this.paged.set(paged);
         this.loading.set(false);
       });
+  }
+
+  /** Re-run the failed page fetch (and the pill counts) under the same filters. */
+  retry(): void {
+    this.loadPage();
+    this.loadCounts();
   }
 
   /** Status counts follow the search filter, never the status pick or the page. */

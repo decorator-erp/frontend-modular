@@ -1161,4 +1161,9 @@ export const AR: Partial<Record<CatalogKey, string>> = {
   'lead.changeStatus': 'تغيير الحالة',
   'lead.statusChanged': 'تم تحديث حالة العميل المحتمل.',
   'lead.statusChangeFailed': 'تعذّر تغيير حالة العميل المحتمل.',
+  'common.retry': 'إعادة المحاولة',
+  'leads.loadFailed': 'تعذّر تحميل العملاء المحتملين.',
+  'leads.loadLeadFailed': 'تعذّر تحميل العميل المحتمل.',
+  'leads.notFound': 'العميل المحتمل غير موجود',
+  'leads.notFoundHint': 'العميل المحتمل غير موجود أو خارج نطاق صلاحياتك.',
 };

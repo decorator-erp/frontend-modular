@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { HttpErrorResponse } from '@angular/common/http';
 import { provideRouter } from '@angular/router';
-import { of, throwError } from 'rxjs';
+import { NEVER, of, throwError } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
 import { ToastService } from '@platform/feedback/toast.service';
 import { PermissionsService } from '@platform/permissions';
@@ -29,10 +29,10 @@ const lead: CrmLead = {
 
 function make(
   upsert = vi.fn().mockReturnValue(of(undefined)),
-  opts: { can?: (p: string) => boolean; lead?: CrmLead } = {},
+  opts: { can?: (p: string) => boolean; lead?: CrmLead; getById?: ReturnType<typeof vi.fn> } = {},
 ) {
   const api = {
-    getById: vi.fn().mockReturnValue(of(opts.lead ?? lead)),
+    getById: opts.getById ?? vi.fn().mockReturnValue(of(opts.lead ?? lead)),
     getIntake: vi.fn().mockReturnValue(of({})),
     upsertIntake: upsert,
     updateStatus: vi.fn().mockReturnValue(of(undefined)),
@@ -182,5 +182,37 @@ describe('CrmLeadDetailComponent — details and status (crm-prod H3)', () => {
     );
     expect(el.querySelector('[data-testid="lead-status"]')).toBeNull();
     expect(buttonLabels(el)).not.toContain('Edit');
+  });
+});
+
+describe('CrmLeadDetailComponent — load states (crm-prod M4)', () => {
+  const failing = (status: number) =>
+    vi.fn().mockReturnValue(throwError(() => new HttpErrorResponse({ status })));
+
+  it('shows a skeleton while the lead loads', () => {
+    const { fixture } = make(undefined, { getById: vi.fn().mockReturnValue(NEVER) });
+    expect(rendered(fixture).querySelector('[data-testid="lead-skeleton"]')).not.toBeNull();
+  });
+
+  it('shows not-found on a 404', () => {
+    const { fixture } = make(undefined, { getById: failing(404) });
+    const el = rendered(fixture);
+    expect(el.querySelector('[data-testid="lead-not-found"]')?.textContent).toContain(
+      'Lead not found',
+    );
+    expect(el.querySelector('[data-testid="lead-load-error"]')).toBeNull();
+  });
+
+  it('shows an error with Retry on any other failure, and Retry reloads', () => {
+    const getById = failing(500);
+    const { fixture } = make(undefined, { getById });
+    const el = rendered(fixture);
+    const alert = el.querySelector('[data-testid="lead-load-error"]');
+    expect(alert?.textContent).toContain('Could not load the lead.');
+
+    getById.mockReturnValue(of(lead));
+    (alert?.querySelector('button') as HTMLButtonElement).click();
+    expect(getById).toHaveBeenCalledTimes(2);
+    expect(rendered(fixture).querySelector('[data-testid="lead-load-error"]')).toBeNull();
   });
 });
