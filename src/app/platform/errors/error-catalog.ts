@@ -698,3 +698,17 @@ export function friendlyMessage(
   if (!code) return fallback;
   return (locale === 'ar' && ERROR_MESSAGES_AR[code]) || ERROR_MESSAGES[code] || fallback;
 }
+
+/**
+ * crm-prod FINDING-P2-9: the `projects.scope.*` codes code reads by name (the scope of work's
+ * blocking reasons), so a typo is a compile error rather than a silent fallback. Each one has an
+ * entry in both catalogs above.
+ */
+export const SCOPE_ERROR_CODES = {
+  empty: 'projects.scope.Empty',
+  durationRequired: 'projects.scope.DurationRequired',
+  adjustmentNoteRequired: 'projects.scope.AdjustmentNoteRequired',
+  negativeTotal: 'projects.scope.NegativeTotal',
+  sourceStageNotFound: 'projects.scope.SourceStageNotFound',
+  workflowNotSupported: 'projects.scope.WorkflowNotSupported',
+} as const;

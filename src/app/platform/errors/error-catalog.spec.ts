@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { ERROR_MESSAGES, friendlyMessage } from './error-catalog';
+import {
+  ERROR_MESSAGES,
+  ERROR_MESSAGES_AR,
+  SCOPE_ERROR_CODES,
+  friendlyMessage,
+} from './error-catalog';
 
 /** 002b A5: the authentications family against backend remediation v3 (`AuthErrors.cs`). */
 describe('ERROR_MESSAGES — authentications (002b A5)', () => {
@@ -78,5 +83,17 @@ describe('ERROR_MESSAGES — Validation.General (sow FINDING-7-10)', () => {
     expect(friendlyMessage('Validation.General', 'fb', 'ar')).toBe(
       'بعض القيم غير صحيحة. راجع الحقول المحدَّدة.',
     );
+  });
+});
+
+describe('SCOPE_ERROR_CODES (crm-prod FINDING-P2-9)', () => {
+  it('names only codes with an EN and an AR message', () => {
+    const codes = Object.values(SCOPE_ERROR_CODES);
+    expect(codes).toHaveLength(6);
+    for (const code of codes) {
+      expect(code.startsWith('projects.scope.')).toBe(true);
+      expect(ERROR_MESSAGES[code], code).toBeTruthy();
+      expect(ERROR_MESSAGES_AR[code], code).toBeTruthy();
+    }
   });
 });

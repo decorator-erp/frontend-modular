@@ -18,7 +18,7 @@ import {
   PeraMoneyInputComponent,
   PeraTextareaComponent,
 } from '@ds';
-import { friendlyMessage } from '@platform/errors/error-catalog';
+import { SCOPE_ERROR_CODES, friendlyMessage } from '@platform/errors/error-catalog';
 import type { CatalogKey } from '@platform/i18n/catalog/en';
 import { CatalogService, STAGE_COUNT } from '@platform/i18n/catalog.service';
 import { formatCairoDate, toAsciiDigits } from '@platform/i18n/intl-locale';
@@ -259,14 +259,14 @@ export class SowSummaryComponent {
     const s = this.scope();
     const code = s.blockingReason;
     // FINDING-7-9: the page's FreeStyle alert already says this; don't say it twice.
-    if (code === 'projects.scope.WorkflowNotSupported') return [];
+    if (code === SCOPE_ERROR_CODES.workflowNotSupported) return [];
     if (!code) return this.confirmPermitted() ? [] : [this.catalog.t('sow.confirmNoPermission')];
     const derived: [boolean, string][] = [
-      [s.items.length === 0, 'projects.scope.Empty'],
-      [s.durationDays === null, 'projects.scope.DurationRequired'],
-      [s.adjustmentAmount !== 0 && !s.adjustmentNote, 'projects.scope.AdjustmentNoteRequired'],
-      [s.total < 0, 'projects.scope.NegativeTotal'],
-      [s.items.some((i) => i.sourceMissing), 'projects.scope.SourceStageNotFound'],
+      [s.items.length === 0, SCOPE_ERROR_CODES.empty],
+      [s.durationDays === null, SCOPE_ERROR_CODES.durationRequired],
+      [s.adjustmentAmount !== 0 && !s.adjustmentNote, SCOPE_ERROR_CODES.adjustmentNoteRequired],
+      [s.total < 0, SCOPE_ERROR_CODES.negativeTotal],
+      [s.items.some((i) => i.sourceMissing), SCOPE_ERROR_CODES.sourceStageNotFound],
     ];
     const codes = [code, ...derived.filter(([applies]) => applies).map(([, c]) => c)];
     const fallback = this.catalog.t('sow.confirmBlocked');
