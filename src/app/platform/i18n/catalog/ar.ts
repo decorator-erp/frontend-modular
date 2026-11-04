@@ -1152,4 +1152,6 @@ export const AR: Partial<Record<CatalogKey, string>> = {
   'sow.readOnlyFooter': 'للقراءة فقط. لإضافة بنود أو تغييرها بعد التأكيد، اطلب تعديلًا.',
   'sow.notFound': 'نطاق العمل غير موجود',
   'sow.notFoundHint': 'المشروع غير موجود أو غير نشط أو خارج نطاق صلاحياتك.',
+  'sched.complete': 'إتمام',
+  'sched.noShow': 'لم يحضر',
 };

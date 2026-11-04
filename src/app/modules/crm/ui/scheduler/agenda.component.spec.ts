@@ -25,10 +25,10 @@ function scheduled(scheduledAtUtc: string): CrmMeeting {
   };
 }
 
-function buttons(meeting: CrmMeeting): string[] {
+function buttons(meeting: CrmMeeting, can: (p: string) => boolean = () => true): string[] {
   TestBed.configureTestingModule({
     imports: [CrmAgendaComponent],
-    providers: [{ provide: PermissionsService, useValue: { can: () => true } }],
+    providers: [{ provide: PermissionsService, useValue: { can } }],
   });
   const fixture = TestBed.createComponent(CrmAgendaComponent);
   fixture.componentRef.setInput('rows', [meeting]);
@@ -46,5 +46,30 @@ describe('CrmAgendaComponent (009b #21)', () => {
 
   it('offers Complete / No-show once scheduledAtUtc <= now', () => {
     expect(buttons(scheduled('2020-01-01T08:00:00Z'))).toHaveLength(4);
+  });
+});
+
+describe('CrmAgendaComponent labels (crm-prod H1)', () => {
+  it('labels the actions Complete and No-show, never "Complete task" / "Decline"', () => {
+    const labels = buttons(scheduled('2020-01-01T08:00:00Z'));
+    expect(labels).toContain('Complete');
+    expect(labels).toContain('No-show');
+    expect(labels).not.toContain('Complete task');
+    expect(labels).not.toContain('Decline');
+  });
+
+  it('shows a NoShow meeting with a No-show chip', () => {
+    TestBed.configureTestingModule({
+      imports: [CrmAgendaComponent],
+      providers: [{ provide: PermissionsService, useValue: { can: () => true } }],
+    });
+    const fixture = TestBed.createComponent(CrmAgendaComponent);
+    fixture.componentRef.setInput('rows', [
+      { ...scheduled('2020-01-01T08:00:00Z'), status: MeetingStatus.NoShow },
+    ]);
+    fixture.detectChanges();
+    const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
+    expect(text).toContain('No-show');
+    expect(text).not.toContain('Decline');
   });
 });

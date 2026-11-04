@@ -1225,6 +1225,8 @@ export const EN = {
   'sow.readOnlyFooter': 'Read-only. To add or change items after confirmation, raise a variation.',
   'sow.notFound': 'Scope of work not found',
   'sow.notFoundHint': 'The project is missing, inactive or outside your scope.',
+  'sched.complete': 'Complete',
+  'sched.noShow': 'No-show',
 } as const;
 
 /** The key set of record. Every catalog lookup is typed against this. */

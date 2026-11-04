@@ -45,10 +45,10 @@ import { MEETING_STATUS_CHIP, MEETING_TYPE_KEYS } from './meeting-labels';
                   @if (canAct(m)) {
                     <div class="flex items-center gap-1.5" *peraCan="PERM.crm.meetings.complete">
                       <pera-button size="xs" variant="secondary" (click)="complete.emit(m.id)">{{
-                        catalog.t('ws.completeTask')
+                        catalog.t('sched.complete')
                       }}</pera-button>
                       <pera-button size="xs" variant="ghost" (click)="noShow.emit(m.id)">{{
-                        catalog.t('sched.decline')
+                        catalog.t('sched.noShow')
                       }}</pera-button>
                     </div>
                   }
