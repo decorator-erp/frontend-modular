@@ -1,3 +1,4 @@
+import { CatalogService } from '@platform/i18n/catalog.service';
 import { computed, inject } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { patchState, signalStore, withComputed, withMethods, withState } from '@ngrx/signals';
@@ -119,6 +120,7 @@ export const BriefStore = signalStore(
       store,
       api = inject(CrmBriefService),
       errors = inject(ErrorHandlerService),
+      catalog = inject(CatalogService),
       reloadOnConflict = injectReloadOnConflict(),
       /** The in-flight `load()`: a newer load cancels it, so a stale head never lands (FINDING-5-5). */
       inFlight = { load: new Subscription() },
@@ -167,7 +169,7 @@ export const BriefStore = signalStore(
               spaces: [],
               rounds: [],
               noBrief,
-              error: noBrief ? null : 'Could not load the brief.',
+              error: noBrief ? null : catalog.t('brief.loadFailed'),
             });
           },
         });
@@ -193,7 +195,7 @@ export const BriefStore = signalStore(
               error:
                 err instanceof HttpErrorResponse
                   ? friendly(errors.parse(err))
-                  : 'Could not create the brief.',
+                  : catalog.t('brief.createFailed'),
             }),
         });
       },
@@ -230,7 +232,7 @@ export const BriefStore = signalStore(
               error:
                 parsed && hasCatalogMessage(parsed)
                   ? friendly(parsed)
-                  : 'Could not load your brief.',
+                  : catalog.t('brief.loadOwnFailed'),
             });
           },
         });
@@ -265,7 +267,7 @@ export const BriefStore = signalStore(
               error:
                 parsed && hasCatalogMessage(parsed)
                   ? friendly(parsed)
-                  : 'Could not save the brief head.',
+                  : catalog.t('brief.headSaveFailed'),
             });
             if (parsed) handlers?.onError?.(parsed);
           },
@@ -300,7 +302,7 @@ export const BriefStore = signalStore(
               error:
                 parsed && hasCatalogMessage(parsed)
                   ? friendly(parsed)
-                  : 'Could not send the brief for confirmation.',
+                  : catalog.t('brief.sendFailed'),
             });
           },
         });
@@ -320,7 +322,7 @@ export const BriefStore = signalStore(
           error: (err: unknown) =>
             patchState(store, {
               mutatingSpace: false,
-              error: codedOr(err, errors, 'Could not add the entry.'),
+              error: codedOr(err, errors, catalog.t('brief.entryAddFailed')),
             }),
         });
       },
@@ -336,7 +338,10 @@ export const BriefStore = signalStore(
             this.reload();
           },
           error: () =>
-            patchState(store, { mutatingSpace: false, error: 'Could not update the entry.' }),
+            patchState(store, {
+              mutatingSpace: false,
+              error: catalog.t('brief.entryUpdateFailed'),
+            }),
         });
       },
 
@@ -351,7 +356,7 @@ export const BriefStore = signalStore(
             this.reload();
           },
           error: () =>
-            patchState(store, { mutatingSpace: false, error: 'Could not send the entry.' }),
+            patchState(store, { mutatingSpace: false, error: catalog.t('brief.entrySendFailed') }),
         });
       },
 
@@ -368,7 +373,7 @@ export const BriefStore = signalStore(
           error: (err: unknown) =>
             patchState(store, {
               mutatingSpace: false,
-              error: codedOr(err, errors, 'Could not add the new version.'),
+              error: codedOr(err, errors, catalog.t('crm.supersedeFailed')),
             }),
         });
       },

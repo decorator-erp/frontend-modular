@@ -119,7 +119,7 @@ export class CrmPeriodFormComponent {
   errorOf(name: string): string {
     const control = this.form.get(name);
     if (!control || !control.touched || !control.errors) return '';
-    if (control.errors['futureDateTime']) return 'The close time must be in the future.';
+    if (control.errors['futureDateTime']) return this.catalog.t('period.closeInFuture');
     return firstErrorMessage(control.errors);
   }
 

@@ -458,7 +458,7 @@ describe('MeetingsStore mutation errors (009b #21)', () => {
     expect(s.mutating()).toBe(false);
   });
 
-  it('portalRequestSlot: an uncoded failure keeps the old text', () => {
+  it('portalRequestSlot: an uncoded failure shows the client catalog copy (crm-prod H4)', () => {
     api.portalRequest.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 500 })));
     const s = store();
 
@@ -470,7 +470,8 @@ describe('MeetingsStore mutation errors (009b #21)', () => {
       endsAtUtc: 'b',
     });
 
-    expect(s.error()).toBe(PORTAL_REQUEST_FAILED);
+    expect(PORTAL_REQUEST_FAILED).toBe('sched.csRequestFailed');
+    expect(s.error()).toBe('Could not send your request. Please try again.');
   });
 
   it('the dead crm.meetings.SlotUnavailable code is gone from the catalog', () => {

@@ -1,3 +1,4 @@
+import { CatalogService } from '@platform/i18n/catalog.service';
 import { computed, inject } from '@angular/core';
 import { patchState, signalStore, withComputed, withMethods, withState } from '@ngrx/signals';
 import { forkJoin } from 'rxjs';
@@ -71,6 +72,7 @@ export const LeadDetailStore = signalStore(
       store,
       api = inject(CrmLeadService),
       errors = inject(ErrorHandlerService),
+      catalog = inject(CatalogService),
       reloadOnConflict = injectReloadOnConflict(),
     ) => ({
       load(id: string): void {
@@ -91,7 +93,7 @@ export const LeadDetailStore = signalStore(
               notFound,
               loadFailed: !notFound,
               ...(notFound ? { lead: null, intakeData: null } : {}),
-              error: 'Could not load the lead.',
+              error: catalog.t('leads.loadLeadFailed'),
             });
           },
         });
@@ -116,7 +118,7 @@ export const LeadDetailStore = signalStore(
               patchState(store, { savingIntake: false });
               return;
             }
-            patchState(store, { savingIntake: false, error: 'Could not save the intake.' });
+            patchState(store, { savingIntake: false, error: catalog.t('intake.saveFailed') });
             handlers?.onError?.(err);
           },
         });

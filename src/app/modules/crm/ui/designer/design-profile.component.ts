@@ -195,7 +195,7 @@ export class CrmDesignProfileComponent {
           err.status === 404 &&
           this.errors.parse(err).code === 'crm.briefs.NotFound';
         this.noBrief.set(noBrief);
-        if (!noBrief) this.error.set('Could not load the design profile.');
+        if (!noBrief) this.error.set(this.catalog.t('dp.loadFailed'));
         this.loading.set(false);
       },
     });
