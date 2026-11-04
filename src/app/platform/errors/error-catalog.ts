@@ -502,6 +502,14 @@ export const ERROR_MESSAGES: Record<string, string> = {
   'http.Forbidden': "You don't have permission to do that.",
   // FINDING-7-10: the request validator's code (SharedKernel/Error.cs `ValidationError`).
   'Validation.General': 'Some values are invalid. Check the highlighted fields.',
+  // crm-prod M7: backend codes the catalog was missing (Crm.Domain Errors.cs, ApprovalErrors.cs).
+  'crm.clients.AppUserIdRequired': 'A linked user account is required.',
+  'crm.briefs.NotDraft': 'The intake can only be copied into a draft brief head.',
+  'crm.spaces.ItemNotFound': 'Space item not found.',
+  'crm.gates.UnsupportedOwner': 'This gate condition can only be set on a stage.',
+  'crm.portal.InvalidDecision': 'Choose Approve or Request changes.',
+  'crm.portal.InvalidStatus': "The status filter must be 'pending' or 'decided'.",
+  'approvals.CommentTooLong': 'The comment must be 2000 characters or fewer.',
 };
 
 /**
@@ -639,6 +647,40 @@ export const ERROR_MESSAGES_AR: Record<string, string> = {
   'http.Forbidden': 'ليس لديك صلاحية للقيام بذلك.',
   // FINDING-7-10: the request validator's code.
   'Validation.General': 'بعض القيم غير صحيحة. راجع الحقول المحدَّدة.',
+  // crm-prod M7: Arabic for every CRM, scope and approvals code the UI can reach.
+  'crm.clients.AppUserIdRequired': 'يلزم ربط حساب مستخدم.',
+  'crm.contacts.NotFound': 'جهة الاتصال غير موجودة.',
+  'crm.leads.NotFound': 'العميل المحتمل غير موجود.',
+  'crm.leads.InvalidStatusTransition':
+    'يُحوَّل العميل المحتمل من خلال إجراء التحويل، لا بتغيير الحالة.',
+  'crm.briefs.NotDraft': 'لا تُنسخ بيانات الاستقبال إلا إلى رأس موجز في حالة مسودة.',
+  'crm.briefs.EntryLocked': 'هذا القيد مؤكَّد ومقفل. أضف نسخة جديدة لتصحيحه.',
+  'crm.briefs.EntryPending': 'هذا القيد بانتظار تأكيد العميل ولا يمكن تغييره.',
+  'crm.spaces.SpaceNotFound': 'المساحة غير موجودة.',
+  'crm.spaces.ItemNotFound': 'عنصر المساحة غير موجود.',
+  'crm.space_types.CodeRequired': 'رمز نوع المساحة مطلوب.',
+  'crm.space_types.NotFound': 'نوع المساحة غير موجود.',
+  'crm.space_types.DuplicateCode': 'يوجد نوع مساحة بهذا الرمز بالفعل.',
+  'crm.space_types.NameRequired': 'اسم نوع المساحة مطلوب.',
+  'crm.catalog.CustomNameRequired': 'يجب أن يكون للعنصر المخصّص اسم وفئة.',
+  'crm.catalog.NotACustomEntry': 'هذا الصف مرتبط بعنصر من الكتالوج بالفعل.',
+  'crm.catalog.AttributeTypeMismatch': 'القيمة لا تطابق نوع الخاصية.',
+  'crm.items.NotFound': 'بند المتطلبات غير موجود.',
+  'crm.items.SendRequiresEmployeeAuthor':
+    'المتطلبات التي يكتبها العميل موثوقة فورًا ولا تُرسل للتأكيد.',
+  'crm.artifacts.InvalidSubject': 'يجب تحديد موضوع واحد بالضبط.',
+  'crm.artifacts.InvalidAuthor': 'يجب تحديد كاتب واحد بالضبط.',
+  'crm.notes.NotFound': 'الملاحظة غير موجودة.',
+  'crm.gates.UnsupportedOwner': 'لا يُضبط شرط البوابة هذا إلا على مرحلة.',
+  'crm.meetings.InvalidRequester': 'يجب تحديد طالب واحد بالضبط.',
+  'crm.meetings.InvalidProposer': 'يجب تحديد مقترِح واحد بالضبط.',
+  'crm.portal.InvalidDecision': 'اختر الاعتماد أو طلب تعديلات.',
+  'crm.portal.InvalidStatus': 'يجب أن يكون مرشّح الحالة: بانتظار القرار أو تم البتّ.',
+  'approvals.AlreadyDecided': 'تم البتّ في هذا الاعتماد بالفعل.',
+  'approvals.NotFound': 'الاعتماد غير موجود.',
+  'approvals.CommentTooLong': 'يجب ألا يتجاوز التعليق 2000 حرف.',
+  'approvals.NotAssignedApprover': 'لا يبتّ في هذا الاعتماد إلا المعتمِد المكلَّف.',
+  'approvals.InvalidSubject': 'يجب تحديد موضوع واحد ومعتمِد واحد بالضبط.',
 };
 
 /**
