@@ -1269,6 +1269,23 @@ export const EN = {
   'item.addOwnFailed': 'Could not add your requirement.',
   'period.closeInFuture': 'The close time must be in the future.',
   'dp.loadFailed': 'Could not load the design profile.',
+  'brief.roundsT': 'Rounds',
+  'brief.roundsNone': 'The brief head has not been sent to the client yet.',
+  'brief.roundN': 'Round {round}',
+  'brief.roundSent': 'Sent {date}',
+  'brief.outcomePending': 'Awaiting client',
+  'brief.outcomeApproved': 'Approved',
+  'brief.outcomeChangesRequested': 'Changes requested',
+  'brief.outcomeVoided': 'Voided',
+  'brief.outcomeUnknown': 'Unknown',
+  'brief.showChanges': 'Show changes',
+  'brief.hideChanges': 'Hide changes',
+  'brief.noChanges': 'No head fields changed in this round.',
+  'brief.diffFailed': 'Could not load the round changes.',
+  'brief.approvedBanner': 'The client approved round {round}.',
+  'brief.changesRequestedBanner':
+    'The client requested changes to round {round}. Update the head and send it again.',
+  'brief.sendToClient': 'Send to client',
 } as const;
 
 /** The key set of record. Every catalog lookup is typed against this. */
