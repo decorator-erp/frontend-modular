@@ -205,6 +205,7 @@ export const ScopeOfWorkStore = signalStore(
             patchState(store, { saving: false });
             settled(true);
             refresh();
+            releaseHeld();
           },
           error: (err: unknown) => {
             lanes.delete(key);
@@ -212,6 +213,7 @@ export const ScopeOfWorkStore = signalStore(
             settled(false);
             // FINDING-7-11: an earlier body in this lane may have landed: always re-read.
             fail(err, 'error', true);
+            releaseHeld();
           },
         });
       };
@@ -239,6 +241,33 @@ export const ScopeOfWorkStore = signalStore(
         });
       };
 
+      /**
+       * crm-prod M6: the structural writes (reorder, remove, add, add-whole-template) run one at
+       * a time and never next to a header or item save. A press while one is in flight, or while
+       * the scope is reloading, is a repeat on rows about to change: it is dropped. A press while
+       * a header or item save is pending waits (the newest one only) and runs once those drain.
+       */
+      let structuralInFlight = false;
+      let held: ((projectId: string) => Observable<unknown>) | null = null;
+      const runStructural = (call: (projectId: string) => Observable<unknown>): void => {
+        structuralInFlight = true;
+        write(call, () => (structuralInFlight = false));
+      };
+      const structural = (call: (projectId: string) => Observable<unknown>): void => {
+        if (structuralInFlight || store.reloading()) return;
+        if (lanes.size) {
+          held = call;
+          return;
+        }
+        runStructural(call);
+      };
+      function releaseHeld(): void {
+        if (lanes.size || !held || structuralInFlight) return;
+        const call = held;
+        held = null;
+        runStructural(call);
+      }
+
       return {
         /**
          * B1: the scope. `id: null` is an empty Draft, not an error. FINDING-7-7: no project
@@ -246,6 +275,7 @@ export const ScopeOfWorkStore = signalStore(
          */
         load(projectId: string): void {
           confirmerId = null;
+          held = null;
           lastReload++; // a reload of the previous load never lands
           patchState(store, { ...INITIAL, projectId, loading: true });
           api.getScope(projectId).subscribe({
@@ -305,12 +335,12 @@ export const ScopeOfWorkStore = signalStore(
 
         /** B4 `PUT …/items/order`: **every** item id, in the new order. */
         reorder(itemIds: string[]): void {
-          write((projectId) => api.reorder(projectId, itemIds));
+          structural((projectId) => api.reorder(projectId, itemIds));
         },
 
         /** B5 `DELETE …/items/{itemId}`, then reload (the server renumbers). */
         removeItem(itemId: string): void {
-          write((projectId) => api.removeItem(projectId, itemId));
+          structural((projectId) => api.removeItem(projectId, itemId));
         },
 
         /**
@@ -356,7 +386,7 @@ export const ScopeOfWorkStore = signalStore(
 
         /** B6 "Add": `POST …/items { sourceStageIds: [stageId] }`. */
         addStage(stageId: string): void {
-          write((projectId) => api.addItems(projectId, [stageId]));
+          structural((projectId) => api.addItems(projectId, [stageId]));
         },
 
         /** B6 "Added · remove": deletes the item whose `sourceStageId` matches (C §8.4.3). */
@@ -367,7 +397,7 @@ export const ScopeOfWorkStore = signalStore(
 
         /** B6 "Add whole template": the server skips stages already picked; `[]` is a no-op. */
         addTemplate(templateId: string): void {
-          write((projectId) => api.addFromTemplate(projectId, templateId));
+          structural((projectId) => api.addFromTemplate(projectId, templateId));
         },
       };
     },

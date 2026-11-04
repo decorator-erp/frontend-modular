@@ -405,6 +405,91 @@ describe('ScopeOfWorkPageComponent — items (sow #3)', () => {
     expect(inputs.every((i) => i.disabled)).toBe(true);
     expect(el.querySelector('[data-confirmed-banner]')).toBeNull();
   });
+  describe('crm-prod M6: one structural write at a time', () => {
+    const removeButton = (n: number) =>
+      rows()[n - 1].querySelector<HTMLButtonElement>(`button[aria-label^="Remove item ${n}"]`)!;
+    const moveDown = (n: number) =>
+      rows()[n - 1].querySelector<HTMLButtonElement>(`button[aria-label^="Move item ${n} down"]`)!;
+    const pickerButton = (label: string) =>
+      Array.from(el.querySelectorAll<HTMLButtonElement>('app-sow-template-picker button')).find(
+        (b) => b.textContent!.trim() === label,
+      )!;
+    const openPicker = () => {
+      toggle()!.click();
+      fixture.detectChanges();
+    };
+
+    it('a double click on Remove sends one request', () => {
+      api['removeItem'].mockReturnValue(new Subject<void>());
+      render();
+      const remove = removeButton(2);
+      remove.click();
+      remove.click();
+      expect(api['removeItem']).toHaveBeenCalledTimes(1);
+      fixture.detectChanges();
+      expect(removeButton(1).disabled).toBe(true);
+      expect(moveDown(1).disabled).toBe(true);
+    });
+
+    it('a double click on Move down sends one request', () => {
+      api['reorder'].mockReturnValue(new Subject<void>());
+      render();
+      const down = moveDown(1);
+      down.click();
+      down.click();
+      expect(api['reorder']).toHaveBeenCalledTimes(1);
+    });
+
+    it('move and remove stay disabled while the reload after a write is in flight', () => {
+      render();
+      const reload = new Subject<ScopeOfWork>();
+      api['getScope'].mockReturnValue(reload);
+      removeButton(2).click();
+      fixture.detectChanges();
+      expect(api['removeItem']).toHaveBeenCalledTimes(1);
+      expect(removeButton(1).disabled).toBe(true);
+      removeButton(1).click();
+      expect(api['removeItem']).toHaveBeenCalledTimes(1);
+
+      reload.next(scope({ items: [item()] }));
+      fixture.detectChanges();
+      expect(removeButton(1).disabled).toBe(false);
+    });
+
+    it('a double click on Add or Add whole template sends one request, and both wait for the reload', () => {
+      render();
+      openPicker();
+      const reload = new Subject<ScopeOfWork>();
+      api['getScope'].mockReturnValue(reload);
+      api['addItems'].mockReturnValue(new Subject<void>());
+      const add = pickerButton(EN['sow.add']);
+      add.click();
+      add.click();
+      expect(api['addItems']).toHaveBeenCalledTimes(1);
+      fixture.detectChanges();
+      expect(pickerButton(EN['sow.add']).disabled).toBe(true);
+      expect(pickerButton(EN['sow.addWholeTemplate']).disabled).toBe(true);
+      pickerButton(EN['sow.addWholeTemplate']).click();
+      expect(api['addFromTemplate']).not.toHaveBeenCalled();
+    });
+
+    it('a reorder pressed during an item save waits for it, then goes out once', () => {
+      const save = new Subject<void>();
+      api['updateItem'].mockReturnValueOnce(save);
+      render();
+      const name = rows()[0].querySelector<HTMLInputElement>('pera-input input')!;
+      name.value = 'Concept';
+      name.dispatchEvent(new Event('change', { bubbles: true }));
+      // The press lands before the table re-renders disabled.
+      moveDown(1).click();
+      expect(api['reorder']).not.toHaveBeenCalled();
+
+      save.next();
+      save.complete();
+      expect(api['reorder']).toHaveBeenCalledTimes(1);
+      expect(api['reorder']).toHaveBeenCalledWith('p1', ['i2', 'i1']);
+    });
+  });
 });
 
 /** sow #8: error and concurrency states (B12, B14). */

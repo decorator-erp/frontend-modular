@@ -39,7 +39,7 @@ const ROW_ADDED = 'bg-surface text-text-primary border-border hover:bg-surface-m
         @if (selectedTemplateId()) {
           <pera-button
             size="sm"
-            [disabled]="busy()"
+            [disabled]="busy() || pending()"
             (click)="addTemplate.emit(selectedTemplateId()!)"
           >
             {{ catalog.t('sow.addWholeTemplate') }}
@@ -85,7 +85,7 @@ const ROW_ADDED = 'bg-surface text-text-primary border-border hover:bg-surface-m
             <button
               type="button"
               class="${ROW_BUTTON} ${ROW_ADDED}"
-              [disabled]="busy()"
+              [disabled]="busy() || pending()"
               [attr.aria-label]="catalog.t('sow.addedRemove') + ' ' + s.name"
               (click)="press(s.id); removeStage.emit(s.id)"
             >
@@ -95,7 +95,7 @@ const ROW_ADDED = 'bg-surface text-text-primary border-border hover:bg-surface-m
             <button
               type="button"
               class="${ROW_BUTTON} ${ROW_ADD}"
-              [disabled]="busy()"
+              [disabled]="busy() || pending()"
               [attr.aria-label]="catalog.t('sow.add') + ' ' + s.name"
               (click)="press(s.id); addStage.emit(s.id)"
             >
@@ -119,7 +119,10 @@ export class SowTemplatePickerComponent {
   readonly loading = input(false);
   /** A write is in flight: the buttons wait. */
   readonly busy = input(false);
-  /** FINDING-7-13: a write or the reload after it is in flight (the store's saving || reloading). */
+  /**
+   * FINDING-7-13: a write or the reload after it is in flight (the store's saving || reloading).
+   * crm-prod M6: Add, Added · remove and Add whole template wait for it as well as for `busy`.
+   */
   readonly pending = input(false);
 
   readonly selectTemplate = output<string>();

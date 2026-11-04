@@ -126,7 +126,7 @@ const HEAD = 'px-3 py-2 fs-caption font-semibold text-text-muted text-start bg-s
                       type="button"
                       class="${ICON_BUTTON}"
                       data-action="up"
-                      [disabled]="first"
+                      [disabled]="first || pending()"
                       [attr.aria-label]="catalog.t('sow.moveUp', { n: item.order })"
                       (click)="move(i, -1)"
                     >
@@ -136,7 +136,7 @@ const HEAD = 'px-3 py-2 fs-caption font-semibold text-text-muted text-start bg-s
                       type="button"
                       class="${ICON_BUTTON}"
                       data-action="down"
-                      [disabled]="last"
+                      [disabled]="last || pending()"
                       [attr.aria-label]="catalog.t('sow.moveDown', { n: item.order })"
                       (click)="move(i, 1)"
                     >
@@ -146,6 +146,7 @@ const HEAD = 'px-3 py-2 fs-caption font-semibold text-text-muted text-start bg-s
                       type="button"
                       class="${ICON_BUTTON} hover:text-danger"
                       data-action="remove"
+                      [disabled]="pending()"
                       [attr.aria-label]="catalog.t('sow.remove', { n: item.order })"
                       (click)="onRemove(item.id, i)"
                     >
@@ -172,7 +173,10 @@ export class SowItemsTableComponent {
   readonly projectId = input('');
   /** FINDING-7-2: each item's body as last sent and not yet reloaded (the store's `itemDrafts`). */
   readonly drafts = input<Record<string, UpdateScopeOfWorkItemRequest>>({});
-  /** FINDING-7-14: a write or the reload after it is in flight (the store's saving || reloading). */
+  /**
+   * FINDING-7-14: a write or the reload after it is in flight (the store's saving || reloading).
+   * crm-prod M6: move and remove wait for it too, so a quick second press can't act on stale rows.
+   */
   readonly pending = input(false);
 
   readonly updateItem = output<SowItemUpdate>();
@@ -223,6 +227,7 @@ export class SowItemsTableComponent {
   }
 
   protected onRemove(itemId: string, index: number): void {
+    if (this.pending()) return;
     this.refocus = { id: itemId, index, action: 'remove', items: this.items(), armed: false };
     this.remove.emit(itemId);
   }
@@ -251,6 +256,7 @@ export class SowItemsTableComponent {
   }
 
   protected move(index: number, delta: -1 | 1): void {
+    if (this.pending()) return;
     const ids = this.items().map((i) => i.id);
     const target = index + delta;
     if (target < 0 || target >= ids.length) return;
