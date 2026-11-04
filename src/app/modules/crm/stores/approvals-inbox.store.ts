@@ -57,7 +57,8 @@ export interface DecideHandlers {
  * trail, newest decided first), both in server order.
  *
  * `decide` holds one request per approval (`decidingIds`); a second call while one is in flight
- * is dropped. After a decision both lists are re-read: the subject's own status moves
+ * is dropped. On a 204 the row leaves `pending` at once and the hold lasts until the pending
+ * re-read lands (FINDING-P2-3). After a decision both lists are re-read: the subject's own status moves
  * asynchronously (the outbox), so nothing is assumed locally. 409 `approvals.AlreadyDecided` →
  * both lists reload and a toast says so; 404 → the row is dropped and both lists reload. A
  * network (0) or 5xx failure toasts nothing here: `errorInterceptor` already did (one toast).
@@ -84,10 +85,11 @@ export const ApprovalsInboxStore = signalStore(
       patchState(store, status === 'pending' ? { pending: next } : { decided: next });
     };
 
-    const loadPage = (status: PortalApprovalStatus, page: number): void => {
+    const loadPage = (status: PortalApprovalStatus, page: number, onSettled?: () => void): void => {
       patchList(status, { loading: true, error: null });
       api.list(status, page).subscribe({
         next: (result) => {
+          onSettled?.();
           const current = status === 'pending' ? store.pending() : store.decided();
           const kept = page === 1 ? [] : current.rows;
           const seen = new Set(kept.map((r) => r.id));
@@ -98,13 +100,16 @@ export const ApprovalsInboxStore = signalStore(
             loading: false,
           });
         },
-        error: (err: unknown) =>
-          patchList(status, { loading: false, error: message(parse(err), 'appr.loadFailed') }),
+        error: (err: unknown) => {
+          onSettled?.();
+          patchList(status, { loading: false, error: message(parse(err), 'appr.loadFailed') });
+        },
       });
     };
 
-    const reloadAll = (): void => {
-      loadPage('pending', 1);
+    /** Both lists from page 1; `onPendingSettled` runs once the pending re-read lands. */
+    const reloadAll = (onPendingSettled?: () => void): void => {
+      loadPage('pending', 1, onPendingSettled);
       loadPage('decided', 1);
     };
 
@@ -144,10 +149,14 @@ export const ApprovalsInboxStore = signalStore(
 
         api.decide(approvalId, decision, comment).subscribe({
           next: () => {
-            release(approvalId);
+            // The row leaves the pending list at once and the approval stays held until the
+            // pending re-read lands — a click between the 204 and the reload sends no second PUT.
+            patchList('pending', {
+              rows: store.pending().rows.filter((r) => r.id !== approvalId),
+            });
             toast.show({ tone: 'success', message: catalog.t('appr.decisionSent') });
             handlers.onDone?.();
-            reloadAll();
+            reloadAll(() => release(approvalId));
           },
           error: (err: unknown) => {
             release(approvalId);

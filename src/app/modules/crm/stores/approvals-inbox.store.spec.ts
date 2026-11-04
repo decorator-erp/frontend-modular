@@ -118,13 +118,13 @@ describe('ApprovalsInboxStore (crm-prod B1-fe)', () => {
     expect(req.request.body).toEqual({ decision: 1, comment: null });
     req.flush(null, { status: 204, statusText: 'No Content' });
 
-    expect(s.isDeciding('a1')).toBe(false);
     expect(onDone).toHaveBeenCalled();
     expect(toast.show).toHaveBeenCalledWith({
       tone: 'success',
       message: 'Your decision was sent.',
     });
     flushBoth([row('a2')], [row('a1', 1), row('d1', 1)]);
+    expect(s.isDeciding('a1')).toBe(false);
     expect(s.pending().rows.map((r) => r.id)).toEqual(['a2']);
     expect(s.decided().rows.map((r) => r.id)).toEqual(['a1', 'd1']);
   });
@@ -137,6 +137,22 @@ describe('ApprovalsInboxStore (crm-prod B1-fe)', () => {
     const req = decideReq('a1');
     req.flush(null, { status: 204, statusText: 'No Content' });
     flushBoth();
+  });
+
+  it('a click after the 204 and before the reload lands sends no second PUT (FINDING-P2-3)', () => {
+    const s = store();
+    s.load();
+    flushBoth();
+    s.decide('a1', ApprovalDecision.Approved, null);
+    decideReq('a1').flush(null, { status: 204, statusText: 'No Content' });
+
+    expect(s.pending().rows.map((r) => r.id)).toEqual(['a2']);
+    expect(s.isDeciding('a1')).toBe(true);
+    s.decide('a1', ApprovalDecision.Approved, null);
+    http.expectNone(`${BASE}/a1/decide`);
+
+    flushBoth([row('a2')], [row('a1', 1), row('d1', 1)]);
+    expect(s.isDeciding('a1')).toBe(false);
   });
 
   it('409 approvals.AlreadyDecided reloads both lists and toasts', () => {
