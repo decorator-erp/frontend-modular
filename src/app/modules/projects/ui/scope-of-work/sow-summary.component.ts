@@ -123,14 +123,15 @@ type HeaderField = 'duration' | 'start' | 'adjustment' | 'adjustmentNote' | 'not
         <pera-form-field
           data-adjustment-note
           [label]="catalog.t('sow.adjustmentNote')"
-          [error]="errorText('adjustmentNote')"
+          [required]="true"
+          [error]="adjustmentNoteError()"
         >
           <pera-input
             [appInnerInputLabel]="catalog.t('sow.adjustmentNote')"
             [placeholder]="catalog.t('sow.adjustmentNotePlaceholder')"
             [ngModel]="header().adjustmentNote ?? ''"
             [disabled]="!editable()"
-            [error]="errors()['adjustmentNote'] ? 'invalid' : undefined"
+            [error]="adjustmentNoteError() ? 'invalid' : undefined"
             (change)="onAdjustmentNote($event)"
           />
         </pera-form-field>
@@ -291,6 +292,18 @@ export class SowSummaryComponent {
       return formatCairoDate(`${s.estimatedEndDate}T00:00:00Z`, this.catalog.locale());
     }
     return s.durationDays ? this.catalog.t('sow.setStartDate') : '—';
+  });
+
+  /**
+   * crm-prod L-fe-9: the reason is required while the adjustment is not 0 — confirm fails with
+   * `projects.scope.AdjustmentNoteRequired` without it — so say so at the field, not only in the
+   * blocking list. A too-long reason's own message wins.
+   */
+  protected readonly adjustmentNoteError = computed<string | undefined>(() => {
+    const own = this.errors()['adjustmentNote'];
+    if (own) return this.catalog.t(own);
+    const missing = this.editable() && this.adjustment() !== 0 && !this.header().adjustmentNote;
+    return missing ? this.catalog.t('sow.adjustmentNoteRequired') : undefined;
   });
 
   protected errorText(field: HeaderField): string | undefined {

@@ -1314,6 +1314,7 @@ export const EN = {
   'sow.pickerNoPermission': 'Adding items from stage templates needs permission to read stages.',
   'sow.headerClient': 'Client: {name}',
   'sow.confirmFacts': 'Total {total} EGP · estimated end {end}.',
+  'sow.adjustmentNoteRequired': 'Give a reason for the adjustment.',
 } as const;
 
 /** The key set of record. Every catalog lookup is typed against this. */

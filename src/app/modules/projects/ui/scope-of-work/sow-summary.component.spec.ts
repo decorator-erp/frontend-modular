@@ -225,6 +225,25 @@ describe('SowSummaryComponent — fees and adjustment (sow #6)', () => {
     expect(noteField()).toBeNull();
   });
 
+  it('crm-prod L-fe-9: an adjustment without a reason shows the required error inline', () => {
+    render(scope({ adjustmentAmount: 0, adjustmentNote: null }));
+    change(adjustmentInput(), '-5000');
+    expect(noteField()!.textContent).toContain(EN['sow.adjustmentNoteRequired']);
+    expect(noteInput().getAttribute('aria-invalid')).toBe('true');
+    // The store keeps each sent header as the draft until the reload lands.
+    fixture.componentRef.setInput('draft', emitted.at(-1)!);
+    fixture.detectChanges();
+    change(noteInput(), 'Early payment');
+    fixture.componentRef.setInput('draft', emitted.at(-1)!);
+    fixture.detectChanges();
+    expect(noteField()!.textContent).not.toContain(EN['sow.adjustmentNoteRequired']);
+  });
+
+  it('crm-prod L-fe-9: a stored adjustment with no reason shows the error on load', () => {
+    render(scope({ adjustmentAmount: 250, adjustmentNote: null }));
+    expect(noteField()!.textContent).toContain(EN['sow.adjustmentNoteRequired']);
+  });
+
   it('a stored non-zero adjustment shows its reason', async () => {
     render(scope());
     await fixture.whenStable();
