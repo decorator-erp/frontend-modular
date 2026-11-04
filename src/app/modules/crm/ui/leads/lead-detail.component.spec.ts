@@ -1,9 +1,11 @@
 import { TestBed } from '@angular/core/testing';
-import { HttpErrorResponse } from '@angular/common/http';
+import { HttpErrorResponse, provideHttpClient, withInterceptors } from '@angular/common/http';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideRouter } from '@angular/router';
 import { NEVER, of, throwError } from 'rxjs';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ToastService } from '@platform/feedback/toast.service';
+import { errorInterceptor } from '@platform/http/error.interceptor';
 import { PermissionsService } from '@platform/permissions';
 import { ModalService, type SelectOption } from '@ds';
 import { EmployeeService } from '@modules/people';
@@ -214,5 +216,72 @@ describe('CrmLeadDetailComponent — load states (crm-prod M4)', () => {
     (alert?.querySelector('button') as HTMLButtonElement).click();
     expect(getById).toHaveBeenCalledTimes(2);
     expect(rendered(fixture).querySelector('[data-testid="lead-load-error"]')).toBeNull();
+  });
+});
+
+// crm-prod FINDING-P2-2: the real CrmLeadService behind the real errorInterceptor — a status
+// change that fails on the network or with a 5xx shows ONE toast, not two.
+describe('CrmLeadDetailComponent — status change failure toasts (FINDING-P2-2)', () => {
+  afterEach(() => TestBed.inject(HttpTestingController).verify());
+
+  function makeReal() {
+    const toast = { show: vi.fn() };
+    TestBed.configureTestingModule({
+      imports: [CrmLeadDetailComponent],
+      providers: [
+        provideRouter([]),
+        provideHttpClient(withInterceptors([errorInterceptor])),
+        provideHttpClientTesting(),
+        LeadDetailStore,
+        { provide: ToastService, useValue: toast },
+        { provide: PermissionsService, useValue: { can: () => true } },
+        { provide: ModalService, useValue: { open: vi.fn() } },
+        {
+          provide: EmployeeService,
+          useValue: { listPaged: () => of({ items: [{ id: 'E1', fullName: 'Sara Nabil' }] }) },
+        },
+      ],
+    });
+    const http = TestBed.inject(HttpTestingController);
+    const fixture = TestBed.createComponent(CrmLeadDetailComponent);
+    fixture.componentRef.setInput('leadId', 'L');
+    fixture.detectChanges();
+    const flushReads = () =>
+      http
+        .match((r) => r.method === 'GET')
+        .forEach((r) => r.flush(r.request.url.endsWith('/intake') ? {} : lead));
+    flushReads();
+    fixture.detectChanges();
+    return { c: fixture.componentInstance, http, toast, flushReads };
+  }
+
+  const statusReq = (http: HttpTestingController) =>
+    http.expectOne((r) => r.method === 'PUT' && r.url.endsWith('/crm/leads/L/status'));
+
+  it('a 5xx shows exactly one toast', () => {
+    const { c, http, toast } = makeReal();
+    c.statusControl.setValue(String(LeadStatus.Qualified));
+    statusReq(http).flush(null, { status: 500, statusText: 'Server Error' });
+    expect(toast.show).toHaveBeenCalledTimes(1);
+    expect(c.statusControl.value).toBeNull();
+  });
+
+  it('a network failure (status 0) shows exactly one toast', () => {
+    const { c, http, toast } = makeReal();
+    c.statusControl.setValue(String(LeadStatus.Qualified));
+    statusReq(http).error(new ProgressEvent('error'), { status: 0, statusText: 'Unknown Error' });
+    expect(toast.show).toHaveBeenCalledTimes(1);
+  });
+
+  it("a 409 still shows the component's own catalog toast once and reloads", () => {
+    const { c, http, toast, flushReads } = makeReal();
+    c.statusControl.setValue(String(LeadStatus.Qualified));
+    statusReq(http).flush(
+      { errors: { 'crm.leads.AlreadyConverted': ['x'] } },
+      { status: 409, statusText: 'Conflict' },
+    );
+    flushReads();
+    expect(toast.show).toHaveBeenCalledTimes(1);
+    expect(toast.show.mock.calls[0][0].tone).toBe('danger');
   });
 });
