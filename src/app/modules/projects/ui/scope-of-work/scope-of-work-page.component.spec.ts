@@ -324,6 +324,19 @@ describe('ScopeOfWorkPageComponent — items (sow #3)', () => {
       blockingReason: 'projects.scope.Confirmed',
     });
 
+  it('crm-prod L-fe-8: the confirm question names the stage count, the total and the estimated end', async () => {
+    api['getScope'].mockReturnValue(
+      of(scope({ canConfirm: true, total: 50000, estimatedEndDate: '2027-03-01' })),
+    );
+    render();
+    confirmButton()!.click();
+    await fixture.whenStable();
+    const body = (dialog.open.mock.calls[0][0] as { body: string }).body;
+    expect(body).toContain('Confirming creates 2 stages');
+    expect(body).toContain('Total 50,000.00 EGP');
+    expect(body).toContain(`estimated end ${formatCairoDate('2027-03-01T00:00:00Z', 'en')}.`);
+  });
+
   it('sow #7: Confirm asks through ConfirmService, then posts and reloads (B10)', async () => {
     api['getScope'].mockReturnValue(of(scope({ canConfirm: true })));
     render();
@@ -331,7 +344,7 @@ describe('ScopeOfWorkPageComponent — items (sow #3)', () => {
     await fixture.whenStable();
     expect(dialog.open).toHaveBeenCalledWith(
       expect.objectContaining({
-        body: "Confirming creates 2 stages with their tasks, teams and cost, in this order. It can't be undone.",
+        body: "Confirming creates 2 stages with their tasks, teams and cost, in this order. It can't be undone. Total 0.00 EGP · estimated end —.",
         confirmLabel: EN['sow.confirmScope'],
       }),
     );

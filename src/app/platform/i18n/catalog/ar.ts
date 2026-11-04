@@ -1240,4 +1240,5 @@ export const AR: Partial<Record<CatalogKey, string>> = {
   'route.designProfile': 'ملف تصميم العميل',
   'sow.pickerNoPermission': 'إضافة بنود من قوالب المراحل تتطلب صلاحية عرض المراحل.',
   'sow.headerClient': 'العميل: {name}',
+  'sow.confirmFacts': 'الإجمالي {total} ج.م · الانتهاء المتوقع {end}.',
 };
