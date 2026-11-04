@@ -22,6 +22,9 @@ export function normalizeClient(source: unknown): ClientResponse {
     phoneNumber: readField<string | null>(source, 'phoneNumber', 'phone') ?? null,
     address: readField<string | null>(source, 'address') ?? null,
     notes: readField<string | null>(source, 'notes') ?? null,
+    jobTitle: readField<string | null>(source, 'jobTitle') ?? null,
+    maritalStatus: readField<string | null>(source, 'maritalStatus') ?? null,
+    representativeName: readField<string | null>(source, 'representativeName') ?? null,
   };
 }
 
@@ -41,6 +44,10 @@ export class ClientService extends ApiService {
     );
   }
 
+  /**
+   * `GET /api/clients/{id}` → `ClientResponse` (ClientEndpoints.cs:113-124, `crm.clients.read` — the
+   * list's own claim). The one read that carries `maritalStatus`.
+   */
   getById(id: string): Observable<ClientResponse> {
     return this.get<unknown>(`/clients/${id}`).pipe(
       map((response) => normalizeClient(this.unwrap(response))),

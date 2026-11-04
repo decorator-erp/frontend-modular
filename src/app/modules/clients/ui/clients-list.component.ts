@@ -9,8 +9,8 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
-import { Subject } from 'rxjs';
-import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
+import { Subject, firstValueFrom, of } from 'rxjs';
+import { catchError, debounceTime, distinctUntilChanged } from 'rxjs/operators';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -244,11 +244,24 @@ export class ClientsListComponent implements OnInit {
     if (await ref.afterClosed()) this.reload();
   }
 
+  /**
+   * crm-prod FINDING-P2-5: the dialog opens on the stored profile. `GET /clients/{id}` is read first
+   * for `maritalStatus` (the list row has none); if that read fails the dialog still opens on the
+   * row's job title and representative name, with marital status blank — a blank field is sent as
+   * `null`, which the backend keeps (Client.UpdateProfile).
+   */
   private async openEdit(row: ClientResponse): Promise<void> {
+    const full = await firstValueFrom(
+      this.clientsApi.getById(row.id).pipe(catchError(() => of(null))),
+    );
     const data: EditClientDialogData = {
       id: row.id,
       name: `${row.firstName} ${row.lastName}`.trim(),
-      initial: { jobTitle: null, maritalStatus: null, representativeName: null },
+      initial: {
+        jobTitle: full?.jobTitle ?? row.jobTitle ?? null,
+        maritalStatus: full?.maritalStatus ?? null,
+        representativeName: full?.representativeName ?? row.representativeName ?? null,
+      },
     };
     const ref = this.modal.open<boolean>(EditClientDialogComponent, { size: 'md', data });
     if (await ref.afterClosed()) this.reload();

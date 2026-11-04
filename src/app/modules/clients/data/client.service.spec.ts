@@ -56,6 +56,54 @@ describe('ClientService (crm-prod M8)', () => {
     expect(rows[0].address).toBe('New Cairo');
   });
 
+  it('FINDING-P2-5: the list row keeps jobTitle and representativeName', () => {
+    let rows: ClientResponse[] = [];
+    service.getAll().subscribe((r) => (rows = r));
+    http
+      .expectOne((r) => r.url === `${environment.apiUrl}/clients`)
+      .flush({
+        items: [
+          {
+            id: 'c1',
+            displayName: 'Hana Saleh',
+            email: null,
+            address: 'New Cairo',
+            jobTitle: 'Architect',
+            representativeName: 'Omar Saleh',
+            isActive: true,
+            createdAtUtc: '2026-10-01T00:00:00Z',
+          },
+        ],
+        pageNumber: 1,
+        pageSize: 200,
+        totalCount: 1,
+        totalPages: 1,
+      });
+    expect(rows[0].jobTitle).toBe('Architect');
+    expect(rows[0].representativeName).toBe('Omar Saleh');
+  });
+
+  it('FINDING-P2-5: getById reads GET /clients/{id} (ClientResponse) with maritalStatus', () => {
+    let client: ClientResponse | undefined;
+    service.getById('c1').subscribe((c) => (client = c));
+    const call = http.expectOne(`${environment.apiUrl}/clients/c1`);
+    expect(call.request.method).toBe('GET');
+    call.flush({
+      id: 'c1',
+      appUserId: 'u1',
+      address: 'New Cairo',
+      notes: null,
+      jobTitle: 'Architect',
+      maritalStatus: 'Married',
+      representativeName: 'Omar Saleh',
+      children: [],
+      isActive: true,
+    });
+    expect(client?.jobTitle).toBe('Architect');
+    expect(client?.maritalStatus).toBe('Married');
+    expect(client?.representativeName).toBe('Omar Saleh');
+  });
+
   it('activate sends PUT /clients/{id}/active with SetActiveRequest { isActive: true }', () => {
     service.activate('c1').subscribe();
     const call = http.expectOne(`${environment.apiUrl}/clients/c1/active`);
