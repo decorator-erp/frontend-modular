@@ -118,15 +118,22 @@ export class ProjectService extends ApiService {
     return this.delete(`/projects/${id}`);
   }
 
+  /**
+   * `PUT /api/projects/{id}/status?status=<int>` → 204. The backend binds `ProjectStatus status`
+   * from the query string (ProjectEndpoints.cs:59-60), not the body; the enum ordinals are
+   * Projects.Contracts `ProjectStatus` (Draft=1 … Cancelled=5).
+   */
   setStatus(id: string, status: ProjectStatus): Observable<unknown> {
-    return this.put(`/projects/${id}/status`, { status: this.statusInt(status) });
+    return this.put(`/projects/${id}/status?status=${this.statusInt(status)}`, null);
   }
 
+  /** `PUT /api/projects/{id}/active?isActive=true` → 204 (ProjectEndpoints.cs:67-68). */
   activate(id: string): Observable<unknown> {
-    return this.put(`/projects/${id}/activate`, {});
+    return this.put(`/projects/${id}/active?isActive=true`, null);
   }
+  /** `PUT /api/projects/{id}/active?isActive=false` → 204 (ProjectEndpoints.cs:67-68). */
   deactivate(id: string): Observable<unknown> {
-    return this.put(`/projects/${id}/deactivate`, {});
+    return this.put(`/projects/${id}/active?isActive=false`, null);
   }
 
   // ---- financial query drilldowns (financial-queries spec) ----------------

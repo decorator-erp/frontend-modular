@@ -110,4 +110,44 @@ describe('ProjectService', () => {
       expect(ids).toEqual(['p1', 'p3']);
     });
   });
+
+  describe('status and active (crm-prod H5) — query-bound, ProjectEndpoints.cs:59-73', () => {
+    it.each([
+      ['Draft', 1],
+      ['InProgress', 2],
+      ['OnHold', 3],
+      ['Completed', 4],
+      ['Cancelled', 5],
+    ] as const)(
+      'setStatus(%s) sends PUT /projects/{id}/status?status=%i with no body',
+      (status, ordinal) => {
+        service.setStatus('p1', status).subscribe();
+
+        const call = http.expectOne(
+          (r) => r.urlWithParams === `${environment.apiUrl}/projects/p1/status?status=${ordinal}`,
+        );
+        expect(call.request.method).toBe('PUT');
+        expect(call.request.body).toBeNull();
+        call.flush(null, { status: 204, statusText: 'No Content' });
+      },
+    );
+
+    it('activate sends PUT /projects/{id}/active?isActive=true', () => {
+      service.activate('p1').subscribe();
+
+      const call = http.expectOne(`${environment.apiUrl}/projects/p1/active?isActive=true`);
+      expect(call.request.method).toBe('PUT');
+      expect(call.request.body).toBeNull();
+      call.flush(null, { status: 204, statusText: 'No Content' });
+    });
+
+    it('deactivate sends PUT /projects/{id}/active?isActive=false', () => {
+      service.deactivate('p1').subscribe();
+
+      const call = http.expectOne(`${environment.apiUrl}/projects/p1/active?isActive=false`);
+      expect(call.request.method).toBe('PUT');
+      expect(call.request.body).toBeNull();
+      call.flush(null, { status: 204, statusText: 'No Content' });
+    });
+  });
 });
