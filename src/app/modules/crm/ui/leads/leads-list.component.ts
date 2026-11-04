@@ -191,7 +191,8 @@ const STATUS_ORDER: LeadStatus[] = [
                 </div>
                 <!-- Decorative affordance: the whole card is the button; nesting a real button here would be invalid HTML. -->
                 <span class="fs-label text-accent shrink-0" aria-hidden="true"
-                  >{{ catalog.t('common.view') }} →</span
+                  >{{ catalog.t('common.view') }}
+                  <span class="inline-block rtl:rotate-180">→</span></span
                 >
               </div>
             </button>

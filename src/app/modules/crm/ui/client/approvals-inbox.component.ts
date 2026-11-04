@@ -120,7 +120,9 @@ const SUBJECT_NOUN_KEYS: Record<ApprovalSubjectType, CatalogKey> = {
                                         <span class="text-text-muted" dir="ltr">{{
                                           fieldValue(c.field, c.previousValue)
                                         }}</span>
-                                        →
+                                        <span class="inline-block rtl:rotate-180" aria-hidden="true"
+                                          >→</span
+                                        >
                                         <span class="text-text-primary" dir="ltr">{{
                                           fieldValue(c.field, c.currentValue)
                                         }}</span>

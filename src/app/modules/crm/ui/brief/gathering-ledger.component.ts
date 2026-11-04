@@ -75,6 +75,7 @@ import { CrmSupersedeEntryModalComponent } from './supersede-entry.modal';
                 [name]="isOpen(groupKey(group)) ? 'chevron-down' : 'chevron-right'"
                 [size]="14"
                 class="text-text-muted"
+                [class.rtl:rotate-180]="!isOpen(groupKey(group))"
               />
             </button>
 

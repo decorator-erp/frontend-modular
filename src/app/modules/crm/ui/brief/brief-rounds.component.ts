@@ -97,7 +97,7 @@ const UNKNOWN_CHIP = {
                               <span class="text-text-muted" dir="auto">{{
                                 fieldValue(c.field, c.previousValue)
                               }}</span>
-                              →
+                              <span class="inline-block rtl:rotate-180" aria-hidden="true">→</span>
                             }
                             <span class="text-text-primary" dir="auto">{{
                               fieldValue(c.field, c.currentValue)

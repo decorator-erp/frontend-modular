@@ -99,7 +99,8 @@ const INTAKE_FIELD_MAP: Record<string, string> = {
       <a
         [routerLink]="['/crm/leads']"
         class="fs-caption text-text-muted no-underline hover:underline"
-        >← {{ catalog.t('leads.back') }}</a
+        ><span class="inline-block rtl:rotate-180" aria-hidden="true">←</span>
+        {{ catalog.t('leads.back') }}</a
       >
 
       @if (store.notFound()) {

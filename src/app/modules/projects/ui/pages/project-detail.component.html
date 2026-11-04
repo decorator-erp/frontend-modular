@@ -143,7 +143,7 @@
             </div>
             <div class="flex items-center gap-1.5">
               <button type="button" [class]="panelLinkClass" (click)="stView.set('gantt')">
-                Open Gantt →
+                Open Gantt <span class="inline-block rtl:rotate-180" aria-hidden="true">→</span>
               </button>
             </div>
           </div>
@@ -421,7 +421,7 @@
             *peraCan="perm.manageTeam"
             (click)="manageTeam()"
           >
-            Manage →
+            Manage <span class="inline-block rtl:rotate-180" aria-hidden="true">→</span>
           </button>
         </div>
         <div class="min-w-0">
@@ -456,7 +456,9 @@
             <h3 [class]="panelTitleClass">Documents</h3>
             <span [class]="countChipClass">recent</span>
           </div>
-          <button type="button" [class]="panelLinkClass" (click)="openDocuments()">All →</button>
+          <button type="button" [class]="panelLinkClass" (click)="openDocuments()">
+            All <span class="inline-block rtl:rotate-180" aria-hidden="true">→</span>
+          </button>
         </div>
         <div class="min-w-0">
           @if (recentDocs().length) {
@@ -493,7 +495,7 @@
                   class="text-end font-mono text-text-muted"
                   [style.fontSize]="'var(--fs-caption)'"
                   aria-hidden="true"
-                  >→</span
+                  ><span class="inline-block rtl:rotate-180">→</span></span
                 >
               </button>
             }
