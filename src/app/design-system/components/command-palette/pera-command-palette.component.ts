@@ -13,6 +13,7 @@ import { Router, Routes } from '@angular/router';
 import { PeraIconComponent } from '../icon/pera-icon.component';
 import { PeraKbdComponent } from '../kbd/pera-kbd.component';
 import { CommandItem, CommandPaletteService, fuzzyMatch } from './command-palette.service';
+import { CatalogService } from '@platform/i18n/catalog.service';
 
 /**
  * `⌘K` command palette. Renders a modal overlay that fuzzy-searches the app's
@@ -88,6 +89,7 @@ import { CommandItem, CommandPaletteService, fuzzyMatch } from './command-palett
 export class PeraCommandPaletteComponent {
   readonly palette = inject(CommandPaletteService);
   private readonly router = inject(Router);
+  private readonly catalog = inject(CatalogService);
   private readonly searchInput = viewChild<ElementRef<HTMLInputElement>>('searchInput');
 
   readonly query = signal('');
@@ -175,7 +177,7 @@ export class PeraCommandPaletteComponent {
         if (seg && title) {
           out.push({
             id: full,
-            label: title,
+            label: this.catalog.label(title),
             group: 'Navigate',
             icon: 'arrow-right',
             hint: '/' + full,

@@ -257,7 +257,7 @@ describe('app.routes — the 009 CRM routes', () => {
   it('provides CatalogAdminStore on admin/catalog and loads the catalog admin page', () => {
     const route = byPath('admin/catalog')!;
     expect(route.canActivate).toEqual([PermissionGuard]);
-    expect(route.data?.['breadcrumb']).toBe('Catalog');
+    expect(route.data?.['breadcrumb']).toBe('route.crmCatalog');
     expect(route.providers).toEqual([CatalogAdminStore]);
     expect(route.loadComponent).toBe(crmPages.catalogAdmin);
   });
@@ -265,7 +265,7 @@ describe('app.routes — the 009 CRM routes', () => {
   it('lazy-loads crmRoutes under crm with no parent permission gate', () => {
     const route = byPath('crm')!;
     expect(route.canActivate).toBeUndefined();
-    expect(route.data).toEqual({ breadcrumb: 'CRM' });
+    expect(route.data).toEqual({ breadcrumb: 'route.crm' });
     // The loader, not a barrel import: crmRoutes must stay out of the initial bundle (FINDING-3-1).
     expect(route.loadChildren).toBe(crmPages.routes);
   });
@@ -280,7 +280,7 @@ describe('app.routes — the 009 CRM routes', () => {
     const route = byPath('crm/designer/projects/:projectId')!;
     expect(route.data).toEqual({
       permission: PERM.crm.designProfile.read,
-      breadcrumb: 'Client design profile',
+      breadcrumb: 'route.designProfile',
     });
     expect(route.loadComponent).toBe(crmPages.designProfile);
   });

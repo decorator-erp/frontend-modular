@@ -63,6 +63,14 @@ export class CatalogService {
   }
 
   /**
+   * crm-prod L-fe-3: a route's `data.breadcrumb`. A catalog key resolves in the active locale;
+   * anything else is a literal label from a module whose crumbs are not catalogued yet.
+   */
+  label(value: string): string {
+    return isCatalogKey(value) ? this.t(value) : value;
+  }
+
+  /**
    * crm-prod L-fe-1: a plural-safe count phrase. Picks the form for `n`'s plural category in the
    * active locale (`Intl.PluralRules`, so Arabic gets its zero/one/two/few/many/other), falling
    * back to `forms.other`, and fills `{n}` with the count.
@@ -82,6 +90,11 @@ export const STAGE_COUNT: PluralForms = {
   many: 'common.stagesMany',
   other: 'common.stagesOther',
 };
+
+/** True when `value` names a key of the English catalog (the key set of record). */
+export function isCatalogKey(value: string): value is CatalogKey {
+  return Object.prototype.hasOwnProperty.call(EN, value);
+}
 
 /** Replaces `{name}`-style slots. An absent param leaves its slot untouched. */
 function interpolate(value: string, params: Record<string, string | number>): string {

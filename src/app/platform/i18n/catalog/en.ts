@@ -1300,6 +1300,17 @@ export const EN = {
   'common.stagesFew': '{n} stages',
   'common.stagesMany': '{n} stages',
   'common.stagesOther': '{n} stages',
+  'route.crm': 'CRM',
+  'route.requirementGathering': 'Requirement gathering',
+  'route.projects': 'Projects',
+  'route.newProject': 'New project',
+  'route.project': 'Project',
+  'route.stage': 'Stage',
+  'route.task': 'Task',
+  'route.workflowBuilder': 'Workflow Builder',
+  'route.scopeOfWork': 'Scope of work',
+  'route.crmCatalog': 'Catalog',
+  'route.designProfile': 'Client design profile',
 } as const;
 
 /** The key set of record. Every catalog lookup is typed against this. */

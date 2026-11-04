@@ -46,7 +46,7 @@ export const crmRoutes: Routes = [
     path: 'projects/:projectId',
     canActivate: [PermissionGuard],
     // The topbar keeps the deepest label, so this replaces the bare "CRM" crumb.
-    data: { permission: PERM.crm.periods.read, breadcrumb: 'Requirement gathering' },
+    data: { permission: PERM.crm.periods.read, breadcrumb: 'route.requirementGathering' },
     loadComponent: () =>
       import('./ui/dashboard/crm-dashboard.component').then((m) => m.CrmDashboardComponent),
   },
