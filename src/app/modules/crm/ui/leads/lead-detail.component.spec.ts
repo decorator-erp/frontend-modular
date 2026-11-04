@@ -4,12 +4,16 @@ import { provideRouter } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
 import { ToastService } from '@platform/feedback/toast.service';
-import { CrmLeadService } from '../../data/crm-lead.service';
+import { PermissionsService } from '@platform/permissions';
+import { ModalService, type SelectOption } from '@ds';
+import { EmployeeService } from '@modules/people';
+import { CrmLeadFormComponent } from '../dashboard/forms/lead-form.component';
+import { CrmLeadService, type CrmLead } from '../../data/crm-lead.service';
 import { LeadSource, LeadStatus, PastExperience, ProjectSector } from '../../model/crm-enums';
 import { LeadDetailStore } from '../../stores/lead-detail.store';
 import { CrmLeadDetailComponent } from './lead-detail.component';
 
-const lead = {
+const lead: CrmLead = {
   id: 'L',
   firstName: 'Mona',
   lastName: 'Adel',
@@ -23,12 +27,17 @@ const lead = {
   convertedAtUtc: null,
 };
 
-function make(upsert = vi.fn().mockReturnValue(of(undefined))) {
+function make(
+  upsert = vi.fn().mockReturnValue(of(undefined)),
+  opts: { can?: (p: string) => boolean; lead?: CrmLead } = {},
+) {
   const api = {
-    getById: vi.fn().mockReturnValue(of(lead)),
+    getById: vi.fn().mockReturnValue(of(opts.lead ?? lead)),
     getIntake: vi.fn().mockReturnValue(of({})),
     upsertIntake: upsert,
+    updateStatus: vi.fn().mockReturnValue(of(undefined)),
   };
+  const modal = { open: vi.fn().mockReturnValue({ afterClosed: () => Promise.resolve(false) }) };
   TestBed.configureTestingModule({
     imports: [CrmLeadDetailComponent],
     providers: [
@@ -36,11 +45,22 @@ function make(upsert = vi.fn().mockReturnValue(of(undefined))) {
       LeadDetailStore,
       { provide: CrmLeadService, useValue: api },
       { provide: ToastService, useValue: { show: () => undefined } },
+      { provide: PermissionsService, useValue: { can: opts.can ?? (() => true) } },
+      { provide: ModalService, useValue: modal },
+      {
+        provide: EmployeeService,
+        useValue: { listPaged: () => of({ items: [{ id: 'E1', fullName: 'Sara Nabil' }] }) },
+      },
     ],
   });
   const fixture = TestBed.createComponent(CrmLeadDetailComponent);
   fixture.componentRef.setInput('leadId', 'L');
-  return { c: fixture.componentInstance, api };
+  return { c: fixture.componentInstance, api, fixture, modal };
+}
+
+function rendered(fixture: { detectChanges(): void; nativeElement: unknown }) {
+  fixture.detectChanges();
+  return fixture.nativeElement as HTMLElement;
 }
 
 describe('CrmLeadDetailComponent — intake body (009b #6)', () => {
@@ -87,5 +107,80 @@ describe('CrmLeadDetailComponent — intake body (009b #6)', () => {
     c.save();
 
     expect(c.errorOf('projectSector')).not.toBe('');
+  });
+});
+
+describe('CrmLeadDetailComponent — details and status (crm-prod H3)', () => {
+  const only =
+    (...granted: string[]) =>
+    (p: string) =>
+      granted.includes(p);
+  const buttonLabels = (el: HTMLElement) =>
+    Array.from(el.querySelectorAll('pera-button')).map((b) => b.textContent?.trim());
+
+  it('shows the owner by name', () => {
+    const { fixture } = make();
+    expect(rendered(fixture).querySelector('[data-testid="lead-owner"]')?.textContent).toContain(
+      'Sara Nabil',
+    );
+  });
+
+  it('offers the status control with crm.leads.change_status, never Converted or the current one', () => {
+    const { fixture, c } = make(undefined, { can: only('crm.leads.change_status') });
+    const el = rendered(fixture);
+    expect(el.querySelector('[data-testid="lead-status"]')).not.toBeNull();
+    const options = (c as unknown as { statusOptions(): SelectOption[] }).statusOptions();
+    expect(options.map((o) => o.value)).toEqual([
+      String(LeadStatus.Contacted),
+      String(LeadStatus.Qualified),
+      String(LeadStatus.Unqualified),
+    ]);
+  });
+
+  it('hides the status control without crm.leads.change_status', () => {
+    const { fixture } = make(undefined, { can: only('crm.leads.update') });
+    expect(rendered(fixture).querySelector('[data-testid="lead-status"]')).toBeNull();
+  });
+
+  it('a status pick sends PUT /status and reloads the lead', () => {
+    const { fixture, c, api } = make();
+    rendered(fixture);
+    c.statusControl.setValue(String(LeadStatus.Qualified));
+
+    expect(api.updateStatus).toHaveBeenCalledWith('L', LeadStatus.Qualified);
+    expect(api.getById).toHaveBeenCalledTimes(2);
+    expect(c.statusControl.value).toBeNull();
+  });
+
+  it('shows Edit with crm.leads.update and opens the lead form on this lead', () => {
+    const { fixture, c, modal } = make(undefined, { can: only('crm.leads.update') });
+    expect(buttonLabels(rendered(fixture))).toContain('Edit');
+
+    void c.openEdit(lead);
+    expect(modal.open).toHaveBeenCalledWith(CrmLeadFormComponent, {
+      size: 'lg',
+      data: { lead },
+    });
+  });
+
+  it('hides Edit without crm.leads.update', () => {
+    const { fixture } = make(undefined, { can: only('crm.leads.change_status') });
+    expect(buttonLabels(rendered(fixture))).not.toContain('Edit');
+  });
+
+  it('links a converted lead to its client, with no edit or status control', () => {
+    const converted = {
+      ...lead,
+      status: LeadStatus.Converted,
+      convertedClientId: 'C1',
+      convertedAtUtc: '2026-10-01T00:00:00Z',
+    };
+    const { fixture } = make(undefined, { lead: converted });
+    const el = rendered(fixture);
+    expect(el.querySelector('[data-testid="lead-client-link"]')?.getAttribute('href')).toBe(
+      '/crm/clients/C1',
+    );
+    expect(el.querySelector('[data-testid="lead-status"]')).toBeNull();
+    expect(buttonLabels(el)).not.toContain('Edit');
   });
 });

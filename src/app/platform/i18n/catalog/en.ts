@@ -1229,6 +1229,11 @@ export const EN = {
   'sched.noShow': 'No-show',
   'sched.duration': 'Duration (minutes)',
   'sched.location': 'Location',
+  'lead.edit': 'Edit lead',
+  'lead.updated': 'Lead updated.',
+  'lead.changeStatus': 'Change status',
+  'lead.statusChanged': 'Lead status updated.',
+  'lead.statusChangeFailed': 'Could not change the lead status.',
 } as const;
 
 /** The key set of record. Every catalog lookup is typed against this. */

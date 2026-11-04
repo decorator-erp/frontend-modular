@@ -8,14 +8,16 @@ import {
   signal,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
 import { RouterLink } from '@angular/router';
 import { ErrorHandlerService, friendly } from '@platform/http/error-handler.service';
 import { CatalogService } from '@platform/i18n/catalog.service';
 import type { CatalogKey } from '@platform/i18n/catalog/en';
 import { ToastService } from '@platform/feedback/toast.service';
-import { ProjectSector } from '../../model/crm-enums';
+import { catchError, of } from 'rxjs';
+import { EmployeeService } from '@modules/people';
+import { LeadStatus, ProjectSector } from '../../model/crm-enums';
 import type { CrmLead } from '../../data/crm-lead.service';
 import type { LeadIntakeRequest, ResidentialIntakeRequest } from '../../model';
 import { CanDirective, PERM } from '@platform/permissions';
@@ -51,6 +53,10 @@ import {
 } from '../brief/brief-head.component';
 import { LeadDetailStore } from '../../stores/lead-detail.store';
 import { CrmConvertLeadComponent, type ConvertLeadDialogData } from './convert-lead.component';
+import {
+  CrmLeadFormComponent,
+  type EditLeadDialogData,
+} from '../dashboard/forms/lead-form.component';
 import { LEAD_SOURCE_KEYS, LEAD_STATUS_KEYS, LEAD_STATUS_TONE } from './lead-labels';
 
 /** Maps the intake domain codes to the offending control (mirrors the backend rules). */
@@ -112,15 +118,44 @@ const INTAKE_FIELD_MAP: Record<string, string> = {
                   <span dir="ltr">{{ lead.email }}</span>
                 }
                 <span>{{ catalog.t(sourceKey(lead.source)) }}</span>
+                <span data-testid="lead-owner"
+                  >{{ catalog.t('brief.fOwner') }}: {{ ownerName(lead.ownerId) }}</span
+                >
               </div>
+              @if (lead.convertedClientId) {
+                <a
+                  data-testid="lead-client-link"
+                  [routerLink]="['/crm/clients', lead.convertedClientId]"
+                  class="fs-caption text-accent underline"
+                  >{{ catalog.t('leads.viewClient') }}</a
+                >
+              }
             </div>
             @if (!store.isConverted()) {
-              <pera-button
-                *peraCan="PERM.crm.leads.convert"
-                variant="secondary"
-                (click)="openConvert(lead)"
-                >{{ catalog.t('leads.convert') }}</pera-button
-              >
+              <div class="flex items-center gap-2 flex-wrap">
+                @if (store.statusTargets().length) {
+                  <pera-select
+                    *peraCan="PERM.crm.leads.changeStatus"
+                    data-testid="lead-status"
+                    variant="chip"
+                    [formControl]="statusControl"
+                    [options]="statusOptions()"
+                    [placeholder]="catalog.t('lead.changeStatus')"
+                  />
+                }
+                <pera-button
+                  *peraCan="PERM.crm.leads.update"
+                  variant="secondary"
+                  (click)="openEdit(lead)"
+                  >{{ catalog.t('common.edit') }}</pera-button
+                >
+                <pera-button
+                  *peraCan="PERM.crm.leads.convert"
+                  variant="secondary"
+                  (click)="openConvert(lead)"
+                  >{{ catalog.t('leads.convert') }}</pera-button
+                >
+              </div>
             }
           </div>
         </pera-card>
@@ -325,9 +360,22 @@ export class CrmLeadDetailComponent {
   private readonly modal = inject(ModalService);
   private readonly confirm = inject(ConfirmService);
   private readonly toast = inject(ToastService);
+  private readonly directory = inject(EmployeeService);
   protected readonly catalog = inject(CatalogService);
   protected readonly store = inject(LeadDetailStore);
   protected readonly PERM = PERM;
+
+  /** Employee id → full name, for the owner line (the leads list's directory read). */
+  private readonly owners = signal<Record<string, string>>({});
+
+  /** The status picker: it only ever holds a pick in flight, then resets to the placeholder. */
+  readonly statusControl = new FormControl<string | null>(null);
+  protected readonly statusOptions = computed<SelectOption[]>(() =>
+    this.store.statusTargets().map((s) => ({
+      value: String(s),
+      label: this.catalog.t(this.statusKey(s)),
+    })),
+  );
 
   /** Bound from the `:leadId` route param (component input binding is on). */
   readonly leadId = input.required<string>();
@@ -429,6 +477,22 @@ export class CrmLeadDetailComponent {
       if (id) this.store.load(id);
     });
 
+    this.directory
+      .listPaged({ page: 1, pageSize: 500, isActive: true })
+      .pipe(
+        catchError(() => of(null)),
+        takeUntilDestroyed(),
+      )
+      .subscribe((paged) => {
+        const map: Record<string, string> = {};
+        for (const e of paged?.items ?? []) map[e.id] = e.fullName;
+        this.owners.set(map);
+      });
+
+    this.statusControl.valueChanges.pipe(takeUntilDestroyed()).subscribe((v) => {
+      if (v) this.changeStatus(Number(v) as LeadStatus);
+    });
+
     effect(() => {
       const intake = this.store.intake();
       if (!intake) return;
@@ -512,6 +576,35 @@ export class CrmLeadDetailComponent {
   }
   protected sourceKey(source: number) {
     return LEAD_SOURCE_KEYS[source as keyof typeof LEAD_SOURCE_KEYS];
+  }
+
+  protected ownerName(ownerId: string): string {
+    return this.owners()[ownerId] ?? '—';
+  }
+
+  changeStatus(status: LeadStatus): void {
+    const id = this.leadId();
+    this.store.changeStatus(id, status, {
+      onSuccess: () => {
+        this.statusControl.setValue(null, { emitEvent: false });
+        this.toast.show({ tone: 'success', message: this.catalog.t('lead.statusChanged') });
+      },
+      onError: (parsed) => {
+        this.statusControl.setValue(null, { emitEvent: false });
+        this.toast.show({
+          tone: 'danger',
+          message: parsed ? friendly(parsed) : this.catalog.t('lead.statusChangeFailed'),
+        });
+      },
+    });
+  }
+
+  async openEdit(lead: CrmLead): Promise<void> {
+    const data: EditLeadDialogData = { lead };
+    const ok = await this.modal
+      .open<boolean>(CrmLeadFormComponent, { size: 'lg', data })
+      .afterClosed();
+    if (ok) this.store.load(lead.id);
   }
 
   errorOf(name: string): string {

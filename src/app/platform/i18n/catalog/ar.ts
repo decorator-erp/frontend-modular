@@ -1156,4 +1156,9 @@ export const AR: Partial<Record<CatalogKey, string>> = {
   'sched.noShow': 'لم يحضر',
   'sched.duration': 'المدة (بالدقائق)',
   'sched.location': 'المكان',
+  'lead.edit': 'تعديل العميل المحتمل',
+  'lead.updated': 'تم تحديث العميل المحتمل.',
+  'lead.changeStatus': 'تغيير الحالة',
+  'lead.statusChanged': 'تم تحديث حالة العميل المحتمل.',
+  'lead.statusChangeFailed': 'تعذّر تغيير حالة العميل المحتمل.',
 };

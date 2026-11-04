@@ -4,6 +4,9 @@ import { forkJoin } from 'rxjs';
 import { injectReloadOnConflict } from '@platform/http/concurrency';
 import { CrmLeadService, type CrmLead } from '../data/crm-lead.service';
 import { LeadStatus } from '../model/crm-enums';
+import type { ParsedApiError } from '@platform/types';
+import { ErrorHandlerService } from '@platform/http/error-handler.service';
+import { HttpErrorResponse } from '@angular/common/http';
 import type { LeadIntakeRequest, LeadIntakeResponse } from '../model';
 
 interface LeadDetailState {
@@ -13,6 +16,7 @@ interface LeadDetailState {
   intakeData: LeadIntakeResponse | null;
   loading: boolean;
   savingIntake: boolean;
+  changingStatus: boolean;
   error: string | null;
 }
 
@@ -22,6 +26,7 @@ const INITIAL: LeadDetailState = {
   intakeData: null,
   loading: false,
   savingIntake: false,
+  changingStatus: false,
   error: null,
 };
 
@@ -38,10 +43,30 @@ export const LeadDetailStore = signalStore(
     intake: computed(() => store.intakeData()),
     /** Converted ⇒ the intake is locked (read-only). */
     isConverted: computed(() => store.lead()?.status === LeadStatus.Converted),
+    /**
+     * The statuses `PUT /{id}/status` accepts from here (`CrmLead.ChangeStatus`): any of New,
+     * Contacted, Qualified, Unqualified other than the current one — never Converted (only
+     * `convert` gets there), and nothing once Converted (`crm.leads.AlreadyConverted`).
+     */
+    statusTargets: computed<LeadStatus[]>(() => {
+      const current = store.lead()?.status;
+      if (current === undefined || current === LeadStatus.Converted) return [];
+      return [
+        LeadStatus.New,
+        LeadStatus.Contacted,
+        LeadStatus.Qualified,
+        LeadStatus.Unqualified,
+      ].filter((s) => s !== current);
+    }),
   })),
 
   withMethods(
-    (store, api = inject(CrmLeadService), reloadOnConflict = injectReloadOnConflict()) => ({
+    (
+      store,
+      api = inject(CrmLeadService),
+      errors = inject(ErrorHandlerService),
+      reloadOnConflict = injectReloadOnConflict(),
+    ) => ({
       load(id: string): void {
         patchState(store, { loading: true, error: null, leadId: id });
         forkJoin({ lead: api.getById(id), intake: api.getIntake(id) }).subscribe({
@@ -72,6 +97,36 @@ export const LeadDetailStore = signalStore(
             }
             patchState(store, { savingIntake: false, error: 'Could not save the intake.' });
             handlers?.onError?.(err);
+          },
+        });
+      },
+
+      /**
+       * `PUT /{id}/status`, then reload the lead (optimistic-off). A 409 (`ConcurrentUpdate`,
+       * `AlreadyConverted`, `InvalidStatusTransition`) reloads so the control re-offers only
+       * what the fresh status allows; `onError` gets the parsed error either way.
+       */
+      changeStatus(
+        id: string,
+        status: LeadStatus,
+        handlers?: { onSuccess?: () => void; onError?: (err: ParsedApiError | null) => void },
+      ): void {
+        if (store.changingStatus()) return;
+        patchState(store, { changingStatus: true });
+        api.updateStatus(id, status).subscribe({
+          next: () => {
+            patchState(store, { changingStatus: false });
+            this.load(id);
+            handlers?.onSuccess?.();
+          },
+          error: (err: unknown) => {
+            patchState(store, { changingStatus: false });
+            if (!(err instanceof HttpErrorResponse)) {
+              handlers?.onError?.(null);
+              return;
+            }
+            if (err.status === 409) this.load(id);
+            handlers?.onError?.(errors.parse(err));
           },
         });
       },
