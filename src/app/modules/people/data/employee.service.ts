@@ -91,8 +91,8 @@ export class EmployeeService extends ApiService {
     );
   }
 
-  getById(id: string): Observable<EmployeeResponse> {
-    return this.get<unknown>(`/employees/${id}`).pipe(
+  getById(id: string, options?: { context?: HttpContext }): Observable<EmployeeResponse> {
+    return this.get<unknown>(`/employees/${id}`, undefined, options).pipe(
       map((r) => this.normalizeEmployeeResponse(this.unwrap(r))),
     );
   }

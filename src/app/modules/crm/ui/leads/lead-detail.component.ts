@@ -24,7 +24,8 @@ import { EmployeeService } from '@modules/people';
 import { LeadStatus, ProjectSector } from '../../model/crm-enums';
 import type { CrmLead } from '../../data/crm-lead.service';
 import type { LeadIntakeRequest, ResidentialIntakeRequest } from '../../model';
-import { CanDirective, PERM } from '@platform/permissions';
+import { CanDirective, PERM, PermissionsService } from '@platform/permissions';
+import { handled } from '@platform/http/handled-errors';
 import {
   AREA_SQM_MAX,
   AREA_SQM_MIN,
@@ -392,6 +393,7 @@ export class CrmLeadDetailComponent {
   private readonly confirm = inject(ConfirmService);
   private readonly toast = inject(ToastService);
   private readonly directory = inject(EmployeeService);
+  private readonly permissions = inject(PermissionsService);
   protected readonly catalog = inject(CatalogService);
   protected readonly store = inject(LeadDetailStore);
   protected readonly PERM = PERM;
@@ -402,6 +404,8 @@ export class CrmLeadDetailComponent {
    * so an inactive owner still resolves; the active-only list read missed them.
    */
   private readonly owners = signal<Record<string, string>>({});
+  /** Owner ids already looked up (FINDING-P2-14) — recorded before the request goes out. */
+  private readonly ownerLookups = new Set<string>();
 
   /** The status `pera-select`; its trigger gets an accessible name (FINDING-P2-11). */
   private readonly statusSelect = viewChild('statusSelect', { read: ElementRef });
@@ -515,11 +519,16 @@ export class CrmLeadDetailComponent {
       if (id) this.store.load(id);
     });
 
+    // FINDING-P2-14: one lookup per owner id, success or not, and only with `employees.read` (the
+    // route's claim) — a failed or still-pending lookup is never re-sent on a lead reload. A 404 (no
+    // such employee) falls back to "—" silently.
     effect(() => {
       const ownerId = this.store.lead()?.ownerId;
-      if (!ownerId || untracked(() => ownerId in this.owners())) return;
+      if (!ownerId || this.ownerLookups.has(ownerId)) return;
+      if (!untracked(() => this.permissions.can(PERM.employees.read))) return;
+      this.ownerLookups.add(ownerId);
       this.directory
-        .getById(ownerId)
+        .getById(ownerId, { context: handled(404) })
         .pipe(catchError(() => of(null)))
         .subscribe((e) => {
           if (e?.fullName) this.owners.update((m) => ({ ...m, [ownerId]: e.fullName }));

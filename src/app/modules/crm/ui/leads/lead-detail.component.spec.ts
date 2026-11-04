@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ToastService } from '@platform/feedback/toast.service';
 import { AR } from '@platform/i18n/catalog/ar';
 import { errorInterceptor } from '@platform/http/error.interceptor';
+import { HANDLED_ERROR_STATUSES } from '@platform/http/handled-errors';
 import { PermissionsService } from '@platform/permissions';
 import { ModalService, type SelectOption } from '@ds';
 import { EmployeeService } from '@modules/people';
@@ -308,5 +309,79 @@ describe('CrmLeadDetailComponent — status change failure toasts (FINDING-P2-2)
     flushReads();
     expect(toast.show).toHaveBeenCalledTimes(1);
     expect(toast.show.mock.calls[0][0].tone).toBe('danger');
+  });
+});
+
+// crm-prod FINDING-P2-14: the owner lookup goes out once per owner id, behind the real
+// EmployeeService and errorInterceptor — never again on a lead reload, never without the claim.
+describe('CrmLeadDetailComponent — owner lookup (FINDING-P2-14)', () => {
+  afterEach(() => TestBed.inject(HttpTestingController).verify());
+
+  function makeOwner(can: (p: string) => boolean) {
+    const toast = { show: vi.fn() };
+    TestBed.configureTestingModule({
+      imports: [CrmLeadDetailComponent],
+      providers: [
+        provideRouter([]),
+        provideHttpClient(withInterceptors([errorInterceptor])),
+        provideHttpClientTesting(),
+        LeadDetailStore,
+        { provide: ToastService, useValue: toast },
+        { provide: PermissionsService, useValue: { can } },
+        { provide: ModalService, useValue: { open: vi.fn() } },
+      ],
+    });
+    const http = TestBed.inject(HttpTestingController);
+    const store = TestBed.inject(LeadDetailStore);
+    const fixture = TestBed.createComponent(CrmLeadDetailComponent);
+    fixture.componentRef.setInput('leadId', 'L');
+    const flushLead = () => {
+      fixture.detectChanges();
+      http
+        .match((r) => r.method === 'GET' && r.url.includes('/crm/leads/'))
+        .forEach((r) => r.flush(r.request.url.endsWith('/intake') ? {} : { ...lead }));
+      fixture.detectChanges();
+    };
+    const employeeGets = () =>
+      http.match((r) => r.method === 'GET' && r.url.includes('/employees/'));
+    return { http, toast, store, fixture, flushLead, employeeGets };
+  }
+
+  it('three lead reloads send one GET /employees/{id}, even while it is pending or after a 404', () => {
+    const { store, flushLead, employeeGets, toast } = makeOwner(() => true);
+    flushLead();
+    store.load('L');
+    flushLead();
+    const first = employeeGets();
+    expect(first).toHaveLength(1);
+    first[0].flush(null, { status: 404, statusText: 'Not Found' });
+    store.load('L');
+    flushLead();
+    store.load('L');
+    flushLead();
+    expect(employeeGets()).toHaveLength(0);
+    expect(toast.show).not.toHaveBeenCalled();
+  });
+
+  it('a 404 lookup is marked handled and shows the dash', () => {
+    const { flushLead, employeeGets, fixture } = makeOwner(() => true);
+    flushLead();
+    const [req] = employeeGets();
+    expect(req.request.context.get(HANDLED_ERROR_STATUSES)).toContain(404);
+    req.flush(null, { status: 404, statusText: 'Not Found' });
+    fixture.detectChanges();
+    const owner = (fixture.nativeElement as HTMLElement).querySelector(
+      '[data-testid="lead-owner"]',
+    );
+    expect(owner?.textContent).toContain('—');
+  });
+
+  it('without employees.read there is no GET /employees/{id} and no toast', () => {
+    const { store, flushLead, employeeGets, toast } = makeOwner((p) => p !== 'employees.read');
+    flushLead();
+    store.load('L');
+    flushLead();
+    expect(employeeGets()).toHaveLength(0);
+    expect(toast.show).not.toHaveBeenCalled();
   });
 });
