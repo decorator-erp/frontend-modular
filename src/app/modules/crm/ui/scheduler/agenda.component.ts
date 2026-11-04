@@ -43,13 +43,21 @@ import { MEETING_STATUS_CHIP, MEETING_TYPE_KEYS } from './meeting-labels';
                 <div class="flex items-center gap-2">
                   <pera-status-badge [tone]="chip(m).tone" [label]="catalog.t(chip(m).key)" />
                   @if (canAct(m)) {
-                    <div class="flex items-center gap-1.5" *peraCan="PERM.crm.meetings.complete">
-                      <pera-button size="xs" variant="secondary" (click)="complete.emit(m.id)">{{
-                        catalog.t('sched.complete')
-                      }}</pera-button>
-                      <pera-button size="xs" variant="ghost" (click)="noShow.emit(m.id)">{{
-                        catalog.t('sched.noShow')
-                      }}</pera-button>
+                    <div class="flex items-center gap-1.5">
+                      <pera-button
+                        size="xs"
+                        variant="secondary"
+                        *peraCan="PERM.crm.meetings.complete"
+                        (click)="complete.emit(m.id)"
+                        >{{ catalog.t('sched.complete') }}</pera-button
+                      >
+                      <pera-button
+                        size="xs"
+                        variant="ghost"
+                        *peraCan="PERM.crm.meetings.markNoShow"
+                        (click)="noShow.emit(m.id)"
+                        >{{ catalog.t('sched.noShow') }}</pera-button
+                      >
                     </div>
                   }
                   <div class="flex items-center gap-1.5">

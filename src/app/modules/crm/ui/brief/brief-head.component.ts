@@ -197,7 +197,7 @@ function enumOptions<T extends number>(
           }
           <pera-button
             variant="primary"
-            *peraCan="PERM.crm.briefs.manage"
+            *peraCan="PERM.crm.briefs.send"
             [disabled]="store.isHeadRoundOutstanding()"
             [loading]="store.sending()"
             (click)="send()"

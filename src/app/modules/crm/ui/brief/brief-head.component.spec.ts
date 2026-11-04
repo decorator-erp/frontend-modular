@@ -135,3 +135,39 @@ describe('CrmBriefHeadComponent — save (009b #12)', () => {
     );
   });
 });
+
+describe('CrmBriefHeadComponent — send gate (crm-prod H2)', () => {
+  function sendButton(can: (p: string) => boolean): HTMLElement | undefined {
+    TestBed.configureTestingModule({
+      imports: [CrmBriefHeadComponent],
+      providers: [
+        {
+          provide: BriefStore,
+          useValue: {
+            head: signal<BriefHead | null>(HEAD),
+            updateHead: vi.fn(),
+            headRound: signal(0),
+            isHeadRoundOutstanding: signal(false),
+            sending: signal(false),
+            savingHead: signal(false),
+            error: signal(null),
+          },
+        },
+        { provide: PermissionsService, useValue: { can } },
+      ],
+    });
+    const fixture = TestBed.createComponent(CrmBriefHeadComponent);
+    fixture.detectChanges();
+    return Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('pera-button')).find(
+      (b) => b.textContent?.trim() === 'Send for confirmation',
+    ) as HTMLElement | undefined;
+  }
+
+  it('shows Send for confirmation with crm.briefs.send', () => {
+    expect(sendButton((p) => p === 'crm.briefs.send')).toBeDefined();
+  });
+
+  it('hides Send for confirmation with crm.briefs.manage alone', () => {
+    expect(sendButton((p) => p === 'crm.briefs.manage')).toBeUndefined();
+  });
+});

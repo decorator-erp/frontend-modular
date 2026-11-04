@@ -134,9 +134,10 @@ const SOURCE_LABEL_KEYS: Record<RequirementSource, CatalogKey> = {
                         <pera-status-badge tone="success" [label]="catalog.t('client.lbl')" />
                       }
                       @if (!isSupersededRow(item)) {
-                        <div *peraCan="PERM.crm.items.update" class="flex items-center gap-1.5">
+                        <div class="flex items-center gap-1.5">
                           @if (isLockedRow(item)) {
                             <button
+                              *peraCan="PERM.crm.items.supersede"
                               type="button"
                               class="fs-caption text-accent cursor-pointer underline outline-none focus-visible:outline-2 focus-visible:outline-accent disabled:opacity-50 disabled:cursor-not-allowed"
                               [disabled]="isPeriodClosed(item)"
@@ -147,6 +148,7 @@ const SOURCE_LABEL_KEYS: Record<RequirementSource, CatalogKey> = {
                             </button>
                           } @else {
                             <button
+                              *peraCan="PERM.crm.items.update"
                               type="button"
                               class="fs-caption text-text-secondary cursor-pointer underline outline-none focus-visible:outline-2 focus-visible:outline-accent disabled:opacity-50 disabled:cursor-not-allowed"
                               [disabled]="isPeriodClosed(item)"
@@ -157,6 +159,7 @@ const SOURCE_LABEL_KEYS: Record<RequirementSource, CatalogKey> = {
                             </button>
                             @if (item.approvalStatus === APPROVAL_STATE.Draft) {
                               <button
+                                *peraCan="PERM.crm.items.send"
                                 type="button"
                                 class="fs-caption text-accent cursor-pointer underline outline-none focus-visible:outline-2 focus-visible:outline-accent disabled:opacity-50 disabled:cursor-not-allowed"
                                 [disabled]="isPeriodClosed(item)"

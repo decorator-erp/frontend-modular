@@ -73,3 +73,17 @@ describe('CrmAgendaComponent labels (crm-prod H1)', () => {
     expect(text).not.toContain('Decline');
   });
 });
+
+describe('CrmAgendaComponent permission gates (crm-prod H2)', () => {
+  const started = () => scheduled('2020-01-01T08:00:00Z');
+
+  it('shows No-show with crm.meetings.mark_no_show and without complete', () => {
+    const labels = buttons(started(), (p) => p === 'crm.meetings.mark_no_show');
+    expect(labels).toEqual(['No-show']);
+  });
+
+  it('hides No-show with crm.meetings.complete alone', () => {
+    const labels = buttons(started(), (p) => p === 'crm.meetings.complete');
+    expect(labels).toEqual(['Complete']);
+  });
+});
