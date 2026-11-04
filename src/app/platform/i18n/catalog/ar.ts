@@ -1154,4 +1154,6 @@ export const AR: Partial<Record<CatalogKey, string>> = {
   'sow.notFoundHint': 'المشروع غير موجود أو غير نشط أو خارج نطاق صلاحياتك.',
   'sched.complete': 'إتمام',
   'sched.noShow': 'لم يحضر',
+  'sched.duration': 'المدة (بالدقائق)',
+  'sched.location': 'المكان',
 };

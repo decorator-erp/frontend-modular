@@ -1227,6 +1227,8 @@ export const EN = {
   'sow.notFoundHint': 'The project is missing, inactive or outside your scope.',
   'sched.complete': 'Complete',
   'sched.noShow': 'No-show',
+  'sched.duration': 'Duration (minutes)',
+  'sched.location': 'Location',
 } as const;
 
 /** The key set of record. Every catalog lookup is typed against this. */
