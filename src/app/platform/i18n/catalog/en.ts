@@ -1232,6 +1232,7 @@ export const EN = {
   'lead.edit': 'Edit lead',
   'lead.updated': 'Lead updated.',
   'lead.changeStatus': 'Change status',
+  'lead.statusSelectLabel': 'Change status of this lead',
   'lead.statusChanged': 'Lead status updated.',
   'lead.statusChangeFailed': 'Could not change the lead status.',
   'common.retry': 'Retry',

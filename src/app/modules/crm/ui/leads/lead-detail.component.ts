@@ -1,11 +1,15 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  ElementRef,
+  afterRenderEffect,
   computed,
   effect,
   inject,
   input,
   signal,
+  untracked,
+  viewChild,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -161,6 +165,7 @@ const INTAKE_FIELD_MAP: Record<string, string> = {
               <div class="flex items-center gap-2 flex-wrap">
                 @if (store.statusTargets().length) {
                   <pera-select
+                    #statusSelect
                     *peraCan="PERM.crm.leads.changeStatus"
                     data-testid="lead-status"
                     variant="chip"
@@ -391,8 +396,15 @@ export class CrmLeadDetailComponent {
   protected readonly store = inject(LeadDetailStore);
   protected readonly PERM = PERM;
 
-  /** Employee id → full name, for the owner line (the leads list's directory read). */
+  /**
+   * Employee id → full name, for the owner line. FINDING-P2-11: read per owner through
+   * `GET /api/employees/{id}` (EmployeeEndpoints.cs:47-52, `employees.read` — the list's own claim),
+   * so an inactive owner still resolves; the active-only list read missed them.
+   */
   private readonly owners = signal<Record<string, string>>({});
+
+  /** The status `pera-select`; its trigger gets an accessible name (FINDING-P2-11). */
+  private readonly statusSelect = viewChild('statusSelect', { read: ElementRef });
 
   /** The status picker: it only ever holds a pick in flight, then resets to the placeholder. */
   readonly statusControl = new FormControl<string | null>(null);
@@ -503,17 +515,25 @@ export class CrmLeadDetailComponent {
       if (id) this.store.load(id);
     });
 
-    this.directory
-      .listPaged({ page: 1, pageSize: 500, isActive: true })
-      .pipe(
-        catchError(() => of(null)),
-        takeUntilDestroyed(),
-      )
-      .subscribe((paged) => {
-        const map: Record<string, string> = {};
-        for (const e of paged?.items ?? []) map[e.id] = e.fullName;
-        this.owners.set(map);
-      });
+    effect(() => {
+      const ownerId = this.store.lead()?.ownerId;
+      if (!ownerId || untracked(() => ownerId in this.owners())) return;
+      this.directory
+        .getById(ownerId)
+        .pipe(catchError(() => of(null)))
+        .subscribe((e) => {
+          if (e?.fullName) this.owners.update((m) => ({ ...m, [ownerId]: e.fullName }));
+        });
+    });
+
+    // `pera-select` takes no aria-label of its own: name its trigger button here. The name starts
+    // with the visible placeholder ("Change status") so the label stays in the name.
+    afterRenderEffect(() => {
+      const host = this.statusSelect()?.nativeElement as HTMLElement | undefined;
+      host
+        ?.querySelector('button')
+        ?.setAttribute('aria-label', this.catalog.t('lead.statusSelectLabel'));
+    });
 
     this.statusControl.valueChanges.pipe(takeUntilDestroyed()).subscribe((v) => {
       if (v) this.changeStatus(Number(v) as LeadStatus);

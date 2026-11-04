@@ -5,6 +5,7 @@ import { provideRouter } from '@angular/router';
 import { NEVER, of, throwError } from 'rxjs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ToastService } from '@platform/feedback/toast.service';
+import { AR } from '@platform/i18n/catalog/ar';
 import { errorInterceptor } from '@platform/http/error.interceptor';
 import { PermissionsService } from '@platform/permissions';
 import { ModalService, type SelectOption } from '@ds';
@@ -51,7 +52,7 @@ function make(
       { provide: ModalService, useValue: modal },
       {
         provide: EmployeeService,
-        useValue: { listPaged: () => of({ items: [{ id: 'E1', fullName: 'Sara Nabil' }] }) },
+        useValue: { getById: () => of({ id: 'E1', fullName: 'Sara Nabil' }) },
       },
     ],
   });
@@ -125,6 +126,30 @@ describe('CrmLeadDetailComponent — details and status (crm-prod H3)', () => {
     expect(rendered(fixture).querySelector('[data-testid="lead-owner"]')?.textContent).toContain(
       'Sara Nabil',
     );
+  });
+
+  it('FINDING-P2-11: an inactive owner resolves by id (GET /employees/{id})', () => {
+    TestBed.overrideProvider(EmployeeService, {
+      useValue: {
+        getById: vi.fn((id: string) =>
+          of({ id, fullName: id === 'E1' ? 'Former Owner' : '?', isActive: false }),
+        ),
+        listPaged: () => of({ items: [] }),
+      },
+    });
+    const { fixture } = make();
+    expect(rendered(fixture).querySelector('[data-testid="lead-owner"]')?.textContent).toContain(
+      'Former Owner',
+    );
+  });
+
+  it('FINDING-P2-11: the status select trigger has an accessible name from the catalog', () => {
+    const { fixture } = make(undefined, { can: only('crm.leads.change_status') });
+    const el = rendered(fixture);
+    fixture.detectChanges();
+    const trigger = el.querySelector('[data-testid="lead-status"] button');
+    expect(trigger?.getAttribute('aria-label')).toBe('Change status of this lead');
+    expect(AR['lead.statusSelectLabel']).toBeTruthy();
   });
 
   it('offers the status control with crm.leads.change_status, never Converted or the current one', () => {
@@ -238,7 +263,7 @@ describe('CrmLeadDetailComponent — status change failure toasts (FINDING-P2-2)
         { provide: ModalService, useValue: { open: vi.fn() } },
         {
           provide: EmployeeService,
-          useValue: { listPaged: () => of({ items: [{ id: 'E1', fullName: 'Sara Nabil' }] }) },
+          useValue: { getById: () => of({ id: 'E1', fullName: 'Sara Nabil' }) },
         },
       ],
     });

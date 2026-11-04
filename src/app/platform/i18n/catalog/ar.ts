@@ -1159,6 +1159,7 @@ export const AR: Partial<Record<CatalogKey, string>> = {
   'lead.edit': 'تعديل العميل المحتمل',
   'lead.updated': 'تم تحديث العميل المحتمل.',
   'lead.changeStatus': 'تغيير الحالة',
+  'lead.statusSelectLabel': 'تغيير الحالة لهذا العميل المحتمل',
   'lead.statusChanged': 'تم تحديث حالة العميل المحتمل.',
   'lead.statusChangeFailed': 'تعذّر تغيير حالة العميل المحتمل.',
   'common.retry': 'إعادة المحاولة',
