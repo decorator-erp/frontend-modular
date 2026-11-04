@@ -19,7 +19,7 @@ import { friendlyMessage } from '@platform/errors/error-catalog';
 import { CatalogService, STAGE_COUNT } from '@platform/i18n/catalog.service';
 import { formatCairoDate, intlLocale } from '@platform/i18n/intl-locale';
 import { PERM, PermissionsService } from '@platform/permissions';
-import { catchError, of } from 'rxjs';
+import { catchError, map, of } from 'rxjs';
 import { ProjectService } from '../../data/project.service';
 import type { Project } from '../../model/project.model';
 import type { ScopeOfWork } from '../../model/scope-of-work.model';
@@ -241,8 +241,10 @@ export class ScopeOfWorkPageComponent implements OnInit {
 
   /**
    * crm-prod L-fe-6: the project's name, code and client for the header, from
-   * `GET /api/projects/{id}` (`ProjectResponse`). Read only with `project.read`, and a failed read
-   * just leaves the header out: the scope page never depends on it (FINDING-7-7).
+   * `GET /api/projects/{id}/details` → `project` (`ProjectDetailsProjectResponse`, the one project
+   * read that carries `clientName` — `ProjectResponse` from `GET /{id}` has none; FINDING-P2-4).
+   * Same `project.read` claim as `GET /{id}` (ProjectEndpoints.cs:43-49). Read only with it, and a
+   * failed read just leaves the header out: the scope page never depends on it (FINDING-7-7).
    */
   protected readonly project = signal<Project | null>(null);
 
@@ -257,8 +259,11 @@ export class ScopeOfWorkPageComponent implements OnInit {
   private loadProject(): void {
     if (!this.permissions.can(PERM.projects.read)) return;
     this.projects
-      .getById(this.id())
-      .pipe(catchError(() => of(null)))
+      .getDetails(this.id())
+      .pipe(
+        map((d) => d.project),
+        catchError(() => of(null)),
+      )
       .subscribe((p) => this.project.set(p));
   }
 

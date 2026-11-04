@@ -1,5 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { HttpErrorResponse } from '@angular/common/http';
+import { HttpErrorResponse, provideHttpClient } from '@angular/common/http';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { environment } from '../../../../../environments/environment';
 import { provideRouter } from '@angular/router';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { of, Subject, throwError } from 'rxjs';
@@ -7,6 +9,7 @@ import { PermissionsService, PERM } from '@platform/permissions';
 import { ToastService } from '@platform/feedback/toast.service';
 import { ProjectService } from '../../data/project.service';
 import { ScopeOfWorkService } from '../../data/scope-of-work.service';
+import type { Project, ProjectDetails } from '../../model/project.model';
 import { ScopeOfWork, ScopeOfWorkItem, ScopeOfWorkStatus } from '../../model/scope-of-work.model';
 import { ScopeOfWorkPageComponent } from './scope-of-work-page.component';
 import { StageTemplatesService } from '@modules/library';
@@ -28,6 +31,11 @@ function item(over: Partial<ScopeOfWorkItem> = {}): ScopeOfWorkItem {
     sourceMissing: false,
     ...over,
   };
+}
+
+/** `ProjectService.getDetails()` result around a (partial) project — the header reads `.project`. */
+function details(project: Partial<Project>): Partial<ProjectDetails> {
+  return { project: project as Project, stages: [], unstagedTasks: [], taskCounts: [] };
 }
 
 function scope(over: Partial<ScopeOfWork> = {}): ScopeOfWork {
@@ -106,9 +114,9 @@ describe('ScopeOfWorkPageComponent — items (sow #3)', () => {
         {
           provide: ProjectService,
           useValue: {
-            getById: vi
+            getDetails: vi
               .fn()
-              .mockReturnValue(of({ id: 'p1', name: 'Villa', workflowType: 'Stage' })),
+              .mockReturnValue(of(details({ id: 'p1', name: 'Villa', workflowType: 'Stage' }))),
           },
         },
         { provide: PermissionsService, useValue: { can: (p: string) => granted.has(p) } },
@@ -528,7 +536,7 @@ describe('ScopeOfWorkPageComponent — errors (sow #8)', () => {
   let fixture: ComponentFixture<ScopeOfWorkPageComponent>;
   let el: HTMLElement;
   let api: Record<string, ReturnType<typeof vi.fn>>;
-  let project: { getById: ReturnType<typeof vi.fn> };
+  let project: { getDetails: ReturnType<typeof vi.fn> };
   let toast: { show: ReturnType<typeof vi.fn> };
   let granted: Set<string>;
 
@@ -545,7 +553,9 @@ describe('ScopeOfWorkPageComponent — errors (sow #8)', () => {
       confirm: vi.fn().mockReturnValue(of({ createdStageIds: [] })),
     };
     project = {
-      getById: vi.fn().mockReturnValue(of({ id: 'p1', name: 'Villa', workflowType: 'Stage' })),
+      getDetails: vi
+        .fn()
+        .mockReturnValue(of(details({ id: 'p1', name: 'Villa', workflowType: 'Stage' }))),
     };
     toast = { show: vi.fn() };
     TestBed.configureTestingModule({
@@ -650,7 +660,9 @@ describe('ScopeOfWorkPageComponent — errors (sow #8)', () => {
   });
 
   it('FreeStyle: read-only with the WorkflowNotSupported message; confirm disabled (B12)', () => {
-    project.getById.mockReturnValue(of({ id: 'p1', name: 'Villa', workflowType: 'FreeStyle' }));
+    project.getDetails.mockReturnValue(
+      of(details({ id: 'p1', name: 'Villa', workflowType: 'FreeStyle' })),
+    );
     api['getScope'].mockReturnValue(
       of(scope({ canConfirm: false, blockingReason: 'projects.scope.WorkflowNotSupported' })),
     );
@@ -667,9 +679,9 @@ describe('ScopeOfWorkPageComponent — errors (sow #8)', () => {
   });
 
   it('FINDING-7-7: a 403 on the project read does not stop the page (it is not read)', () => {
-    project.getById.mockReturnValue(throwError(() => coded('projects.AccessDenied', 403)));
+    project.getDetails.mockReturnValue(throwError(() => coded('projects.AccessDenied', 403)));
     render();
-    expect(project.getById).not.toHaveBeenCalled();
+    expect(project.getDetails).not.toHaveBeenCalled();
     expect(el.querySelector('app-sow-summary')).not.toBeNull();
     expect(el.querySelectorAll('tbody tr')).toHaveLength(2);
     expect(el.querySelector('pera-alert[tone="danger"]')).toBeNull();
@@ -677,11 +689,11 @@ describe('ScopeOfWorkPageComponent — errors (sow #8)', () => {
 
   it('crm-prod L-fe-6: with project.read the header shows the project name, code and client', () => {
     granted.add(PERM.projects.read);
-    project.getById.mockReturnValue(
-      of({ id: 'p1', name: 'Villa Rose', code: 'PRJ-7', clientName: 'Hana Saleh' }),
+    project.getDetails.mockReturnValue(
+      of(details({ id: 'p1', name: 'Villa Rose', code: 'PRJ-7', clientName: 'Hana Saleh' })),
     );
     render();
-    expect(project.getById).toHaveBeenCalledWith('p1');
+    expect(project.getDetails).toHaveBeenCalledWith('p1');
     const header = el.querySelector('[data-project-header]')?.textContent?.replace(/\s+/g, ' ');
     expect(header).toContain('Villa Rose');
     expect(header).toContain('PRJ-7');
@@ -690,7 +702,7 @@ describe('ScopeOfWorkPageComponent — errors (sow #8)', () => {
 
   it('crm-prod L-fe-6: a failed project read leaves the header out and the page working', () => {
     granted.add(PERM.projects.read);
-    project.getById.mockReturnValue(throwError(() => coded('projects.AccessDenied', 403)));
+    project.getDetails.mockReturnValue(throwError(() => coded('projects.AccessDenied', 403)));
     render();
     expect(el.querySelector('[data-project-header]')).toBeNull();
     expect(el.querySelector('app-sow-summary')).not.toBeNull();
@@ -739,5 +751,76 @@ describe('ScopeOfWorkPageComponent — errors (sow #8)', () => {
     expect(el.querySelector('[data-confirm-error]')).not.toBeNull();
     await pressConfirm();
     expect(el.querySelector('[data-confirm-error]')).toBeNull();
+  });
+});
+
+/**
+ * crm-prod FINDING-P2-4: the header against the REAL ProjectService and the backend's JSON. `GET
+ * /api/projects/{id}` answers `ProjectResponse` (ProjectContracts.cs:18-22 — no clientName); only
+ * `GET /{id}/details` → `project` (`ProjectDetailsProjectResponse`, :66-70) carries `clientName`.
+ */
+describe('ScopeOfWorkPageComponent — project header from the backend shape (FINDING-P2-4)', () => {
+  const projectJson = {
+    id: 'p1',
+    code: 'PRJ-7',
+    name: 'Villa Rose',
+    description: null,
+    status: 2,
+    workflowType: 1,
+    address: 'Cairo',
+    notes: null,
+    progressPercentage: 0,
+    estimatedStartDate: null,
+    estimatedEndDate: null,
+    actualStartDate: null,
+    actualEndDate: null,
+    clientId: 'c1',
+    ownerId: 'e1',
+    isActive: true,
+    stageCount: 0,
+  };
+
+  it('shows the client name read from GET /projects/{id}/details', () => {
+    TestBed.configureTestingModule({
+      imports: [ScopeOfWorkPageComponent],
+      providers: [
+        provideRouter([]),
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        ProjectService,
+        {
+          provide: ScopeOfWorkService,
+          useValue: { getScope: vi.fn().mockReturnValue(of(scope())) },
+        },
+        { provide: PermissionsService, useValue: { can: () => true } },
+        { provide: StageTemplatesService, useValue: { list: vi.fn(), stages: vi.fn() } },
+        { provide: EmployeeService, useValue: { getById: vi.fn().mockReturnValue(of(null)) } },
+        { provide: ConfirmService, useValue: { open: vi.fn() } },
+      ],
+    });
+    const http = TestBed.inject(HttpTestingController);
+    const fixture = TestBed.createComponent(ScopeOfWorkPageComponent);
+    fixture.componentRef.setInput('id', 'p1');
+    fixture.detectChanges();
+
+    // Both project reads answer the backend's own shape; only /details is a ProjectDetailsResponse.
+    http.match(`${environment.apiUrl}/projects/p1`).forEach((r) => r.flush(projectJson));
+    http.match(`${environment.apiUrl}/projects/p1/details`).forEach((r) =>
+      r.flush({
+        project: { ...projectJson, clientName: 'Hana Saleh' },
+        stages: [],
+        unstagedTasks: [],
+        taskCounts: [],
+        gates: { total: 0, pending: 0, satisfied: 0, rejected: 0 },
+      }),
+    );
+    fixture.detectChanges();
+
+    const header = (fixture.nativeElement as HTMLElement)
+      .querySelector('[data-project-header]')
+      ?.textContent?.replace(/\s+/g, ' ');
+    expect(header).toContain('Villa Rose');
+    expect(header).toContain('Client: Hana Saleh');
+    http.verify();
   });
 });
