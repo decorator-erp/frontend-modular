@@ -250,10 +250,20 @@ export class ClientsListComponent implements OnInit {
    * row's job title and representative name, with marital status blank — a blank field is sent as
    * `null`, which the backend keeps (Client.UpdateProfile).
    */
+  /** The client whose `GET /clients/{id}` is in flight for Edit (FINDING-P2-17), else null. */
+  private editLoadingId: string | null = null;
+
   private async openEdit(row: ClientResponse): Promise<void> {
-    const full = await firstValueFrom(
-      this.clientsApi.getById(row.id).pipe(catchError(() => of(null))),
-    );
+    // FINDING-P2-17: one read at a time — a double click (or a second row's Edit) while
+    // `GET /clients/{id}` is in flight is ignored, so only one dialog opens.
+    if (this.editLoadingId !== null) return;
+    this.editLoadingId = row.id;
+    let full: ClientResponse | null;
+    try {
+      full = await firstValueFrom(this.clientsApi.getById(row.id).pipe(catchError(() => of(null))));
+    } finally {
+      this.editLoadingId = null;
+    }
     const data: EditClientDialogData = {
       id: row.id,
       name: `${row.firstName} ${row.lastName}`.trim(),
