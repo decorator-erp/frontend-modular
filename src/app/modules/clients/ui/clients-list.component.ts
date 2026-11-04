@@ -247,13 +247,8 @@ export class ClientsListComponent implements OnInit {
   private async openEdit(row: ClientResponse): Promise<void> {
     const data: EditClientDialogData = {
       id: row.id,
-      initial: {
-        firstName: row.firstName,
-        lastName: row.lastName,
-        phone: row.phoneNumber ?? '',
-        address: row.address ?? '',
-        notes: row.notes,
-      },
+      name: `${row.firstName} ${row.lastName}`.trim(),
+      initial: { jobTitle: null, maritalStatus: null, representativeName: null },
     };
     const ref = this.modal.open<boolean>(EditClientDialogComponent, { size: 'md', data });
     if (await ref.afterClosed()) this.reload();

@@ -22,10 +22,14 @@ export interface CreateClientRequest {
   address: string;
   notes?: string;
 }
+/**
+ * crm-prod M8: `PUT /api/clients/{id}/profile` binds `UpdateProfileRequest(JobTitle, MaritalStatus,
+ * RepresentativeName)` (ClientEndpoints.cs:33-45, record at :158) — the only client edit the backend
+ * has. A `null` field keeps the stored value (Client.UpdateProfile). Name, phone, address and notes
+ * have no update route (deferred).
+ */
 export interface UpdateClientRequest {
-  firstName: string;
-  lastName: string;
-  phone: string;
-  address: string;
-  notes?: string;
+  jobTitle: string | null;
+  maritalStatus: string | null;
+  representativeName: string | null;
 }

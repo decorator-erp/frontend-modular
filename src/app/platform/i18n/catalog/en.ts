@@ -1291,6 +1291,9 @@ export const EN = {
   'project.backToProjects': 'Back to projects',
   'project.loadFailed': 'Could not load the project.',
   'project.loadFailedHint': 'Check your connection and try again.',
+  'clients.fJobTitle': 'Job title',
+  'clients.fMaritalStatus': 'Marital status',
+  'clients.fRepresentativeName': 'Representative name',
 } as const;
 
 /** The key set of record. Every catalog lookup is typed against this. */

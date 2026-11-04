@@ -1,8 +1,7 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { ClientResponse, CreateClientRequest, UpdateClientRequest } from '../model/client.model';
-import { AuthStore } from '@platform/auth/auth.store';
 import { ApiService, readField } from '@platform/http/api.service';
 
 /**
@@ -12,7 +11,10 @@ import { ApiService, readField } from '@platform/http/api.service';
 export function normalizeClient(source: unknown): ClientResponse {
   return {
     id: readField<string>(source, 'id', 'clientId') ?? '',
-    firstName: readField<string>(source, 'firstName') ?? '',
+    // crm-prod M8: `ClientListItemResponse` (ClientContracts.cs:85-87) carries one `displayName`,
+    // no first/last name. It lands in `firstName` so every `${firstName} ${lastName}` label reads it.
+    firstName:
+      readField<string>(source, 'firstName') ?? readField<string>(source, 'displayName') ?? '',
     lastName: readField<string>(source, 'lastName') ?? '',
     email: readField<string>(source, 'email') ?? '',
     userName: readField<string>(source, 'userName', 'username') ?? '',
@@ -23,14 +25,18 @@ export function normalizeClient(source: unknown): ClientResponse {
   };
 }
 
+/**
+ * Clients live in the CRM backend module: `/api/clients` (Crm.Infrastructure `ClientEndpoints.cs`).
+ * The actor comes from the token on every write — no `userId` goes on the wire.
+ */
 @Injectable({ providedIn: 'root' })
 export class ClientService extends ApiService {
-  private readonly auth = inject(AuthStore);
-  private get uid(): string {
-    return this.auth.user()?.userId ?? '';
-  }
+  /**
+   * `GET /api/clients?isActive=all&pageNumber=1&pageSize=200` (ClientEndpoints.cs:126-147): the first
+   * 200 clients the caller can see, active and inactive (a bare `/clients` lists active ones only).
+   */
   getAll(): Observable<ClientResponse[]> {
-    return this.get<unknown>('/clients').pipe(
+    return this.get<unknown>('/clients', { isActive: 'all', pageNumber: 1, pageSize: 200 }).pipe(
       map((response) => this.unwrapArray(response).map((client) => normalizeClient(client))),
     );
   }
@@ -41,22 +47,44 @@ export class ClientService extends ApiService {
     );
   }
 
+  /**
+   * `POST /api/clients` — `CreateClientCommand { email, password, firstName, lastName, address,
+   * phoneNumber?, notes? }` → `201 { clientId }` (ClientContracts.cs:36-43, ClientEndpoints.cs:26-31).
+   * `userName` has no backend field and is not sent.
+   */
   create(req: CreateClientRequest): Observable<string> {
-    return this.post<unknown>('/clients', req).pipe(
-      map((response) => this.unwrap<string>(response)),
+    const body = {
+      email: req.email,
+      password: req.password,
+      firstName: req.firstName,
+      lastName: req.lastName,
+      address: req.address,
+      phoneNumber: req.phone || null,
+      notes: req.notes ?? null,
+    };
+    return this.post<unknown>('/clients', body).pipe(
+      map((response) => this.unwrapId(response, 'clientId')),
     );
   }
 
+  /** `PUT /api/clients/{id}/profile` → 204 (ClientEndpoints.cs:33-45). */
   update(id: string, req: UpdateClientRequest): Observable<unknown> {
-    return this.put(`/clients/${id}`, req);
+    return this.put(`/clients/${id}/profile`, {
+      jobTitle: req.jobTitle,
+      maritalStatus: req.maritalStatus,
+      representativeName: req.representativeName,
+    });
   }
+  /** `PUT /api/clients/{id}/active` with `SetActiveRequest { isActive: true }` → 204 (ClientEndpoints.cs:47-58). */
   activate(id: string): Observable<unknown> {
-    return this.put(`/clients/${id}/activate`, {});
+    return this.put(`/clients/${id}/active`, { isActive: true });
   }
+  /** `PUT /api/clients/{id}/active` with `SetActiveRequest { isActive: false }` → 204 (ClientEndpoints.cs:47-58). */
   deactivate(id: string): Observable<unknown> {
-    return this.put(`/clients/${id}/deactivate?userId=${this.uid}`, {});
+    return this.put(`/clients/${id}/active`, { isActive: false });
   }
+  /** `DELETE /api/clients/{id}` → 204 (ClientEndpoints.cs:60-71). */
   deleteClient(id: string): Observable<unknown> {
-    return this.delete(`/clients/${id}?userId=${this.uid}`);
+    return this.delete(`/clients/${id}`);
   }
 }

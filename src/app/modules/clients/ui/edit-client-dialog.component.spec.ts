@@ -60,35 +60,35 @@ describe('EditClientDialogComponent', () => {
 
   const data: EditClientDialogData = {
     id: 'c1',
-    initial: {
-      firstName: 'Hana',
-      lastName: 'Saleh',
-      phone: '0512345678',
-      address: 'Riyadh, KSA',
-      notes: null,
-    },
+    name: 'Hana Saleh',
+    initial: { jobTitle: 'Engineer', maritalStatus: null, representativeName: null },
   };
 
-  it('submits only the editable fields (no email/username/password) to ClientService.update', () => {
+  it('crm-prod M8: submits exactly the profile fields PUT /clients/{id}/profile accepts (empty → null keeps)', () => {
     const c = make(data);
-    c.form.patchValue({ firstName: 'Hanaa' });
+    c.form.patchValue({ representativeName: '  Omar  ' });
     c.submit();
     expect(updated?.id).toBe('c1');
     expect(updated?.req).toEqual({
-      firstName: 'Hanaa',
-      lastName: 'Saleh',
-      phone: '0512345678',
-      address: 'Riyadh, KSA',
-      notes: undefined,
+      jobTitle: 'Engineer',
+      maritalStatus: null,
+      representativeName: 'Omar',
     });
-    expect(Object.keys(updated!.req)).not.toContain('email');
-    expect(Object.keys(updated!.req)).not.toContain('userName');
     expect(closedWith).toBe(true);
   });
 
-  it('blocks submit when a required field is cleared', () => {
+  it('crm-prod M8: offers no name, phone, address or notes field (no backend route updates them)', () => {
     const c = make(data);
-    c.form.patchValue({ address: '' });
+    expect(Object.keys(c.form.controls).sort()).toEqual([
+      'jobTitle',
+      'maritalStatus',
+      'representativeName',
+    ]);
+  });
+
+  it('blocks submit when a field exceeds the backend column length', () => {
+    const c = make(data);
+    c.form.patchValue({ maritalStatus: 'x'.repeat(65) });
     c.submit();
     expect(updated).toBeNull();
     expect(closedWith).toBeUndefined();
