@@ -241,6 +241,40 @@ describe('CrmApprovalsInboxComponent (crm-prod B1-fe)', () => {
     expect(document.activeElement).toBe(btn(fixture, 'request-changes'));
   });
 
+  function sendChangesOn(fixture: ComponentFixture<CrmApprovalsInboxComponent>, id: string) {
+    el(fixture).querySelector<HTMLButtonElement>(`[data-changes-for="${id}"] button`)!.click();
+    fixture.detectChanges();
+    const textarea = el(fixture).querySelector('textarea') as HTMLTextAreaElement;
+    textarea.value = 'Move the door.';
+    textarea.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    btn(fixture, 'send-changes')!.click();
+    http.expectOne(`${BASE}/${id}/decide`).flush(null, { status: 204, statusText: 'No Content' });
+    fixture.detectChanges();
+  }
+
+  it('FINDING-P2-12: after Request changes is sent, focus goes to the next pending row', async () => {
+    const fixture = render([wire('A1'), wire('A2')]);
+    sendChangesOn(fixture, 'A1');
+    list('pending').flush(page([wire('A2')]));
+    list('decided').flush(page([]));
+    fixture.detectChanges();
+    await new Promise((resolve) => setTimeout(resolve));
+    expect(document.activeElement).toBe(
+      el(fixture).querySelector('[data-changes-for="A2"] button'),
+    );
+  });
+
+  it('FINDING-P2-12: with no pending row left, focus goes to the section heading', async () => {
+    const fixture = render([wire('A1')]);
+    sendChangesOn(fixture, 'A1');
+    list('pending').flush(page([]));
+    list('decided').flush(page([]));
+    fixture.detectChanges();
+    await new Promise((resolve) => setTimeout(resolve));
+    expect(document.activeElement).toBe(el(fixture).querySelector('#appr-pending-h'));
+  });
+
   it('caps the comment at 2000 characters with an inline error', () => {
     const fixture = render();
     btn(fixture, 'request-changes')!.click();

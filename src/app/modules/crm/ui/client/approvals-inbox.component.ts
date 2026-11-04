@@ -86,7 +86,11 @@ const DECISION_CHIP: Record<ApprovalDecision, { tone: StatusBadgeTone; key: Cata
     <p class="fs-caption text-text-secondary m-0">{{ catalog.t('appr.apSub') }}</p>
 
     <section aria-labelledby="appr-pending-h">
-      <h2 id="appr-pending-h" class="font-semibold fs-body-sm text-text-primary m-0">
+      <h2
+        id="appr-pending-h"
+        tabindex="-1"
+        class="font-semibold fs-body-sm text-text-primary m-0 outline-none"
+      >
         {{ catalog.t('appr.yourApprovals') }}
         @if (store.pending().page > 0) {
           ({{ store.pending().totalCount }})
@@ -395,6 +399,13 @@ export class CrmApprovalsInboxComponent {
 
   private readonly changesBox = viewChild<ElementRef<HTMLElement>>('changesBox');
 
+  /**
+   * FINDING-P2-12: after a Request changes is sent the row (and the focused Send button) leaves
+   * the list. This holds the row's position until the pending re-read lands; focus then goes to
+   * the next pending row's first action, or to the section heading when none is left.
+   */
+  private readonly focusAfterReload = signal<number | null>(null);
+
   protected readonly commentValid = computed(() => {
     const text = this.comment().trim();
     return text.length > 0 && text.length <= PORTAL_APPROVAL_COMMENT_MAX;
@@ -420,6 +431,24 @@ export class CrmApprovalsInboxComponent {
       textarea?.setAttribute('aria-label', this.catalog.t('appr.changesComment'));
       textarea?.focus();
     });
+
+    effect(() => {
+      const index = this.focusAfterReload();
+      const pending = this.store.pending();
+      if (index === null || pending.loading) return;
+      this.focusAfterReload.set(null);
+      // After the re-rendered list is in the DOM.
+      setTimeout(() => this.focusPendingAt(index));
+    });
+  }
+
+  private focusPendingAt(index: number): void {
+    const root = this.host.nativeElement;
+    const actions = Array.from(
+      root.querySelectorAll<HTMLButtonElement>('[data-changes-for] button'),
+    );
+    const target = actions[Math.min(index, actions.length - 1)] ?? null;
+    (target ?? root.querySelector<HTMLElement>('#appr-pending-h'))?.focus();
   }
 
   protected subjectLabel(row: PortalApproval): string {
@@ -498,8 +527,12 @@ export class CrmApprovalsInboxComponent {
     this.commentTouched.set(true);
     if (!this.commentValid()) return;
     this.serverError.set(null);
+    const index = this.store.pending().rows.findIndex((r) => r.id === row.id);
     this.store.decide(row.id, ApprovalDecision.ChangesRequested, this.comment(), {
-      onDone: () => this.changesFor.set(null),
+      onDone: () => {
+        this.changesFor.set(null);
+        this.focusAfterReload.set(Math.max(0, index));
+      },
       onError: (message) => this.serverError.set(message),
     });
   }
