@@ -1,6 +1,7 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
+import { EN } from '@platform/i18n/catalog/en';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { BriefStore } from '../../stores/brief.store';
 import { ClientProfileStore } from '../../stores/client-profile.store';
@@ -73,5 +74,78 @@ describe('CrmClientProfileComponent — requirements tab (009b #N-3)', () => {
 
     expect(el.textContent).toContain('Your requirements list is not available yet.');
     expect(loadPortal).not.toHaveBeenCalled();
+  });
+});
+
+// crm-prod B1-fe: the approvals inbox's "View" link opens `/portal?projectId&tab`.
+describe('CrmClientProfileComponent — ?projectId&tab deep link (crm-prod B1-fe)', () => {
+  const loadAsClient = vi.fn();
+  const project = (id: string, name: string) => ({
+    id,
+    code: `PRJ-${id}`,
+    name,
+    status: 'InProgress',
+    productOwnerName: null,
+    progressPercentage: 0,
+    openPeriodId: null,
+  });
+
+  function render(query: Record<string, string>): HTMLElement {
+    loadAsClient.mockClear();
+    TestBed.configureTestingModule({
+      imports: [CrmClientProfileComponent],
+      providers: [
+        provideRouter([]),
+        {
+          provide: ActivatedRoute,
+          useValue: { snapshot: { queryParamMap: convertToParamMap(query) } },
+        },
+      ],
+    });
+    TestBed.overrideComponent(CrmClientProfileComponent, {
+      set: {
+        providers: [
+          {
+            provide: ClientProfileStore,
+            useValue: {
+              load: vi.fn(),
+              loading: signal(false),
+              loaded: signal(true),
+              error: signal(null),
+              client: signal(null),
+              contacts: signal([]),
+              projects: signal([project('P', 'Villa'), project('Q', 'Flat')]),
+              isSingleProject: signal(false),
+            },
+          },
+          {
+            provide: BriefStore,
+            useValue: {
+              loadAsClient,
+              error: signal(null),
+              nothingSent: signal(true),
+              head: signal(null),
+            },
+          },
+          { provide: MeetingsStore, useValue: { loadPortal: vi.fn(), agenda: signal([]) } },
+        ],
+      },
+    });
+    const fixture = TestBed.createComponent(CrmClientProfileComponent);
+    fixture.detectChanges();
+    return fixture.nativeElement as HTMLElement;
+  }
+
+  it('selects the named project and opens its Brief tab', () => {
+    const el = render({ projectId: 'Q', tab: 'brief' });
+    expect(loadAsClient).toHaveBeenCalledWith('Q');
+    expect(loadAsClient).not.toHaveBeenCalledWith('P');
+    expect(el.textContent).toContain(EN['client.briefNotSent']);
+  });
+
+  it('falls back to the first project and the overview for an unknown id or tab', () => {
+    const el = render({ projectId: 'X', tab: 'nope' });
+    expect(loadAsClient).toHaveBeenCalledWith('P');
+    expect(el.textContent).not.toContain(EN['client.briefNotSent']);
   });
 });

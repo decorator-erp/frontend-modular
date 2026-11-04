@@ -500,34 +500,44 @@ export interface PendingApproval {
   trackKey: string;
 }
 
-/** Reject and ChangesRequested comments are mandatory; whitespace-only counts as empty; max 2000. */
-export interface DecideApprovalRequest {
-  decision: ApprovalDecision;
-  comment: string | null;
-}
+/** `PortalApprovalSubjectType` / `PortalApprovalDecision` share the Approvals ordinals. */
+export type PortalApprovalStatus = 'pending' | 'decided';
 
 /**
- * `GET /api/crm/portal/approvals` — mirrors `ClientApprovalTrailResponse`. **A
- * different, richer shape than `PendingApproval`** (the office pending-list row):
- * this one row IS the client's whole trail entry — pending or decided — carrying
- * its own project identity, so the inbox needs no second lookup to label a row.
- * `pendingOnly=false` (this app's default) returns the FULL trail, which is exactly
- * what FR-029's "a decision trail MUST show past decisions" needs — one call serves
- * both the action list and the history.
+ * The two decisions the portal accepts (`PortalContracts.cs:78-83`): Rejected (2) is only ever
+ * READ on a decided row, and is a 400 `crm.portal.InvalidDecision` when sent.
  */
-export interface ClientApprovalTrailRow {
+export type PortalApprovalDecision = ApprovalDecision.Approved | ApprovalDecision.ChangesRequested;
+
+/** The changes-request comment cap, enforced server-side (`approvals.CommentTooLong`, 400). */
+export const PORTAL_APPROVAL_COMMENT_MAX = 2000;
+
+/**
+ * crm-prod B1-fe: one row of the client's approvals inbox — `PortalApprovalResponse`
+ * (`Crm.Contracts/Portal/PortalContracts.cs:114-117`), served by
+ * `GET /api/crm/portal/approvals?status=pending|decided`. Portal-only: no employee ids.
+ * A brief-round row has `briefId === subjectId` and `title === null`; an entry row carries
+ * its brief in `briefId` and the space name in `title` (null for a general entry).
+ */
+export interface PortalApproval {
   id: string;
   subjectType: ApprovalSubjectType;
   subjectId: string;
   projectId: string;
   projectName: string;
-  round: number;
-  createdAtUtc: string;
+  briefId: string | null;
+  stageId: string | null;
+  stageName: string | null;
+  /** The brief round, or the send the entry/item went out under; null when it can't be told. */
+  round: number | null;
+  title: string | null;
+  requestedAtUtc: string;
+  dueAtUtc: string | null;
   /** `null` ⇒ still pending. */
   decision: ApprovalDecision | null;
   decidedAtUtc: string | null;
+  /** The client's own comment; null when there was none. */
   comment: string | null;
-  responseDueAtUtc: string | null;
   /** Synthetic render key. Never a domain id — see `ApiService.trackKeyFor`. */
   trackKey: string;
 }

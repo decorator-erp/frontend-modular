@@ -1316,6 +1316,26 @@ export const EN = {
   'sow.confirmFacts': 'Total {total} EGP · estimated end {end}.',
   'sow.adjustmentNoteRequired': 'Give a reason for the adjustment.',
   'sow.feeDecimals': 'A fee has at most 2 decimals.',
+  // crm-prod B1-fe: the client approvals inbox.
+  'appr.loadFailed': 'Could not load your approvals.',
+  'appr.decisionSent': 'Your decision was sent.',
+  'appr.alreadyDecidedReloaded': 'This approval was already decided. Your list has been refreshed.',
+  'appr.goneReloaded': 'This approval is no longer available. Your list has been refreshed.',
+  'appr.requestChanges': 'Request changes',
+  'appr.changesComment': 'What should change?',
+  'appr.commentRequired': 'A comment is required.',
+  'appr.commentTooLong': 'Keep the comment to {max} characters or fewer.',
+  'appr.sendChanges': 'Send request',
+  'appr.briefRound': 'Brief round {round}',
+  'appr.viewBrief': 'View the brief',
+  'appr.viewEntry': 'View the entry',
+  'appr.viewProject': 'View the project',
+  'appr.requestedOn': 'Requested {date}',
+  'appr.decidedOn': 'Decided {date}',
+  'appr.dueOn': 'Due {date}',
+  'appr.loadMore': 'Load more',
+  'appr.pendingEmpty': 'Nothing is waiting for your decision.',
+  'appr.decidedEmpty': 'No decisions yet.',
 } as const;
 
 /** The key set of record. Every catalog lookup is typed against this. */

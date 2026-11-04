@@ -1,33 +1,187 @@
 import { TestBed } from '@angular/core/testing';
-import { describe, expect, it, beforeEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { provideHttpClient } from '@angular/common/http';
-import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import {
+  HttpTestingController,
+  provideHttpClientTesting,
+  type TestRequest,
+} from '@angular/common/http/testing';
+import { ToastService } from '@platform/feedback/toast.service';
+import { environment } from '../../../../environments/environment';
+import { ApprovalDecision } from '../model/crm-enums';
 import { ApprovalsInboxStore } from './approvals-inbox.store';
 
-describe('ApprovalsInboxStore', () => {
+const BASE = `${environment.apiUrl}/crm/portal/approvals`;
+
+function row(id: string, decision: number | null = null): Record<string, unknown> {
+  return {
+    id,
+    subjectType: 2,
+    subjectId: `b-${id}`,
+    projectId: 'p1',
+    projectName: 'Villa',
+    briefId: `b-${id}`,
+    stageId: null,
+    stageName: null,
+    round: 1,
+    title: null,
+    requestedAtUtc: '2026-10-01T10:00:00Z',
+    dueAtUtc: null,
+    decision,
+    decidedAtUtc: decision ? '2026-10-02T10:00:00Z' : null,
+    comment: null,
+  };
+}
+
+function page(items: Record<string, unknown>[], pageNumber = 1, totalPages = 1) {
+  return { items, pageNumber, pageSize: 20, totalCount: items.length, totalPages };
+}
+
+// crm-prod B1-fe: replaces 009b #N-2's "not available".
+describe('ApprovalsInboxStore (crm-prod B1-fe)', () => {
+  let http: HttpTestingController;
+  let toast: { show: ReturnType<typeof vi.fn> };
+
   beforeEach(() => {
+    toast = { show: vi.fn() };
     TestBed.configureTestingModule({
-      providers: [ApprovalsInboxStore, provideHttpClient(), provideHttpClientTesting()],
+      providers: [
+        ApprovalsInboxStore,
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        { provide: ToastService, useValue: toast },
+      ],
     });
+    http = TestBed.inject(HttpTestingController);
   });
 
+  afterEach(() => http.verify());
+
   const store = () => TestBed.inject(ApprovalsInboxStore);
+  const list = (status: 'pending' | 'decided'): TestRequest =>
+    http.expectOne((r) => r.url === BASE && r.params.get('status') === status);
+  const decideReq = (id: string): TestRequest => http.expectOne(`${BASE}/${id}/decide`);
+  const flushBoth = (pending = [row('a1'), row('a2')], decided = [row('d1', 1)]) => {
+    list('pending').flush(page(pending));
+    list('decided').flush(page(decided));
+  };
 
-  // 009b #N-2: no portal approvals route exists (EP/CrmPortalEndpoints.cs:36-153).
-  describe('load() (009b #N-2)', () => {
-    it('issues no request and reports approvals as not available yet', () => {
-      const s = store();
-      s.load();
-      TestBed.inject(HttpTestingController).verify();
-      expect(s.error()).toBe('appr.notAvailableYet');
-      expect(s.rows()).toEqual([]);
-      expect(s.pending()).toEqual([]);
-      expect(s.decided()).toEqual([]);
-      expect(s.loading()).toBe(false);
-    });
+  it('load() reads the first page of pending and decided', () => {
+    const s = store();
+    s.load();
+    expect(s.pending().loading).toBe(true);
+    flushBoth();
+    expect(s.pending().rows.map((r) => r.id)).toEqual(['a1', 'a2']);
+    expect(s.decided().rows.map((r) => r.id)).toEqual(['d1']);
+    expect(s.pending().loading).toBe(false);
+    expect(s.pending().error).toBeNull();
+  });
 
-    it('offers no client decide', () => {
-      expect((store() as unknown as Record<string, unknown>)['decide']).toBeUndefined();
+  it('loadMore() appends the next page, and stops on the last page', () => {
+    const s = store();
+    s.load();
+    list('pending').flush(page([row('a1')], 1, 2));
+    list('decided').flush(page([]));
+
+    s.loadMore('pending');
+    const next = list('pending');
+    expect(next.request.params.get('pageNumber')).toBe('2');
+    next.flush(page([row('a2')], 2, 2));
+    expect(s.pending().rows.map((r) => r.id)).toEqual(['a1', 'a2']);
+
+    s.loadMore('pending');
+    http.expectNone((r) => r.url === BASE);
+  });
+
+  it('a failed list read lands on a catalog message', () => {
+    const s = store();
+    s.load();
+    list('pending').flush(
+      { errors: { 'crm.portal.NotAClient': ['x'] } },
+      { status: 403, statusText: 'Forbidden' },
+    );
+    list('decided').flush(null, { status: 500, statusText: 'Server Error' });
+    expect(s.pending().error).toBe('This page is for clients only.');
+    expect(s.decided().error).toBe('Could not load your approvals.');
+  });
+
+  it('approve PUTs the decision, toasts, and re-reads both lists', () => {
+    const s = store();
+    s.load();
+    flushBoth();
+    const onDone = vi.fn();
+
+    s.decide('a1', ApprovalDecision.Approved, null, { onDone });
+    expect(s.isDeciding('a1')).toBe(true);
+    const req = decideReq('a1');
+    expect(req.request.body).toEqual({ decision: 1, comment: null });
+    req.flush(null, { status: 204, statusText: 'No Content' });
+
+    expect(s.isDeciding('a1')).toBe(false);
+    expect(onDone).toHaveBeenCalled();
+    expect(toast.show).toHaveBeenCalledWith({
+      tone: 'success',
+      message: 'Your decision was sent.',
     });
+    flushBoth([row('a2')], [row('a1', 1), row('d1', 1)]);
+    expect(s.pending().rows.map((r) => r.id)).toEqual(['a2']);
+    expect(s.decided().rows.map((r) => r.id)).toEqual(['a1', 'd1']);
+  });
+
+  it('holds one decide request per approval in flight (double click → one request)', () => {
+    const s = store();
+    s.decide('a1', ApprovalDecision.Approved, null);
+    s.decide('a1', ApprovalDecision.Approved, null);
+    s.decide('a1', ApprovalDecision.ChangesRequested, 'x');
+    const req = decideReq('a1');
+    req.flush(null, { status: 204, statusText: 'No Content' });
+    flushBoth();
+  });
+
+  it('409 approvals.AlreadyDecided reloads both lists and toasts', () => {
+    const s = store();
+    s.load();
+    flushBoth();
+    s.decide('a1', ApprovalDecision.Approved, null);
+    decideReq('a1').flush(
+      { errors: { 'approvals.AlreadyDecided': ['x'] } },
+      { status: 409, statusText: 'Conflict' },
+    );
+    expect(toast.show).toHaveBeenCalledWith({
+      tone: 'warning',
+      message: 'This approval was already decided. Your list has been refreshed.',
+    });
+    expect(s.isDeciding('a1')).toBe(false);
+    flushBoth([row('a2')], [row('a1', 1)]);
+    expect(s.pending().rows.map((r) => r.id)).toEqual(['a2']);
+  });
+
+  it('404 crm.portal.NotFound drops the row at once and reloads both lists', () => {
+    const s = store();
+    s.load();
+    flushBoth();
+    s.decide('a1', ApprovalDecision.Approved, null);
+    decideReq('a1').flush(
+      { errors: { 'crm.portal.NotFound': ['x'] } },
+      { status: 404, statusText: 'Not Found' },
+    );
+    expect(s.pending().rows.map((r) => r.id)).toEqual(['a2']);
+    expect(toast.show).toHaveBeenCalledWith({
+      tone: 'warning',
+      message: 'This approval is no longer available. Your list has been refreshed.',
+    });
+    flushBoth([row('a2')], []);
+  });
+
+  it('a 400 goes to the caller inline, through the catalog, with no reload', () => {
+    const s = store();
+    const onError = vi.fn();
+    s.decide('a1', ApprovalDecision.ChangesRequested, ' ', { onError });
+    decideReq('a1').flush(
+      { errors: { 'approvals.CommentRequired': ['x'] } },
+      { status: 400, statusText: 'Bad Request' },
+    );
+    expect(onError).toHaveBeenCalledWith('A comment is required to reject or request changes.');
+    expect(toast.show).not.toHaveBeenCalled();
   });
 });
