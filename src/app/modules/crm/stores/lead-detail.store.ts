@@ -6,7 +6,8 @@ import { injectReloadOnConflict } from '@platform/http/concurrency';
 import { CrmLeadService, type CrmLead } from '../data/crm-lead.service';
 import { LeadStatus } from '../model/crm-enums';
 import type { ParsedApiError } from '@platform/types';
-import { ErrorHandlerService } from '@platform/http/error-handler.service';
+import { ErrorHandlerService, friendly } from '@platform/http/error-handler.service';
+import { ToastService } from '@platform/feedback/toast.service';
 import { HttpErrorResponse } from '@angular/common/http';
 import type { LeadIntakeRequest, LeadIntakeResponse } from '../model';
 
@@ -73,6 +74,7 @@ export const LeadDetailStore = signalStore(
       api = inject(CrmLeadService),
       errors = inject(ErrorHandlerService),
       catalog = inject(CatalogService),
+      toast = inject(ToastService),
       reloadOnConflict = injectReloadOnConflict(),
     ) => ({
       load(id: string): void {
@@ -149,7 +151,12 @@ export const LeadDetailStore = signalStore(
               return;
             }
             if (err.status === 409) this.load(id);
-            handlers?.onError?.(errors.parse(err));
+            const parsed = errors.parse(err);
+            // FINDING-P2-24: `updateStatus` marks 403 `handled`, so `errorInterceptor` is silent for
+            // it — the localized catalog toast lives here, for every caller, not in an optional
+            // `onError`.
+            if (err.status === 403) toast.show({ tone: 'danger', message: friendly(parsed) });
+            handlers?.onError?.(parsed);
           },
         });
       },

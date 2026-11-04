@@ -102,8 +102,9 @@ export class CrmLeadService extends ApiService {
   }
 
   /**
-   * `PUT /{id}/status` → `204`. FINDING-P2-16: 403 is `handled` — the lead page shows its own
-   * localized catalog toast for it; 0 and 5xx stay with `errorInterceptor`.
+   * `PUT /{id}/status` → `204`. FINDING-P2-16: 403 is `handled` — `LeadDetailStore.changeStatus`
+   * shows its localized catalog toast for every caller (FINDING-P2-24); 0 and 5xx stay with
+   * `errorInterceptor`.
    */
   updateStatus(id: string, status: LeadStatus): Observable<void> {
     return this.put<void>(`/crm/leads/${id}/status`, { status }, { context: handled(403) });
