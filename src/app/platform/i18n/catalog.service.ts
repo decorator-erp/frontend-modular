@@ -3,6 +3,15 @@ import { isDevMode } from '@angular/core';
 import { LocaleService } from './locale.service';
 import { EN, type CatalogKey } from './catalog/en';
 import { AR } from './catalog/ar';
+import { intlLocale } from './intl-locale';
+
+/**
+ * The catalog keys of one count phrase, by CLDR plural category (`Intl.PluralRules`).
+ * `other` is required and is the fallback; English uses `one`/`other`, Arabic all six.
+ */
+export type PluralForms = Partial<Record<Intl.LDMLPluralRule, CatalogKey>> & {
+  other: CatalogKey;
+};
 
 /**
  * The app's string catalog — feature 004, its first bilingual feature.
@@ -52,7 +61,27 @@ export class CatalogService {
 
     return params ? interpolate(value, params) : value;
   }
+
+  /**
+   * crm-prod L-fe-1: a plural-safe count phrase. Picks the form for `n`'s plural category in the
+   * active locale (`Intl.PluralRules`, so Arabic gets its zero/one/two/few/many/other), falling
+   * back to `forms.other`, and fills `{n}` with the count.
+   */
+  plural(forms: PluralForms, n: number, params?: Record<string, string | number>): string {
+    const category = new Intl.PluralRules(intlLocale(this.locale())).select(n);
+    return this.t(forms[category] ?? forms.other, { ...params, n });
+  }
 }
+
+/** crm-prod L-fe-1: "{n} stage(s)" in every plural form. */
+export const STAGE_COUNT: PluralForms = {
+  zero: 'common.stagesZero',
+  one: 'common.stagesOne',
+  two: 'common.stagesTwo',
+  few: 'common.stagesFew',
+  many: 'common.stagesMany',
+  other: 'common.stagesOther',
+};
 
 /** Replaces `{name}`-style slots. An absent param leaves its slot untouched. */
 function interpolate(value: string, params: Record<string, string | number>): string {

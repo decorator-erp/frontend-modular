@@ -16,7 +16,7 @@ import {
   PeraStatusBadgeComponent,
 } from '@ds';
 import { friendlyMessage } from '@platform/errors/error-catalog';
-import { CatalogService } from '@platform/i18n/catalog.service';
+import { CatalogService, STAGE_COUNT } from '@platform/i18n/catalog.service';
 import { formatCairoDate, intlLocale } from '@platform/i18n/intl-locale';
 import { PERM, PermissionsService } from '@platform/permissions';
 import { ScopeOfWorkStore } from '../../stores/scope-of-work.store';
@@ -187,7 +187,8 @@ export class ScopeOfWorkPageComponent implements OnInit {
     const end = scope.estimatedEndDate
       ? formatCairoDate(`${scope.estimatedEndDate}T00:00:00Z`, locale)
       : '—';
-    return this.catalog.t('sow.confirmedSummary', { n: scope.items.length, total, end });
+    const stages = this.catalog.plural(STAGE_COUNT, scope.items.length);
+    return this.catalog.t('sow.confirmedSummary', { stages, total, end });
   });
 
   /**
@@ -230,7 +231,7 @@ export class ScopeOfWorkPageComponent implements OnInit {
     const n = this.store.items().length;
     const ok = await this.confirmDialog.open({
       title: this.catalog.t('sow.confirmTitle'),
-      body: this.catalog.t('sow.confirmCopy', { n }),
+      body: this.catalog.t('sow.confirmCopy', { stages: this.catalog.plural(STAGE_COUNT, n) }),
       confirmLabel: this.catalog.t('sow.confirmScope'),
       cancelLabel: this.catalog.t('common.cancel'),
     });

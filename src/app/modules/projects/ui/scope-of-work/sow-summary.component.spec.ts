@@ -327,6 +327,12 @@ describe('SowSummaryComponent — confirm block (sow #7)', () => {
     expect(confirms).toBe(1);
   });
 
+  it('crm-prod L-fe-1: one item reads "1 stage", not "1 stages"', () => {
+    render(scope({ items: [sowItemLike('i1')] }));
+    expect(el.textContent).toContain('Confirming creates 1 stage with their tasks');
+    expect(el.textContent).not.toContain('1 stages');
+  });
+
   it("disabled with the blocking reason's catalog message when canConfirm is false (B10)", () => {
     render(scope({ canConfirm: false, blockingReason: 'projects.scope.DurationRequired' }));
     expect(button()!.disabled).toBe(true);

@@ -20,7 +20,7 @@ import {
 } from '@ds';
 import { friendlyMessage } from '@platform/errors/error-catalog';
 import type { CatalogKey } from '@platform/i18n/catalog/en';
-import { CatalogService } from '@platform/i18n/catalog.service';
+import { CatalogService, STAGE_COUNT } from '@platform/i18n/catalog.service';
 import { formatCairoDate } from '@platform/i18n/intl-locale';
 import {
   ScopeOfWork,
@@ -166,7 +166,7 @@ type HeaderField = 'duration' | 'start' | 'adjustment' | 'adjustmentNote' | 'not
           <p class="m-0 fs-body-sm text-warning" data-blocking-reason>{{ reason }}</p>
         }
         <p class="m-0 fs-body-sm text-text-secondary">
-          {{ catalog.t('sow.confirmCopy', { n: scope().items.length }) }}
+          {{ catalog.t('sow.confirmCopy', { stages: stageCount() }) }}
         </p>
         @if (confirmError(); as message) {
           <p class="m-0 fs-body-sm text-danger" role="alert" data-confirm-error>{{ message }}</p>
@@ -252,6 +252,11 @@ export class SowSummaryComponent {
       return friendlyMessage(code, this.catalog.t('sow.confirmBlocked'), this.catalog.locale());
     return this.confirmPermitted() ? null : this.catalog.t('sow.confirmNoPermission');
   });
+
+  /** crm-prod L-fe-1: "1 stage" / "2 stages", and the Arabic plural forms. */
+  protected readonly stageCount = computed(() =>
+    this.catalog.plural(STAGE_COUNT, this.scope().items.length),
+  );
 
   protected readonly statusText = computed(() => {
     const status = this.saveStatus();

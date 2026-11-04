@@ -1217,11 +1217,11 @@ export const EN = {
   'sow.confirmScope': 'Confirm scope',
   'sow.confirmTitle': 'Confirm the scope of work?',
   'sow.confirmCopy':
-    "Confirming creates {n} stages with their tasks, teams and cost, in this order. It can't be undone.",
+    "Confirming creates {stages} with their tasks, teams and cost, in this order. It can't be undone.",
   'sow.confirmBlocked': "The scope of work can't be confirmed yet.",
   'sow.confirmNoPermission': "You don't have permission to confirm the scope of work.",
   'sow.confirmedOn': 'Confirmed on {date} by {name}.',
-  'sow.confirmedSummary': '{n} stages created · total {total} EGP · ends {end}.',
+  'sow.confirmedSummary': '{stages} created · total {total} EGP · ends {end}.',
   'sow.readOnlyFooter': 'Read-only. To add or change items after confirmation, raise a variation.',
   'sow.notFound': 'Scope of work not found',
   'sow.notFoundHint': 'The project is missing, inactive or outside your scope.',
@@ -1294,6 +1294,12 @@ export const EN = {
   'clients.fJobTitle': 'Job title',
   'clients.fMaritalStatus': 'Marital status',
   'clients.fRepresentativeName': 'Representative name',
+  'common.stagesZero': '{n} stages',
+  'common.stagesOne': '{n} stage',
+  'common.stagesTwo': '{n} stages',
+  'common.stagesFew': '{n} stages',
+  'common.stagesMany': '{n} stages',
+  'common.stagesOther': '{n} stages',
 } as const;
 
 /** The key set of record. Every catalog lookup is typed against this. */
