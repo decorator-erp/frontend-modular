@@ -646,9 +646,9 @@ export class CrmLeadDetailComponent {
       },
       onError: (parsed) => {
         this.statusControl.setValue(null, { emitEvent: false });
-        // errorInterceptor already toasted 0 / 403 / 5xx on this unmarked request — one toast only.
-        if (parsed && (parsed.status === 0 || parsed.status === 403 || parsed.status >= 500))
-          return;
+        // errorInterceptor already toasted 0 / 5xx — one toast only. 403 is marked `handled(403)`
+        // (FINDING-P2-16): the localized catalog message below is its only toast.
+        if (parsed && (parsed.status === 0 || parsed.status >= 500)) return;
         this.toast.show({
           tone: 'danger',
           message: parsed ? friendly(parsed) : this.catalog.t('lead.statusChangeFailed'),

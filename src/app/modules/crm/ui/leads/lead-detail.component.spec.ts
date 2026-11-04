@@ -6,6 +6,7 @@ import { NEVER, of, throwError } from 'rxjs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ToastService } from '@platform/feedback/toast.service';
 import { AR } from '@platform/i18n/catalog/ar';
+import { ERROR_MESSAGES } from '@platform/errors/error-catalog';
 import { errorInterceptor } from '@platform/http/error.interceptor';
 import { HANDLED_ERROR_STATUSES } from '@platform/http/handled-errors';
 import { PermissionsService } from '@platform/permissions';
@@ -297,6 +298,35 @@ describe('CrmLeadDetailComponent — status change failure toasts (FINDING-P2-2)
     c.statusControl.setValue(String(LeadStatus.Qualified));
     statusReq(http).error(new ProgressEvent('error'), { status: 0, statusText: 'Unknown Error' });
     expect(toast.show).toHaveBeenCalledTimes(1);
+  });
+
+  it('FINDING-P2-16: a coded 403 shows exactly one toast, the localized catalog message', () => {
+    const { c, http, toast } = makeReal();
+    c.statusControl.setValue(String(LeadStatus.Qualified));
+    const req = statusReq(http);
+    expect(req.request.context.get(HANDLED_ERROR_STATUSES)).toEqual([403]);
+    req.flush(
+      {
+        status: 403,
+        title: 'crm.access.NotAnEmployee',
+        errors: { 'crm.access.NotAnEmployee': ['x'] },
+      },
+      { status: 403, statusText: 'Forbidden' },
+    );
+    expect(toast.show).toHaveBeenCalledTimes(1);
+    expect(toast.show.mock.calls[0][0]).toEqual({
+      tone: 'danger',
+      message: ERROR_MESSAGES['crm.access.NotAnEmployee'],
+    });
+    expect(c.statusControl.value).toBeNull();
+  });
+
+  it('FINDING-P2-16: a route-permission (uncoded) 403 shows one toast, the catalog http.Forbidden', () => {
+    const { c, http, toast } = makeReal();
+    c.statusControl.setValue(String(LeadStatus.Qualified));
+    statusReq(http).flush(null, { status: 403, statusText: 'Forbidden' });
+    expect(toast.show).toHaveBeenCalledTimes(1);
+    expect(toast.show.mock.calls[0][0].message).toBe(ERROR_MESSAGES['http.Forbidden']);
   });
 
   it("a 409 still shows the component's own catalog toast once and reloads", () => {
