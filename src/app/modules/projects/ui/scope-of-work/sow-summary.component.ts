@@ -162,8 +162,12 @@ type HeaderField = 'duration' | 'start' | 'adjustment' | 'adjustmentNote' | 'not
       </div>
     } @else {
       <div class="${CARD}" data-confirm-block>
-        @if (blockingText(); as reason) {
-          <p class="m-0 fs-body-sm text-warning" data-blocking-reason>{{ reason }}</p>
+        @if (blockingTexts().length) {
+          <ul class="m-0 ps-5 flex flex-col gap-1 fs-body-sm text-warning" data-blocking-reasons>
+            @for (reason of blockingTexts(); track reason) {
+              <li data-blocking-reason>{{ reason }}</li>
+            }
+          </ul>
         }
         <p class="m-0 fs-body-sm text-text-secondary">
           {{ catalog.t('sow.confirmCopy', { stages: stageCount() }) }}
@@ -243,14 +247,29 @@ export class SowSummaryComponent {
     () => this.scope().canConfirm && this.confirmPermitted(),
   );
 
-  /** B10: why confirm is disabled: the catalog message for `blockingReason` (EN/AR). */
-  protected readonly blockingText = computed(() => {
-    const code = this.scope().blockingReason;
+  /**
+   * B10 / crm-prod L-fe-7: every reason confirm is disabled, as catalog messages (EN/AR). The
+   * server's `blockingReason` is only the FIRST rule confirm would fail on (ScopeOfWorkStore
+   * .ConfirmBlockerAsync), so the other rules that the stored scope shows are added after it in
+   * the server's order: no items, no duration, an adjustment without a note, a negative total,
+   * a deleted template stage. `ProjectHasStages` and `teams.MissingHead` only the server knows.
+   */
+  protected readonly blockingTexts = computed<string[]>(() => {
+    const s = this.scope();
+    const code = s.blockingReason;
     // FINDING-7-9: the page's FreeStyle alert already says this; don't say it twice.
-    if (code === 'projects.scope.WorkflowNotSupported') return null;
-    if (code)
-      return friendlyMessage(code, this.catalog.t('sow.confirmBlocked'), this.catalog.locale());
-    return this.confirmPermitted() ? null : this.catalog.t('sow.confirmNoPermission');
+    if (code === 'projects.scope.WorkflowNotSupported') return [];
+    if (!code) return this.confirmPermitted() ? [] : [this.catalog.t('sow.confirmNoPermission')];
+    const derived: [boolean, string][] = [
+      [s.items.length === 0, 'projects.scope.Empty'],
+      [s.durationDays === null, 'projects.scope.DurationRequired'],
+      [s.adjustmentAmount !== 0 && !s.adjustmentNote, 'projects.scope.AdjustmentNoteRequired'],
+      [s.total < 0, 'projects.scope.NegativeTotal'],
+      [s.items.some((i) => i.sourceMissing), 'projects.scope.SourceStageNotFound'],
+    ];
+    const codes = [code, ...derived.filter(([applies]) => applies).map(([, c]) => c)];
+    const fallback = this.catalog.t('sow.confirmBlocked');
+    return [...new Set(codes)].map((c) => friendlyMessage(c, fallback, this.catalog.locale()));
   });
 
   /** crm-prod L-fe-1: "1 stage" / "2 stages", and the Arabic plural forms. */

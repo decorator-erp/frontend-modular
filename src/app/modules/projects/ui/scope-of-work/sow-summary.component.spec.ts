@@ -340,6 +340,48 @@ describe('SowSummaryComponent — confirm block (sow #7)', () => {
     expect(el.textContent).not.toContain('1 stages');
   });
 
+  it('crm-prod L-fe-7: lists every blocking reason, the server one first, each once', () => {
+    render(
+      scope({
+        canConfirm: false,
+        blockingReason: 'projects.scope.DurationRequired',
+        durationDays: null,
+        items: [],
+        adjustmentAmount: -100,
+        adjustmentNote: null,
+        total: -100,
+      }),
+    );
+    const reasons = Array.from(el.querySelectorAll('[data-blocking-reason]')).map((r) =>
+      r.textContent!.trim(),
+    );
+    expect(reasons).toEqual(
+      [
+        'projects.scope.DurationRequired',
+        'projects.scope.Empty',
+        'projects.scope.AdjustmentNoteRequired',
+        'projects.scope.NegativeTotal',
+      ].map((c) => friendlyMessage(c, '', 'en')),
+    );
+  });
+
+  it('crm-prod L-fe-7: a server-only reason (ProjectHasStages) is listed with a deleted template stage', () => {
+    render(
+      scope({
+        canConfirm: false,
+        blockingReason: 'projects.scope.ProjectHasStages',
+        items: [{ ...sowItemLike('i1'), sourceMissing: true }],
+      }),
+    );
+    const reasons = Array.from(el.querySelectorAll('[data-blocking-reason]')).map((r) =>
+      r.textContent!.trim(),
+    );
+    expect(reasons).toEqual([
+      friendlyMessage('projects.scope.ProjectHasStages', '', 'en'),
+      friendlyMessage('projects.scope.SourceStageNotFound', '', 'en'),
+    ]);
+  });
+
   it("disabled with the blocking reason's catalog message when canConfirm is false (B10)", () => {
     render(scope({ canConfirm: false, blockingReason: 'projects.scope.DurationRequired' }));
     expect(button()!.disabled).toBe(true);
