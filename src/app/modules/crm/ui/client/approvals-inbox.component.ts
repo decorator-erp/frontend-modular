@@ -1,6 +1,7 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  DestroyRef,
   ElementRef,
   computed,
   effect,
@@ -438,12 +439,23 @@ export class CrmApprovalsInboxComponent {
       if (index === null || pending.loading) return;
       this.focusAfterReload.set(null);
       // After the re-rendered list is in the DOM.
-      setTimeout(() => this.focusPendingAt(index));
+      clearTimeout(this.focusTimer);
+      this.focusTimer = setTimeout(() => this.focusPendingAt(index));
     });
+
+    // FINDING-P2-18: a pending focus move never fires on a destroyed inbox.
+    inject(DestroyRef).onDestroy(() => clearTimeout(this.focusTimer));
   }
+
+  /** The pending post-reload focus move (FINDING-P2-18), cleared on destroy. */
+  private focusTimer: ReturnType<typeof setTimeout> | undefined;
 
   private focusPendingAt(index: number): void {
     const root = this.host.nativeElement;
+    // FINDING-P2-18: only take focus back from nowhere (`body`, where it lands when the focused
+    // row leaves the list) or from inside the inbox — never from where the user has since moved it.
+    const active = root.ownerDocument.activeElement;
+    if (active && active !== root.ownerDocument.body && !root.contains(active)) return;
     const actions = Array.from(
       root.querySelectorAll<HTMLButtonElement>('[data-changes-for] button'),
     );

@@ -275,6 +275,39 @@ describe('CrmApprovalsInboxComponent (crm-prod B1-fe)', () => {
     expect(document.activeElement).toBe(el(fixture).querySelector('#appr-pending-h'));
   });
 
+  it('FINDING-P2-18: focus the user moved elsewhere during the reload is not stolen', async () => {
+    const outside = document.createElement('input');
+    document.body.appendChild(outside);
+    try {
+      const fixture = render([wire('A1'), wire('A2')]);
+      sendChangesOn(fixture, 'A1');
+      outside.focus();
+      list('pending').flush(page([wire('A2')]));
+      list('decided').flush(page([]));
+      fixture.detectChanges();
+      await new Promise((resolve) => setTimeout(resolve));
+      expect(document.activeElement).toBe(outside);
+    } finally {
+      outside.remove();
+    }
+  });
+
+  it('FINDING-P2-18: a destroyed inbox moves no focus', async () => {
+    const fixture = render([wire('A1'), wire('A2')]);
+    sendChangesOn(fixture, 'A1');
+    list('pending').flush(page([wire('A2')]));
+    list('decided').flush(page([]));
+    fixture.detectChanges();
+    const focus = vi.spyOn(HTMLElement.prototype, 'focus');
+    try {
+      fixture.destroy();
+      await new Promise((resolve) => setTimeout(resolve));
+      expect(focus).not.toHaveBeenCalled();
+    } finally {
+      focus.mockRestore();
+    }
+  });
+
   it('caps the comment at 2000 characters with an inline error', () => {
     const fixture = render();
     btn(fixture, 'request-changes')!.click();
