@@ -89,7 +89,7 @@ const DECISION_CHIP: Record<ApprovalDecision, { tone: StatusBadgeTone; key: Cata
       <h2 id="appr-pending-h" class="font-semibold fs-body-sm text-text-primary m-0">
         {{ catalog.t('appr.yourApprovals') }}
         @if (store.pending().page > 0) {
-          ({{ store.pending().rows.length }})
+          ({{ store.pending().totalCount }})
         }
       </h2>
 

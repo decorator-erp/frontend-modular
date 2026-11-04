@@ -158,6 +158,16 @@ describe('CrmApprovalsInboxComponent (crm-prod B1-fe)', () => {
     expect(el(fixture).textContent).toContain('Brief round 1');
   });
 
+  it('FINDING-P2-6: the pending heading shows the server totalCount, not the rows loaded', () => {
+    const fixture = TestBed.createComponent(CrmApprovalsInboxComponent);
+    fixture.detectChanges();
+    list('pending').flush({ ...page([wire('A1'), wire('A2')]), totalCount: 45, totalPages: 3 });
+    list('decided').flush(page([]));
+    fixture.detectChanges();
+    const heading = el(fixture).querySelector('#appr-pending-h')?.textContent ?? '';
+    expect(heading.replace(/\s+/g, ' ')).toContain('(45)');
+  });
+
   it('Approve sends decision 1 and re-reads both lists', () => {
     const fixture = render();
     btn(fixture, 'approve')!.click();

@@ -19,6 +19,11 @@ export interface ApprovalsListState {
   /** The last page loaded (1-based); 0 before the first load. */
   page: number;
   totalPages: number;
+  /**
+   * The server's `totalCount` (FINDING-P2-6) — what the heading shows, not the rows loaded so far.
+   * The backend notes it may over-count rows it drops on read; shown as is.
+   */
+  totalCount: number;
   loading: boolean;
   /** A message already resolved through the catalog (`friendly()` / `catalog.t()`), or null. */
   error: string | null;
@@ -35,6 +40,7 @@ const EMPTY_LIST: ApprovalsListState = {
   rows: [],
   page: 0,
   totalPages: 0,
+  totalCount: 0,
   loading: false,
   error: null,
 };
@@ -97,6 +103,7 @@ export const ApprovalsInboxStore = signalStore(
             rows: [...kept, ...result.items.filter((r) => !seen.has(r.id))],
             page: result.page,
             totalPages: result.totalPages,
+            totalCount: result.totalCount,
             loading: false,
           });
         },
@@ -111,6 +118,14 @@ export const ApprovalsInboxStore = signalStore(
     const reloadAll = (onPendingSettled?: () => void): void => {
       loadPage('pending', 1, onPendingSettled);
       loadPage('decided', 1);
+    };
+
+    /** Takes a decided / gone approval out of `pending` at once, count included. */
+    const dropPending = (approvalId: string): void => {
+      const current = store.pending();
+      const rows = current.rows.filter((r) => r.id !== approvalId);
+      const dropped = current.rows.length - rows.length;
+      patchList('pending', { rows, totalCount: Math.max(0, current.totalCount - dropped) });
     };
 
     const release = (approvalId: string): void =>
@@ -151,9 +166,7 @@ export const ApprovalsInboxStore = signalStore(
           next: () => {
             // The row leaves the pending list at once and the approval stays held until the
             // pending re-read lands — a click between the 204 and the reload sends no second PUT.
-            patchList('pending', {
-              rows: store.pending().rows.filter((r) => r.id !== approvalId),
-            });
+            dropPending(approvalId);
             toast.show({ tone: 'success', message: catalog.t('appr.decisionSent') });
             handlers.onDone?.();
             reloadAll(() => release(approvalId));
@@ -166,9 +179,7 @@ export const ApprovalsInboxStore = signalStore(
               handlers.onDone?.();
               reloadAll();
             } else if (parsed?.status === 404) {
-              patchList('pending', {
-                rows: store.pending().rows.filter((r) => r.id !== approvalId),
-              });
+              dropPending(approvalId);
               toast.show({ tone: 'warning', message: catalog.t('appr.goneReloaded') });
               handlers.onDone?.();
               reloadAll();
