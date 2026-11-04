@@ -46,9 +46,10 @@ function make(getById: ReturnType<typeof vi.fn>) {
       { provide: ToastService, useValue: { show: vi.fn() } },
     ],
   });
-  const c = TestBed.createComponent(ClientsListComponent).componentInstance;
+  const fixture = TestBed.createComponent(ClientsListComponent);
+  const c = fixture.componentInstance;
   const edit = c.rowActions.find((a) => a.label === 'Edit')!;
-  return { modal, edit };
+  return { modal, edit, fixture };
 }
 
 // crm-prod FINDING-P2-5: Edit opened on an empty form, so a save could only ever "keep" values.
@@ -112,5 +113,23 @@ describe('ClientsListComponent — Edit double click (FINDING-P2-17)', () => {
     edit.action(row);
     await vi.waitFor(() => expect(modal.open).toHaveBeenCalledTimes(2));
     expect(getById).toHaveBeenCalledTimes(2);
+  });
+});
+
+// crm-prod FINDING-P2-25: a list destroyed mid-read still opened the Edit dialog on the next page.
+describe('ClientsListComponent — Edit after destroy (FINDING-P2-25)', () => {
+  it('destroying the list while GET /clients/{id} is in flight opens no dialog and drops the read', async () => {
+    const read = new Subject<ClientResponse>();
+    const getById = vi.fn().mockReturnValue(read);
+    const { modal, edit, fixture } = make(getById);
+    edit.action(row);
+    expect(read.observed).toBe(true);
+    fixture.destroy();
+    const wasObserved = read.observed;
+    read.next(row);
+    read.complete();
+    for (let i = 0; i < 5; i++) await Promise.resolve();
+    expect(modal.open).not.toHaveBeenCalled();
+    expect(wasObserved).toBe(false);
   });
 });

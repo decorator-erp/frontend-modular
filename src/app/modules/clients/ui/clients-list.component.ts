@@ -2,6 +2,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import {
   ChangeDetectionStrategy,
   Component,
+  DestroyRef,
   OnInit,
   TemplateRef,
   computed,
@@ -66,6 +67,7 @@ export class ClientsListComponent implements OnInit {
   private readonly toast = inject(ToastService);
   private readonly errors = inject(ErrorHandlerService);
   private readonly router = inject(Router);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly loading = signal(true);
   readonly rows = signal<ClientResponse[]>([]);
@@ -258,12 +260,21 @@ export class ClientsListComponent implements OnInit {
     // `GET /clients/{id}` is in flight is ignored, so only one dialog opens.
     if (this.editLoadingId !== null) return;
     this.editLoadingId = row.id;
-    let full: ClientResponse | null;
+    // FINDING-P2-25: the read ends with the list — `undefined` means the list was destroyed
+    // mid-read (a failed read is `null`), and then no dialog opens over the next page.
+    let full: ClientResponse | null | undefined;
     try {
-      full = await firstValueFrom(this.clientsApi.getById(row.id).pipe(catchError(() => of(null))));
+      full = await firstValueFrom(
+        this.clientsApi.getById(row.id).pipe(
+          catchError(() => of(null)),
+          takeUntilDestroyed(this.destroyRef),
+        ),
+        { defaultValue: undefined },
+      );
     } finally {
       this.editLoadingId = null;
     }
+    if (full === undefined) return;
     const data: EditClientDialogData = {
       id: row.id,
       name: `${row.firstName} ${row.lastName}`.trim(),
