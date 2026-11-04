@@ -59,7 +59,8 @@ export interface DecideHandlers {
  * `decide` holds one request per approval (`decidingIds`); a second call while one is in flight
  * is dropped. After a decision both lists are re-read: the subject's own status moves
  * asynchronously (the outbox), so nothing is assumed locally. 409 `approvals.AlreadyDecided` →
- * both lists reload and a toast says so; 404 → the row is dropped and both lists reload.
+ * both lists reload and a toast says so; 404 → the row is dropped and both lists reload. A
+ * network (0) or 5xx failure toasts nothing here: `errorInterceptor` already did (one toast).
  * **`rxMethod` is used nowhere in this repo and is not introduced here.**
  */
 export const ApprovalsInboxStore = signalStore(
@@ -164,6 +165,8 @@ export const ApprovalsInboxStore = signalStore(
               reloadAll();
             } else if (parsed?.status === 400 && handlers.onError) {
               handlers.onError(message(parsed, 'appr.decideFailed'));
+            } else if (parsed && (parsed.status === 0 || parsed.status >= 500)) {
+              // errorInterceptor already toasted the network / server failure — one toast only.
             } else {
               toast.show({ tone: 'danger', message: message(parsed, 'appr.decideFailed') });
             }

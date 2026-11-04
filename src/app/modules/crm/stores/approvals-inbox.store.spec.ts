@@ -1,12 +1,13 @@
 import { TestBed } from '@angular/core/testing';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import {
   HttpTestingController,
   provideHttpClientTesting,
   type TestRequest,
 } from '@angular/common/http/testing';
 import { ToastService } from '@platform/feedback/toast.service';
+import { errorInterceptor } from '@platform/http/error.interceptor';
 import { environment } from '../../../../environments/environment';
 import { ApprovalDecision } from '../model/crm-enums';
 import { ApprovalsInboxStore } from './approvals-inbox.store';
@@ -183,5 +184,58 @@ describe('ApprovalsInboxStore (crm-prod B1-fe)', () => {
     );
     expect(onError).toHaveBeenCalledWith('A comment is required to reject or request changes.');
     expect(toast.show).not.toHaveBeenCalled();
+  });
+});
+
+// crm-prod FINDING-P2-1: with the real errorInterceptor, a decide that fails on the network or
+// with a 5xx shows ONE toast (the interceptor's), not the interceptor's plus the store's.
+describe('ApprovalsInboxStore with errorInterceptor (FINDING-P2-1)', () => {
+  let http: HttpTestingController;
+  let toast: { show: ReturnType<typeof vi.fn> };
+
+  beforeEach(() => {
+    toast = { show: vi.fn() };
+    TestBed.configureTestingModule({
+      providers: [
+        ApprovalsInboxStore,
+        provideHttpClient(withInterceptors([errorInterceptor])),
+        provideHttpClientTesting(),
+        { provide: ToastService, useValue: toast },
+      ],
+    });
+    http = TestBed.inject(HttpTestingController);
+  });
+
+  afterEach(() => http.verify());
+
+  const decideReq = (id: string): TestRequest => http.expectOne(`${BASE}/${id}/decide`);
+
+  it('a 5xx on decide shows exactly one toast', () => {
+    const s = TestBed.inject(ApprovalsInboxStore);
+    s.decide('a1', ApprovalDecision.Approved, null);
+    decideReq('a1').flush(null, { status: 503, statusText: 'Service Unavailable' });
+    expect(toast.show).toHaveBeenCalledTimes(1);
+    expect(s.isDeciding('a1')).toBe(false);
+  });
+
+  it('a network failure (status 0) on decide shows exactly one toast', () => {
+    const s = TestBed.inject(ApprovalsInboxStore);
+    s.decide('a1', ApprovalDecision.Approved, null);
+    decideReq('a1').error(new ProgressEvent('error'), { status: 0, statusText: 'Unknown Error' });
+    expect(toast.show).toHaveBeenCalledTimes(1);
+  });
+
+  it("a 403 on decide still shows exactly one toast (the store's catalog message)", () => {
+    const s = TestBed.inject(ApprovalsInboxStore);
+    s.decide('a1', ApprovalDecision.Approved, null);
+    decideReq('a1').flush(
+      { errors: { 'crm.portal.NotAClient': ['x'] } },
+      { status: 403, statusText: 'Forbidden' },
+    );
+    expect(toast.show).toHaveBeenCalledTimes(1);
+    expect(toast.show).toHaveBeenCalledWith({
+      tone: 'danger',
+      message: 'This page is for clients only.',
+    });
   });
 });
