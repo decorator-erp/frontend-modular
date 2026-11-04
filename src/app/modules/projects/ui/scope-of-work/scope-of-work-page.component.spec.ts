@@ -63,7 +63,8 @@ describe('ScopeOfWorkPageComponent — items (sow #3)', () => {
   let dialog: { open: ReturnType<typeof vi.fn> };
 
   beforeEach(() => {
-    granted = new Set([PERM.scope.read, PERM.scope.manage, PERM.scope.confirm]);
+    // crm-prod L-fe-5: the template picker also needs stages.read.
+    granted = new Set([PERM.scope.read, PERM.scope.manage, PERM.scope.confirm, PERM.stages.read]);
     employees = { getById: vi.fn().mockReturnValue(of({ id: 'e1', fullName: 'Mona Adel' })) };
     dialog = { open: vi.fn().mockResolvedValue(true) };
     api = {
@@ -231,6 +232,23 @@ describe('ScopeOfWorkPageComponent — items (sow #3)', () => {
       .find((b) => b.textContent!.trim() === EN['sow.addWholeTemplate'])!
       .click();
     expect(api['addFromTemplate']).toHaveBeenCalledWith('p1', 't1');
+  });
+
+  it('crm-prod L-fe-5: without stages.read the picker toggle is hidden and the page says why', () => {
+    granted.delete(PERM.stages.read);
+    render();
+    expect(toggle()).toBeUndefined();
+    expect(el.querySelector('app-sow-template-picker')).toBeNull();
+    expect(el.querySelector('[data-picker-no-permission]')?.textContent?.trim()).toBe(
+      EN['sow.pickerNoPermission'],
+    );
+    expect(templates.list).not.toHaveBeenCalled();
+  });
+
+  it('crm-prod L-fe-5: with stages.read there is no missing-permission message', () => {
+    render();
+    expect(toggle()).toBeDefined();
+    expect(el.querySelector('[data-picker-no-permission]')).toBeNull();
   });
 
   it('sow #4: no picker toggle without scope.manage (B15)', () => {
@@ -505,7 +523,8 @@ describe('ScopeOfWorkPageComponent — errors (sow #8)', () => {
     new HttpErrorResponse({ status, error: { title: code, status, errors: { [code]: ['x'] } } });
 
   beforeEach(() => {
-    granted = new Set([PERM.scope.read, PERM.scope.manage, PERM.scope.confirm]);
+    // crm-prod L-fe-5: the template picker also needs stages.read.
+    granted = new Set([PERM.scope.read, PERM.scope.manage, PERM.scope.confirm, PERM.stages.read]);
     api = {
       getScope: vi.fn().mockReturnValue(of(scope({ canConfirm: true }))),
       updateHeader: vi.fn().mockReturnValue(of(undefined)),

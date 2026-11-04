@@ -95,7 +95,7 @@ const TOGGLE_BUTTON =
                 {{ catalog.t('sow.items') }}
                 <span class="text-text-muted font-medium">· {{ store.items().length }}</span>
               </h2>
-              @if (editable()) {
+              @if (editable() && canPickTemplates()) {
                 <button
                   type="button"
                   data-picker-toggle
@@ -108,7 +108,12 @@ const TOGGLE_BUTTON =
                 </button>
               }
             </div>
-            @if (editable() && pickerOpen()) {
+            @if (editable() && !canPickTemplates()) {
+              <p class="m-0 fs-body-sm text-text-muted" data-picker-no-permission>
+                {{ catalog.t('sow.pickerNoPermission') }}
+              </p>
+            }
+            @if (editable() && canPickTemplates() && pickerOpen()) {
               <app-sow-template-picker
                 [templates]="store.templates()"
                 [selectedTemplateId]="store.selectedTemplateId()"
@@ -162,6 +167,13 @@ export class ScopeOfWorkPageComponent implements OnInit {
 
   /** B15 `scope.manage`. */
   protected readonly canManage = computed(() => this.permissions.can(PERM.scope.manage));
+
+  /**
+   * crm-prod L-fe-5: the template picker reads `GET /api/stage-templates` and its stages, both
+   * `stages.read` (TemplateEndpoints.cs:22-27, 59-64). Without it the picker is hidden and the
+   * page says why, instead of offering a list that answers 403.
+   */
+  protected readonly canPickTemplates = computed(() => this.permissions.can(PERM.stages.read));
 
   /** B10/B15 `scope.confirm`. */
   protected readonly canConfirm = computed(() => this.permissions.can(PERM.scope.confirm));

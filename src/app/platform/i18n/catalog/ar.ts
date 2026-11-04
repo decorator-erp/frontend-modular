@@ -1238,4 +1238,5 @@ export const AR: Partial<Record<CatalogKey, string>> = {
   'route.scopeOfWork': 'نطاق العمل',
   'route.crmCatalog': 'الكتالوج',
   'route.designProfile': 'ملف تصميم العميل',
+  'sow.pickerNoPermission': 'إضافة بنود من قوالب المراحل تتطلب صلاحية عرض المراحل.',
 };

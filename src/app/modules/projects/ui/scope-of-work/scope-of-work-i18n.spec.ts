@@ -105,7 +105,9 @@ describe('Scope of work — i18n and direction (sow #9)', () => {
           provide: PermissionsService,
           useValue: {
             can: (p: string) =>
-              [PERM.scope.read, PERM.scope.manage, PERM.scope.confirm].includes(p as never),
+              [PERM.scope.read, PERM.scope.manage, PERM.scope.confirm, PERM.stages.read].includes(
+                p as never,
+              ),
           },
         },
         {
