@@ -24,7 +24,6 @@ import { LeadStatus, ProjectSector } from '../../model/crm-enums';
 import type { CrmLead } from '../../data/crm-lead.service';
 import type { LeadIntakeRequest, ResidentialIntakeRequest } from '../../model';
 import { CanDirective, PERM, PermissionsService } from '@platform/permissions';
-import { handled } from '@platform/http/handled-errors';
 import {
   AREA_SQM_MAX,
   AREA_SQM_MIN,
@@ -528,7 +527,7 @@ export class CrmLeadDetailComponent {
       if (!this.permissions.can(PERM.employees.read)) return;
       this.ownerLookups.add(ownerId);
       this.directory
-        .getById(ownerId, { context: handled(404) })
+        .lookupById(ownerId)
         .pipe(
           catchError((e: unknown) => {
             if (e instanceof HttpErrorResponse && (e.status === 0 || e.status >= 500)) {

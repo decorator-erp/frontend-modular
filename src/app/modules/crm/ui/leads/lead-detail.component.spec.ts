@@ -55,7 +55,7 @@ function make(
       { provide: ModalService, useValue: modal },
       {
         provide: EmployeeService,
-        useValue: { getById: () => of({ id: 'E1', fullName: 'Sara Nabil' }) },
+        useValue: { lookupById: () => of({ id: 'E1', fullName: 'Sara Nabil' }) },
       },
     ],
   });
@@ -134,7 +134,7 @@ describe('CrmLeadDetailComponent — details and status (crm-prod H3)', () => {
   it('FINDING-P2-11: an inactive owner resolves by id (GET /employees/{id})', () => {
     TestBed.overrideProvider(EmployeeService, {
       useValue: {
-        getById: vi.fn((id: string) =>
+        lookupById: vi.fn((id: string) =>
           of({ id, fullName: id === 'E1' ? 'Former Owner' : '?', isActive: false }),
         ),
         listPaged: () => of({ items: [] }),
@@ -266,7 +266,7 @@ describe('CrmLeadDetailComponent — status change failure toasts (FINDING-P2-2)
         { provide: ModalService, useValue: { open: vi.fn() } },
         {
           provide: EmployeeService,
-          useValue: { getById: () => of({ id: 'E1', fullName: 'Sara Nabil' }) },
+          useValue: { lookupById: () => of({ id: 'E1', fullName: 'Sara Nabil' }) },
         },
       ],
     });
