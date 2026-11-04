@@ -23,6 +23,7 @@ const BACKEND_CODES = [
   'crm.access.NotAClient', // Crm/Crm.Infrastructure/Services/CrmAccessGuard.cs:133
   'crm.access.NotAnEmployee', // Crm/Crm.Infrastructure/Services/CrmAccessGuard.cs:127
   'crm.access.Unauthenticated', // Crm/Crm.Infrastructure/Services/CrmAccessGuard.cs:114
+  'crm.artifacts.AlreadyLinked', // Crm/Crm.Domain/Errors/Errors.cs:335
   'crm.artifacts.DocumentNotFound', // Crm/Crm.Domain/Errors/Errors.cs:331
   'crm.artifacts.InvalidAuthor', // Crm/Crm.Domain/Errors/Errors.cs:326
   'crm.artifacts.InvalidSubject', // Crm/Crm.Domain/Errors/Errors.cs:322
@@ -71,7 +72,7 @@ const BACKEND_CODES = [
   'crm.contacts.ConcurrentPrimaryChange', // Crm/Crm.Domain/Errors/Errors.cs:46
   'crm.contacts.NameRequired', // Crm/Crm.Domain/Errors/Errors.cs:49
   'crm.contacts.NotFound', // Crm/Crm.Domain/Errors/Errors.cs:42
-  'crm.gates.UnsupportedOwner', // Crm/Crm.Domain/Errors/Errors.cs:354
+  'crm.gates.UnsupportedOwner', // Crm/Crm.Domain/Errors/Errors.cs:358
   'crm.items.AlreadyPending', // Crm/Crm.Domain/Errors/Errors.cs:287
   'crm.items.AlreadySuperseded', // Crm/Crm.Domain/Errors/Errors.cs:297
   'crm.items.BriefProjectMismatch', // Crm/Crm.Domain/Errors/Errors.cs:313
@@ -98,33 +99,33 @@ const BACKEND_CODES = [
   'crm.leads.NotFound', // Crm/Crm.Domain/Errors/Errors.cs:54
   'crm.leads.OwnerNotFound', // Crm/Crm.Domain/Errors/Errors.cs:84
   'crm.leads.ResidentialWithoutSector', // Crm/Crm.Domain/Errors/Errors.cs:87
-  'crm.meetings.AlreadyStarted', // Crm/Crm.Domain/Errors/Errors.cs:378
-  'crm.meetings.CancelReasonRequired', // Crm/Crm.Domain/Errors/Errors.cs:381
-  'crm.meetings.ConcurrentUpdate', // Crm/Crm.Domain/Errors/Errors.cs:385
-  'crm.meetings.InvalidProposer', // Crm/Crm.Domain/Errors/Errors.cs:365
-  'crm.meetings.InvalidRequester', // Crm/Crm.Domain/Errors/Errors.cs:362
-  'crm.meetings.InvalidSlotRange', // Crm/Crm.Domain/Errors/Errors.cs:368
-  'crm.meetings.InvalidStateTransition', // Crm/Crm.Domain/Errors/Errors.cs:375
-  'crm.meetings.NoSlotsProvided', // Crm/Crm.Domain/Errors/Errors.cs:409
-  'crm.meetings.NotCounterparty', // Crm/Crm.Domain/Errors/Errors.cs:403
-  'crm.meetings.NotFound', // Crm/Crm.Domain/Errors/Errors.cs:359
-  'crm.meetings.SlotExpired', // Crm/Crm.Domain/Errors/Errors.cs:389
-  'crm.meetings.SlotNotFound', // Crm/Crm.Domain/Errors/Errors.cs:397
-  'crm.meetings.SlotNotProposed', // Crm/Crm.Domain/Errors/Errors.cs:392
-  'crm.meetings.SlotTooLong', // Crm/Crm.Domain/Errors/Errors.cs:372
-  'crm.notes.NotAuthor', // Crm/Crm.Domain/Errors/Errors.cs:340
-  'crm.notes.NotFound', // Crm/Crm.Domain/Errors/Errors.cs:336
-  'crm.notes.ProjectMismatch', // Crm/Crm.Domain/Errors/Errors.cs:344
+  'crm.meetings.AlreadyStarted', // Crm/Crm.Domain/Errors/Errors.cs:382
+  'crm.meetings.CancelReasonRequired', // Crm/Crm.Domain/Errors/Errors.cs:385
+  'crm.meetings.ConcurrentUpdate', // Crm/Crm.Domain/Errors/Errors.cs:389
+  'crm.meetings.InvalidProposer', // Crm/Crm.Domain/Errors/Errors.cs:369
+  'crm.meetings.InvalidRequester', // Crm/Crm.Domain/Errors/Errors.cs:366
+  'crm.meetings.InvalidSlotRange', // Crm/Crm.Domain/Errors/Errors.cs:372
+  'crm.meetings.InvalidStateTransition', // Crm/Crm.Domain/Errors/Errors.cs:379
+  'crm.meetings.NoSlotsProvided', // Crm/Crm.Domain/Errors/Errors.cs:413
+  'crm.meetings.NotCounterparty', // Crm/Crm.Domain/Errors/Errors.cs:407
+  'crm.meetings.NotFound', // Crm/Crm.Domain/Errors/Errors.cs:363
+  'crm.meetings.SlotExpired', // Crm/Crm.Domain/Errors/Errors.cs:393
+  'crm.meetings.SlotNotFound', // Crm/Crm.Domain/Errors/Errors.cs:401
+  'crm.meetings.SlotNotProposed', // Crm/Crm.Domain/Errors/Errors.cs:396
+  'crm.meetings.SlotTooLong', // Crm/Crm.Domain/Errors/Errors.cs:376
+  'crm.notes.NotAuthor', // Crm/Crm.Domain/Errors/Errors.cs:344
+  'crm.notes.NotFound', // Crm/Crm.Domain/Errors/Errors.cs:340
+  'crm.notes.ProjectMismatch', // Crm/Crm.Domain/Errors/Errors.cs:348
   'crm.periods.AlreadyOpen', // Crm/Crm.Domain/Errors/Errors.cs:247
   'crm.periods.ConcurrentUpdate', // Crm/Crm.Domain/Errors/Errors.cs:251
   'crm.periods.InvalidCloseTime', // Crm/Crm.Domain/Errors/Errors.cs:254
   'crm.periods.NotFound', // Crm/Crm.Domain/Errors/Errors.cs:240
   'crm.periods.NotOpen', // Crm/Crm.Domain/Errors/Errors.cs:243
-  'crm.portal.InvalidDecision', // Crm/Crm.Domain/Errors/Errors.cs:426
-  'crm.portal.InvalidStatus', // Crm/Crm.Domain/Errors/Errors.cs:430
-  'crm.portal.NotAClient', // Crm/Crm.Domain/Errors/Errors.cs:422
-  'crm.portal.NotFound', // Crm/Crm.Domain/Errors/Errors.cs:419
-  'crm.projects.Inactive', // Crm/Crm.Domain/Errors/Errors.cs:438
+  'crm.portal.InvalidDecision', // Crm/Crm.Domain/Errors/Errors.cs:430
+  'crm.portal.InvalidStatus', // Crm/Crm.Domain/Errors/Errors.cs:434
+  'crm.portal.NotAClient', // Crm/Crm.Domain/Errors/Errors.cs:426
+  'crm.portal.NotFound', // Crm/Crm.Domain/Errors/Errors.cs:423
+  'crm.projects.Inactive', // Crm/Crm.Domain/Errors/Errors.cs:442
   'crm.space_types.CodeRequired', // Crm/Crm.Domain/Errors/Errors.cs:187
   'crm.space_types.DuplicateCode', // Crm/Crm.Domain/Errors/Errors.cs:194
   'crm.space_types.NameRequired', // Crm/Crm.Domain/Errors/Errors.cs:197

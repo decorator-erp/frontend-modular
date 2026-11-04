@@ -471,6 +471,8 @@ export const ERROR_MESSAGES: Record<string, string> = {
   'crm.meetings.SlotExpired': "This slot's start time has passed. Propose a new time.",
   'crm.notes.ProjectMismatch': "The note's project does not belong to this client.",
   'crm.artifacts.DocumentNotFound': 'The document was not found on this project.',
+  // crm-prod M1-fe: L-4's 409, a document links to a subject once (`Errors.cs:335`).
+  'crm.artifacts.AlreadyLinked': 'This document is already linked to this item.',
   'crm.projects.Inactive': 'This project is inactive and takes no new CRM work.',
   'approvals.ApprovalIdInUse': 'This approval belongs to a different subject.',
   'approvals.Unauthenticated': 'We could not identify you. Please sign in again.',
@@ -618,6 +620,7 @@ export const ERROR_MESSAGES_AR: Record<string, string> = {
   'crm.notes.ProjectMismatch': 'مشروع الملاحظة لا يخص هذا العميل.',
   'crm.notes.NotAuthor': 'لا يعدّل هذه الملاحظة إلا كاتبها.',
   'crm.artifacts.DocumentNotFound': 'المستند غير موجود في هذا المشروع.',
+  'crm.artifacts.AlreadyLinked': 'هذا المستند مرتبط بهذا البند بالفعل.',
   'crm.projects.Inactive': 'هذا المشروع غير مفعّل ولا يقبل عملًا جديدًا.',
   'approvals.ApprovalIdInUse': 'هذا الاعتماد يخص عنصرًا آخر.',
   'approvals.CommentRequired': 'يلزم تعليق للرفض أو لطلب تعديلات.',
