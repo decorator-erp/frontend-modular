@@ -18,6 +18,7 @@ import {
 } from '@ds';
 import type { CatalogKey } from '@platform/i18n/catalog/en';
 import { CatalogService } from '@platform/i18n/catalog.service';
+import { toAsciiDigits } from '@platform/i18n/intl-locale';
 import { ScopeOfWorkItem, UpdateScopeOfWorkItemRequest } from '../../model/scope-of-work.model';
 import { InnerInputLabelDirective } from './inner-input-label.directive';
 
@@ -245,7 +246,7 @@ export class SowItemsTableComponent {
 
   protected onFee(item: ScopeOfWorkItem, event: Event): void {
     if (!this.editable()) return;
-    const raw = valueOf(event).replace(/[,\s]/g, '');
+    const raw = toAsciiDigits(valueOf(event)).replace(/[,\s]/g, '');
     const fee = raw === '' ? NaN : Number(raw);
     if (!Number.isFinite(fee) || fee < 0 || fee > FEE_MAX) {
       this.setError(`${item.id}:fee`, 'sow.feeInvalid');

@@ -91,3 +91,16 @@ export function utcIsoToCairoLocalInput(isoUtc: string): string {
   const hour = get('hour') === '24' ? '00' : get('hour');
   return `${get('year')}-${get('month')}-${get('day')}T${hour}:${get('minute')}`;
 }
+
+/**
+ * crm-prod L-fe-2: typed numbers in ASCII. Arabic-Indic (٠-٩, U+0660-0669) and Extended
+ * Arabic-Indic (۰-۹, U+06F0-06F9) digits become 0-9, the Arabic decimal separator (٫) a `.` and
+ * the Arabic thousands separator (٬) a `,`, so an Arabic keyboard's money input parses.
+ */
+export function toAsciiDigits(text: string): string {
+  return text
+    .replace(/[\u0660-\u0669]/g, (d) => String(d.charCodeAt(0) - 0x0660))
+    .replace(/[\u06f0-\u06f9]/g, (d) => String(d.charCodeAt(0) - 0x06f0))
+    .replace(/\u066b/g, '.')
+    .replace(/\u066c/g, ',');
+}

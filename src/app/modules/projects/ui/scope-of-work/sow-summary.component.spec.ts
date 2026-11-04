@@ -246,6 +246,13 @@ describe('SowSummaryComponent — fees and adjustment (sow #6)', () => {
     ]);
   });
 
+  it('crm-prod L-fe-2: an adjustment typed in Arabic-Indic digits parses', () => {
+    render(scope({ adjustmentAmount: 0, adjustmentNote: null }));
+    change(adjustmentInput(), '-٧٬٥٠٠٫٢٥');
+    expect(emitted.map((h) => h.adjustmentAmount)).toEqual([-7500.25]);
+    expect(el.textContent).not.toContain(EN['sow.adjustmentInvalid']);
+  });
+
   it('an adjustment beyond ±1e12 is blocked', () => {
     render(scope());
     change(adjustmentInput(), '-1000000000001');

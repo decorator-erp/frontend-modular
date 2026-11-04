@@ -9,6 +9,7 @@ import {
 } from '@angular/core';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 import { LocaleService } from '@platform/i18n';
+import { toAsciiDigits } from '@platform/i18n/intl-locale';
 import { CurrencyContextService } from '@shared/ui/currency.context';
 import { MoneyService } from '@shared/ui/money.service';
 
@@ -114,7 +115,8 @@ export class PeraMoneyInputComponent implements ControlValueAccessor {
   }
 
   protected onInput(event: Event): void {
-    const typed = (event.target as HTMLInputElement).value;
+    // crm-prod L-fe-2: Arabic-Indic digits and separators are typed as their ASCII twins.
+    const typed = toAsciiDigits((event.target as HTMLInputElement).value);
     // Strip thousands separators and any whitespace; keep digits, the
     // decimal point, and a leading sign.
     const cleaned = typed.replace(/[,\s]/g, '');

@@ -21,7 +21,7 @@ import {
 import { friendlyMessage } from '@platform/errors/error-catalog';
 import type { CatalogKey } from '@platform/i18n/catalog/en';
 import { CatalogService, STAGE_COUNT } from '@platform/i18n/catalog.service';
-import { formatCairoDate } from '@platform/i18n/intl-locale';
+import { formatCairoDate, toAsciiDigits } from '@platform/i18n/intl-locale';
 import {
   ScopeOfWork,
   ScopeOfWorkStatus,
@@ -314,7 +314,7 @@ export class SowSummaryComponent {
   /** B8: negative allowed (a discount), ±1e12. */
   protected onAdjustment(event: Event): void {
     if (!this.editable()) return;
-    const raw = valueOf(event).replace(/[,\s]/g, '');
+    const raw = toAsciiDigits(valueOf(event)).replace(/[,\s]/g, '');
     const amount = raw === '' ? 0 : Number(raw);
     if (!Number.isFinite(amount) || Math.abs(amount) > ADJUSTMENT_MAX) {
       this.setError('adjustment', 'sow.adjustmentInvalid');
