@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import type * as TS from 'typescript';
 
 /**
  * crm-prod H4: CRM stores and screens never carry English prose for an error or a message — the
@@ -12,9 +13,16 @@ interface NodeFs {
 }
 
 /** The unit-test runner is Node; the module name is a variable so the bundler leaves it alone. */
-async function nodeFs(): Promise<NodeFs> {
-  const name = 'node:fs';
-  return (await import(/* @vite-ignore */ name)) as NodeFs;
+async function nodeImport<T>(name: string): Promise<T> {
+  return (await import(/* @vite-ignore */ name)) as T;
+}
+
+const nodeFs = (): Promise<NodeFs> => nodeImport<NodeFs>('node:fs');
+
+/** The compiler API (a devDependency); `default` when loaded as CommonJS through ESM. */
+async function typescript(): Promise<typeof TS> {
+  const mod = await nodeImport<typeof TS & { default?: typeof TS }>('typescript');
+  return mod.default ?? mod;
 }
 
 const ROOT = (globalThis as unknown as { process: { cwd(): string } }).process.cwd();
@@ -22,21 +30,50 @@ const CRM = `${ROOT}/src/app/modules/crm`;
 
 async function sources(folder: string): Promise<{ file: string; code: string }[]> {
   const fs = await nodeFs();
-  return fs
+  const files = fs
     .readdirSync(`${CRM}/${folder}`, { recursive: true })
-    .filter((f) => f.endsWith('.ts') && !f.endsWith('.spec.ts'))
-    .map((f) => ({
+    .filter((f) => f.endsWith('.ts') && !f.endsWith('.spec.ts'));
+  return Promise.all(
+    files.map(async (f) => ({
       file: `${folder}/${f}`,
-      code: stripComments(fs.readFileSync(`${CRM}/${folder}/${f}`, 'utf8')),
-    }));
+      code: await stripComments(fs.readFileSync(`${CRM}/${folder}/${f}`, 'utf8')),
+    })),
+  );
 }
 
-/** Drops `/* … *\/` blocks, `<!-- … -->` template comments and whole-line `//` comments. */
-function stripComments(code: string): string {
-  return code
-    .replace(/\/\*[\s\S]*?\*\//g, '')
-    .replace(/<!--[\s\S]*?-->/g, '')
-    .replace(/^\s*\/\/.*$/gm, '');
+/**
+ * Blanks every comment, and every `<!-- … -->` inside a string or template token, keeping the
+ * offsets. FINDING-P2-21: the comment ranges come from the TypeScript parser — a regex that strips
+ * `/* … *\/` first let a `/*` inside a string (`'/crm/public/*'`) or a `//` comment open a fake
+ * block that hid the live code after it.
+ */
+async function stripComments(code: string): Promise<string> {
+  const ts = await typescript();
+  const source = ts.createSourceFile('x.ts', code, ts.ScriptTarget.Latest, false, ts.ScriptKind.TS);
+  const blank: [number, number][] = [];
+  const visit = (node: TS.Node): void => {
+    ts.forEachLeadingCommentRange(code, node.pos, (pos, end) => void blank.push([pos, end]));
+    const kind = node.kind;
+    if (
+      kind === ts.SyntaxKind.StringLiteral ||
+      kind === ts.SyntaxKind.NoSubstitutionTemplateLiteral ||
+      kind === ts.SyntaxKind.TemplateHead ||
+      kind === ts.SyntaxKind.TemplateMiddle ||
+      kind === ts.SyntaxKind.TemplateTail
+    ) {
+      const start = node.getStart(source);
+      for (const m of code.slice(start, node.end).matchAll(/<!--[\s\S]*?-->/g)) {
+        blank.push([start + m.index, start + m.index + m[0].length]);
+      }
+    }
+    node.getChildren(source).forEach(visit);
+  };
+  visit(source);
+  const chars = code.split('');
+  for (const [pos, end] of blank) {
+    for (let i = pos; i < end; i++) if (chars[i] !== '\n') chars[i] = ' ';
+  }
+  return chars.join('');
 }
 
 /** A quoted literal that reads as an English sentence: a capitalised word, then two more words. */
@@ -56,6 +93,28 @@ function offences(files: { file: string; code: string }[], pattern: RegExp): str
 }
 
 describe('CRM English error literals (crm-prod H4)', () => {
+  it('a `/*` inside a string or line comment does not hide later code (FINDING-P2-21)', async () => {
+    const fixture = [
+      "const a = '/x/*';",
+      "this.error.set('Something went wrong');",
+      '// see /api/*',
+      "const message = 'Could not save it';",
+      '/** doc */',
+    ].join('\n');
+    const files = [{ file: 'fixture.ts', code: await stripComments(fixture) }];
+    expect(offences(files, ASSIGNED_TO_ERROR)).toHaveLength(2);
+  });
+
+  it('prose in a comment or a template comment is not a literal', async () => {
+    const fixture = [
+      "// this.error.set('Something went wrong');",
+      "/* const message = 'Could not save it'; */",
+      "const t = `<!-- error = 'Not a real one' -->`;",
+    ].join('\n');
+    const files = [{ file: 'fixture.ts', code: await stripComments(fixture) }];
+    expect(offences(files, ASSIGNED_TO_ERROR)).toEqual([]);
+  });
+
   it('no CRM store holds an English sentence', async () => {
     expect(offences(await sources('stores'), ENGLISH_SENTENCE)).toEqual([]);
   });
