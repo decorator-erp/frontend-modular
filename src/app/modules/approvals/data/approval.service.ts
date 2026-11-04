@@ -1,6 +1,5 @@
 import { Injectable } from '@angular/core';
 import { map, Observable } from 'rxjs';
-import { ApprovalRequest } from '../model/approval.model';
 import { ApiService } from '@platform/http/api.service';
 
 /**
@@ -23,35 +22,17 @@ export interface PendingApprovalResponse {
   subjectType?: string | null;
 }
 
-/** Approvals for projects: the pending list, the open gate queue, and gate rejection. */
+/**
+ * Approvals for projects: the pending list and gate rejection. The open gate queue read
+ * (`/projects/approval-requests`) is gone: the backend maps no such route (crm-prod
+ * F-approvals-route, deferred; FINDING-P2-10 removed the dead method).
+ */
 @Injectable({ providedIn: 'root' })
 export class ApprovalService extends ApiService {
   /** Approvals awaiting the caller. Used to resolve an approval notification's parent project. */
   listPending(): Observable<PendingApprovalResponse[]> {
     return this.get<unknown>('/approvals/pending').pipe(
       map((r) => this.unwrapArray<PendingApprovalResponse>(r)),
-    );
-  }
-
-  /**
-   * The open approval-gate queue (`/projects/approval-requests`) — the ManagerApproval inbox.
-   *
-   * **Deferred (crm-prod F-approvals-route): the backend maps no such route**, and none serves the
-   * same need — `GET /api/approvals/pending` is the caller's own approver queue with no project,
-   * owner or gate label (`PendingApprovalResponse`), and `/api/approvals/by-subject/…` is one
-   * subject's trail (`ApprovalEndpoints.cs:24-40`). Its only screen, the project page's "Open
-   * actions" KPI, is hidden (crm-prod B2-fe); nothing may call this until an office-scoped gate
-   * queue route ships.
-   *
-   * There is deliberately no client-side counterpart here. `/api/clients/approval-requests`
-   * exists but is SELF-SCOPED to the calling client (`GetClientApprovalRequestsQuery` returns
-   * `ClientErrors.NotFound` when the caller's `AppUserId` has no `Clients` row), so it 404s for
-   * every office user. Surfacing "waiting on client" on an office screen needs a new
-   * office-scoped endpoint, not this one.
-   */
-  getProjectApprovalRequests(): Observable<ApprovalRequest[]> {
-    return this.get<unknown>('/projects/approval-requests').pipe(
-      map((r) => this.unwrapArray(r).map((a) => this.normalize(a))),
     );
   }
 
@@ -62,27 +43,5 @@ export class ApprovalService extends ApiService {
         ? `/project-stages/${ownerId}/reject`
         : `/project-tasks/${ownerId}/reject`;
     return this.put(path, { reason: reason ?? null });
-  }
-
-  private normalize(source: unknown): ApprovalRequest {
-    return {
-      gateConditionId: this.field<string>(source, 'gateConditionId', 'id') ?? '',
-      ownerKind: String(this.field(source, 'ownerKind') ?? ''),
-      ownerId: this.field<string>(source, 'ownerId') ?? '',
-      ownerName: this.field<string>(source, 'ownerName') ?? '',
-      projectId: this.field<string>(source, 'projectId') ?? '',
-      projectName: this.field<string>(source, 'projectName') ?? '',
-      projectStageId: this.field<string | null>(source, 'projectStageId') ?? null,
-      stageName: this.field<string | null>(source, 'stageName') ?? null,
-      approvalType: String(this.field(source, 'approvalType') ?? ''),
-      label: this.field<string>(source, 'label') ?? '',
-      requestedAtUtc: this.field<string>(source, 'requestedAtUtc') ?? '',
-      trackKey: this.trackKeyFor(
-        source,
-        'ApprovalRequest.gateConditionId',
-        'gateConditionId',
-        'id',
-      ),
-    };
   }
 }

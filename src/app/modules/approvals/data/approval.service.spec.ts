@@ -26,22 +26,9 @@ describe('ApprovalService', () => {
     expect(result).toEqual([{ id: 'a1', projectId: 'p1' }]);
   });
 
-  // crm-prod F-approvals-route: `GET /api/projects/approval-requests` has no backend route, so
-  // no screen may call it (the project page's "Open actions" KPI is hidden, crm-prod B2-fe).
-  it('has no caller of the unmapped /projects/approval-requests outside this service', async () => {
-    const fsName = 'node:fs';
-    const fs = (await import(/* @vite-ignore */ fsName)) as {
-      readdirSync(path: string, options: { recursive: true }): string[];
-      readFileSync(path: string, encoding: 'utf8'): string;
-    };
-    const root = `${(globalThis as unknown as { process: { cwd(): string } }).process.cwd()}/src/app`;
-    const callers = fs
-      .readdirSync(root, { recursive: true })
-      .filter((f) => f.endsWith('.ts') && !f.endsWith('.spec.ts'))
-      .filter((f) => !f.endsWith('modules/approvals/data/approval.service.ts'))
-      .filter((f) =>
-        fs.readFileSync(`${root}/${f}`, 'utf8').includes('getProjectApprovalRequests('),
-      );
-    expect(callers).toEqual([]);
+  // crm-prod FINDING-P2-10: `GET /api/projects/approval-requests` has no backend route; the
+  // method that read it is deleted rather than left callable.
+  it('offers no read of the unmapped /projects/approval-requests', () => {
+    expect('getProjectApprovalRequests' in svc).toBe(false);
   });
 });
