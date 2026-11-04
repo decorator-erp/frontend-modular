@@ -33,7 +33,14 @@ function make(getById: ReturnType<typeof vi.fn>) {
     providers: [
       provideRouter([]),
       { provide: ClientService, useValue: { getById } },
-      { provide: ClientSearchService, useValue: {} },
+      {
+        provide: ClientSearchService,
+        useValue: {
+          search: vi
+            .fn()
+            .mockReturnValue(of({ items: [row], totalCount: 1, pageIndex: 1, totalPages: 1 })),
+        },
+      },
       { provide: ModalService, useValue: modal },
       { provide: ConfirmService, useValue: { open: vi.fn() } },
       { provide: ToastService, useValue: { show: vi.fn() } },
