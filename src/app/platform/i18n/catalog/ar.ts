@@ -1242,4 +1242,5 @@ export const AR: Partial<Record<CatalogKey, string>> = {
   'sow.headerClient': 'العميل: {name}',
   'sow.confirmFacts': 'الإجمالي {total} ج.م · الانتهاء المتوقع {end}.',
   'sow.adjustmentNoteRequired': 'اذكر سبب التعديل.',
+  'sow.feeDecimals': 'لا تتجاوز الأتعاب منزلتين عشريتين.',
 };

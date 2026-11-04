@@ -175,6 +175,17 @@ describe('SowItemsTableComponent (sow #3)', () => {
     expect(updates.map((u) => u.request.fee)).toEqual([30000.5, 120]);
   });
 
+  it('crm-prod L-fe-10: a fee with more than 2 decimals is blocked with its own message', () => {
+    render(ITEMS);
+    const fee = () => rows()[1].querySelector<HTMLInputElement>('pera-money-input input')!;
+    edit(fee(), '100.555');
+    expect(updates).toEqual([]);
+    expect(el.textContent).toContain(EN['sow.feeDecimals']);
+    edit(fee(), '100.55');
+    expect(updates.map((u) => u.request.fee)).toEqual([100.55]);
+    expect(el.textContent).not.toContain(EN['sow.feeDecimals']);
+  });
+
   it('client checks mirror the server and block the call (name 1..200, fee 0..1e12)', () => {
     render(ITEMS);
     edit(rows()[0].querySelector<HTMLInputElement>('pera-input input')!, '   ');

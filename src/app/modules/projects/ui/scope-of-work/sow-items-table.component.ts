@@ -113,6 +113,7 @@ const HEAD = 'px-3 py-2 fs-caption font-semibold text-text-muted text-start bg-s
                   <pera-money-input
                     [appInnerInputLabel]="catalog.t('sow.feeOf', { n: item.order })"
                     [ngModel]="current(item).fee"
+                    [digitsAfterDecimal]="2"
                     [disabled]="!editable()"
                     [error]="errors()[item.id + ':fee'] ? 'invalid' : undefined"
                     (change)="onFee(item, $event)"
@@ -250,6 +251,11 @@ export class SowItemsTableComponent {
     const fee = raw === '' ? NaN : Number(raw);
     if (!Number.isFinite(fee) || fee < 0 || fee > FEE_MAX) {
       this.setError(`${item.id}:fee`, 'sow.feeInvalid');
+      return;
+    }
+    // crm-prod L-fe-10: a fee is money in piastres at most — two decimals.
+    if (/\.\d{3,}$/.test(raw)) {
+      this.setError(`${item.id}:fee`, 'sow.feeDecimals');
       return;
     }
     this.setError(`${item.id}:fee`, null);

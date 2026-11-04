@@ -1315,6 +1315,7 @@ export const EN = {
   'sow.headerClient': 'Client: {name}',
   'sow.confirmFacts': 'Total {total} EGP · estimated end {end}.',
   'sow.adjustmentNoteRequired': 'Give a reason for the adjustment.',
+  'sow.feeDecimals': 'A fee has at most 2 decimals.',
 } as const;
 
 /** The key set of record. Every catalog lookup is typed against this. */
