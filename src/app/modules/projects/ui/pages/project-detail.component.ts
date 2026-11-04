@@ -327,7 +327,9 @@ export class ProjectDetailComponent implements OnInit {
     const due = this.shortDate(p.endDate);
     const pairs: EntityHeaderMeta[] = [
       { label: 'Client', value: p.clientName || '—' },
-      { label: 'Product owner', value: p.productOwnerName || '—' },
+      // The details response carries only `ownerId` (an hr employee id); the name resolves through
+      // the employee directory this page already loads for member and assignee names.
+      { label: 'Product owner', value: p.productOwnerName || this.nameOf(p.productOwnerId) || '—' },
     ];
     if (this.members().length) {
       pairs.push({ label: 'Team', value: { people: this.teamPeople(), max: 4 } });
@@ -344,7 +346,7 @@ export class ProjectDetailComponent implements OnInit {
     const p = this.project();
     if (!p) return [];
     const days = this.daysRemaining();
-    return [
+    const kpis: EntityHeaderKpi[] = [
       { caption: 'Progress', value: p.progressPercentage, frac: '%' },
       { caption: 'Tasks', value: this.totalTasks(), frac: `${this.doneCount()} done` },
       {
@@ -353,6 +355,12 @@ export class ProjectDetailComponent implements OnInit {
         frac: days === null ? undefined : days >= 0 ? 'd left' : 'd overdue',
       },
     ];
+    // ProjectDetailsResponse.Gates (crm-prod B2-fe): shown only when the project has gates.
+    const gates = this.details()?.gates;
+    if (gates && gates.total > 0) {
+      kpis.push({ caption: 'Gates', value: gates.pending, frac: `pending of ${gates.total}` });
+    }
+    return kpis;
   });
 
   ngOnInit(): void {
@@ -657,13 +665,28 @@ export class ProjectDetailComponent implements OnInit {
     void this.router.navigate(['/projects']);
   }
 
+  /**
+   * Refresh after a dialog write. A 404 (the project went away, or the caller lost access) lands on
+   * the not-found state: `getDetails` marks 404 handled, so nothing else would say so.
+   */
   private reload(): void {
     const id = this.route.snapshot.paramMap.get('id')!;
     this.projects
       .getDetails(id)
-      .pipe(catchError(() => of(null)))
+      .pipe(
+        catchError((err: unknown) => {
+          if (err instanceof HttpErrorResponse && err.status === 404)
+            this.loadError.set('notFound');
+          return of(null);
+        }),
+      )
       .subscribe((d) => {
         if (d) this.details.set(d);
       });
+  }
+
+  /** A task row's progress cell: the sub-task percentage, or a dash when the response has none. */
+  taskProgress(t: ProjectTask): string {
+    return t.progressPercent === null ? '—' : `${t.progressPercent}%`;
   }
 }

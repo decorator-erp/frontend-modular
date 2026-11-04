@@ -282,7 +282,7 @@
                     <span
                       class="text-end justify-self-end font-mono text-text-muted"
                       [style.fontSize]="'var(--fs-label)'"
-                      >{{ t.progressPercent }}%</span
+                      >{{ taskProgress(t) }}</span
                     >
                   </button>
                 } @empty {
@@ -325,7 +325,7 @@
                   <span
                     class="text-end justify-self-end font-mono text-text-muted"
                     [style.fontSize]="'var(--fs-label)'"
-                    >{{ t.progressPercent }}%</span
+                    >{{ taskProgress(t) }}</span
                   >
                 </button>
               } @empty {
