@@ -1291,6 +1291,8 @@ export const EN = {
   'project.backToProjects': 'Back to projects',
   'project.loadFailed': 'Could not load the project.',
   'project.loadFailedHint': 'Check your connection and try again.',
+  'project.kpiGates': 'Gates',
+  'project.kpiGatesPendingOf': 'pending of {total}',
   'clients.fJobTitle': 'Job title',
   'clients.fMaritalStatus': 'Marital status',
   'clients.fRepresentativeName': 'Representative name',

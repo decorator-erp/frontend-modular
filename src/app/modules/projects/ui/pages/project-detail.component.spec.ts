@@ -1,4 +1,4 @@
-import { NO_ERRORS_SCHEMA } from '@angular/core';
+import { NO_ERRORS_SCHEMA, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import {
   ActivatedRoute,
@@ -183,7 +183,7 @@ describe('ProjectDetailComponent', () => {
         useValue: { open: () => ({ afterClosed: () => Promise.resolve(undefined) }) },
       },
       { provide: ToastService, useValue: { show: () => undefined } },
-      { provide: LocaleService, useValue: { locale: () => 'en' } },
+      { provide: LocaleService, useValue: { locale: signal<'en' | 'ar'>('en') } },
       {
         provide: PermissionsService,
         useValue: {
@@ -518,6 +518,18 @@ describe('ProjectDetailComponent', () => {
       fixture.detectChanges();
       return fixture;
     }
+
+    it('FINDING-P2-8: the Gates KPI is catalogued in EN and AR', () => {
+      const fixture = renderE2E();
+      const c = fixture.componentInstance;
+      TestBed.inject(LocaleService).locale.set('ar');
+      fixture.detectChanges();
+      expect(c.headerKpis()[3]).toMatchObject({
+        caption: 'البوابات',
+        value: 1,
+        frac: 'معلّقة من 2',
+      });
+    });
 
     it('renders header, KPIs, stages and tasks from the backend shape', () => {
       granted = new Set([...ALL, PERM.scope.read]);

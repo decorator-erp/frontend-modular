@@ -1218,6 +1218,8 @@ export const AR: Partial<Record<CatalogKey, string>> = {
   'project.backToProjects': 'العودة إلى المشاريع',
   'project.loadFailed': 'تعذّر تحميل المشروع.',
   'project.loadFailedHint': 'تحقّق من الاتصال وحاول مرة أخرى.',
+  'project.kpiGates': 'البوابات',
+  'project.kpiGatesPendingOf': 'معلّقة من {total}',
   'clients.fJobTitle': 'الوظيفة',
   'clients.fMaritalStatus': 'الحالة الاجتماعية',
   'clients.fRepresentativeName': 'اسم الممثل',

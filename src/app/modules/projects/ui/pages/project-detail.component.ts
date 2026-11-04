@@ -358,7 +358,12 @@ export class ProjectDetailComponent implements OnInit {
     // ProjectDetailsResponse.Gates (crm-prod B2-fe): shown only when the project has gates.
     const gates = this.details()?.gates;
     if (gates && gates.total > 0) {
-      kpis.push({ caption: 'Gates', value: gates.pending, frac: `pending of ${gates.total}` });
+      // FINDING-P2-8: a crm-prod addition, so catalogued (EN + AR) unlike the ported labels.
+      kpis.push({
+        caption: this.catalog.t('project.kpiGates'),
+        value: gates.pending,
+        frac: this.catalog.t('project.kpiGatesPendingOf', { total: gates.total }),
+      });
     }
     return kpis;
   });
