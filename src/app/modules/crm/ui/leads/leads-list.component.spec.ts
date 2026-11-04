@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { of } from 'rxjs';
+import { of, throwError } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
 import { EmployeeService } from '@modules/people';
 import { CrmLeadService } from '../../data/crm-lead.service';
@@ -49,5 +49,30 @@ describe('CrmLeadsListComponent — status pills (009b #2)', () => {
 
     expect(leads.search).toHaveBeenLastCalledWith(expect.objectContaining({ search: 'mo' }));
     expect(leads.statusCounts).toHaveBeenLastCalledWith({ search: 'mo' });
+  });
+});
+
+describe('CrmLeadsListComponent — load failure (crm-prod M4)', () => {
+  it('shows an error with Retry instead of the empty state, and Retry refetches', () => {
+    const { leads } = make();
+    leads.search.mockReturnValue(throwError(() => new Error('down')));
+    const fixture = TestBed.createComponent(CrmLeadsListComponent);
+    fixture.detectChanges();
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+
+    const alert = el.querySelector('[data-testid="leads-load-error"]');
+    expect(alert?.textContent).toContain('Could not load the leads.');
+    expect(el.textContent).not.toContain('No leads yet');
+
+    const calls = leads.search.mock.calls.length;
+    leads.search.mockReturnValue(
+      of({ items: [], totalCount: 0, page: 1, pageSize: 50, totalPages: 0 }),
+    );
+    (alert?.querySelector('button') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(leads.search).toHaveBeenCalledTimes(calls + 1);
+    expect(el.querySelector('[data-testid="leads-load-error"]')).toBeNull();
+    expect(el.textContent).toContain('No leads yet');
   });
 });

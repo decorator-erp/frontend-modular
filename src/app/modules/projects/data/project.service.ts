@@ -2,7 +2,6 @@ import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import {
-  ApprovalRequestResponse,
   ApprovalType,
   ConditionType,
   CreateProjectRequest,
@@ -12,6 +11,7 @@ import {
   ProjectDetails,
   ProjectMember,
   ProjectMemberAccess,
+  GateSummary,
   ProjectStage,
   ProjectStatus,
   ProjectSubTask,
@@ -19,6 +19,7 @@ import {
   ProjectTaskStatus,
   StageStatus,
   TaskPriority,
+  TaskStatusCount,
   UpdateProjectRequest,
   WorkflowType,
 } from '../model/project.model';
@@ -27,13 +28,13 @@ import type {
   InvoiceResponse,
   LedgerMovementResponse,
   PagedResponse,
-  ProjectBudgetSummaryResponse,
   ProjectFinancialBlock,
   ProjectStageFinancialBlock,
   ProjectTaskFinancialBlock,
   VariationResponse,
 } from '@modules/finance';
 import { ApiService } from '@platform/http/api.service';
+import { handled } from '@platform/http/handled-errors';
 import { PagedResult } from '@platform/types';
 
 /**
@@ -46,12 +47,6 @@ import { PagedResult } from '@platform/types';
 export class ProjectService extends ApiService {
   getAll(page = 1, pageSize = 20): Observable<PagedResult<Project>> {
     return this.get<unknown>('/projects', { pageNumber: page, pageSize }).pipe(
-      map((response) => this.normalizePaged(response)),
-    );
-  }
-
-  getMine(page = 1, pageSize = 20): Observable<PagedResult<Project>> {
-    return this.get<unknown>('/projects/mine', { pageNumber: page, pageSize }).pipe(
       map((response) => this.normalizePaged(response)),
     );
   }
@@ -73,31 +68,15 @@ export class ProjectService extends ApiService {
     );
   }
 
-  /** The hub's one-shot load: project + stages (with tasks) + unstaged tasks. */
+  /**
+   * The hub's one-shot load: `GET /api/projects/{id}/details` (ProjectEndpoints.cs:43, `project.read`)
+   * → `ProjectDetailsResponse` — project + stages (with tasks, counts, gate summaries) + unstaged
+   * tasks. `handled(404)`: an outsider or unknown project is the page's own not-found state, so the
+   * interceptor shows no second toast.
+   */
   getDetails(id: string): Observable<ProjectDetails> {
-    return this.get<unknown>(`/projects/${id}/details`).pipe(
+    return this.get<unknown>(`/projects/${id}/details`, undefined, { context: handled(404) }).pipe(
       map((r) => this.normalizeDetails(this.unwrap(r))),
-    );
-  }
-
-  /**
-   * Header budget KPI — caps + actuals rolled up at project/stage/task scope.
-   * GET /api/projects/{id}/budget-summary (ProjectEndpoints.cs:GetBudgetSummaryAsync).
-   */
-  getBudgetSummary(id: string): Observable<ProjectBudgetSummaryResponse> {
-    return this.get<unknown>(`/projects/${id}/budget-summary`).pipe(
-      map((r) => this.unwrap<ProjectBudgetSummaryResponse>(r)),
-    );
-  }
-
-  /**
-   * The caller's pending-approval queue — ManagerApproval Complete gates they own,
-   * across tasks + stages. GET /api/projects/approval-requests (perm Projects.Read).
-   * Drives the dashboard's "Open actions" KPI; callers filter by `projectId`.
-   */
-  getApprovalRequests(): Observable<ApprovalRequestResponse[]> {
-    return this.get<unknown>('/projects/approval-requests').pipe(
-      map((r) => this.unwrapArray<ApprovalRequestResponse>(r)),
     );
   }
 
@@ -118,15 +97,22 @@ export class ProjectService extends ApiService {
     return this.delete(`/projects/${id}`);
   }
 
+  /**
+   * `PUT /api/projects/{id}/status?status=<int>` → 204. The backend binds `ProjectStatus status`
+   * from the query string (ProjectEndpoints.cs:59-60), not the body; the enum ordinals are
+   * Projects.Contracts `ProjectStatus` (Draft=1 … Cancelled=5).
+   */
   setStatus(id: string, status: ProjectStatus): Observable<unknown> {
-    return this.put(`/projects/${id}/status`, { status: this.statusInt(status) });
+    return this.put(`/projects/${id}/status?status=${this.statusInt(status)}`, null);
   }
 
+  /** `PUT /api/projects/{id}/active?isActive=true` → 204 (ProjectEndpoints.cs:67-68). */
   activate(id: string): Observable<unknown> {
-    return this.put(`/projects/${id}/activate`, {});
+    return this.put(`/projects/${id}/active?isActive=true`, null);
   }
+  /** `PUT /api/projects/{id}/active?isActive=false` → 204 (ProjectEndpoints.cs:67-68). */
   deactivate(id: string): Observable<unknown> {
-    return this.put(`/projects/${id}/deactivate`, {});
+    return this.put(`/projects/${id}/active?isActive=false`, null);
   }
 
   // ---- financial query drilldowns (financial-queries spec) ----------------
@@ -204,12 +190,15 @@ export class ProjectService extends ApiService {
       address: this.field<string>(source, 'address') ?? '',
       clientId: this.field<string>(source, 'clientId') ?? '',
       clientName: this.field<string>(source, 'clientName') ?? '',
-      productOwnerId: this.field<string>(source, 'productOwnerId') ?? '',
+      // ProjectResponse / ProjectDetailsProjectResponse name the owner `OwnerId` (an hr employee id)
+      // and the planned dates `EstimatedStartDate` / `EstimatedEndDate` (ProjectContracts.cs:18-22,
+      // 66-70). Neither carries an owner name or a budget: those stay '' / 0 and the pages show '—'.
+      productOwnerId: this.field<string>(source, 'ownerId', 'productOwnerId') ?? '',
       productOwnerName: this.field<string>(source, 'productOwnerName') ?? '',
       estimatedBudget: this.num(this.field(source, 'estimatedBudget')),
       progressPercentage: this.num(this.field(source, 'progressPercentage', 'progress')),
-      startDate: this.field<string | null>(source, 'startDate') ?? null,
-      endDate: this.field<string | null>(source, 'endDate') ?? null,
+      startDate: this.field<string | null>(source, 'estimatedStartDate', 'startDate') ?? null,
+      endDate: this.field<string | null>(source, 'estimatedEndDate', 'endDate') ?? null,
       actualStartDate: this.field<string | null>(source, 'actualStartDate') ?? null,
       actualEndDate: this.field<string | null>(source, 'actualEndDate', 'actualEndData') ?? null,
       stageCount: this.num(this.field(source, 'stageCount')),
@@ -273,7 +262,9 @@ export class ProjectService extends ApiService {
       startedOnUtc: this.field<string | null>(source, 'startedOnUtc', 'actualStartDate') ?? null,
       completedOnUtc: this.field<string | null>(source, 'completedOnUtc', 'actualEndDate') ?? null,
       dueDate: this.field<string | null>(source, 'dueDate') ?? null,
-      progressPercent: this.num(this.field(source, 'subTaskProgressPercent', 'progressPercent')),
+      progressPercent: this.numOrNull(
+        this.field(source, 'subTaskProgressPercent', 'progressPercent'),
+      ),
       financial: this.field<ProjectTaskFinancialBlock>(source, 'financial'),
       // Feature 004 — present only on ProjectTaskDetailsResponse. See the stage note above.
       crm: this.field<ProjectTask['crm']>(source, 'crm') ?? null,
@@ -344,21 +335,58 @@ export class ProjectService extends ApiService {
     };
   }
 
+  /**
+   * `ProjectDetailsResponse` (Projects.Contracts/Projects/ProjectContracts.cs:57-85):
+   * `{ project, stages[{ …, tasks, taskCounts, gates }], unstagedTasks, taskCounts, gates }`.
+   * Enums arrive as ints and map through the read maps below.
+   */
   private normalizeDetails(source: unknown): ProjectDetails {
-    const projectRaw = this.field<unknown>(source, 'project') ?? source;
-    const project = this.normalizeProject(projectRaw);
+    const project = this.normalizeProject(this.field<unknown>(source, 'project') ?? source);
     const stages = (this.field<unknown[]>(source, 'stages') ?? [])
-      .map((s) => this.normalizeStage(s, project.id))
+      .map((s) => ({
+        ...this.normalizeStage(s, project.id),
+        taskCounts: this.normalizeTaskCounts(this.field(s, 'taskCounts')),
+        gates: this.normalizeGateSummary(this.field(s, 'gates')),
+      }))
       .sort((a, b) => a.order - b.order);
     const unstagedTasks = (this.field<unknown[]>(source, 'unstagedTasks') ?? []).map((t) =>
       this.normalizeTask(t, project.id),
     );
-    return { project, stages, unstagedTasks };
+    return {
+      project,
+      stages,
+      unstagedTasks,
+      taskCounts: this.normalizeTaskCounts(this.field(source, 'taskCounts')),
+      gates: this.normalizeGateSummary(this.field(source, 'gates')),
+    };
+  }
+
+  private normalizeTaskCounts(source: unknown): TaskStatusCount[] {
+    return (Array.isArray(source) ? source : []).map((c: unknown) => ({
+      status: this.mapEnum<ProjectTaskStatus>(this.field(c, 'status'), this.TASK_STATUS, 'Open'),
+      count: this.num(this.field(c, 'count')),
+    }));
+  }
+
+  private normalizeGateSummary(source: unknown): GateSummary {
+    return {
+      total: this.num(this.field(source, 'total')),
+      pending: this.num(this.field(source, 'pending')),
+      satisfied: this.num(this.field(source, 'satisfied')),
+      rejected: this.num(this.field(source, 'rejected')),
+    };
   }
 
   private num(v: unknown): number {
     const n = typeof v === 'string' ? parseFloat(v) : (v as number);
     return typeof n === 'number' && !isNaN(n) ? n : 0;
+  }
+
+  /** Like `num`, but an absent or unparseable value stays `null` instead of reading as 0. */
+  private numOrNull(v: unknown): number | null {
+    if (v === null || v === undefined || v === '') return null;
+    const n = typeof v === 'string' ? parseFloat(v) : (v as number);
+    return typeof n === 'number' && !isNaN(n) ? n : null;
   }
 
   // ---- enum normalisation (backend mixes int + string — see docs §9.1) ----
@@ -383,6 +411,7 @@ export class ProjectService extends ApiService {
     4: 'Completed',
     5: 'PendingApproval',
     6: 'Rejected',
+    7: 'Cancelled',
   };
   private readonly PRIORITY: Record<number, string> = {
     1: 'Low',

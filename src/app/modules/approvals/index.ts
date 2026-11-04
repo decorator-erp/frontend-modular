@@ -4,6 +4,3 @@
 
 // modules/notifications (ui/notification-deep-link.ts); future: dashboard.
 export { ApprovalService } from './data/approval.service';
-
-// Future: dashboard (dashboard.component).
-export type { ApprovalRequest } from './model/approval.model';

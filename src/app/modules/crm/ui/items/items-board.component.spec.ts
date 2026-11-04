@@ -32,61 +32,65 @@ const item = (id: string, periodId: string, approvalStatus: ApprovalState) => ({
   projectTaskId: null,
 });
 
-describe('CrmItemsBoardComponent (009b #24)', () => {
-  it('disables Send, Edit and Supersede for items whose period is Closed', () => {
-    TestBed.configureTestingModule({
-      imports: [CrmItemsBoardComponent],
-      providers: [
-        ItemsStore,
-        PeriodStore,
-        {
-          provide: ActivatedRoute,
-          useValue: { snapshot: { paramMap: new Map([['projectId', 'P']]) } },
-        },
-        { provide: ModalService, useValue: { open: vi.fn() } },
-        { provide: PermissionsService, useValue: { can: () => true } },
-        {
-          provide: CrmItemService,
-          useValue: {
-            listByProject: vi
-              .fn()
-              .mockReturnValue(
-                of([
-                  item('Shut-draft', 'Old', ApprovalState.Draft),
-                  item('Shut-locked', 'Old', ApprovalState.Approved),
-                  item('Live-draft', 'Cur', ApprovalState.Draft),
-                ]),
-              ),
-          },
-        },
-        {
-          provide: CrmPeriodService,
-          useValue: {
-            list: vi.fn().mockReturnValue(
+function renderBoard(can: (p: string) => boolean = () => true) {
+  TestBed.configureTestingModule({
+    imports: [CrmItemsBoardComponent],
+    providers: [
+      ItemsStore,
+      PeriodStore,
+      {
+        provide: ActivatedRoute,
+        useValue: { snapshot: { paramMap: new Map([['projectId', 'P']]) } },
+      },
+      { provide: ModalService, useValue: { open: vi.fn() } },
+      { provide: PermissionsService, useValue: { can } },
+      {
+        provide: CrmItemService,
+        useValue: {
+          listByProject: vi
+            .fn()
+            .mockReturnValue(
               of([
-                {
-                  id: 'Cur',
-                  status: RequirementPeriodStatus.Open,
-                  closesAtUtc: '2099-01-01T00:00:00Z',
-                },
-                {
-                  id: 'Old',
-                  status: RequirementPeriodStatus.Closed,
-                  closesAtUtc: '2026-01-01T00:00:00Z',
-                },
+                item('Shut-draft', 'Old', ApprovalState.Draft),
+                item('Shut-locked', 'Old', ApprovalState.Approved),
+                item('Live-draft', 'Cur', ApprovalState.Draft),
               ]),
             ),
-          },
         },
-      ],
-    });
-    const fixture = TestBed.createComponent(CrmItemsBoardComponent);
-    fixture.detectChanges();
-    const rows = Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('li'));
-    const buttonsOf = (title: string) => {
-      const row = rows.find((li) => li.textContent?.includes(title));
-      return Array.from(row?.querySelectorAll('button') ?? []);
-    };
+      },
+      {
+        provide: CrmPeriodService,
+        useValue: {
+          list: vi.fn().mockReturnValue(
+            of([
+              {
+                id: 'Cur',
+                status: RequirementPeriodStatus.Open,
+                closesAtUtc: '2099-01-01T00:00:00Z',
+              },
+              {
+                id: 'Old',
+                status: RequirementPeriodStatus.Closed,
+                closesAtUtc: '2026-01-01T00:00:00Z',
+              },
+            ]),
+          ),
+        },
+      },
+    ],
+  });
+  const fixture = TestBed.createComponent(CrmItemsBoardComponent);
+  fixture.detectChanges();
+  const rows = Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('li'));
+  return (title: string) => {
+    const row = rows.find((li) => li.textContent?.includes(title));
+    return Array.from(row?.querySelectorAll('button') ?? []);
+  };
+}
+
+describe('CrmItemsBoardComponent (009b #24)', () => {
+  it('disables Send, Edit and Supersede for items whose period is Closed', () => {
+    const buttonsOf = renderBoard();
 
     const shutDraft = buttonsOf('Shut-draft');
     const shutLocked = buttonsOf('Shut-locked');
@@ -97,5 +101,31 @@ describe('CrmItemsBoardComponent (009b #24)', () => {
     expect(shutLocked[0].disabled).toBe(true);
     expect(liveDraft.length).toBe(2);
     expect(liveDraft.some((b) => b.disabled)).toBe(false);
+  });
+});
+
+describe('CrmItemsBoardComponent permission gates (crm-prod H2)', () => {
+  const only =
+    (...granted: string[]) =>
+    (p: string) =>
+      granted.includes(p);
+  const labels = (buttons: HTMLButtonElement[]) => buttons.map((b) => b.textContent?.trim());
+
+  it('shows Send only with crm.items.send', () => {
+    expect(labels(renderBoard(only('crm.items.send'))('Live-draft'))).toEqual([
+      'Send for confirmation',
+    ]);
+  });
+
+  it('hides Send with crm.items.update alone', () => {
+    expect(labels(renderBoard(only('crm.items.update'))('Live-draft'))).toEqual(['Edit']);
+  });
+
+  it('shows New version only with crm.items.supersede', () => {
+    expect(renderBoard(only('crm.items.supersede'))('Shut-locked')).toHaveLength(1);
+  });
+
+  it('hides New version with crm.items.update alone', () => {
+    expect(renderBoard(only('crm.items.update'))('Shut-locked')).toHaveLength(0);
   });
 });

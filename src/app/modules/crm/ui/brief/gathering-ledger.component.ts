@@ -3,6 +3,7 @@ import { RouterLink } from '@angular/router';
 import { CanDirective, PERM } from '@platform/permissions';
 import { CatalogService } from '@platform/i18n/catalog.service';
 import type { BriefSpace } from '../../model';
+import { ApprovalState } from '../../model/crm-enums';
 import { isLocked, isUnconfirmed, SUPERSEDED_CHIP, trustChip } from '../trust/trust-chip';
 import {
   ModalService,
@@ -74,6 +75,7 @@ import { CrmSupersedeEntryModalComponent } from './supersede-entry.modal';
                 [name]="isOpen(groupKey(group)) ? 'chevron-down' : 'chevron-right'"
                 [size]="14"
                 class="text-text-muted"
+                [class.rtl:rotate-180]="!isOpen(groupKey(group))"
               />
             </button>
 
@@ -109,6 +111,17 @@ import { CrmSupersedeEntryModalComponent } from './supersede-entry.modal';
                             >
                               {{ catalog.t('common.edit') }}
                             </button>
+                            @if (entry.approvalStatus === APPROVAL_STATE.Draft) {
+                              <button
+                                type="button"
+                                class="fs-caption text-accent cursor-pointer underline outline-none focus-visible:outline-2 focus-visible:outline-accent disabled:opacity-50 disabled:cursor-not-allowed"
+                                *peraCan="PERM.crm.briefs.send"
+                                [disabled]="store.mutatingSpace()"
+                                (click)="store.sendSpace(entry.id)"
+                              >
+                                {{ catalog.t('brief.sendToClient') }}
+                              </button>
+                            }
                           }
                         </div>
                         @if (entry.requirements) {
@@ -137,6 +150,7 @@ export class CrmGatheringLedgerComponent {
   protected readonly catalog = inject(CatalogService);
   protected readonly store = inject(BriefStore);
   protected readonly PERM = PERM;
+  protected readonly APPROVAL_STATE = ApprovalState;
 
   private readonly openGroups = signal<Set<string>>(new Set());
 

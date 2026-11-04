@@ -1,3 +1,4 @@
+import { CatalogService } from '@platform/i18n/catalog.service';
 import { HttpErrorResponse } from '@angular/common/http';
 import { computed, inject } from '@angular/core';
 import { patchState, signalStore, withComputed, withMethods, withState } from '@ngrx/signals';
@@ -80,6 +81,7 @@ export const PeriodStore = signalStore(
       store,
       api = inject(CrmPeriodService),
       errors = inject(ErrorHandlerService),
+      catalog = inject(CatalogService),
       reloadOnConflict = injectReloadOnConflict(),
     ) => ({
       /** Load the project's period history. */
@@ -92,7 +94,7 @@ export const PeriodStore = signalStore(
               ? patchState(store, { periods: [], loading: false, notFound: true })
               : patchState(store, {
                   loading: false,
-                  error: 'Could not load the requirement period.',
+                  error: catalog.t('period.loadFailed'),
                 }),
         });
       },
@@ -118,7 +120,7 @@ export const PeriodStore = signalStore(
             }
             patchState(store, {
               extending: false,
-              error: codedMessage(err, errors) ?? 'Could not extend the requirement period.',
+              error: codedMessage(err, errors) ?? catalog.t('period.extendFailed'),
             });
           },
         });
@@ -140,7 +142,7 @@ export const PeriodStore = signalStore(
             }
             patchState(store, {
               closing: false,
-              error: codedMessage(err, errors) ?? 'Could not close the requirement period.',
+              error: codedMessage(err, errors) ?? catalog.t('period.closeFailed'),
             });
           },
         });

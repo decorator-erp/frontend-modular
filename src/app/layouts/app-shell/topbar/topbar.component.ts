@@ -14,6 +14,7 @@ import { AuthStore } from '@platform/auth/auth.store';
 import { BreadcrumbService } from '@platform/navigation/breadcrumb.service';
 import { ThemeService } from '@platform/theme';
 import { LocaleService } from '@platform/i18n';
+import { CatalogService } from '@platform/i18n/catalog.service';
 import {
   BreadcrumbItem,
   CommandPaletteService,
@@ -44,6 +45,7 @@ export class TopbarComponent {
   private readonly router = inject(Router);
   private readonly auth = inject(AuthStore);
   private readonly breadcrumb = inject(BreadcrumbService);
+  private readonly catalog = inject(CatalogService);
   readonly theme = inject(ThemeService);
   readonly locale = inject(LocaleService);
   readonly palette = inject(CommandPaletteService);
@@ -63,7 +65,10 @@ export class TopbarComponent {
 
   readonly breadcrumbs = computed<BreadcrumbItem[]>(() => {
     const trail = this.breadcrumb.trail();
-    return trail && trail.length ? trail : [{ label: this.currentBreadcrumb() }];
+    // crm-prod L-fe-3: a catalogued crumb follows the ع toggle.
+    return trail && trail.length
+      ? trail
+      : [{ label: this.catalog.label(this.currentBreadcrumb()) }];
   });
 
   readonly userName = computed(() => this.auth.user()?.userName ?? '');

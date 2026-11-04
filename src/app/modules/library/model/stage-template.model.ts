@@ -12,10 +12,16 @@ export interface StageTemplateRef {
   type: string | null;
 }
 
-/** Create a stage template — `POST /api/stage-templates`. New templates default to `Custom`. */
+/** Projects.Contracts `StageTemplateType` (Enums.cs: System = 1, Custom = 2), by name. */
+export type StageTemplateType = 'System' | 'Custom';
+
+/**
+ * Create a stage template — `POST /api/stage-templates` (`CreateStageTemplateCommand`,
+ * TemplateContracts.cs:10). New templates are `Custom`; the service sends `type` as the enum int.
+ */
 export interface CreateStageTemplateRequest {
   name: string;
-  stageTemplateType: string;
+  type: StageTemplateType;
   isDefault?: boolean;
   description?: string | null;
 }

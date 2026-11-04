@@ -1,4 +1,4 @@
-import { NO_ERRORS_SCHEMA } from '@angular/core';
+import { NO_ERRORS_SCHEMA, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import {
   ActivatedRoute,
@@ -7,7 +7,10 @@ import {
   convertToParamMap,
   provideRouter,
 } from '@angular/router';
-import { of } from 'rxjs';
+import { HttpErrorResponse, provideHttpClient } from '@angular/common/http';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { environment } from '../../../../../environments/environment';
+import { Observable, of, throwError } from 'rxjs';
 import { ProjectDetailComponent } from './project-detail.component';
 import { ProjectService } from '../../data/project.service';
 import { ProjectMemberService } from '../../data/project-member.service';
@@ -116,6 +119,8 @@ function details(): ProjectDetails {
     },
     stages: [stage],
     unstagedTasks: [],
+    taskCounts: [],
+    gates: { total: 0, pending: 0, satisfied: 0, rejected: 0 },
   };
 }
 
@@ -123,18 +128,18 @@ describe('ProjectDetailComponent', () => {
   let granted: Set<string>;
   let data: ProjectDetails;
   let navCalls: unknown[][];
+  let detailsCalls: number;
+  let detailsResponse: () => Observable<ProjectDetails>;
 
   function providers() {
     return [
       {
         provide: ProjectService,
         useValue: {
-          getDetails: () => of(data),
-          getApprovalRequests: () =>
-            of([
-              { projectId: 'p1', approvalType: 'ManagerApproval' },
-              { projectId: 'other', approvalType: 'ManagerApproval' },
-            ]),
+          getDetails: () => {
+            detailsCalls++;
+            return detailsResponse();
+          },
         },
       },
       {
@@ -178,7 +183,7 @@ describe('ProjectDetailComponent', () => {
         useValue: { open: () => ({ afterClosed: () => Promise.resolve(undefined) }) },
       },
       { provide: ToastService, useValue: { show: () => undefined } },
-      { provide: LocaleService, useValue: { locale: () => 'en' } },
+      { provide: LocaleService, useValue: { locale: signal<'en' | 'ar'>('en') } },
       {
         provide: PermissionsService,
         useValue: {
@@ -204,6 +209,8 @@ describe('ProjectDetailComponent', () => {
     granted = new Set();
     data = details();
     navCalls = [];
+    detailsCalls = 0;
+    detailsResponse = () => of(data);
   });
 
   function render() {
@@ -246,14 +253,14 @@ describe('ProjectDetailComponent', () => {
     expect(meta).toContain('Nov'); // due date Nov 22
   });
 
-  it('derives the KPI strip — progress, task counts and open actions (this project only)', () => {
+  it('derives the KPI strip — progress and task counts; no Open actions KPI (crm-prod B2-fe: no backend route)', () => {
     granted = new Set(ALL);
     const fixture = render();
     const c = fixture.componentInstance;
     expect(c.totalTasks()).toBe(3);
     expect(c.doneCount()).toBe(1);
     expect(c.inProgressCount()).toBe(1);
-    expect(c.openActions()).toBe(1); // filters out the 'other' project's request
+    expect(c.headerKpis().map((k) => k.caption)).toEqual(['Progress', 'Tasks', 'Days remaining']);
     const strip = Array.from(
       (fixture.nativeElement as HTMLElement).querySelectorAll('pera-kpi-tile'),
     )
@@ -410,5 +417,214 @@ describe('ProjectDetailComponent', () => {
     // must NOT fabricate schedule/budget health it can't know
     expect(sub).not.toContain('clean schedule');
     expect(sub).not.toContain('Marina Tower');
+  });
+
+  // crm-prod B2-fe part 2: the real ProjectService against a payload in the backend's shape
+  // (dms Projects.Contracts/Projects/ProjectContracts.cs:57-85, Tasks/TaskContracts.cs:5-8), and
+  // the page's real child components — no inert overrides.
+  describe('end to end with a GET /details payload (crm-prod B2-fe part 2)', () => {
+    const wireTask = (over: Record<string, unknown>) => ({
+      id: 't',
+      projectId: 'p1',
+      projectStageId: 's1',
+      name: 'Task',
+      description: null,
+      order: 10,
+      status: 2,
+      priority: 2,
+      weight: 1,
+      assignedToId: null,
+      departmentId: null,
+      dueDate: null,
+      cost: null,
+      ...over,
+    });
+    const payload = {
+      project: {
+        id: 'p1',
+        code: 'MT-04',
+        name: 'Marina Tower',
+        description: null,
+        status: 2,
+        workflowType: 1,
+        address: 'New Cairo',
+        notes: null,
+        progressPercentage: 42,
+        estimatedStartDate: '2026-02-03T00:00:00',
+        estimatedEndDate: '2026-11-22T00:00:00',
+        actualStartDate: null,
+        actualEndDate: null,
+        clientId: 'c1',
+        clientName: 'Hassan Allam Holding',
+        ownerId: 'po1',
+        isActive: true,
+        stageCount: 1,
+      },
+      stages: [
+        {
+          id: 's1',
+          projectId: 'p1',
+          stageId: null,
+          name: 'Design Phase',
+          description: null,
+          order: 3,
+          status: 2,
+          progressPercent: 50,
+          completedTasks: 1,
+          totalTasks: 2,
+          cost: null,
+          estimatedStartDate: '2026-03-17T00:00:00',
+          estimatedEndDate: '2026-08-12T00:00:00',
+          actualStartDate: '2026-03-18T00:00:00',
+          actualEndDate: null,
+          notes: null,
+          tasks: [
+            wireTask({ id: 'ta', name: 'Floor plan', status: 4, priority: 3, assignedToId: 'po1' }),
+            wireTask({ id: 'tb', name: 'Facade', order: 20, status: 7, priority: 4 }),
+          ],
+          taskCounts: [
+            { status: 4, count: 1 },
+            { status: 7, count: 1 },
+          ],
+          gates: { total: 2, pending: 1, satisfied: 1, rejected: 0 },
+        },
+      ],
+      unstagedTasks: [],
+      taskCounts: [
+        { status: 4, count: 1 },
+        { status: 7, count: 1 },
+      ],
+      gates: { total: 2, pending: 1, satisfied: 1, rejected: 0 },
+    };
+
+    function renderE2E() {
+      TestBed.configureTestingModule({
+        imports: [ProjectDetailComponent],
+        providers: [
+          // The router first, so the mocked ActivatedRoute below (id = p1) wins over its own.
+          provideRouter([]),
+          ...providers().filter(
+            (p) => !('provide' in p) || (p.provide !== ProjectService && p.provide !== Router),
+          ),
+          provideHttpClient(),
+          provideHttpClientTesting(),
+        ],
+      });
+      const fixture = TestBed.createComponent(ProjectDetailComponent);
+      fixture.detectChanges();
+      const http = TestBed.inject(HttpTestingController);
+      http.expectOne(`${environment.apiUrl}/projects/p1/details`).flush(payload);
+      fixture.detectChanges();
+      fixture.detectChanges();
+      return fixture;
+    }
+
+    it('FINDING-P2-8: the Gates KPI is catalogued in EN and AR', () => {
+      const fixture = renderE2E();
+      const c = fixture.componentInstance;
+      TestBed.inject(LocaleService).locale.set('ar');
+      fixture.detectChanges();
+      expect(c.headerKpis()[3]).toMatchObject({
+        caption: 'البوابات',
+        value: 1,
+        frac: 'معلّقة من 2',
+      });
+    });
+
+    it('renders header, KPIs, stages and tasks from the backend shape', () => {
+      granted = new Set([...ALL, PERM.scope.read]);
+      const fixture = renderE2E();
+      const c = fixture.componentInstance;
+      const el = fixture.nativeElement as HTMLElement;
+
+      const header = el.querySelector('pera-entity-header-card')?.textContent ?? '';
+      expect(header).toContain('Marina Tower');
+      expect(header).toContain('Hassan Allam Holding'); // clientName
+      expect(header).toContain('Sara Mohamed'); // ownerId → employee directory
+      expect(header).toContain('Feb'); // estimatedStartDate
+      expect(header).toContain('Nov'); // estimatedEndDate
+      expect(c.headerKpis().map((k) => k.caption)).toEqual([
+        'Progress',
+        'Tasks',
+        'Days remaining',
+        'Gates',
+      ]);
+      expect(c.headerKpis()[3]).toMatchObject({ value: 1, frac: 'pending of 2' });
+
+      expect(c.stages().map((s) => [s.id, s.status])).toEqual([['s1', 'Active']]);
+      expect(c.totalTasks()).toBe(2);
+      expect(c.doneCount()).toBe(1);
+      const text = el.textContent ?? '';
+      expect(text).toContain('Design Phase');
+      expect(text).toContain('Floor plan');
+      expect(text).toContain('Facade');
+      expect(text).toContain('Cancelled'); // status 7, not mis-read as To do
+      // Fields with no backend source render as dashes, never as "undefined" / "NaN" / a fake 0%.
+      expect(text).not.toContain('undefined');
+      expect(text).not.toContain('NaN');
+      expect(c.taskProgress(c.stages()[0].tasks[0])).toBe('—');
+
+      const scope = Array.from(el.querySelectorAll<HTMLAnchorElement>('a')).find(
+        (a) => a.textContent!.trim() === 'Scope of work',
+      );
+      expect(scope?.getAttribute('href')).toBe('/projects/p1/scope-of-work');
+    });
+
+    it('a 404 from /details lands on the not-found state', () => {
+      granted = new Set(ALL);
+      TestBed.configureTestingModule({
+        imports: [ProjectDetailComponent],
+        providers: [
+          // The router first, so the mocked ActivatedRoute below (id = p1) wins over its own.
+          provideRouter([]),
+          ...providers().filter(
+            (p) => !('provide' in p) || (p.provide !== ProjectService && p.provide !== Router),
+          ),
+          provideHttpClient(),
+          provideHttpClientTesting(),
+        ],
+      });
+      const fixture = TestBed.createComponent(ProjectDetailComponent);
+      fixture.detectChanges();
+      TestBed.inject(HttpTestingController)
+        .expectOne(`${environment.apiUrl}/projects/p1/details`)
+        .flush(null, { status: 404, statusText: 'Not Found' });
+      fixture.detectChanges();
+      expect(fixture.componentInstance.loadError()).toBe('notFound');
+      expect(
+        (fixture.nativeElement as HTMLElement).querySelector('[data-load-state="not-found"]'),
+      ).not.toBeNull();
+    });
+  });
+
+  describe('load states (crm-prod B2-fe)', () => {
+    it('shows the not-found state, not a blank page, when the project load answers 404', () => {
+      granted = new Set(ALL);
+      detailsResponse = () => throwError(() => new HttpErrorResponse({ status: 404 }));
+      const fixture = render();
+      const el = fixture.nativeElement as HTMLElement;
+      expect(fixture.componentInstance.loadError()).toBe('notFound');
+      expect(el.querySelector('[data-load-state="not-found"]')).not.toBeNull();
+      expect(el.querySelector('[data-load-state="error"]')).toBeNull();
+      expect(el.querySelector('pera-entity-header-card')).toBeNull();
+    });
+
+    it('shows the error state on any other failure, and Retry loads again', () => {
+      granted = new Set(ALL);
+      detailsResponse = () => throwError(() => new HttpErrorResponse({ status: 500 }));
+      const fixture = render();
+      const el = fixture.nativeElement as HTMLElement;
+      expect(fixture.componentInstance.loadError()).toBe('error');
+      expect(el.querySelector('[data-load-state="error"]')).not.toBeNull();
+      expect(detailsCalls).toBe(1);
+
+      detailsResponse = () => of(data);
+      fixture.componentInstance.retryLoad();
+      fixture.detectChanges();
+      expect(detailsCalls).toBe(2);
+      expect(fixture.componentInstance.loadError()).toBeNull();
+      expect(el.querySelector('[data-load-state="error"]')).toBeNull();
+      expect(el.querySelector('pera-entity-header-card')?.textContent).toContain('Marina Tower');
+    });
   });
 });

@@ -105,7 +105,7 @@ export const routes: Routes = [
         // the Client role so the portal can render item names on a brief. Gating an editor
         // on the read permission would offer this screen to a role that 403s on every
         // button rather than simply not seeing it.
-        data: { permission: PERM.crm.catalog.manage, breadcrumb: 'Catalog' },
+        data: { permission: PERM.crm.catalog.manage, breadcrumb: 'route.crmCatalog' },
         providers: [CatalogAdminStore],
         loadComponent: crmPages.catalogAdmin,
       },
@@ -128,7 +128,7 @@ export const routes: Routes = [
       // holding only one sub-permission is no longer 403'd at the parent.
       {
         path: 'crm',
-        data: { breadcrumb: 'CRM' },
+        data: { breadcrumb: 'route.crm' },
         loadChildren: crmPages.routes,
       },
       // Office "my approvals" inbox — the dashboard "Needs attention" widget's "View all" target.
@@ -144,7 +144,7 @@ export const routes: Routes = [
       {
         path: 'crm/designer/projects/:projectId',
         canActivate: [PermissionGuard],
-        data: { permission: PERM.crm.designProfile.read, breadcrumb: 'Client design profile' },
+        data: { permission: PERM.crm.designProfile.read, breadcrumb: 'route.designProfile' },
         loadComponent: crmPages.designProfile,
       },
       {

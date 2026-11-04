@@ -21,9 +21,9 @@ export type ProjectStatus = 'Draft' | 'InProgress' | 'OnHold' | 'Completed' | 'C
 // Mirrors Domain.Enums.StageStatus (Locked=1, Active=2, Completed=3, Rejected=4).
 export type StageStatus = 'Locked' | 'Active' | 'Completed' | 'Rejected';
 export type StageKind = 'Task' | 'Gate' | 'Approval' | 'Milestone';
-// Mirrors Domain.Enums.ProjectTaskStatus (Locked=1 … PendingApproval=5, Rejected=6).
+// Mirrors Projects.Contracts ProjectTaskStatus (Locked=1 … PendingApproval=5, Rejected=6, Cancelled=7).
 export type ProjectTaskStatus =
-  'Locked' | 'Open' | 'InProgress' | 'Completed' | 'PendingApproval' | 'Rejected';
+  'Locked' | 'Open' | 'InProgress' | 'Completed' | 'PendingApproval' | 'Rejected' | 'Cancelled';
 export type TaskPriority = 'Low' | 'Medium' | 'High' | 'Urgent';
 /**
  * Gate-condition kinds. Mirrors `Domain/Enums/ConditionType.cs` — modelled here as
@@ -84,11 +84,30 @@ export interface Project {
 /** Paged list row — the backend returns the full ProjectResponse, so this is an alias. */
 export type ProjectListItem = Project;
 
-/** Mirrors ProjectDetailsResponse — the hub's one-shot load. */
+/** Mirrors Projects.Contracts `TaskStatusCount` — only the statuses that occur are listed. */
+export interface TaskStatusCount {
+  status: ProjectTaskStatus;
+  count: number;
+}
+
+/** Mirrors Projects.Contracts `GateSummary` — the gates owned by a stage (or project) and its tasks. */
+export interface GateSummary {
+  total: number;
+  pending: number;
+  satisfied: number;
+  rejected: number;
+}
+
+/**
+ * Mirrors ProjectDetailsResponse (`GET /api/projects/{id}/details`) — the hub's one-shot load.
+ * `taskCounts` counts every task of the project by status; `gates` summarises every gate.
+ */
 export interface ProjectDetails {
   project: Project;
   stages: ProjectStage[];
   unstagedTasks: ProjectTask[];
+  taskCounts: TaskStatusCount[];
+  gates: GateSummary;
 }
 
 // ---- Stages ----------------------------------------------------------------
@@ -127,6 +146,10 @@ export interface ProjectStage {
    * re-derive CRM-ness from a name, a status, or any other signal.
    */
   crm?: CrmStageBlock | null;
+  /** The stage's task counts by status — present only on the project details response. */
+  taskCounts?: TaskStatusCount[];
+  /** The stage's gate summary (stage- and task-owned) — present only on the project details response. */
+  gates?: GateSummary;
 }
 
 // ---- Tasks -----------------------------------------------------------------
@@ -150,8 +173,11 @@ export interface ProjectTask {
   startedOnUtc: string | null;
   completedOnUtc: string | null;
   dueDate: string | null;
-  /** Cached sub-task progress, used as the task progress bar. */
-  progressPercent: number;
+  /**
+   * Cached sub-task progress, used as the task progress bar. `null` when the response carries
+   * none — `ProjectTaskResponse` has no progress field, so the UI shows a dash, never a fake 0%.
+   */
+  progressPercent: number | null;
   /** Financial block — present on enriched task responses + by-stage rows (financial-queries spec). */
   financial?: ProjectTaskFinancialBlock;
   /**
@@ -202,25 +228,6 @@ export interface ProjectMember {
   canExecuteTasks: boolean;
   /** Resolved client-side (response only exposes employeeId — docs §9.5). */
   employeeName?: string | null;
-}
-
-/**
- * Mirrors ApprovalRequestResponse — a pending approval gate the caller owns
- * (tasks + stages). Returned by `GET /api/projects/approval-requests`; drives the
- * project dashboard's "Open actions" KPI.
- */
-export interface ApprovalRequestResponse {
-  gateConditionId: string;
-  ownerKind: 'Task' | 'Stage';
-  ownerId: string;
-  ownerName: string;
-  projectId: string;
-  projectName: string;
-  projectStageId?: string | null;
-  stageName?: string | null;
-  approvalType: ApprovalType;
-  label: string;
-  requestedAtUtc: string;
 }
 
 export interface TaskComment {

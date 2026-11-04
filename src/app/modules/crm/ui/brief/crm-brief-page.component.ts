@@ -23,6 +23,7 @@ import { BriefStore } from '../../stores/brief.store';
 import { CrmBriefAttachmentsComponent } from './brief-attachments.component';
 import { CrmBriefCreateComponent } from './brief-create.component';
 import { CrmBriefHeadComponent } from './brief-head.component';
+import { CrmBriefRoundsComponent } from './brief-rounds.component';
 import { CrmGatheringLedgerComponent } from './gathering-ledger.component';
 
 /**
@@ -43,6 +44,7 @@ import { CrmGatheringLedgerComponent } from './gathering-ledger.component';
     PeraSelectComponent,
     PeraSkeletonComponent,
     CrmBriefHeadComponent,
+    CrmBriefRoundsComponent,
     CrmGatheringLedgerComponent,
     CrmBriefAttachmentsComponent,
     CrmBriefCreateComponent,
@@ -74,6 +76,7 @@ import { CrmGatheringLedgerComponent } from './gathering-ledger.component';
         <app-crm-brief-create [stageId]="selectedStageId()" />
       } @else {
         <app-crm-brief-head />
+        <app-crm-brief-rounds />
         <app-crm-gathering-ledger />
         <app-crm-brief-attachments [projectId]="projectId()" />
       }

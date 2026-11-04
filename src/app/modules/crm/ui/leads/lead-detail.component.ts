@@ -1,24 +1,29 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  ElementRef,
+  afterRenderEffect,
   computed,
   effect,
   inject,
   input,
   signal,
+  viewChild,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
 import { RouterLink } from '@angular/router';
 import { ErrorHandlerService, friendly } from '@platform/http/error-handler.service';
 import { CatalogService } from '@platform/i18n/catalog.service';
 import type { CatalogKey } from '@platform/i18n/catalog/en';
 import { ToastService } from '@platform/feedback/toast.service';
-import { ProjectSector } from '../../model/crm-enums';
+import { catchError, of } from 'rxjs';
+import { EmployeeService } from '@modules/people';
+import { LeadStatus, ProjectSector } from '../../model/crm-enums';
 import type { CrmLead } from '../../data/crm-lead.service';
 import type { LeadIntakeRequest, ResidentialIntakeRequest } from '../../model';
-import { CanDirective, PERM } from '@platform/permissions';
+import { CanDirective, PERM, PermissionsService } from '@platform/permissions';
 import {
   AREA_SQM_MAX,
   AREA_SQM_MIN,
@@ -33,10 +38,12 @@ import {
   PeraAlertComponent,
   PeraButtonComponent,
   PeraCardComponent,
+  PeraEmptyComponent,
   PeraFormFieldComponent,
   PeraInputComponent,
   PeraRadioComponent,
   PeraSelectComponent,
+  PeraSkeletonComponent,
   PeraStatusBadgeComponent,
   PeraTextareaComponent,
   RadioOption,
@@ -51,6 +58,10 @@ import {
 } from '../brief/brief-head.component';
 import { LeadDetailStore } from '../../stores/lead-detail.store';
 import { CrmConvertLeadComponent, type ConvertLeadDialogData } from './convert-lead.component';
+import {
+  CrmLeadFormComponent,
+  type EditLeadDialogData,
+} from '../dashboard/forms/lead-form.component';
 import { LEAD_SOURCE_KEYS, LEAD_STATUS_KEYS, LEAD_STATUS_TONE } from './lead-labels';
 
 /** Maps the intake domain codes to the offending control (mirrors the backend rules). */
@@ -76,10 +87,12 @@ const INTAKE_FIELD_MAP: Record<string, string> = {
     PeraAlertComponent,
     PeraButtonComponent,
     PeraCardComponent,
+    PeraEmptyComponent,
     PeraFormFieldComponent,
     PeraInputComponent,
     PeraRadioComponent,
     PeraSelectComponent,
+    PeraSkeletonComponent,
     PeraStatusBadgeComponent,
     PeraTextareaComponent,
   ],
@@ -89,10 +102,32 @@ const INTAKE_FIELD_MAP: Record<string, string> = {
       <a
         [routerLink]="['/crm/leads']"
         class="fs-caption text-text-muted no-underline hover:underline"
-        >← {{ catalog.t('leads.back') }}</a
+        ><span class="inline-block rtl:rotate-180" aria-hidden="true">←</span>
+        {{ catalog.t('leads.back') }}</a
       >
 
-      @if (store.lead(); as lead) {
+      @if (store.notFound()) {
+        <pera-empty
+          data-testid="lead-not-found"
+          [title]="catalog.t('leads.notFound')"
+          [description]="catalog.t('leads.notFoundHint')"
+          iconName="inbox"
+        />
+      } @else if (store.loading() && !store.lead()) {
+        <div class="flex flex-col gap-5" data-testid="lead-skeleton">
+          <pera-skeleton [height]="96" rounded="sm" />
+          <pera-skeleton [height]="360" rounded="sm" />
+        </div>
+      } @else if (store.loadFailed() && !store.lead()) {
+        <pera-alert tone="danger" data-testid="lead-load-error">
+          <div class="flex items-center justify-between gap-3 flex-wrap">
+            <span>{{ catalog.t('leads.loadLeadFailed') }}</span>
+            <pera-button size="sm" variant="secondary" (click)="store.load(leadId())">{{
+              catalog.t('common.retry')
+            }}</pera-button>
+          </div>
+        </pera-alert>
+      } @else if (store.lead(); as lead) {
         <!-- header -->
         <pera-card>
           <div class="flex items-start justify-between gap-3 flex-wrap">
@@ -112,15 +147,45 @@ const INTAKE_FIELD_MAP: Record<string, string> = {
                   <span dir="ltr">{{ lead.email }}</span>
                 }
                 <span>{{ catalog.t(sourceKey(lead.source)) }}</span>
+                <span data-testid="lead-owner"
+                  >{{ catalog.t('brief.fOwner') }}: {{ ownerName(lead.ownerId) }}</span
+                >
               </div>
+              @if (lead.convertedClientId) {
+                <a
+                  data-testid="lead-client-link"
+                  [routerLink]="['/crm/clients', lead.convertedClientId]"
+                  class="fs-caption text-accent underline"
+                  >{{ catalog.t('leads.viewClient') }}</a
+                >
+              }
             </div>
             @if (!store.isConverted()) {
-              <pera-button
-                *peraCan="PERM.crm.leads.convert"
-                variant="secondary"
-                (click)="openConvert(lead)"
-                >{{ catalog.t('leads.convert') }}</pera-button
-              >
+              <div class="flex items-center gap-2 flex-wrap">
+                @if (store.statusTargets().length) {
+                  <pera-select
+                    #statusSelect
+                    *peraCan="PERM.crm.leads.changeStatus"
+                    data-testid="lead-status"
+                    variant="chip"
+                    [formControl]="statusControl"
+                    [options]="statusOptions()"
+                    [placeholder]="catalog.t('lead.changeStatus')"
+                  />
+                }
+                <pera-button
+                  *peraCan="PERM.crm.leads.update"
+                  variant="secondary"
+                  (click)="openEdit(lead)"
+                  >{{ catalog.t('common.edit') }}</pera-button
+                >
+                <pera-button
+                  *peraCan="PERM.crm.leads.convert"
+                  variant="secondary"
+                  (click)="openConvert(lead)"
+                  >{{ catalog.t('leads.convert') }}</pera-button
+                >
+              </div>
             }
           </div>
         </pera-card>
@@ -325,9 +390,32 @@ export class CrmLeadDetailComponent {
   private readonly modal = inject(ModalService);
   private readonly confirm = inject(ConfirmService);
   private readonly toast = inject(ToastService);
+  private readonly directory = inject(EmployeeService);
+  private readonly permissions = inject(PermissionsService);
   protected readonly catalog = inject(CatalogService);
   protected readonly store = inject(LeadDetailStore);
   protected readonly PERM = PERM;
+
+  /**
+   * Employee id → full name, for the owner line. FINDING-P2-11: read per owner through
+   * `GET /api/employees/{id}` (EmployeeEndpoints.cs:47-52, `employees.read` — the list's own claim),
+   * so an inactive owner still resolves; the active-only list read missed them.
+   */
+  private readonly owners = signal<Record<string, string>>({});
+  /** Owner ids already looked up (FINDING-P2-14) — recorded before the request goes out. */
+  private readonly ownerLookups = new Set<string>();
+
+  /** The status `pera-select`; its trigger gets an accessible name (FINDING-P2-11). */
+  private readonly statusSelect = viewChild('statusSelect', { read: ElementRef });
+
+  /** The status picker: it only ever holds a pick in flight, then resets to the placeholder. */
+  readonly statusControl = new FormControl<string | null>(null);
+  protected readonly statusOptions = computed<SelectOption[]>(() =>
+    this.store.statusTargets().map((s) => ({
+      value: String(s),
+      label: this.catalog.t(this.statusKey(s)),
+    })),
+  );
 
   /** Bound from the `:leadId` route param (component input binding is on). */
   readonly leadId = input.required<string>();
@@ -429,6 +517,43 @@ export class CrmLeadDetailComponent {
       if (id) this.store.load(id);
     });
 
+    // FINDING-P2-14: one lookup per owner id, and only with `employees.read` (the route's claim) —
+    // a pending or 404 lookup is never re-sent on a lead reload. A 404 (no such employee) falls back
+    // to "—" silently. FINDING-P2-22: the claim is tracked, so a late grant runs the lookup (the Set
+    // keeps it to one); a 0 / 5xx failure forgets the id, so a later reload retries.
+    effect(() => {
+      const ownerId = this.store.lead()?.ownerId;
+      if (!ownerId || this.ownerLookups.has(ownerId)) return;
+      if (!this.permissions.can(PERM.employees.read)) return;
+      this.ownerLookups.add(ownerId);
+      this.directory
+        .lookupById(ownerId)
+        .pipe(
+          catchError((e: unknown) => {
+            if (e instanceof HttpErrorResponse && (e.status === 0 || e.status >= 500)) {
+              this.ownerLookups.delete(ownerId);
+            }
+            return of(null);
+          }),
+        )
+        .subscribe((e) => {
+          if (e?.fullName) this.owners.update((m) => ({ ...m, [ownerId]: e.fullName }));
+        });
+    });
+
+    // `pera-select` takes no aria-label of its own: name its trigger button here. The name starts
+    // with the visible placeholder ("Change status") so the label stays in the name.
+    afterRenderEffect(() => {
+      const host = this.statusSelect()?.nativeElement as HTMLElement | undefined;
+      host
+        ?.querySelector('button')
+        ?.setAttribute('aria-label', this.catalog.t('lead.statusSelectLabel'));
+    });
+
+    this.statusControl.valueChanges.pipe(takeUntilDestroyed()).subscribe((v) => {
+      if (v) this.changeStatus(Number(v) as LeadStatus);
+    });
+
     effect(() => {
       const intake = this.store.intake();
       if (!intake) return;
@@ -512,6 +637,39 @@ export class CrmLeadDetailComponent {
   }
   protected sourceKey(source: number) {
     return LEAD_SOURCE_KEYS[source as keyof typeof LEAD_SOURCE_KEYS];
+  }
+
+  protected ownerName(ownerId: string): string {
+    return this.owners()[ownerId] ?? '—';
+  }
+
+  changeStatus(status: LeadStatus): void {
+    const id = this.leadId();
+    this.store.changeStatus(id, status, {
+      onSuccess: () => {
+        this.statusControl.setValue(null, { emitEvent: false });
+        this.toast.show({ tone: 'success', message: this.catalog.t('lead.statusChanged') });
+      },
+      onError: (parsed) => {
+        this.statusControl.setValue(null, { emitEvent: false });
+        // errorInterceptor already toasted 0 / 5xx — one toast only. 403 is marked `handled(403)`
+        // (FINDING-P2-16) and the store shows its localized catalog toast (FINDING-P2-24).
+        if (parsed && (parsed.status === 0 || parsed.status === 403 || parsed.status >= 500))
+          return;
+        this.toast.show({
+          tone: 'danger',
+          message: parsed ? friendly(parsed) : this.catalog.t('lead.statusChangeFailed'),
+        });
+      },
+    });
+  }
+
+  async openEdit(lead: CrmLead): Promise<void> {
+    const data: EditLeadDialogData = { lead };
+    const ok = await this.modal
+      .open<boolean>(CrmLeadFormComponent, { size: 'lg', data })
+      .afterClosed();
+    if (ok) this.store.load(lead.id);
   }
 
   errorOf(name: string): string {

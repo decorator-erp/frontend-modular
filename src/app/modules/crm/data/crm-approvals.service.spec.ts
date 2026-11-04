@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { describe, expect, it, beforeEach, afterEach } from 'vitest';
-import { ApprovalDecision, ApprovalSubjectType } from '../model/crm-enums';
+import { ApprovalSubjectType } from '../model/crm-enums';
 import { environment } from '../../../../environments/environment';
 import { ERROR_MESSAGES, ERROR_MESSAGES_AR } from '@platform/errors/error-catalog';
 import { CrmApprovalsService } from './crm-approvals.service';
@@ -122,74 +122,10 @@ describe('CrmApprovalsService', () => {
     });
   });
 
-  // Enforced twice server-side (a FluentValidation rule and the domain entity). The UI
-  // must never let the user reach `approvals.CommentRequired`.
-  describe('the reject-comment rule', () => {
-    it('refuses to submit a rejection with no comment', () => {
-      expect(() =>
-        service.decide('a1', { decision: ApprovalDecision.Rejected, comment: null }),
-      ).toThrow(/comment is required/i);
-    });
-
-    it('treats a whitespace-only comment as empty — the spec edge case', () => {
-      expect(() =>
-        service.decide('a1', { decision: ApprovalDecision.Rejected, comment: '   \t\n  ' }),
-      ).toThrow(/comment is required/i);
-    });
-
-    it('accepts a rejection with a real comment, trimmed', () => {
-      service
-        .decide('a1', { decision: ApprovalDecision.Rejected, comment: '  Wrong floor.  ' })
-        .subscribe();
-
-      const req = http.expectOne(url('/approvals/a1/decide'));
-      expect(req.request.method).toBe('PUT'); // PUT, not POST
-      expect(req.request.body).toEqual({
-        decision: ApprovalDecision.Rejected,
-        comment: 'Wrong floor.',
-      });
-      req.flush(null);
-    });
-
-    it('caps the comment at 2000 characters', () => {
-      service
-        .decide('a1', { decision: ApprovalDecision.Rejected, comment: 'x'.repeat(3000) })
-        .subscribe();
-
-      const req = http.expectOne(url('/approvals/a1/decide'));
-      expect((req.request.body as { comment: string }).comment).toHaveLength(2000);
-      req.flush(null);
-    });
-
-    it('allows an approval with no comment', () => {
-      service.decide('a1', { decision: ApprovalDecision.Approved, comment: null }).subscribe();
-
-      const req = http.expectOne(url('/approvals/a1/decide'));
-      expect(req.request.body).toEqual({ decision: ApprovalDecision.Approved, comment: null });
-      req.flush(null);
-    });
-  });
-
   // 009b #42: Approvals.Contracts/Enums.cs:8-15,47-52 adds ProjectDocument = 5 and
   // ChangesRequested = 3; ApprovalContracts.cs:24-28 requires a comment for Rejected AND
   // ChangesRequested.
   describe('ChangesRequested and ProjectDocument (009b #42)', () => {
-    it('refuses ChangesRequested with a whitespace-only comment', () => {
-      expect(() =>
-        service.decide('a1', { decision: ApprovalDecision.ChangesRequested, comment: ' ' }),
-      ).toThrow(/comment is required/i);
-    });
-
-    it('sends ChangesRequested (3) with its trimmed comment', () => {
-      service
-        .decide('a1', { decision: ApprovalDecision.ChangesRequested, comment: ' Move the door. ' })
-        .subscribe();
-
-      const req = http.expectOne(url('/approvals/a1/decide'));
-      expect(req.request.body).toEqual({ decision: 3, comment: 'Move the door.' });
-      req.flush(null);
-    });
-
     it('maps the subject name ProjectDocument to 5', () => {
       let subjectType: ApprovalSubjectType | undefined;
       service.pending().subscribe((r) => (subjectType = r.items[0].subjectType));
@@ -221,10 +157,11 @@ describe('CrmApprovalsService', () => {
     });
   });
 
-  // 009b #N-2: GET /crm/portal/approvals and PUT /crm/portal/approvals/{id}/decide have no
-  // backend route (EP/CrmPortalEndpoints.cs:36-153), so nothing callable targets them.
-  it('has no portal inbox or portal decide method (009b #N-2)', () => {
+  // crm-prod B1-fe: no office flow decided through this service; the client decides in the
+  // portal (`CrmPortalApprovalsService`), so the dead office decide is gone.
+  it('has no office decide and no portal methods (crm-prod B1-fe)', () => {
     const methods = service as unknown as Record<string, unknown>;
+    expect(methods['decide']).toBeUndefined();
     expect(methods['portalPending']).toBeUndefined();
     expect(methods['decideAsClient']).toBeUndefined();
   });

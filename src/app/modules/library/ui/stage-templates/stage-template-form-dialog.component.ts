@@ -29,7 +29,7 @@ export interface StageTemplateFormDialogData {
 
 /**
  * Create / edit a stage template. New templates are always `Custom`
- * (`stageTemplateType`); System templates are seeded and immutable — the library
+ * (`type`, sent as the enum int by the service); System templates are seeded and immutable — the library
  * hides Edit for them, and a stray edit attempt surfaces the backend 409 as a toast.
  */
 @Component({
@@ -138,7 +138,7 @@ export class StageTemplateFormDialogComponent {
           name,
           description,
           isDefault: v.isDefault,
-          stageTemplateType: 'Custom',
+          type: 'Custom',
         } as CreateStageTemplateRequest);
 
     call.subscribe({

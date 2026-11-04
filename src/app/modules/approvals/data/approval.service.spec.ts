@@ -25,4 +25,10 @@ describe('ApprovalService', () => {
     req.flush([{ id: 'a1', projectId: 'p1' }]);
     expect(result).toEqual([{ id: 'a1', projectId: 'p1' }]);
   });
+
+  // crm-prod FINDING-P2-10: `GET /api/projects/approval-requests` has no backend route; the
+  // method that read it is deleted rather than left callable.
+  it('offers no read of the unmapped /projects/approval-requests', () => {
+    expect('getProjectApprovalRequests' in svc).toBe(false);
+  });
 });

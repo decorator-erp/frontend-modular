@@ -8,6 +8,9 @@ import { TaskDetailComponent } from './ui/pages/task-detail.component';
 import { WorkflowBuilderComponent } from './ui/pages/workflow-builder.component';
 import { ScopeOfWorkPageComponent } from './ui/scope-of-work/scope-of-work-page.component';
 import { PERM } from '@platform/permissions';
+import { EN } from '@platform/i18n/catalog/en';
+import { AR } from '@platform/i18n/catalog/ar';
+import { isCatalogKey } from '@platform/i18n/catalog.service';
 
 /**
  * Pins the eight projects routes to the old app.routes.ts metadata at SOURCE_SHA (spec 008), plus
@@ -31,10 +34,10 @@ describe('projectsRoutes', () => {
   });
 
   it.each([
-    ['projects', { breadcrumb: 'Projects' }, ProjectsListComponent],
-    ['projects/new', { breadcrumb: 'New project' }, ProjectCreateComponent],
-    ['projects/:id', { breadcrumb: 'Project' }, ProjectDetailComponent],
-    ['projects/:id/tasks/:taskId', { breadcrumb: 'Task' }, TaskDetailComponent],
+    ['projects', { breadcrumb: 'route.projects' }, ProjectsListComponent],
+    ['projects/new', { breadcrumb: 'route.newProject' }, ProjectCreateComponent],
+    ['projects/:id', { breadcrumb: 'route.project' }, ProjectDetailComponent],
+    ['projects/:id/tasks/:taskId', { breadcrumb: 'route.task' }, TaskDetailComponent],
   ])('%s: no guard, %o', async (path, data, cmp) => {
     const r = route(path)!;
     expect(r.canActivate).toBeUndefined();
@@ -43,12 +46,17 @@ describe('projectsRoutes', () => {
   });
 
   it.each([
-    ['projects/:projectId/stages/:stageId', 'project.read', 'Stage', DmsStageDetailComponent],
-    ['dms/projects/:projectId/tasks/:taskId', 'dms.task_detail.view', 'Task', TaskDetailComponent],
+    ['projects/:projectId/stages/:stageId', 'project.read', 'route.stage', DmsStageDetailComponent],
+    [
+      'dms/projects/:projectId/tasks/:taskId',
+      'dms.task_detail.view',
+      'route.task',
+      TaskDetailComponent,
+    ],
     [
       'projects/:projectId/workflow/builder',
       'stages.manage',
-      'Workflow Builder',
+      'route.workflowBuilder',
       WorkflowBuilderComponent,
     ],
   ])('%s: PermissionGuard, %s, breadcrumb %s', async (path, permission, breadcrumb, cmp) => {
@@ -56,6 +64,22 @@ describe('projectsRoutes', () => {
     expect(r.canActivate).toEqual([PermissionGuard]);
     expect(r.data).toEqual({ permission, breadcrumb });
     expect(await r.loadComponent!()).toBe(cmp);
+  });
+
+  it('crm-prod L-fe-3: every breadcrumb is a catalog key with English and Arabic text', () => {
+    const crumbs = projectsRoutes
+      .map((r) => r.data?.['breadcrumb'] as string | undefined)
+      .filter((c): c is string => !!c);
+    expect(crumbs.length).toBe(8);
+    for (const crumb of crumbs) {
+      expect(isCatalogKey(crumb)).toBe(true);
+      if (!isCatalogKey(crumb)) continue;
+      expect(EN[crumb]).toBeTruthy();
+      expect(AR[crumb]).toBeTruthy();
+      expect(AR[crumb]).not.toBe(EN[crumb]);
+    }
+    expect(EN['route.projects']).toBe('Projects');
+    expect(EN['route.workflowBuilder']).toBe('Workflow Builder');
   });
 
   it('keeps the old /dms stage path as a full-match redirect to the canonical stage page', () => {
@@ -67,7 +91,7 @@ describe('projectsRoutes', () => {
   it('sow #2: projects/:id/scope-of-work is PermissionGuard-gated on scope.read and lazy-loads the page', async () => {
     const r = route('projects/:id/scope-of-work')!;
     expect(r.canActivate).toEqual([PermissionGuard]);
-    expect(r.data).toEqual({ permission: PERM.scope.read, breadcrumb: 'Scope of work' });
+    expect(r.data).toEqual({ permission: PERM.scope.read, breadcrumb: 'route.scopeOfWork' });
     expect(PERM.scope.read).toBe('scope.read');
     expect(await r.loadComponent!()).toBe(ScopeOfWorkPageComponent);
   });

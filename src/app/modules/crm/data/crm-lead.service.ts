@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { ApiService } from '@platform/http/api.service';
+import { handled } from '@platform/http/handled-errors';
 import type { PagedResult } from '@platform/types';
 import { LeadSource, LeadStatus } from '../model/crm-enums';
 import type {
@@ -100,9 +101,13 @@ export class CrmLeadService extends ApiService {
     });
   }
 
-  /** `PUT /{id}/status` → `204`. */
+  /**
+   * `PUT /{id}/status` → `204`. FINDING-P2-16: 403 is `handled` — `LeadDetailStore.changeStatus`
+   * shows its localized catalog toast for every caller (FINDING-P2-24); 0 and 5xx stay with
+   * `errorInterceptor`.
+   */
   updateStatus(id: string, status: LeadStatus): Observable<void> {
-    return this.put<void>(`/crm/leads/${id}/status`, { status });
+    return this.put<void>(`/crm/leads/${id}/status`, { status }, { context: handled(403) });
   }
 
   /**

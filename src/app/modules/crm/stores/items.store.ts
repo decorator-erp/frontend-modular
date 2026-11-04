@@ -1,3 +1,4 @@
+import { CatalogService } from '@platform/i18n/catalog.service';
 import { HttpErrorResponse } from '@angular/common/http';
 import { computed, inject } from '@angular/core';
 import { patchState, signalStore, withComputed, withMethods, withState } from '@ngrx/signals';
@@ -79,6 +80,7 @@ export const ItemsStore = signalStore(
       store,
       api = inject(CrmItemService),
       errors = inject(ErrorHandlerService),
+      catalog = inject(CatalogService),
       reloadOnConflict = injectReloadOnConflict(),
     ) => {
       /**
@@ -102,7 +104,7 @@ export const ItemsStore = signalStore(
             error: (err: unknown) =>
               err instanceof HttpErrorResponse && err.status === 404
                 ? patchState(store, { items: [], loading: false, notFound: true })
-                : patchState(store, { loading: false, error: 'Could not load requirement items.' }),
+                : patchState(store, { loading: false, error: catalog.t('item.loadFailed') }),
           });
         },
 
@@ -122,7 +124,7 @@ export const ItemsStore = signalStore(
             error: (err: unknown) =>
               patchState(store, {
                 mutating: false,
-                error: failure(err, null, 'Could not add the item.'),
+                error: failure(err, null, catalog.t('item.addFailed')),
               }),
           });
         },
@@ -138,7 +140,7 @@ export const ItemsStore = signalStore(
             error: (err: unknown) =>
               patchState(store, {
                 mutating: false,
-                error: failure(err, projectId, 'Could not update the item.'),
+                error: failure(err, projectId, catalog.t('item.updateFailed')),
               }),
           });
         },
@@ -154,7 +156,7 @@ export const ItemsStore = signalStore(
             error: (err: unknown) =>
               patchState(store, {
                 mutating: false,
-                error: failure(err, projectId, 'Could not send the item.'),
+                error: failure(err, projectId, catalog.t('item.sendFailed')),
               }),
           });
         },
@@ -171,7 +173,7 @@ export const ItemsStore = signalStore(
             error: (err: unknown) =>
               patchState(store, {
                 mutating: false,
-                error: failure(err, projectId, 'Could not add the new version.'),
+                error: failure(err, projectId, catalog.t('crm.supersedeFailed')),
               }),
           });
         },
@@ -185,7 +187,7 @@ export const ItemsStore = signalStore(
             error: (err: unknown) =>
               patchState(store, {
                 mutating: false,
-                error: failure(err, null, 'Could not add your requirement.'),
+                error: failure(err, null, catalog.t('item.addOwnFailed')),
               }),
           });
         },

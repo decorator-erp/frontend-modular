@@ -15,10 +15,14 @@ import {
   PeraPageHeaderComponent,
   PeraStatusBadgeComponent,
 } from '@ds';
-import { friendlyMessage } from '@platform/errors/error-catalog';
-import { CatalogService } from '@platform/i18n/catalog.service';
+import { SCOPE_ERROR_CODES, friendlyMessage } from '@platform/errors/error-catalog';
+import { CatalogService, STAGE_COUNT } from '@platform/i18n/catalog.service';
 import { formatCairoDate, intlLocale } from '@platform/i18n/intl-locale';
 import { PERM, PermissionsService } from '@platform/permissions';
+import { catchError, map, of } from 'rxjs';
+import { ProjectService } from '../../data/project.service';
+import type { Project } from '../../model/project.model';
+import type { ScopeOfWork } from '../../model/scope-of-work.model';
 import { ScopeOfWorkStore } from '../../stores/scope-of-work.store';
 import { SowItemsTableComponent, SowItemUpdate } from './sow-items-table.component';
 import { SowSummaryComponent } from './sow-summary.component';
@@ -55,7 +59,23 @@ const TOGGLE_BUTTON =
   providers: [ScopeOfWorkStore],
   host: { class: 'block' },
   template: `
-    <pera-page-header [title]="catalog.t('sow.title')" />
+    <pera-page-header [title]="catalog.t('sow.title')">
+      @if (project(); as p) {
+        <div
+          toolbar
+          data-project-header
+          class="flex items-center gap-2 flex-wrap fs-body-sm text-text-secondary"
+        >
+          <span class="font-semibold text-text-primary" dir="auto">{{ p.name }}</span>
+          @if (p.code) {
+            <span class="font-mono fs-label text-text-muted" dir="ltr">{{ p.code }}</span>
+          }
+          @if (p.clientName) {
+            <span dir="auto">{{ catalog.t('sow.headerClient', { name: p.clientName }) }}</span>
+          }
+        </div>
+      }
+    </pera-page-header>
     <div class="px-8 py-6 flex flex-col gap-5">
       @if (store.error(); as error) {
         <pera-alert tone="danger">{{ error }}</pera-alert>
@@ -95,7 +115,7 @@ const TOGGLE_BUTTON =
                 {{ catalog.t('sow.items') }}
                 <span class="text-text-muted font-medium">· {{ store.items().length }}</span>
               </h2>
-              @if (editable()) {
+              @if (editable() && canPickTemplates()) {
                 <button
                   type="button"
                   data-picker-toggle
@@ -108,7 +128,12 @@ const TOGGLE_BUTTON =
                 </button>
               }
             </div>
-            @if (editable() && pickerOpen()) {
+            @if (editable() && !canPickTemplates()) {
+              <p class="m-0 fs-body-sm text-text-muted" data-picker-no-permission>
+                {{ catalog.t('sow.pickerNoPermission') }}
+              </p>
+            }
+            @if (editable() && canPickTemplates() && pickerOpen()) {
               <app-sow-template-picker
                 [templates]="store.templates()"
                 [selectedTemplateId]="store.selectedTemplateId()"
@@ -156,12 +181,20 @@ export class ScopeOfWorkPageComponent implements OnInit {
   protected readonly store = inject(ScopeOfWorkStore);
   private readonly permissions = inject(PermissionsService);
   private readonly confirmDialog = inject(ConfirmService);
+  private readonly projects = inject(ProjectService);
 
   /** The project id (`:id`). */
   readonly id = input('');
 
   /** B15 `scope.manage`. */
   protected readonly canManage = computed(() => this.permissions.can(PERM.scope.manage));
+
+  /**
+   * crm-prod L-fe-5: the template picker reads `GET /api/stage-templates` and its stages, both
+   * `stages.read` (TemplateEndpoints.cs:22-27, 59-64). Without it the picker is hidden and the
+   * page says why, instead of offering a list that answers 403.
+   */
+  protected readonly canPickTemplates = computed(() => this.permissions.can(PERM.stages.read));
 
   /** B10/B15 `scope.confirm`. */
   protected readonly canConfirm = computed(() => this.permissions.can(PERM.scope.confirm));
@@ -179,15 +212,9 @@ export class ScopeOfWorkPageComponent implements OnInit {
   protected readonly confirmedSummary = computed(() => {
     const scope = this.store.scope();
     if (!scope) return '';
-    const locale = this.catalog.locale();
-    const total = new Intl.NumberFormat(intlLocale(locale), {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 4,
-    }).format(scope.total);
-    const end = scope.estimatedEndDate
-      ? formatCairoDate(`${scope.estimatedEndDate}T00:00:00Z`, locale)
-      : '—';
-    return this.catalog.t('sow.confirmedSummary', { n: scope.items.length, total, end });
+    const { total, end } = this.totalAndEnd(scope);
+    const stages = this.catalog.plural(STAGE_COUNT, scope.items.length);
+    return this.catalog.t('sow.confirmedSummary', { stages, total, end });
   });
 
   /**
@@ -195,13 +222,13 @@ export class ScopeOfWorkPageComponent implements OnInit {
    * the scope's `blockingReason`, which checks the workflow first (no `project.read` needed).
    */
   protected readonly isFreeStyle = computed(
-    () => this.store.scope()?.blockingReason === 'projects.scope.WorkflowNotSupported',
+    () => this.store.scope()?.blockingReason === SCOPE_ERROR_CODES.workflowNotSupported,
   );
 
   /** B12: the `projects.scope.WorkflowNotSupported` catalog message (EN/AR). */
   protected readonly freeStyleMessage = computed(() =>
     friendlyMessage(
-      'projects.scope.WorkflowNotSupported',
+      SCOPE_ERROR_CODES.workflowNotSupported,
       this.catalog.t('sow.loadFailed'),
       this.catalog.locale(),
     ),
@@ -212,11 +239,32 @@ export class ScopeOfWorkPageComponent implements OnInit {
     () => this.canManage() && !this.store.isConfirmed() && !this.isFreeStyle(),
   );
 
+  /**
+   * crm-prod L-fe-6: the project's name, code and client for the header, from
+   * `GET /api/projects/{id}/details` → `project` (`ProjectDetailsProjectResponse`, the one project
+   * read that carries `clientName` — `ProjectResponse` from `GET /{id}` has none; FINDING-P2-4).
+   * Same `project.read` claim as `GET /{id}` (ProjectEndpoints.cs:43-49). Read only with it, and a
+   * failed read just leaves the header out: the scope page never depends on it (FINDING-7-7).
+   */
+  protected readonly project = signal<Project | null>(null);
+
   /** B6: the template picker is open; templates are read on first open. */
   protected readonly pickerOpen = signal(false);
 
   ngOnInit(): void {
     this.store.load(this.id());
+    this.loadProject();
+  }
+
+  private loadProject(): void {
+    if (!this.permissions.can(PERM.projects.read)) return;
+    this.projects
+      .getDetails(this.id())
+      .pipe(
+        map((d) => d.project),
+        catchError(() => of(null)),
+      )
+      .subscribe((p) => this.project.set(p));
   }
 
   protected togglePicker(): void {
@@ -225,12 +273,31 @@ export class ScopeOfWorkPageComponent implements OnInit {
     if (open && this.store.templates().length === 0) this.store.loadTemplates();
   }
 
-  /** B10: asks through the design system's dialog, then `POST …/confirm` → reload. */
+  /** The server's total (EGP, 2-4 decimals) and estimated end (Africa/Cairo), or "—". */
+  private totalAndEnd(scope: ScopeOfWork): { total: string; end: string } {
+    const locale = this.catalog.locale();
+    const total = new Intl.NumberFormat(intlLocale(locale), {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 4,
+    }).format(scope.total);
+    const end = scope.estimatedEndDate
+      ? formatCairoDate(`${scope.estimatedEndDate}T00:00:00Z`, locale)
+      : '—';
+    return { total, end };
+  }
+
+  /**
+   * B10: asks through the design system's dialog, then `POST …/confirm` → reload. crm-prod
+   * L-fe-8: the question names the stage count, the total and the estimated end.
+   */
   protected async onConfirm(): Promise<void> {
     const n = this.store.items().length;
+    const scope = this.store.scope();
+    const copy = this.catalog.t('sow.confirmCopy', { stages: this.catalog.plural(STAGE_COUNT, n) });
+    const facts = scope ? this.catalog.t('sow.confirmFacts', this.totalAndEnd(scope)) : '';
     const ok = await this.confirmDialog.open({
       title: this.catalog.t('sow.confirmTitle'),
-      body: this.catalog.t('sow.confirmCopy', { n }),
+      body: facts ? `${copy} ${facts}` : copy,
       confirmLabel: this.catalog.t('sow.confirmScope'),
       cancelLabel: this.catalog.t('common.cancel'),
     });

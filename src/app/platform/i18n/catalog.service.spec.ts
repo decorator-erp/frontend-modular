@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
-import { CatalogService } from './catalog.service';
+import { CatalogService, STAGE_COUNT } from './catalog.service';
 import { LocaleService } from './locale.service';
 import { EN, type CatalogKey } from './catalog/en';
 import { AR } from './catalog/ar';
@@ -26,6 +26,22 @@ describe('CatalogService', () => {
   afterEach(() => {
     vi.restoreAllMocks();
     localStorage.clear();
+  });
+
+  it('crm-prod L-fe-1: plural() picks the English one/other form ("1 stage", "2 stages")', () => {
+    expect(catalog.plural(STAGE_COUNT, 1)).toBe('1 stage');
+    expect(catalog.plural(STAGE_COUNT, 2)).toBe('2 stages');
+    expect(catalog.plural(STAGE_COUNT, 0)).toBe('0 stages');
+  });
+
+  it('crm-prod L-fe-1: plural() picks the Arabic one/two/few/many/other forms', () => {
+    locale.locale.set('ar');
+    expect(catalog.plural(STAGE_COUNT, 1)).toBe('مرحلة واحدة');
+    expect(catalog.plural(STAGE_COUNT, 2)).toBe('مرحلتان');
+    expect(catalog.plural(STAGE_COUNT, 3)).toBe('3 مراحل');
+    expect(catalog.plural(STAGE_COUNT, 10)).toBe('10 مراحل');
+    expect(catalog.plural(STAGE_COUNT, 11)).toBe('11 مرحلة');
+    expect(catalog.plural(STAGE_COUNT, 100)).toBe('100 مرحلة');
   });
 
   it('resolves a key in English', () => {

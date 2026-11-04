@@ -25,7 +25,7 @@ function make(propose: ReturnType<typeof vi.fn>) {
   const c = fixture.componentInstance;
   c.form.controls.title.setValue('Kick-off');
   (c as unknown as { selectedSlots: { set(v: unknown): void } }).selectedSlots.set([SLOT]);
-  return { c, close };
+  return { c, close, fixture };
 }
 
 describe('CrmProposeSlotsComponent (009b #20)', () => {
@@ -55,5 +55,16 @@ describe('CrmProposeSlotsComponent (009b #20)', () => {
     c.submit();
 
     expect(c.serverError()?.generalMessage).toBe('Only an employee can do this.');
+  });
+});
+
+describe('CrmProposeSlotsComponent labels (crm-prod M3)', () => {
+  it('labels the duration and location fields for what they hold', () => {
+    const { fixture } = make(vi.fn());
+    const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
+    expect(text).toContain('Duration (minutes)');
+    expect(text).toContain('Location');
+    expect(text).not.toContain('Close reminder');
+    expect(text).not.toContain('Attach photos');
   });
 });

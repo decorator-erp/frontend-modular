@@ -1,3 +1,5 @@
+import type { CatalogKey } from '@platform/i18n/catalog/en';
+import { CatalogService } from '@platform/i18n/catalog.service';
 import { computed, inject } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { forkJoin, of, type Observable } from 'rxjs';
@@ -67,8 +69,8 @@ export function isSlotHoldExpired(slot: CrmMeetingSlot, nowMs: number = Date.now
   return new Date(slot.startsAtUtc).getTime() <= nowMs;
 }
 
-/** `portalRequestSlot`'s text for an uncoded failure (009b #45) — the client scheduler swaps it for its catalog copy. */
-export const PORTAL_REQUEST_FAILED = 'Could not request the meeting.';
+/** `portalRequestSlot`'s catalog key for an uncoded failure (009b #45; client-facing copy). */
+export const PORTAL_REQUEST_FAILED: CatalogKey = 'sched.csRequestFailed';
 
 /**
  * 009b #44: the client can answer (accept / decline) a slot the OTHER side proposed — `proposedByMe`
@@ -152,6 +154,7 @@ export const MeetingsStore = signalStore(
       store,
       api = inject(CrmMeetingService),
       errors = inject(ErrorHandlerService),
+      catalog = inject(CatalogService),
       reloadOnConflict = injectReloadOnConflict(),
     ) => {
       /**
@@ -204,7 +207,7 @@ export const MeetingsStore = signalStore(
             error: (err: unknown) =>
               err instanceof HttpErrorResponse && err.status === 404
                 ? patchState(store, { meetings: [], loading: false, notFound: true })
-                : patchState(store, { loading: false, error: 'Could not load meetings.' }),
+                : patchState(store, { loading: false, error: catalog.t('sched.loadFailed') }),
           });
         },
 
@@ -242,7 +245,7 @@ export const MeetingsStore = signalStore(
                   error:
                     parsed && hasCatalogMessage(parsed)
                       ? friendly(parsed)
-                      : 'Could not load your meetings.',
+                      : catalog.t('sched.loadOwnFailed'),
                 });
               },
             });
@@ -254,7 +257,7 @@ export const MeetingsStore = signalStore(
           api.freeSlots(projectId, fromUtc, toUtc).subscribe({
             next: (freeSlots) => patchState(store, { freeSlots, loadingSlots: false }),
             error: () =>
-              patchState(store, { loadingSlots: false, error: 'Could not load free slots.' }),
+              patchState(store, { loadingSlots: false, error: catalog.t('sched.slotsLoadFailed') }),
           });
         },
 
@@ -267,18 +270,22 @@ export const MeetingsStore = signalStore(
               methods.load(request.projectId);
             },
             error: () =>
-              patchState(store, { mutating: false, error: 'Could not propose the meeting.' }),
+              patchState(store, { mutating: false, error: catalog.t('sched.proposeFailed') }),
           });
         },
 
         /** Accept one slot — the meeting becomes Scheduled; competing holds are released server-side. */
         acceptSlot(slotId: string): void {
-          mutate(api.acceptSlot(slotId), officeReload(), 'Could not accept the slot.');
+          mutate(api.acceptSlot(slotId), officeReload(), catalog.t('sched.acceptFailed'));
         },
 
         /** Decline one slot, releasing its hold — optionally with a counter-proposal, never a reason. */
         declineSlot(slotId: string, request?: DeclineSlotRequest): void {
-          mutate(api.declineSlot(slotId, request), officeReload(), 'Could not decline the slot.');
+          mutate(
+            api.declineSlot(slotId, request),
+            officeReload(),
+            catalog.t('sched.declineFailed'),
+          );
         },
 
         /** Reschedule — a NEW slot proposal, an offer, no reason (FR-023 amended). */
@@ -286,21 +293,21 @@ export const MeetingsStore = signalStore(
           mutate(
             api.reschedule(meetingId, slot),
             officeReload(),
-            'Could not reschedule the meeting.',
+            catalog.t('sched.rescheduleFailed'),
           );
         },
 
         /** Cancel — the ONE action whose reason is mandatory (enforced by the form, not here). */
         cancel(meetingId: string, reason: string): void {
-          mutate(api.cancel(meetingId, reason), officeReload(), 'Could not cancel the meeting.');
+          mutate(api.cancel(meetingId, reason), officeReload(), catalog.t('sched.cancelFailed'));
         },
 
         complete(meetingId: string): void {
-          mutate(api.complete(meetingId), officeReload(), 'Could not complete the meeting.');
+          mutate(api.complete(meetingId), officeReload(), catalog.t('sched.completeFailed'));
         },
 
         noShow(meetingId: string): void {
-          mutate(api.noShow(meetingId), officeReload(), 'Could not mark the meeting no-show.');
+          mutate(api.noShow(meetingId), officeReload(), catalog.t('sched.noShowFailed'));
         },
 
         // ── Client portal ──
@@ -317,19 +324,19 @@ export const MeetingsStore = signalStore(
               patchState(store, { mutating: false });
               methods.loadPortal(request.projectId);
             },
-            error: (err: unknown) => fail(err, null, PORTAL_REQUEST_FAILED),
+            error: (err: unknown) => fail(err, null, catalog.t(PORTAL_REQUEST_FAILED)),
           });
         },
 
         portalAcceptSlot(slotId: string): void {
-          mutate(api.portalAcceptSlot(slotId), portalReload(), 'Could not accept the slot.');
+          mutate(api.portalAcceptSlot(slotId), portalReload(), catalog.t('sched.acceptFailed'));
         },
 
         portalDeclineSlot(slotId: string, request?: DeclineSlotRequest): void {
           mutate(
             api.portalDeclineSlot(slotId, request),
             portalReload(),
-            'Could not decline the slot.',
+            catalog.t('sched.declineFailed'),
           );
         },
 
@@ -337,7 +344,7 @@ export const MeetingsStore = signalStore(
           mutate(
             api.portalReschedule(meetingId, slot),
             portalReload(),
-            'Could not reschedule the meeting.',
+            catalog.t('sched.rescheduleFailed'),
           );
         },
 
@@ -345,7 +352,7 @@ export const MeetingsStore = signalStore(
           mutate(
             api.portalCancel(meetingId, reason),
             portalReload(),
-            'Could not cancel the meeting.',
+            catalog.t('sched.cancelFailed'),
           );
         },
       };

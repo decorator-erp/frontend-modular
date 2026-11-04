@@ -82,7 +82,7 @@ const TYPE_KEYS: Record<MeetingType, CatalogKey> = {
             <pera-select formControlName="type" [options]="typeOptions" />
           </pera-form-field>
           <pera-form-field
-            [label]="catalog.t('brief.fReminder')"
+            [label]="catalog.t('sched.duration')"
             [hint]="catalog.t('common.optionalLbl')"
           >
             <pera-input type="number" formControlName="durationMinutes" />
@@ -90,7 +90,7 @@ const TYPE_KEYS: Record<MeetingType, CatalogKey> = {
         </div>
 
         <pera-form-field
-          [label]="catalog.t('common.attachOptional')"
+          [label]="catalog.t('sched.location')"
           [hint]="catalog.t('common.optionalLbl')"
         >
           <pera-input formControlName="location" />

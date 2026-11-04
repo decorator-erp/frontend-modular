@@ -75,7 +75,7 @@ const DAY_MS = 86_400_000;
           [routerLink]="['/projects', projectId(), 'workflow', 'builder']"
           class="inline-flex items-center gap-1.5 px-2.5 py-1.5 font-mono fs-label uppercase border border-border bg-surface hover:bg-surface-muted"
         >
-          Open builder →
+          Open builder <span class="inline-block rtl:rotate-180" aria-hidden="true">→</span>
         </a>
       </div>
     </div>
@@ -199,7 +199,7 @@ const DAY_MS = 86_400_000;
                   {{
                     h.stage.startedOnUtc ? shortDate(h.stage.startedOnUtc, locale.locale()) : '—'
                   }}
-                  →
+                  <span class="inline-block rtl:rotate-180" aria-hidden="true">→</span>
                   {{
                     h.stage.completedOnUtc
                       ? shortDate(h.stage.completedOnUtc, locale.locale())

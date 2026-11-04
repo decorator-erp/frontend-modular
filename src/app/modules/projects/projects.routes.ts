@@ -5,26 +5,26 @@ import { PERM } from '@platform/permissions';
 /**
  * The projects module's office-shell routes (spec 008). NEW file: its entries are the old
  * app.routes.ts projects block at SOURCE_SHA (`projects` … `projects/:projectId/workflow/builder`),
- * metadata verbatim, spread into the shell's children by app.routes.ts at the same position.
+ * metadata verbatim (crm-prod L-fe-3: breadcrumbs are catalog keys), spread into the shell's children by app.routes.ts at the same position.
  */
 export const projectsRoutes: Routes = [
   {
     path: 'projects',
     loadComponent: () =>
       import('./ui/pages/projects-list.component').then((m) => m.ProjectsListComponent),
-    data: { breadcrumb: 'Projects' },
+    data: { breadcrumb: 'route.projects' },
   },
   {
     path: 'projects/new',
     loadComponent: () =>
       import('./ui/pages/project-create.component').then((m) => m.ProjectCreateComponent),
-    data: { breadcrumb: 'New project' },
+    data: { breadcrumb: 'route.newProject' },
   },
   {
     path: 'projects/:id',
     loadComponent: () =>
       import('./ui/pages/project-detail.component').then((m) => m.ProjectDetailComponent),
-    data: { breadcrumb: 'Project' },
+    data: { breadcrumb: 'route.project' },
   },
   // Canonical stage page — the DMS redesign (DMS Stage Detail.dc.html) is now
   // GA. Gated on the real backend read permission; per-panel write affordances
@@ -33,7 +33,7 @@ export const projectsRoutes: Routes = [
   {
     path: 'projects/:projectId/stages/:stageId',
     canActivate: [PermissionGuard],
-    data: { permission: 'project.read', breadcrumb: 'Stage' },
+    data: { permission: 'project.read', breadcrumb: 'route.stage' },
     loadComponent: () =>
       import('./ui/pages/dms-stage-detail.component').then((m) => m.DmsStageDetailComponent),
   },
@@ -41,7 +41,7 @@ export const projectsRoutes: Routes = [
     path: 'projects/:id/tasks/:taskId',
     loadComponent: () =>
       import('./ui/pages/task-detail.component').then((m) => m.TaskDetailComponent),
-    data: { breadcrumb: 'Task' },
+    data: { breadcrumb: 'route.task' },
   },
   // Redesigned DMS task view. Same component/data as the route above, but
   // permission-gated for staged rollout. `dms.task_detail.view` is a UI-side
@@ -50,7 +50,7 @@ export const projectsRoutes: Routes = [
   {
     path: 'dms/projects/:projectId/tasks/:taskId',
     canActivate: [PermissionGuard],
-    data: { permission: 'dms.task_detail.view', breadcrumb: 'Task' },
+    data: { permission: 'dms.task_detail.view', breadcrumb: 'route.task' },
     loadComponent: () =>
       import('./ui/pages/task-detail.component').then((m) => m.TaskDetailComponent),
   },
@@ -64,7 +64,7 @@ export const projectsRoutes: Routes = [
   {
     path: 'projects/:projectId/workflow/builder',
     canActivate: [PermissionGuard],
-    data: { permission: 'stages.manage', breadcrumb: 'Workflow Builder' },
+    data: { permission: 'stages.manage', breadcrumb: 'route.workflowBuilder' },
     loadComponent: () =>
       import('./ui/pages/workflow-builder.component').then((m) => m.WorkflowBuilderComponent),
   },
@@ -72,7 +72,7 @@ export const projectsRoutes: Routes = [
   {
     path: 'projects/:id/scope-of-work',
     canActivate: [PermissionGuard],
-    data: { permission: PERM.scope.read, breadcrumb: 'Scope of work' },
+    data: { permission: PERM.scope.read, breadcrumb: 'route.scopeOfWork' },
     loadComponent: () =>
       import('./ui/scope-of-work/scope-of-work-page.component').then(
         (m) => m.ScopeOfWorkPageComponent,

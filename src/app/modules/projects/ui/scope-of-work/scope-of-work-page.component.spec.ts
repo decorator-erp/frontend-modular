@@ -1,5 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { HttpErrorResponse } from '@angular/common/http';
+import { HttpErrorResponse, provideHttpClient } from '@angular/common/http';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { environment } from '../../../../../environments/environment';
 import { provideRouter } from '@angular/router';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { of, Subject, throwError } from 'rxjs';
@@ -7,6 +9,7 @@ import { PermissionsService, PERM } from '@platform/permissions';
 import { ToastService } from '@platform/feedback/toast.service';
 import { ProjectService } from '../../data/project.service';
 import { ScopeOfWorkService } from '../../data/scope-of-work.service';
+import type { Project, ProjectDetails } from '../../model/project.model';
 import { ScopeOfWork, ScopeOfWorkItem, ScopeOfWorkStatus } from '../../model/scope-of-work.model';
 import { ScopeOfWorkPageComponent } from './scope-of-work-page.component';
 import { StageTemplatesService } from '@modules/library';
@@ -28,6 +31,11 @@ function item(over: Partial<ScopeOfWorkItem> = {}): ScopeOfWorkItem {
     sourceMissing: false,
     ...over,
   };
+}
+
+/** `ProjectService.getDetails()` result around a (partial) project — the header reads `.project`. */
+function details(project: Partial<Project>): Partial<ProjectDetails> {
+  return { project: project as Project, stages: [], unstagedTasks: [], taskCounts: [] };
 }
 
 function scope(over: Partial<ScopeOfWork> = {}): ScopeOfWork {
@@ -63,7 +71,8 @@ describe('ScopeOfWorkPageComponent — items (sow #3)', () => {
   let dialog: { open: ReturnType<typeof vi.fn> };
 
   beforeEach(() => {
-    granted = new Set([PERM.scope.read, PERM.scope.manage, PERM.scope.confirm]);
+    // crm-prod L-fe-5: the template picker also needs stages.read.
+    granted = new Set([PERM.scope.read, PERM.scope.manage, PERM.scope.confirm, PERM.stages.read]);
     employees = { getById: vi.fn().mockReturnValue(of({ id: 'e1', fullName: 'Mona Adel' })) };
     dialog = { open: vi.fn().mockResolvedValue(true) };
     api = {
@@ -105,9 +114,9 @@ describe('ScopeOfWorkPageComponent — items (sow #3)', () => {
         {
           provide: ProjectService,
           useValue: {
-            getById: vi
+            getDetails: vi
               .fn()
-              .mockReturnValue(of({ id: 'p1', name: 'Villa', workflowType: 'Stage' })),
+              .mockReturnValue(of(details({ id: 'p1', name: 'Villa', workflowType: 'Stage' }))),
           },
         },
         { provide: PermissionsService, useValue: { can: (p: string) => granted.has(p) } },
@@ -233,6 +242,23 @@ describe('ScopeOfWorkPageComponent — items (sow #3)', () => {
     expect(api['addFromTemplate']).toHaveBeenCalledWith('p1', 't1');
   });
 
+  it('crm-prod L-fe-5: without stages.read the picker toggle is hidden and the page says why', () => {
+    granted.delete(PERM.stages.read);
+    render();
+    expect(toggle()).toBeUndefined();
+    expect(el.querySelector('app-sow-template-picker')).toBeNull();
+    expect(el.querySelector('[data-picker-no-permission]')?.textContent?.trim()).toBe(
+      EN['sow.pickerNoPermission'],
+    );
+    expect(templates.list).not.toHaveBeenCalled();
+  });
+
+  it('crm-prod L-fe-5: with stages.read there is no missing-permission message', () => {
+    render();
+    expect(toggle()).toBeDefined();
+    expect(el.querySelector('[data-picker-no-permission]')).toBeNull();
+  });
+
   it('sow #4: no picker toggle without scope.manage (B15)', () => {
     granted.delete(PERM.scope.manage);
     render();
@@ -306,6 +332,19 @@ describe('ScopeOfWorkPageComponent — items (sow #3)', () => {
       blockingReason: 'projects.scope.Confirmed',
     });
 
+  it('crm-prod L-fe-8: the confirm question names the stage count, the total and the estimated end', async () => {
+    api['getScope'].mockReturnValue(
+      of(scope({ canConfirm: true, total: 50000, estimatedEndDate: '2027-03-01' })),
+    );
+    render();
+    confirmButton()!.click();
+    await fixture.whenStable();
+    const body = (dialog.open.mock.calls[0][0] as { body: string }).body;
+    expect(body).toContain('Confirming creates 2 stages');
+    expect(body).toContain('Total 50,000.00 EGP');
+    expect(body).toContain(`estimated end ${formatCairoDate('2027-03-01T00:00:00Z', 'en')}.`);
+  });
+
   it('sow #7: Confirm asks through ConfirmService, then posts and reloads (B10)', async () => {
     api['getScope'].mockReturnValue(of(scope({ canConfirm: true })));
     render();
@@ -313,7 +352,7 @@ describe('ScopeOfWorkPageComponent — items (sow #3)', () => {
     await fixture.whenStable();
     expect(dialog.open).toHaveBeenCalledWith(
       expect.objectContaining({
-        body: "Confirming creates 2 stages with their tasks, teams and cost, in this order. It can't be undone.",
+        body: "Confirming creates 2 stages with their tasks, teams and cost, in this order. It can't be undone. Total 0.00 EGP · estimated end —.",
         confirmLabel: EN['sow.confirmScope'],
       }),
     );
@@ -405,6 +444,91 @@ describe('ScopeOfWorkPageComponent — items (sow #3)', () => {
     expect(inputs.every((i) => i.disabled)).toBe(true);
     expect(el.querySelector('[data-confirmed-banner]')).toBeNull();
   });
+  describe('crm-prod M6: one structural write at a time', () => {
+    const removeButton = (n: number) =>
+      rows()[n - 1].querySelector<HTMLButtonElement>(`button[aria-label^="Remove item ${n}"]`)!;
+    const moveDown = (n: number) =>
+      rows()[n - 1].querySelector<HTMLButtonElement>(`button[aria-label^="Move item ${n} down"]`)!;
+    const pickerButton = (label: string) =>
+      Array.from(el.querySelectorAll<HTMLButtonElement>('app-sow-template-picker button')).find(
+        (b) => b.textContent!.trim() === label,
+      )!;
+    const openPicker = () => {
+      toggle()!.click();
+      fixture.detectChanges();
+    };
+
+    it('a double click on Remove sends one request', () => {
+      api['removeItem'].mockReturnValue(new Subject<void>());
+      render();
+      const remove = removeButton(2);
+      remove.click();
+      remove.click();
+      expect(api['removeItem']).toHaveBeenCalledTimes(1);
+      fixture.detectChanges();
+      expect(removeButton(1).disabled).toBe(true);
+      expect(moveDown(1).disabled).toBe(true);
+    });
+
+    it('a double click on Move down sends one request', () => {
+      api['reorder'].mockReturnValue(new Subject<void>());
+      render();
+      const down = moveDown(1);
+      down.click();
+      down.click();
+      expect(api['reorder']).toHaveBeenCalledTimes(1);
+    });
+
+    it('move and remove stay disabled while the reload after a write is in flight', () => {
+      render();
+      const reload = new Subject<ScopeOfWork>();
+      api['getScope'].mockReturnValue(reload);
+      removeButton(2).click();
+      fixture.detectChanges();
+      expect(api['removeItem']).toHaveBeenCalledTimes(1);
+      expect(removeButton(1).disabled).toBe(true);
+      removeButton(1).click();
+      expect(api['removeItem']).toHaveBeenCalledTimes(1);
+
+      reload.next(scope({ items: [item()] }));
+      fixture.detectChanges();
+      expect(removeButton(1).disabled).toBe(false);
+    });
+
+    it('a double click on Add or Add whole template sends one request, and both wait for the reload', () => {
+      render();
+      openPicker();
+      const reload = new Subject<ScopeOfWork>();
+      api['getScope'].mockReturnValue(reload);
+      api['addItems'].mockReturnValue(new Subject<void>());
+      const add = pickerButton(EN['sow.add']);
+      add.click();
+      add.click();
+      expect(api['addItems']).toHaveBeenCalledTimes(1);
+      fixture.detectChanges();
+      expect(pickerButton(EN['sow.add']).disabled).toBe(true);
+      expect(pickerButton(EN['sow.addWholeTemplate']).disabled).toBe(true);
+      pickerButton(EN['sow.addWholeTemplate']).click();
+      expect(api['addFromTemplate']).not.toHaveBeenCalled();
+    });
+
+    it('a reorder pressed during an item save waits for it, then goes out once', () => {
+      const save = new Subject<void>();
+      api['updateItem'].mockReturnValueOnce(save);
+      render();
+      const name = rows()[0].querySelector<HTMLInputElement>('pera-input input')!;
+      name.value = 'Concept';
+      name.dispatchEvent(new Event('change', { bubbles: true }));
+      // The press lands before the table re-renders disabled.
+      moveDown(1).click();
+      expect(api['reorder']).not.toHaveBeenCalled();
+
+      save.next();
+      save.complete();
+      expect(api['reorder']).toHaveBeenCalledTimes(1);
+      expect(api['reorder']).toHaveBeenCalledWith('p1', ['i2', 'i1']);
+    });
+  });
 });
 
 /** sow #8: error and concurrency states (B12, B14). */
@@ -412,7 +536,7 @@ describe('ScopeOfWorkPageComponent — errors (sow #8)', () => {
   let fixture: ComponentFixture<ScopeOfWorkPageComponent>;
   let el: HTMLElement;
   let api: Record<string, ReturnType<typeof vi.fn>>;
-  let project: { getById: ReturnType<typeof vi.fn> };
+  let project: { getDetails: ReturnType<typeof vi.fn> };
   let toast: { show: ReturnType<typeof vi.fn> };
   let granted: Set<string>;
 
@@ -420,7 +544,8 @@ describe('ScopeOfWorkPageComponent — errors (sow #8)', () => {
     new HttpErrorResponse({ status, error: { title: code, status, errors: { [code]: ['x'] } } });
 
   beforeEach(() => {
-    granted = new Set([PERM.scope.read, PERM.scope.manage, PERM.scope.confirm]);
+    // crm-prod L-fe-5: the template picker also needs stages.read.
+    granted = new Set([PERM.scope.read, PERM.scope.manage, PERM.scope.confirm, PERM.stages.read]);
     api = {
       getScope: vi.fn().mockReturnValue(of(scope({ canConfirm: true }))),
       updateHeader: vi.fn().mockReturnValue(of(undefined)),
@@ -428,7 +553,9 @@ describe('ScopeOfWorkPageComponent — errors (sow #8)', () => {
       confirm: vi.fn().mockReturnValue(of({ createdStageIds: [] })),
     };
     project = {
-      getById: vi.fn().mockReturnValue(of({ id: 'p1', name: 'Villa', workflowType: 'Stage' })),
+      getDetails: vi
+        .fn()
+        .mockReturnValue(of(details({ id: 'p1', name: 'Villa', workflowType: 'Stage' }))),
     };
     toast = { show: vi.fn() };
     TestBed.configureTestingModule({
@@ -533,7 +660,9 @@ describe('ScopeOfWorkPageComponent — errors (sow #8)', () => {
   });
 
   it('FreeStyle: read-only with the WorkflowNotSupported message; confirm disabled (B12)', () => {
-    project.getById.mockReturnValue(of({ id: 'p1', name: 'Villa', workflowType: 'FreeStyle' }));
+    project.getDetails.mockReturnValue(
+      of(details({ id: 'p1', name: 'Villa', workflowType: 'FreeStyle' })),
+    );
     api['getScope'].mockReturnValue(
       of(scope({ canConfirm: false, blockingReason: 'projects.scope.WorkflowNotSupported' })),
     );
@@ -550,11 +679,33 @@ describe('ScopeOfWorkPageComponent — errors (sow #8)', () => {
   });
 
   it('FINDING-7-7: a 403 on the project read does not stop the page (it is not read)', () => {
-    project.getById.mockReturnValue(throwError(() => coded('projects.AccessDenied', 403)));
+    project.getDetails.mockReturnValue(throwError(() => coded('projects.AccessDenied', 403)));
     render();
-    expect(project.getById).not.toHaveBeenCalled();
+    expect(project.getDetails).not.toHaveBeenCalled();
     expect(el.querySelector('app-sow-summary')).not.toBeNull();
     expect(el.querySelectorAll('tbody tr')).toHaveLength(2);
+    expect(el.querySelector('pera-alert[tone="danger"]')).toBeNull();
+  });
+
+  it('crm-prod L-fe-6: with project.read the header shows the project name, code and client', () => {
+    granted.add(PERM.projects.read);
+    project.getDetails.mockReturnValue(
+      of(details({ id: 'p1', name: 'Villa Rose', code: 'PRJ-7', clientName: 'Hana Saleh' })),
+    );
+    render();
+    expect(project.getDetails).toHaveBeenCalledWith('p1');
+    const header = el.querySelector('[data-project-header]')?.textContent?.replace(/\s+/g, ' ');
+    expect(header).toContain('Villa Rose');
+    expect(header).toContain('PRJ-7');
+    expect(header).toContain('Client: Hana Saleh');
+  });
+
+  it('crm-prod L-fe-6: a failed project read leaves the header out and the page working', () => {
+    granted.add(PERM.projects.read);
+    project.getDetails.mockReturnValue(throwError(() => coded('projects.AccessDenied', 403)));
+    render();
+    expect(el.querySelector('[data-project-header]')).toBeNull();
+    expect(el.querySelector('app-sow-summary')).not.toBeNull();
     expect(el.querySelector('pera-alert[tone="danger"]')).toBeNull();
   });
 
@@ -600,5 +751,76 @@ describe('ScopeOfWorkPageComponent — errors (sow #8)', () => {
     expect(el.querySelector('[data-confirm-error]')).not.toBeNull();
     await pressConfirm();
     expect(el.querySelector('[data-confirm-error]')).toBeNull();
+  });
+});
+
+/**
+ * crm-prod FINDING-P2-4: the header against the REAL ProjectService and the backend's JSON. `GET
+ * /api/projects/{id}` answers `ProjectResponse` (ProjectContracts.cs:18-22 — no clientName); only
+ * `GET /{id}/details` → `project` (`ProjectDetailsProjectResponse`, :66-70) carries `clientName`.
+ */
+describe('ScopeOfWorkPageComponent — project header from the backend shape (FINDING-P2-4)', () => {
+  const projectJson = {
+    id: 'p1',
+    code: 'PRJ-7',
+    name: 'Villa Rose',
+    description: null,
+    status: 2,
+    workflowType: 1,
+    address: 'Cairo',
+    notes: null,
+    progressPercentage: 0,
+    estimatedStartDate: null,
+    estimatedEndDate: null,
+    actualStartDate: null,
+    actualEndDate: null,
+    clientId: 'c1',
+    ownerId: 'e1',
+    isActive: true,
+    stageCount: 0,
+  };
+
+  it('shows the client name read from GET /projects/{id}/details', () => {
+    TestBed.configureTestingModule({
+      imports: [ScopeOfWorkPageComponent],
+      providers: [
+        provideRouter([]),
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        ProjectService,
+        {
+          provide: ScopeOfWorkService,
+          useValue: { getScope: vi.fn().mockReturnValue(of(scope())) },
+        },
+        { provide: PermissionsService, useValue: { can: () => true } },
+        { provide: StageTemplatesService, useValue: { list: vi.fn(), stages: vi.fn() } },
+        { provide: EmployeeService, useValue: { getById: vi.fn().mockReturnValue(of(null)) } },
+        { provide: ConfirmService, useValue: { open: vi.fn() } },
+      ],
+    });
+    const http = TestBed.inject(HttpTestingController);
+    const fixture = TestBed.createComponent(ScopeOfWorkPageComponent);
+    fixture.componentRef.setInput('id', 'p1');
+    fixture.detectChanges();
+
+    // Both project reads answer the backend's own shape; only /details is a ProjectDetailsResponse.
+    http.match(`${environment.apiUrl}/projects/p1`).forEach((r) => r.flush(projectJson));
+    http.match(`${environment.apiUrl}/projects/p1/details`).forEach((r) =>
+      r.flush({
+        project: { ...projectJson, clientName: 'Hana Saleh' },
+        stages: [],
+        unstagedTasks: [],
+        taskCounts: [],
+        gates: { total: 0, pending: 0, satisfied: 0, rejected: 0 },
+      }),
+    );
+    fixture.detectChanges();
+
+    const header = (fixture.nativeElement as HTMLElement)
+      .querySelector('[data-project-header]')
+      ?.textContent?.replace(/\s+/g, ' ');
+    expect(header).toContain('Villa Rose');
+    expect(header).toContain('Client: Hana Saleh');
+    http.verify();
   });
 });

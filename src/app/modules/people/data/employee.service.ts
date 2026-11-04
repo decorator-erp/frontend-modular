@@ -16,6 +16,7 @@ import {
 import { Paged } from '@platform/types/paged';
 import { PagedResult } from '@platform/types/paged-result';
 import { ApiService } from '@platform/http/api.service';
+import { handled } from '@platform/http/handled-errors';
 import { RoleService } from './role.service';
 
 /** `GetEmployeesQueryValidator` caps `pageSize` at 200. See `listPaged` for why we honour it. */
@@ -93,6 +94,17 @@ export class EmployeeService extends ApiService {
 
   getById(id: string): Observable<EmployeeResponse> {
     return this.get<unknown>(`/employees/${id}`).pipe(
+      map((r) => this.normalizeEmployeeResponse(this.unwrap(r))),
+    );
+  }
+
+  /**
+   * `getById` for a lookup that may miss — crm-prod FINDING-P2-23: the 404 (no such employee) is
+   * marked handled here, so a caller in another module never builds an HTTP context for this
+   * service. Same route, same claim (`GET /api/employees/{id}`, `employees.read`).
+   */
+  lookupById(id: string): Observable<EmployeeResponse> {
+    return this.get<unknown>(`/employees/${id}`, undefined, { context: handled(404) }).pipe(
       map((r) => this.normalizeEmployeeResponse(this.unwrap(r))),
     );
   }

@@ -64,7 +64,7 @@ describe('StageTemplateFormDialogComponent', () => {
     return TestBed.createComponent(StageTemplateFormDialogComponent).componentInstance;
   }
 
-  it('create mode sends stageTemplateType=Custom with name/description/isDefault', () => {
+  it('create mode sends type=Custom with name/description/isDefault', () => {
     const c = make(null);
     expect(c.isEdit).toBe(false);
     c.form.setValue({ name: 'Fit-out', description: 'Seeds fit-out stages', isDefault: true });
@@ -73,7 +73,7 @@ describe('StageTemplateFormDialogComponent', () => {
       name: 'Fit-out',
       description: 'Seeds fit-out stages',
       isDefault: true,
-      stageTemplateType: 'Custom',
+      type: 'Custom',
     });
     expect(closedWith).toBe(true);
   });

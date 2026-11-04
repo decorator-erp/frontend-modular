@@ -18,5 +18,5 @@ export const MEETING_STATUS_CHIP: Record<
   [MeetingStatus.Rescheduled]: { tone: 'warning', key: 'sched.reschedule' },
   [MeetingStatus.Completed]: { tone: 'neutral', key: 'ws.completed' },
   [MeetingStatus.Canceled]: { tone: 'neutral', key: 'sched.cancel' },
-  [MeetingStatus.NoShow]: { tone: 'error', key: 'sched.decline' },
+  [MeetingStatus.NoShow]: { tone: 'error', key: 'sched.noShow' },
 };

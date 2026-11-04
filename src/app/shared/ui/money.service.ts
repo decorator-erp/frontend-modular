@@ -1,5 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { LocaleService, type Locale } from '@platform/i18n/locale.service';
+import { toAsciiDigits } from '@platform/i18n/intl-locale';
 
 /**
  * Single source of truth for money formatting and string-decimal arithmetic.
@@ -44,7 +45,9 @@ export class MoneyService {
    * Never converts to a JS number.
    */
   parse(input: string): string {
-    const cleaned = (input ?? '').toString().trim().replace(/[,\s]/g, '');
+    const cleaned = toAsciiDigits((input ?? '').toString())
+      .trim()
+      .replace(/[,\s]/g, '');
     if (!cleaned) return '';
     const match = /^([+-]?)(\d+)(?:\.(\d+))?$/.exec(cleaned);
     if (!match) return '';

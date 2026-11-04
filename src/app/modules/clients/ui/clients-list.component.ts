@@ -2,6 +2,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import {
   ChangeDetectionStrategy,
   Component,
+  DestroyRef,
   OnInit,
   TemplateRef,
   computed,
@@ -9,8 +10,8 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
-import { Subject } from 'rxjs';
-import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
+import { Subject, firstValueFrom, of } from 'rxjs';
+import { catchError, debounceTime, distinctUntilChanged } from 'rxjs/operators';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -66,6 +67,7 @@ export class ClientsListComponent implements OnInit {
   private readonly toast = inject(ToastService);
   private readonly errors = inject(ErrorHandlerService);
   private readonly router = inject(Router);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly loading = signal(true);
   readonly rows = signal<ClientResponse[]>([]);
@@ -244,15 +246,42 @@ export class ClientsListComponent implements OnInit {
     if (await ref.afterClosed()) this.reload();
   }
 
+  /**
+   * crm-prod FINDING-P2-5: the dialog opens on the stored profile. `GET /clients/{id}` is read first
+   * for `maritalStatus` (the list row has none); if that read fails the dialog still opens on the
+   * row's job title and representative name, with marital status blank — a blank field is sent as
+   * `null`, which the backend keeps (Client.UpdateProfile).
+   */
+  /** The client whose `GET /clients/{id}` is in flight for Edit (FINDING-P2-17), else null. */
+  private editLoadingId: string | null = null;
+
   private async openEdit(row: ClientResponse): Promise<void> {
+    // FINDING-P2-17: one read at a time — a double click (or a second row's Edit) while
+    // `GET /clients/{id}` is in flight is ignored, so only one dialog opens.
+    if (this.editLoadingId !== null) return;
+    this.editLoadingId = row.id;
+    // FINDING-P2-25: the read ends with the list — `undefined` means the list was destroyed
+    // mid-read (a failed read is `null`), and then no dialog opens over the next page.
+    let full: ClientResponse | null | undefined;
+    try {
+      full = await firstValueFrom(
+        this.clientsApi.getById(row.id).pipe(
+          catchError(() => of(null)),
+          takeUntilDestroyed(this.destroyRef),
+        ),
+        { defaultValue: undefined },
+      );
+    } finally {
+      this.editLoadingId = null;
+    }
+    if (full === undefined) return;
     const data: EditClientDialogData = {
       id: row.id,
+      name: `${row.firstName} ${row.lastName}`.trim(),
       initial: {
-        firstName: row.firstName,
-        lastName: row.lastName,
-        phone: row.phoneNumber ?? '',
-        address: row.address ?? '',
-        notes: row.notes,
+        jobTitle: full?.jobTitle ?? row.jobTitle ?? null,
+        maritalStatus: full?.maritalStatus ?? null,
+        representativeName: full?.representativeName ?? row.representativeName ?? null,
       },
     };
     const ref = this.modal.open<boolean>(EditClientDialogComponent, { size: 'md', data });

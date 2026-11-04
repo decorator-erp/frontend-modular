@@ -6,7 +6,7 @@ import {
   inject,
   signal,
 } from '@angular/core';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { BriefStore } from '../../stores/brief.store';
 import { ClientProfileStore } from '../../stores/client-profile.store';
 import { MeetingsStore } from '../../stores/meetings.store';
@@ -247,6 +247,7 @@ type ProfileTab = 'overview' | 'brief' | 'requirements' | 'meetings';
 })
 export class CrmClientProfileComponent {
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
   protected readonly catalog = inject(CatalogService);
   protected readonly profile = inject(ClientProfileStore);
   protected readonly brief = inject(BriefStore);
@@ -278,11 +279,19 @@ export class CrmClientProfileComponent {
       this.profile.load();
     });
 
-    // Default to the single project, or the first card, once the profile lands.
+    // crm-prod B1-fe: the approvals inbox's "View" link lands here as `?projectId&tab`.
+    const query = this.route.snapshot.queryParamMap;
+    const tab = query.get('tab') as ProfileTab | null;
+    if (tab && this.tabs.includes(tab)) this.selectedTab.set(tab);
+    const requestedProjectId = query.get('projectId');
+
+    // Default to the single project, or the first card, once the profile lands — or to the
+    // project the link named, when it is one of the client's own.
     effect(() => {
       const projects = this.profile.projects();
       if (!this.selectedProjectId() && projects.length) {
-        this.selectedProjectId.set(projects[0].id);
+        const requested = projects.find((p) => p.id === requestedProjectId);
+        this.selectedProjectId.set((requested ?? projects[0]).id);
       }
     });
 

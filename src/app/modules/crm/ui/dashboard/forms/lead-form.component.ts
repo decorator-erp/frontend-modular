@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { catchError, of } from 'rxjs';
-import { CrmLeadService } from '../../../data/crm-lead.service';
+import { type Observable, catchError, of } from 'rxjs';
+import { CrmLeadService, type CrmLead } from '../../../data/crm-lead.service';
 import { ErrorHandlerService, friendly } from '@platform/http/error-handler.service';
 import { CatalogService } from '@platform/i18n/catalog.service';
 import type { CatalogKey } from '@platform/i18n/catalog/en';
@@ -11,6 +11,7 @@ import { ParsedApiError } from '@platform/types';
 import { EmployeeService } from '@modules/people';
 import { PeraValidators, ServerErrorsDirective, firstErrorMessage } from '@shared/forms';
 import {
+  PERA_MODAL_DATA,
   PeraFormFieldComponent,
   PeraFormModalComponent,
   PeraInputComponent,
@@ -35,7 +36,15 @@ const CREATE_FIELD_MAP: Record<string, 'ownerId' | 'firstName'> = {
   'crm.leads.NameRequired': 'firstName',
 };
 
-/** New lead (T040, FR-021). A slim intake — the lead is qualified/converted elsewhere. */
+/** Opens the form on an existing lead: `PUT /api/crm/leads/{id}` (a full replace) instead of a create. */
+export interface EditLeadDialogData {
+  lead: CrmLead;
+}
+
+/**
+ * New lead (T040, FR-021). A slim intake — the lead is qualified/converted elsewhere. Given
+ * `EditLeadDialogData` it edits that lead instead (crm-prod H3), gated on `crm.leads.update`.
+ */
 @Component({
   selector: 'app-crm-lead-form',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -50,11 +59,11 @@ const CREATE_FIELD_MAP: Record<string, 'ownerId' | 'firstName'> = {
   ],
   template: `
     <pera-form-modal
-      eyebrow="POST /api/crm/leads"
-      [title]="catalog.t('nav.lead')"
-      [subtitle]="catalog.t('lead.sub')"
-      permission="crm.leads.create"
-      [submitLabel]="catalog.t('common.saveLead')"
+      [eyebrow]="editing ? 'PUT /api/crm/leads/{id}' : 'POST /api/crm/leads'"
+      [title]="catalog.t(editing ? 'lead.edit' : 'nav.lead')"
+      [subtitle]="editing ? '' : catalog.t('lead.sub')"
+      [permission]="editing ? 'crm.leads.update' : 'crm.leads.create'"
+      [submitLabel]="catalog.t(editing ? 'common.save' : 'common.saveLead')"
       [submittingLabel]="catalog.t('common.saving')"
       [submitting]="submitting()"
       [errorMessage]="serverError()?.generalMessage ?? null"
@@ -127,7 +136,12 @@ export class CrmLeadFormComponent {
   private readonly errorHandler = inject(ErrorHandlerService);
   private readonly toast = inject(ToastService);
   private readonly modalRef = inject(PeraModalRef) as PeraModalRef<boolean>;
+  private readonly data = inject(PERA_MODAL_DATA, { optional: true }) as EditLeadDialogData | null;
   protected readonly catalog = inject(CatalogService);
+
+  /** The lead being edited, or `null` for a new lead. */
+  private readonly editLead: CrmLead | null = this.data?.lead ?? null;
+  protected readonly editing = this.editLead !== null;
 
   protected readonly sourceOptions: SelectOption[] = (
     [
@@ -156,6 +170,18 @@ export class CrmLeadFormComponent {
   readonly submitting = signal(false);
 
   constructor() {
+    const lead = this.editLead;
+    if (lead) {
+      this.form.setValue({
+        firstName: lead.firstName,
+        lastName: lead.lastName,
+        phone: lead.phone ?? '',
+        email: lead.email ?? '',
+        source: String(lead.source),
+        ownerId: lead.ownerId,
+        notes: lead.notes ?? '',
+      });
+    }
     this.directory
       .listPaged({ page: 1, pageSize: 500, isActive: true })
       .pipe(catchError(() => of(null)))
@@ -184,34 +210,41 @@ export class CrmLeadFormComponent {
     this.serverError.set(null);
     const v = this.form.getRawValue();
 
-    this.leads
-      .create({
-        firstName: v.firstName.trim(),
-        lastName: v.lastName.trim(),
-        source: Number(v.source) as LeadSource,
-        email: v.email.trim() || null,
-        phone: v.phone.trim() || null,
-        notes: v.notes.trim() || null,
-        ownerId: v.ownerId ?? '',
-      })
-      .subscribe({
-        next: () => {
-          this.toast.show({ tone: 'success', message: this.catalog.t('lead.saved') });
-          this.modalRef.close(true);
-        },
-        error: (err) => {
-          const parsed = this.errorHandler.parse(err);
-          const message = friendly(parsed);
-          this.serverError.set({ ...parsed, generalMessage: message });
-          const field = parsed.code ? CREATE_FIELD_MAP[parsed.code] : undefined;
-          if (field) {
-            // `server`, not `serverError`: the [serverErrors] directive clears only its own key.
-            const control = this.form.controls[field];
-            control.setErrors({ ...(control.errors ?? {}), server: message });
-            control.markAsTouched();
-          }
-          this.submitting.set(false);
-        },
-      });
+    const request = {
+      firstName: v.firstName.trim(),
+      lastName: v.lastName.trim(),
+      source: Number(v.source) as LeadSource,
+      email: v.email.trim() || null,
+      phone: v.phone.trim() || null,
+      notes: v.notes.trim() || null,
+      ownerId: v.ownerId ?? '',
+    };
+    const lead = this.editLead;
+
+    const save$: Observable<unknown> = lead
+      ? this.leads.update(lead.id, request)
+      : this.leads.create(request);
+    save$.subscribe({
+      next: () => {
+        this.toast.show({
+          tone: 'success',
+          message: this.catalog.t(lead ? 'lead.updated' : 'lead.saved'),
+        });
+        this.modalRef.close(true);
+      },
+      error: (err) => {
+        const parsed = this.errorHandler.parse(err);
+        const message = friendly(parsed);
+        this.serverError.set({ ...parsed, generalMessage: message });
+        const field = parsed.code ? CREATE_FIELD_MAP[parsed.code] : undefined;
+        if (field) {
+          // `server`, not `serverError`: the [serverErrors] directive clears only its own key.
+          const control = this.form.controls[field];
+          control.setErrors({ ...(control.errors ?? {}), server: message });
+          control.markAsTouched();
+        }
+        this.submitting.set(false);
+      },
+    });
   }
 }

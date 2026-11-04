@@ -225,6 +225,25 @@ describe('SowSummaryComponent — fees and adjustment (sow #6)', () => {
     expect(noteField()).toBeNull();
   });
 
+  it('crm-prod L-fe-9: an adjustment without a reason shows the required error inline', () => {
+    render(scope({ adjustmentAmount: 0, adjustmentNote: null }));
+    change(adjustmentInput(), '-5000');
+    expect(noteField()!.textContent).toContain(EN['sow.adjustmentNoteRequired']);
+    expect(noteInput().getAttribute('aria-invalid')).toBe('true');
+    // The store keeps each sent header as the draft until the reload lands.
+    fixture.componentRef.setInput('draft', emitted.at(-1)!);
+    fixture.detectChanges();
+    change(noteInput(), 'Early payment');
+    fixture.componentRef.setInput('draft', emitted.at(-1)!);
+    fixture.detectChanges();
+    expect(noteField()!.textContent).not.toContain(EN['sow.adjustmentNoteRequired']);
+  });
+
+  it('crm-prod L-fe-9: a stored adjustment with no reason shows the error on load', () => {
+    render(scope({ adjustmentAmount: 250, adjustmentNote: null }));
+    expect(noteField()!.textContent).toContain(EN['sow.adjustmentNoteRequired']);
+  });
+
   it('a stored non-zero adjustment shows its reason', async () => {
     render(scope());
     await fixture.whenStable();
@@ -244,6 +263,13 @@ describe('SowSummaryComponent — fees and adjustment (sow #6)', () => {
         notes: 'Fees exclude furniture.',
       },
     ]);
+  });
+
+  it('crm-prod L-fe-2: an adjustment typed in Arabic-Indic digits parses', () => {
+    render(scope({ adjustmentAmount: 0, adjustmentNote: null }));
+    change(adjustmentInput(), '-٧٬٥٠٠٫٢٥');
+    expect(emitted.map((h) => h.adjustmentAmount)).toEqual([-7500.25]);
+    expect(el.textContent).not.toContain(EN['sow.adjustmentInvalid']);
   });
 
   it('an adjustment beyond ±1e12 is blocked', () => {
@@ -325,6 +351,54 @@ describe('SowSummaryComponent — confirm block (sow #7)', () => {
     );
     button()!.click();
     expect(confirms).toBe(1);
+  });
+
+  it('crm-prod L-fe-1: one item reads "1 stage", not "1 stages"', () => {
+    render(scope({ items: [sowItemLike('i1')] }));
+    expect(el.textContent).toContain('Confirming creates 1 stage with their tasks');
+    expect(el.textContent).not.toContain('1 stages');
+  });
+
+  it('crm-prod L-fe-7: lists every blocking reason, the server one first, each once', () => {
+    render(
+      scope({
+        canConfirm: false,
+        blockingReason: 'projects.scope.DurationRequired',
+        durationDays: null,
+        items: [],
+        adjustmentAmount: -100,
+        adjustmentNote: null,
+        total: -100,
+      }),
+    );
+    const reasons = Array.from(el.querySelectorAll('[data-blocking-reason]')).map((r) =>
+      r.textContent!.trim(),
+    );
+    expect(reasons).toEqual(
+      [
+        'projects.scope.DurationRequired',
+        'projects.scope.Empty',
+        'projects.scope.AdjustmentNoteRequired',
+        'projects.scope.NegativeTotal',
+      ].map((c) => friendlyMessage(c, '', 'en')),
+    );
+  });
+
+  it('crm-prod L-fe-7: a server-only reason (ProjectHasStages) is listed with a deleted template stage', () => {
+    render(
+      scope({
+        canConfirm: false,
+        blockingReason: 'projects.scope.ProjectHasStages',
+        items: [{ ...sowItemLike('i1'), sourceMissing: true }],
+      }),
+    );
+    const reasons = Array.from(el.querySelectorAll('[data-blocking-reason]')).map((r) =>
+      r.textContent!.trim(),
+    );
+    expect(reasons).toEqual([
+      friendlyMessage('projects.scope.ProjectHasStages', '', 'en'),
+      friendlyMessage('projects.scope.SourceStageNotFound', '', 'en'),
+    ]);
   });
 
   it("disabled with the blocking reason's catalog message when canConfirm is false (B10)", () => {

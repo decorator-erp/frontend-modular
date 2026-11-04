@@ -471,6 +471,8 @@ export const ERROR_MESSAGES: Record<string, string> = {
   'crm.meetings.SlotExpired': "This slot's start time has passed. Propose a new time.",
   'crm.notes.ProjectMismatch': "The note's project does not belong to this client.",
   'crm.artifacts.DocumentNotFound': 'The document was not found on this project.',
+  // crm-prod M1-fe: L-4's 409, a document links to a subject once (`Errors.cs:335`).
+  'crm.artifacts.AlreadyLinked': 'This document is already linked to this item.',
   'crm.projects.Inactive': 'This project is inactive and takes no new CRM work.',
   'approvals.ApprovalIdInUse': 'This approval belongs to a different subject.',
   'approvals.Unauthenticated': 'We could not identify you. Please sign in again.',
@@ -502,6 +504,14 @@ export const ERROR_MESSAGES: Record<string, string> = {
   'http.Forbidden': "You don't have permission to do that.",
   // FINDING-7-10: the request validator's code (SharedKernel/Error.cs `ValidationError`).
   'Validation.General': 'Some values are invalid. Check the highlighted fields.',
+  // crm-prod M7: backend codes the catalog was missing (Crm.Domain Errors.cs, ApprovalErrors.cs).
+  'crm.clients.AppUserIdRequired': 'A linked user account is required.',
+  'crm.briefs.NotDraft': 'The intake can only be copied into a draft brief head.',
+  'crm.spaces.ItemNotFound': 'Space item not found.',
+  'crm.gates.UnsupportedOwner': 'This gate condition can only be set on a stage.',
+  'crm.portal.InvalidDecision': 'Choose Approve or Request changes.',
+  'crm.portal.InvalidStatus': "The status filter must be 'pending' or 'decided'.",
+  'approvals.CommentTooLong': 'The comment must be 2000 characters or fewer.',
 };
 
 /**
@@ -610,6 +620,7 @@ export const ERROR_MESSAGES_AR: Record<string, string> = {
   'crm.notes.ProjectMismatch': 'مشروع الملاحظة لا يخص هذا العميل.',
   'crm.notes.NotAuthor': 'لا يعدّل هذه الملاحظة إلا كاتبها.',
   'crm.artifacts.DocumentNotFound': 'المستند غير موجود في هذا المشروع.',
+  'crm.artifacts.AlreadyLinked': 'هذا المستند مرتبط بهذا البند بالفعل.',
   'crm.projects.Inactive': 'هذا المشروع غير مفعّل ولا يقبل عملًا جديدًا.',
   'approvals.ApprovalIdInUse': 'هذا الاعتماد يخص عنصرًا آخر.',
   'approvals.CommentRequired': 'يلزم تعليق للرفض أو لطلب تعديلات.',
@@ -639,6 +650,40 @@ export const ERROR_MESSAGES_AR: Record<string, string> = {
   'http.Forbidden': 'ليس لديك صلاحية للقيام بذلك.',
   // FINDING-7-10: the request validator's code.
   'Validation.General': 'بعض القيم غير صحيحة. راجع الحقول المحدَّدة.',
+  // crm-prod M7: Arabic for every CRM, scope and approvals code the UI can reach.
+  'crm.clients.AppUserIdRequired': 'يلزم ربط حساب مستخدم.',
+  'crm.contacts.NotFound': 'جهة الاتصال غير موجودة.',
+  'crm.leads.NotFound': 'العميل المحتمل غير موجود.',
+  'crm.leads.InvalidStatusTransition':
+    'يُحوَّل العميل المحتمل من خلال إجراء التحويل، لا بتغيير الحالة.',
+  'crm.briefs.NotDraft': 'لا تُنسخ بيانات الاستقبال إلا إلى رأس موجز في حالة مسودة.',
+  'crm.briefs.EntryLocked': 'هذا القيد مؤكَّد ومقفل. أضف نسخة جديدة لتصحيحه.',
+  'crm.briefs.EntryPending': 'هذا القيد بانتظار تأكيد العميل ولا يمكن تغييره.',
+  'crm.spaces.SpaceNotFound': 'المساحة غير موجودة.',
+  'crm.spaces.ItemNotFound': 'عنصر المساحة غير موجود.',
+  'crm.space_types.CodeRequired': 'رمز نوع المساحة مطلوب.',
+  'crm.space_types.NotFound': 'نوع المساحة غير موجود.',
+  'crm.space_types.DuplicateCode': 'يوجد نوع مساحة بهذا الرمز بالفعل.',
+  'crm.space_types.NameRequired': 'اسم نوع المساحة مطلوب.',
+  'crm.catalog.CustomNameRequired': 'يجب أن يكون للعنصر المخصّص اسم وفئة.',
+  'crm.catalog.NotACustomEntry': 'هذا الصف مرتبط بعنصر من الكتالوج بالفعل.',
+  'crm.catalog.AttributeTypeMismatch': 'القيمة لا تطابق نوع الخاصية.',
+  'crm.items.NotFound': 'بند المتطلبات غير موجود.',
+  'crm.items.SendRequiresEmployeeAuthor':
+    'المتطلبات التي يكتبها العميل موثوقة فورًا ولا تُرسل للتأكيد.',
+  'crm.artifacts.InvalidSubject': 'يجب تحديد موضوع واحد بالضبط.',
+  'crm.artifacts.InvalidAuthor': 'يجب تحديد كاتب واحد بالضبط.',
+  'crm.notes.NotFound': 'الملاحظة غير موجودة.',
+  'crm.gates.UnsupportedOwner': 'لا يُضبط شرط البوابة هذا إلا على مرحلة.',
+  'crm.meetings.InvalidRequester': 'يجب تحديد طالب واحد بالضبط.',
+  'crm.meetings.InvalidProposer': 'يجب تحديد مقترِح واحد بالضبط.',
+  'crm.portal.InvalidDecision': 'اختر الاعتماد أو طلب تعديلات.',
+  'crm.portal.InvalidStatus': 'يجب أن يكون مرشّح الحالة: بانتظار القرار أو تم البتّ.',
+  'approvals.AlreadyDecided': 'تم البتّ في هذا الاعتماد بالفعل.',
+  'approvals.NotFound': 'الاعتماد غير موجود.',
+  'approvals.CommentTooLong': 'يجب ألا يتجاوز التعليق 2000 حرف.',
+  'approvals.NotAssignedApprover': 'لا يبتّ في هذا الاعتماد إلا المعتمِد المكلَّف.',
+  'approvals.InvalidSubject': 'يجب تحديد موضوع واحد ومعتمِد واحد بالضبط.',
 };
 
 /**
@@ -653,3 +698,17 @@ export function friendlyMessage(
   if (!code) return fallback;
   return (locale === 'ar' && ERROR_MESSAGES_AR[code]) || ERROR_MESSAGES[code] || fallback;
 }
+
+/**
+ * crm-prod FINDING-P2-9: the `projects.scope.*` codes code reads by name (the scope of work's
+ * blocking reasons), so a typo is a compile error rather than a silent fallback. Each one has an
+ * entry in both catalogs above.
+ */
+export const SCOPE_ERROR_CODES = {
+  empty: 'projects.scope.Empty',
+  durationRequired: 'projects.scope.DurationRequired',
+  adjustmentNoteRequired: 'projects.scope.AdjustmentNoteRequired',
+  negativeTotal: 'projects.scope.NegativeTotal',
+  sourceStageNotFound: 'projects.scope.SourceStageNotFound',
+  workflowNotSupported: 'projects.scope.WorkflowNotSupported',
+} as const;

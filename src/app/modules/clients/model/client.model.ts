@@ -11,6 +11,14 @@ export interface ClientResponse {
   phoneNumber: string | null;
   address: string | null;
   notes: string | null;
+  /**
+   * crm-prod FINDING-P2-5: the profile fields. `jobTitle` / `representativeName` come on the list row
+   * (`ClientListItemResponse`, ClientContracts.cs:85-87) and on `GET /clients/{id}`
+   * (`ClientResponse`, :12-21); `maritalStatus` only on the single read.
+   */
+  jobTitle?: string | null;
+  maritalStatus?: string | null;
+  representativeName?: string | null;
 }
 export interface CreateClientRequest {
   firstName: string;
@@ -22,10 +30,14 @@ export interface CreateClientRequest {
   address: string;
   notes?: string;
 }
+/**
+ * crm-prod M8: `PUT /api/clients/{id}/profile` binds `UpdateProfileRequest(JobTitle, MaritalStatus,
+ * RepresentativeName)` (ClientEndpoints.cs:33-45, record at :158) — the only client edit the backend
+ * has. A `null` field keeps the stored value (Client.UpdateProfile). Name, phone, address and notes
+ * have no update route (deferred).
+ */
 export interface UpdateClientRequest {
-  firstName: string;
-  lastName: string;
-  phone: string;
-  address: string;
-  notes?: string;
+  jobTitle: string | null;
+  maritalStatus: string | null;
+  representativeName: string | null;
 }

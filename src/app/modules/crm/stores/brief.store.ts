@@ -1,3 +1,4 @@
+import { CatalogService } from '@platform/i18n/catalog.service';
 import { computed, inject } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { patchState, signalStore, withComputed, withMethods, withState } from '@ngrx/signals';
@@ -15,6 +16,7 @@ import { ApprovalState } from '../model/crm-enums';
 import type {
   BriefHead,
   BriefHeadData,
+  BriefHeadDiff,
   BriefRound,
   BriefSpace,
   BriefSpaceRef,
@@ -48,6 +50,12 @@ interface BriefState {
   savingHead: boolean;
   sending: boolean;
   mutatingSpace: boolean;
+  /** The round whose head diff is open in the Rounds section (crm-prod M5); `null` = none. */
+  diffRound: number | null;
+  /** `GET /briefs/{id}/rounds/{round}/diff` for `diffRound`. */
+  roundDiff: BriefHeadDiff | null;
+  loadingDiff: boolean;
+  diffError: string | null;
   error: string | null;
 }
 
@@ -65,6 +73,10 @@ const INITIAL: BriefState = {
   savingHead: false,
   sending: false,
   mutatingSpace: false,
+  diffRound: null,
+  roundDiff: null,
+  loadingDiff: false,
+  diffError: null,
   error: null,
 };
 
@@ -84,6 +96,9 @@ export const BriefStore = signalStore(
      * since `CrmDesignBriefResponse` carries no round. 0 ⇒ never sent (an empty list).
      */
     headRound: computed(() => store.rounds().at(-1)?.round ?? store.portalRound()),
+
+    /** The head's latest round (`null` = never sent) — its `outcome` drives the decision banners. */
+    latestRound: computed(() => store.rounds().at(-1) ?? null),
 
     /** Send is disabled while a round is outstanding (FR-014) — the head's own status IS that fact. */
     isHeadRoundOutstanding: computed(() => store.head()?.status === ApprovalState.PendingApproval),
@@ -119,6 +134,7 @@ export const BriefStore = signalStore(
       store,
       api = inject(CrmBriefService),
       errors = inject(ErrorHandlerService),
+      catalog = inject(CatalogService),
       reloadOnConflict = injectReloadOnConflict(),
       /** The in-flight `load()`: a newer load cancels it, so a stale head never lands (FINDING-5-5). */
       inFlight = { load: new Subscription() },
@@ -132,7 +148,17 @@ export const BriefStore = signalStore(
         inFlight.load.unsubscribe();
         const load = new Subscription();
         inFlight.load = load;
-        patchState(store, { loading: true, error: null, noBrief: false, projectId, stageId });
+        patchState(store, {
+          loading: true,
+          error: null,
+          noBrief: false,
+          projectId,
+          stageId,
+          diffRound: null,
+          roundDiff: null,
+          diffError: null,
+          loadingDiff: false,
+        });
         const head$ = stageId ? api.getBriefByStage(stageId) : api.getBrief(projectId);
         // Entries and rounds land only while their brief is still the loaded head (FINDING-5-5).
         const isCurrent = (briefId: string) => store.head()?.id === briefId;
@@ -167,7 +193,7 @@ export const BriefStore = signalStore(
               spaces: [],
               rounds: [],
               noBrief,
-              error: noBrief ? null : 'Could not load the brief.',
+              error: noBrief ? null : catalog.t('brief.loadFailed'),
             });
           },
         });
@@ -193,7 +219,7 @@ export const BriefStore = signalStore(
               error:
                 err instanceof HttpErrorResponse
                   ? friendly(errors.parse(err))
-                  : 'Could not create the brief.',
+                  : catalog.t('brief.createFailed'),
             }),
         });
       },
@@ -202,6 +228,42 @@ export const BriefStore = signalStore(
       reload(): void {
         const projectId = store.projectId();
         if (projectId) this.load(projectId, store.stageId());
+      },
+
+      /**
+       * Open (or, for the round already open, close) one round's head diff (crm-prod M5) —
+       * `GET /briefs/{id}/rounds/{round}/diff`. A late answer for a round no longer open is dropped.
+       */
+      toggleRoundDiff(round: number): void {
+        const head = store.head();
+        if (!head) return;
+        if (store.diffRound() === round) {
+          patchState(store, {
+            diffRound: null,
+            roundDiff: null,
+            diffError: null,
+            loadingDiff: false,
+          });
+          return;
+        }
+        patchState(store, {
+          diffRound: round,
+          roundDiff: null,
+          diffError: null,
+          loadingDiff: true,
+        });
+        api.getHeadDiff(head.id, round).subscribe({
+          next: (roundDiff) => {
+            if (store.diffRound() === round) patchState(store, { roundDiff, loadingDiff: false });
+          },
+          error: (err: unknown) => {
+            if (store.diffRound() !== round) return;
+            patchState(store, {
+              loadingDiff: false,
+              diffError: codedOr(err, errors, catalog.t('brief.diffFailed')),
+            });
+          },
+        });
       },
 
       /**
@@ -230,7 +292,7 @@ export const BriefStore = signalStore(
               error:
                 parsed && hasCatalogMessage(parsed)
                   ? friendly(parsed)
-                  : 'Could not load your brief.',
+                  : catalog.t('brief.loadOwnFailed'),
             });
           },
         });
@@ -265,7 +327,7 @@ export const BriefStore = signalStore(
               error:
                 parsed && hasCatalogMessage(parsed)
                   ? friendly(parsed)
-                  : 'Could not save the brief head.',
+                  : catalog.t('brief.headSaveFailed'),
             });
             if (parsed) handlers?.onError?.(parsed);
           },
@@ -300,7 +362,7 @@ export const BriefStore = signalStore(
               error:
                 parsed && hasCatalogMessage(parsed)
                   ? friendly(parsed)
-                  : 'Could not send the brief for confirmation.',
+                  : catalog.t('brief.sendFailed'),
             });
           },
         });
@@ -320,7 +382,7 @@ export const BriefStore = signalStore(
           error: (err: unknown) =>
             patchState(store, {
               mutatingSpace: false,
-              error: codedOr(err, errors, 'Could not add the entry.'),
+              error: codedOr(err, errors, catalog.t('brief.entryAddFailed')),
             }),
         });
       },
@@ -336,7 +398,10 @@ export const BriefStore = signalStore(
             this.reload();
           },
           error: () =>
-            patchState(store, { mutatingSpace: false, error: 'Could not update the entry.' }),
+            patchState(store, {
+              mutatingSpace: false,
+              error: catalog.t('brief.entryUpdateFailed'),
+            }),
         });
       },
 
@@ -351,7 +416,7 @@ export const BriefStore = signalStore(
             this.reload();
           },
           error: () =>
-            patchState(store, { mutatingSpace: false, error: 'Could not send the entry.' }),
+            patchState(store, { mutatingSpace: false, error: catalog.t('brief.entrySendFailed') }),
         });
       },
 
@@ -368,7 +433,7 @@ export const BriefStore = signalStore(
           error: (err: unknown) =>
             patchState(store, {
               mutatingSpace: false,
-              error: codedOr(err, errors, 'Could not add the new version.'),
+              error: codedOr(err, errors, catalog.t('crm.supersedeFailed')),
             }),
         });
       },

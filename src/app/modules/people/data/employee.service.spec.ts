@@ -4,6 +4,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { environment } from '../../../../environments/environment';
 import { AuthStore } from '@platform/auth/auth.store';
+import { HANDLED_ERROR_STATUSES } from '@platform/http/handled-errors';
 import { EmployeeService } from './employee.service';
 
 describe('EmployeeService', () => {
@@ -24,6 +25,27 @@ describe('EmployeeService', () => {
   });
 
   afterEach(() => backend.verify());
+
+  /**
+   * crm-prod FINDING-P2-23: `lookupById` reads the same `GET /api/employees/{id}` as `getById`, with
+   * the 404 marked handled by the service — a caller in another module builds no HTTP context.
+   */
+  it('lookupById(id) reads /api/employees/{id} with 404 marked handled', () => {
+    let result: { id: string; fullName: string } | undefined;
+    service.lookupById('E1').subscribe((r) => (result = r));
+    const req = backend.expectOne(`${environment.apiUrl}/employees/E1`);
+    expect(req.request.method).toBe('GET');
+    expect(req.request.context.get(HANDLED_ERROR_STATUSES)).toEqual([404]);
+    req.flush({ id: 'E1', fullName: 'Sara Nabil' });
+    expect(result?.fullName).toBe('Sara Nabil');
+  });
+
+  it('getById(id) marks nothing handled', () => {
+    service.getById('E1').subscribe();
+    const req = backend.expectOne(`${environment.apiUrl}/employees/E1`);
+    expect(req.request.context.get(HANDLED_ERROR_STATUSES)).toEqual([]);
+    req.flush({ id: 'E1', fullName: 'Sara Nabil' });
+  });
 
   /**
    * 006b-1 #24: `byRole` used `GET /employees/by-role/{roleId}`, a route that never existed. It now

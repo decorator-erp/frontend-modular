@@ -11,12 +11,20 @@
       <div class="h-5"></div>
       <pera-skeleton [height]="320" rounded="md" />
     </div>
-  } @else if (failed()) {
-    <div class="px-8 py-6">
+  } @else if (loadError() === 'notFound') {
+    <div class="px-8 py-6" data-load-state="not-found">
       <pera-empty
-        title="Couldn't load this project"
-        description="It may have been removed, or you may not have access."
-        [cta]="{ label: 'Back to Projects', action: backToProjects.bind(this) }"
+        [title]="catalog.t('project.notFound')"
+        [description]="catalog.t('project.notFoundHint')"
+        [cta]="{ label: catalog.t('project.backToProjects'), action: backToProjects.bind(this) }"
+      />
+    </div>
+  } @else if (loadError() === 'error') {
+    <div class="px-8 py-6" data-load-state="error">
+      <pera-empty
+        [title]="catalog.t('project.loadFailed')"
+        [description]="catalog.t('project.loadFailedHint')"
+        [cta]="{ label: catalog.t('common.retry'), action: retryLoad.bind(this) }"
       />
     </div>
   } @else if (project(); as proj) {
@@ -135,7 +143,7 @@
             </div>
             <div class="flex items-center gap-1.5">
               <button type="button" [class]="panelLinkClass" (click)="stView.set('gantt')">
-                Open Gantt →
+                Open Gantt <span class="inline-block rtl:rotate-180" aria-hidden="true">→</span>
               </button>
             </div>
           </div>
@@ -274,7 +282,7 @@
                     <span
                       class="text-end justify-self-end font-mono text-text-muted"
                       [style.fontSize]="'var(--fs-label)'"
-                      >{{ t.progressPercent }}%</span
+                      >{{ taskProgress(t) }}</span
                     >
                   </button>
                 } @empty {
@@ -317,7 +325,7 @@
                   <span
                     class="text-end justify-self-end font-mono text-text-muted"
                     [style.fontSize]="'var(--fs-label)'"
-                    >{{ t.progressPercent }}%</span
+                    >{{ taskProgress(t) }}</span
                   >
                 </button>
               } @empty {
@@ -413,7 +421,7 @@
             *peraCan="perm.manageTeam"
             (click)="manageTeam()"
           >
-            Manage →
+            Manage <span class="inline-block rtl:rotate-180" aria-hidden="true">→</span>
           </button>
         </div>
         <div class="min-w-0">
@@ -448,7 +456,9 @@
             <h3 [class]="panelTitleClass">Documents</h3>
             <span [class]="countChipClass">recent</span>
           </div>
-          <button type="button" [class]="panelLinkClass" (click)="openDocuments()">All →</button>
+          <button type="button" [class]="panelLinkClass" (click)="openDocuments()">
+            All <span class="inline-block rtl:rotate-180" aria-hidden="true">→</span>
+          </button>
         </div>
         <div class="min-w-0">
           @if (recentDocs().length) {
@@ -485,7 +495,7 @@
                   class="text-end font-mono text-text-muted"
                   [style.fontSize]="'var(--fs-caption)'"
                   aria-hidden="true"
-                  >→</span
+                  ><span class="inline-block rtl:rotate-180">→</span></span
                 >
               </button>
             }
