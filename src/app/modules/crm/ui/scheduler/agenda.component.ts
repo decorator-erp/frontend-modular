@@ -60,22 +60,24 @@ import { MEETING_STATUS_CHIP, MEETING_TYPE_KEYS } from './meeting-labels';
                       >
                     </div>
                   }
-                  <div class="flex items-center gap-1.5">
-                    <pera-button
-                      size="xs"
-                      variant="ghost"
-                      *peraCan="PERM.crm.meetings.reschedule"
-                      (click)="reschedule.emit(m.id)"
-                      >{{ catalog.t('sched.reschedule') }}</pera-button
-                    >
-                    <pera-button
-                      size="xs"
-                      variant="ghost"
-                      *peraCan="PERM.crm.meetings.cancel"
-                      (click)="cancelMeeting.emit(m.id)"
-                      >{{ catalog.t('sched.cancel') }}</pera-button
-                    >
-                  </div>
+                  @if (canChange(m)) {
+                    <div class="flex items-center gap-1.5">
+                      <pera-button
+                        size="xs"
+                        variant="ghost"
+                        *peraCan="PERM.crm.meetings.reschedule"
+                        (click)="reschedule.emit(m.id)"
+                        >{{ catalog.t('sched.reschedule') }}</pera-button
+                      >
+                      <pera-button
+                        size="xs"
+                        variant="ghost"
+                        *peraCan="PERM.crm.meetings.cancel"
+                        (click)="cancelMeeting.emit(m.id)"
+                        >{{ catalog.t('sched.cancel') }}</pera-button
+                      >
+                    </div>
+                  }
                 </div>
               </li>
             }
@@ -114,5 +116,17 @@ export class CrmAgendaComponent {
     if (m.status !== MeetingStatus.Scheduled && m.status !== MeetingStatus.Rescheduled)
       return false;
     return !!m.scheduledAtUtc && new Date(m.scheduledAtUtc).getTime() <= nowMs;
+  }
+
+  /**
+   * Reschedule / Cancel are offered only while the meeting is still live (Requested, Scheduled,
+   * Rescheduled): the server answers 409 on a Completed, Canceled or NoShow meeting.
+   */
+  protected canChange(m: CrmMeeting): boolean {
+    return (
+      m.status === MeetingStatus.Requested ||
+      m.status === MeetingStatus.Scheduled ||
+      m.status === MeetingStatus.Rescheduled
+    );
   }
 }

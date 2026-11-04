@@ -87,3 +87,21 @@ describe('CrmAgendaComponent permission gates (crm-prod H2)', () => {
     expect(labels).toEqual(['Complete']);
   });
 });
+
+describe('CrmAgendaComponent Reschedule / Cancel (crm-prod M2)', () => {
+  const at = (status: MeetingStatus) => ({ ...scheduled('2099-01-01T08:00:00Z'), status });
+
+  it.each([MeetingStatus.Requested, MeetingStatus.Scheduled, MeetingStatus.Rescheduled])(
+    'offers Reschedule and Cancel on a live meeting (status %s)',
+    (status) => {
+      expect(buttons(at(status))).toEqual(['Reschedule', 'Cancel']);
+    },
+  );
+
+  it.each([MeetingStatus.Completed, MeetingStatus.Canceled, MeetingStatus.NoShow])(
+    'offers nothing on a finished meeting (status %s)',
+    (status) => {
+      expect(buttons(at(status))).toEqual([]);
+    },
+  );
+});
