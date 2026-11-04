@@ -15,7 +15,7 @@ import {
   PeraPageHeaderComponent,
   PeraStatusBadgeComponent,
 } from '@ds';
-import { friendlyMessage } from '@platform/errors/error-catalog';
+import { SCOPE_ERROR_CODES, friendlyMessage } from '@platform/errors/error-catalog';
 import { CatalogService, STAGE_COUNT } from '@platform/i18n/catalog.service';
 import { formatCairoDate, intlLocale } from '@platform/i18n/intl-locale';
 import { PERM, PermissionsService } from '@platform/permissions';
@@ -222,13 +222,13 @@ export class ScopeOfWorkPageComponent implements OnInit {
    * the scope's `blockingReason`, which checks the workflow first (no `project.read` needed).
    */
   protected readonly isFreeStyle = computed(
-    () => this.store.scope()?.blockingReason === 'projects.scope.WorkflowNotSupported',
+    () => this.store.scope()?.blockingReason === SCOPE_ERROR_CODES.workflowNotSupported,
   );
 
   /** B12: the `projects.scope.WorkflowNotSupported` catalog message (EN/AR). */
   protected readonly freeStyleMessage = computed(() =>
     friendlyMessage(
-      'projects.scope.WorkflowNotSupported',
+      SCOPE_ERROR_CODES.workflowNotSupported,
       this.catalog.t('sow.loadFailed'),
       this.catalog.locale(),
     ),
