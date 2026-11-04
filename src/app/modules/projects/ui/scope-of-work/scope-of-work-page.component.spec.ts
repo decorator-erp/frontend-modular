@@ -662,6 +662,28 @@ describe('ScopeOfWorkPageComponent — errors (sow #8)', () => {
     expect(el.querySelector('pera-alert[tone="danger"]')).toBeNull();
   });
 
+  it('crm-prod L-fe-6: with project.read the header shows the project name, code and client', () => {
+    granted.add(PERM.projects.read);
+    project.getById.mockReturnValue(
+      of({ id: 'p1', name: 'Villa Rose', code: 'PRJ-7', clientName: 'Hana Saleh' }),
+    );
+    render();
+    expect(project.getById).toHaveBeenCalledWith('p1');
+    const header = el.querySelector('[data-project-header]')?.textContent?.replace(/\s+/g, ' ');
+    expect(header).toContain('Villa Rose');
+    expect(header).toContain('PRJ-7');
+    expect(header).toContain('Client: Hana Saleh');
+  });
+
+  it('crm-prod L-fe-6: a failed project read leaves the header out and the page working', () => {
+    granted.add(PERM.projects.read);
+    project.getById.mockReturnValue(throwError(() => coded('projects.AccessDenied', 403)));
+    render();
+    expect(el.querySelector('[data-project-header]')).toBeNull();
+    expect(el.querySelector('app-sow-summary')).not.toBeNull();
+    expect(el.querySelector('pera-alert[tone="danger"]')).toBeNull();
+  });
+
   it('FINDING-7-7: FreeStyle comes from the scope blockingReason alone', () => {
     api['getScope'].mockReturnValue(
       of(scope({ canConfirm: false, blockingReason: 'projects.scope.WorkflowNotSupported' })),

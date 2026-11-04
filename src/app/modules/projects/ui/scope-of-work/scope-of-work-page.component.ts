@@ -19,6 +19,9 @@ import { friendlyMessage } from '@platform/errors/error-catalog';
 import { CatalogService, STAGE_COUNT } from '@platform/i18n/catalog.service';
 import { formatCairoDate, intlLocale } from '@platform/i18n/intl-locale';
 import { PERM, PermissionsService } from '@platform/permissions';
+import { catchError, of } from 'rxjs';
+import { ProjectService } from '../../data/project.service';
+import type { Project } from '../../model/project.model';
 import { ScopeOfWorkStore } from '../../stores/scope-of-work.store';
 import { SowItemsTableComponent, SowItemUpdate } from './sow-items-table.component';
 import { SowSummaryComponent } from './sow-summary.component';
@@ -55,7 +58,23 @@ const TOGGLE_BUTTON =
   providers: [ScopeOfWorkStore],
   host: { class: 'block' },
   template: `
-    <pera-page-header [title]="catalog.t('sow.title')" />
+    <pera-page-header [title]="catalog.t('sow.title')">
+      @if (project(); as p) {
+        <div
+          toolbar
+          data-project-header
+          class="flex items-center gap-2 flex-wrap fs-body-sm text-text-secondary"
+        >
+          <span class="font-semibold text-text-primary" dir="auto">{{ p.name }}</span>
+          @if (p.code) {
+            <span class="font-mono fs-label text-text-muted" dir="ltr">{{ p.code }}</span>
+          }
+          @if (p.clientName) {
+            <span dir="auto">{{ catalog.t('sow.headerClient', { name: p.clientName }) }}</span>
+          }
+        </div>
+      }
+    </pera-page-header>
     <div class="px-8 py-6 flex flex-col gap-5">
       @if (store.error(); as error) {
         <pera-alert tone="danger">{{ error }}</pera-alert>
@@ -161,6 +180,7 @@ export class ScopeOfWorkPageComponent implements OnInit {
   protected readonly store = inject(ScopeOfWorkStore);
   private readonly permissions = inject(PermissionsService);
   private readonly confirmDialog = inject(ConfirmService);
+  private readonly projects = inject(ProjectService);
 
   /** The project id (`:id`). */
   readonly id = input('');
@@ -225,11 +245,27 @@ export class ScopeOfWorkPageComponent implements OnInit {
     () => this.canManage() && !this.store.isConfirmed() && !this.isFreeStyle(),
   );
 
+  /**
+   * crm-prod L-fe-6: the project's name, code and client for the header, from
+   * `GET /api/projects/{id}` (`ProjectResponse`). Read only with `project.read`, and a failed read
+   * just leaves the header out: the scope page never depends on it (FINDING-7-7).
+   */
+  protected readonly project = signal<Project | null>(null);
+
   /** B6: the template picker is open; templates are read on first open. */
   protected readonly pickerOpen = signal(false);
 
   ngOnInit(): void {
     this.store.load(this.id());
+    this.loadProject();
+  }
+
+  private loadProject(): void {
+    if (!this.permissions.can(PERM.projects.read)) return;
+    this.projects
+      .getById(this.id())
+      .pipe(catchError(() => of(null)))
+      .subscribe((p) => this.project.set(p));
   }
 
   protected togglePicker(): void {

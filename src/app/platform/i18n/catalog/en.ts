@@ -1312,6 +1312,7 @@ export const EN = {
   'route.crmCatalog': 'Catalog',
   'route.designProfile': 'Client design profile',
   'sow.pickerNoPermission': 'Adding items from stage templates needs permission to read stages.',
+  'sow.headerClient': 'Client: {name}',
 } as const;
 
 /** The key set of record. Every catalog lookup is typed against this. */
