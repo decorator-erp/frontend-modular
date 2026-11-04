@@ -36,6 +36,13 @@ export class ApprovalService extends ApiService {
   /**
    * The open approval-gate queue (`/projects/approval-requests`) — the ManagerApproval inbox.
    *
+   * **Deferred (crm-prod F-approvals-route): the backend maps no such route**, and none serves the
+   * same need — `GET /api/approvals/pending` is the caller's own approver queue with no project,
+   * owner or gate label (`PendingApprovalResponse`), and `/api/approvals/by-subject/…` is one
+   * subject's trail (`ApprovalEndpoints.cs:24-40`). Its only screen, the project page's "Open
+   * actions" KPI, is hidden (crm-prod B2-fe); nothing may call this until an office-scoped gate
+   * queue route ships.
+   *
    * There is deliberately no client-side counterpart here. `/api/clients/approval-requests`
    * exists but is SELF-SCOPED to the calling client (`GetClientApprovalRequestsQuery` returns
    * `ClientErrors.NotFound` when the caller's `AppUserId` has no `Clients` row), so it 404s for
