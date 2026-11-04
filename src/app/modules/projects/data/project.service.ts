@@ -2,7 +2,6 @@ import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import {
-  ApprovalRequestResponse,
   ApprovalType,
   ConditionType,
   CreateProjectRequest,
@@ -27,7 +26,6 @@ import type {
   InvoiceResponse,
   LedgerMovementResponse,
   PagedResponse,
-  ProjectBudgetSummaryResponse,
   ProjectFinancialBlock,
   ProjectStageFinancialBlock,
   ProjectTaskFinancialBlock,
@@ -46,12 +44,6 @@ import { PagedResult } from '@platform/types';
 export class ProjectService extends ApiService {
   getAll(page = 1, pageSize = 20): Observable<PagedResult<Project>> {
     return this.get<unknown>('/projects', { pageNumber: page, pageSize }).pipe(
-      map((response) => this.normalizePaged(response)),
-    );
-  }
-
-  getMine(page = 1, pageSize = 20): Observable<PagedResult<Project>> {
-    return this.get<unknown>('/projects/mine', { pageNumber: page, pageSize }).pipe(
       map((response) => this.normalizePaged(response)),
     );
   }
@@ -77,27 +69,6 @@ export class ProjectService extends ApiService {
   getDetails(id: string): Observable<ProjectDetails> {
     return this.get<unknown>(`/projects/${id}/details`).pipe(
       map((r) => this.normalizeDetails(this.unwrap(r))),
-    );
-  }
-
-  /**
-   * Header budget KPI — caps + actuals rolled up at project/stage/task scope.
-   * GET /api/projects/{id}/budget-summary (ProjectEndpoints.cs:GetBudgetSummaryAsync).
-   */
-  getBudgetSummary(id: string): Observable<ProjectBudgetSummaryResponse> {
-    return this.get<unknown>(`/projects/${id}/budget-summary`).pipe(
-      map((r) => this.unwrap<ProjectBudgetSummaryResponse>(r)),
-    );
-  }
-
-  /**
-   * The caller's pending-approval queue — ManagerApproval Complete gates they own,
-   * across tasks + stages. GET /api/projects/approval-requests (perm Projects.Read).
-   * Drives the dashboard's "Open actions" KPI; callers filter by `projectId`.
-   */
-  getApprovalRequests(): Observable<ApprovalRequestResponse[]> {
-    return this.get<unknown>('/projects/approval-requests').pipe(
-      map((r) => this.unwrapArray<ApprovalRequestResponse>(r)),
     );
   }
 

@@ -204,25 +204,6 @@ export interface ProjectMember {
   employeeName?: string | null;
 }
 
-/**
- * Mirrors ApprovalRequestResponse — a pending approval gate the caller owns
- * (tasks + stages). Returned by `GET /api/projects/approval-requests`; drives the
- * project dashboard's "Open actions" KPI.
- */
-export interface ApprovalRequestResponse {
-  gateConditionId: string;
-  ownerKind: 'Task' | 'Stage';
-  ownerId: string;
-  ownerName: string;
-  projectId: string;
-  projectName: string;
-  projectStageId?: string | null;
-  stageName?: string | null;
-  approvalType: ApprovalType;
-  label: string;
-  requestedAtUtc: string;
-}
-
 export interface TaskComment {
   id: string;
   taskId: string;

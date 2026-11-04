@@ -1286,6 +1286,11 @@ export const EN = {
   'brief.changesRequestedBanner':
     'The client requested changes to round {round}. Update the head and send it again.',
   'brief.sendToClient': 'Send to client',
+  'project.notFound': 'Project not found',
+  'project.notFoundHint': 'The project is missing or outside your scope.',
+  'project.backToProjects': 'Back to projects',
+  'project.loadFailed': 'Could not load the project.',
+  'project.loadFailedHint': 'Check your connection and try again.',
 } as const;
 
 /** The key set of record. Every catalog lookup is typed against this. */

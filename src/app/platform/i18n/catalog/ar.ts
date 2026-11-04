@@ -1213,4 +1213,9 @@ export const AR: Partial<Record<CatalogKey, string>> = {
   'brief.changesRequestedBanner':
     'طلب العميل تعديلات على الجولة {round}. حدّث رأس الموجز وأرسله مرة أخرى.',
   'brief.sendToClient': 'إرسال إلى العميل',
+  'project.notFound': 'المشروع غير موجود',
+  'project.notFoundHint': 'المشروع غير موجود أو خارج نطاق صلاحياتك.',
+  'project.backToProjects': 'العودة إلى المشاريع',
+  'project.loadFailed': 'تعذّر تحميل المشروع.',
+  'project.loadFailedHint': 'تحقّق من الاتصال وحاول مرة أخرى.',
 };

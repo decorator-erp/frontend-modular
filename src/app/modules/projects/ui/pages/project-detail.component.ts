@@ -7,7 +7,8 @@ import {
   signal,
 } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { forkJoin, of } from 'rxjs';
+import { HttpErrorResponse } from '@angular/common/http';
+import { EMPTY, forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { ProjectService } from '../../data/project.service';
 import { ProjectMemberService } from '../../data/project-member.service';
@@ -19,7 +20,6 @@ import { PermissionsService } from '@platform/permissions';
 import { PERM } from '@platform/permissions';
 import { ToastService } from '@platform/feedback/toast.service';
 import {
-  ApprovalRequestResponse,
   ProjectDetails,
   ProjectMember,
   ProjectStage,
@@ -105,8 +105,10 @@ const STL_GRID = 'grid grid-cols-[minmax(0,1fr)_9rem_8rem_6rem_9rem] gap-3 items
  *
  * Single primary load (`GET /api/projects/{id}/details`) feeds the header, KPI
  * strip, stage timeline, the Stages & tasks list/gantt panel and both donuts;
- * satellite calls bring members (header avatars + Team count) and the caller's
- * approval queue (the "Open actions" KPI). Every gated panel carries one
+ * a satellite call brings members (header avatars + Team count). The "Open actions" KPI is
+ * hidden (crm-prod B2-fe, deferred): it read `GET /api/projects/approval-requests`, which the
+ * backend does not expose. A failed primary load lands on a not-found (404) or error state
+ * with a retry, never a blank page. Every gated panel carries one
  * `*peraCan` key. Section order matches the design exactly:
  * header → timeline → stages&tasks → status donut → priority donut → activity →
  * team → documents → risk register (empty state).
@@ -165,11 +167,11 @@ export class ProjectDetailComponent implements OnInit {
   };
 
   readonly loading = signal(true);
-  readonly failed = signal(false);
+  /** Why the primary load failed: `notFound` on a 404, `error` on anything else. */
+  readonly loadError = signal<'notFound' | 'error' | null>(null);
   readonly details = signal<ProjectDetails | null>(null);
   readonly members = signal<ProjectMember[]>([]);
   readonly employeeNames = signal<Map<string, string>>(new Map());
-  readonly approvals = signal<ApprovalRequestResponse[]>([]);
   /**
    * Stage owner derivation: `ProjectStage` has no owner field, so the stage row
    * shows its stage-team head. Map keyed by `projectStageId` → the head's id (+
@@ -210,12 +212,6 @@ export class ProjectDetailComponent implements OnInit {
   );
 
   readonly stageCount = computed(() => this.stages().length);
-  /** Pending-approval gates the caller owns on THIS project (the "Open actions" KPI). */
-  readonly openActions = computed(() => {
-    const id = this.project()?.id;
-    return id ? this.approvals().filter((r) => r.projectId === id).length : 0;
-  });
-
   /** Days until the planned end date (negative ⇒ overdue). */
   readonly daysRemaining = computed<number | null>(() => {
     const end = this.project()?.endDate;
@@ -348,7 +344,6 @@ export class ProjectDetailComponent implements OnInit {
     const p = this.project();
     if (!p) return [];
     const days = this.daysRemaining();
-    const open = this.openActions();
     return [
       { caption: 'Progress', value: p.progressPercentage, frac: '%' },
       { caption: 'Tasks', value: this.totalTasks(), frac: `${this.doneCount()} done` },
@@ -357,37 +352,43 @@ export class ProjectDetailComponent implements OnInit {
         value: days === null ? '—' : Math.abs(days),
         frac: days === null ? undefined : days >= 0 ? 'd left' : 'd overdue',
       },
-      {
-        caption: 'Open actions',
-        value: open,
-        frac: `approval${open === 1 ? '' : 's'}`,
-      },
     ];
   });
 
   ngOnInit(): void {
+    this.load();
+  }
+
+  /** The error state's Retry: runs the primary load again from the skeleton. */
+  retryLoad(): void {
+    this.load();
+  }
+
+  private load(): void {
     const id = this.route.snapshot.paramMap.get('id')!;
+    this.loading.set(true);
+    this.loadError.set(null);
     forkJoin({
       details: this.projects.getDetails(id),
       members: this.membersApi.getByProject(id).pipe(catchError(() => of([] as ProjectMember[]))),
-    }).subscribe({
-      next: ({ details, members }) => {
+    })
+      .pipe(
+        catchError((err: unknown) => {
+          this.loadError.set(
+            err instanceof HttpErrorResponse && err.status === 404 ? 'notFound' : 'error',
+          );
+          this.loading.set(false);
+          return EMPTY;
+        }),
+      )
+      .subscribe(({ details, members }) => {
         this.details.set(details);
         this.members.set(members);
         this.loading.set(false);
         this.resolveNames();
         this.loadStageHeads(id);
         this.loadRecentDocuments(id);
-        this.projects
-          .getApprovalRequests()
-          .pipe(catchError(() => of([] as ApprovalRequestResponse[])))
-          .subscribe((list) => this.approvals.set(list));
-      },
-      error: () => {
-        this.loading.set(false);
-        this.failed.set(true);
-      },
-    });
+      });
   }
 
   /** Resolve employee ids → names for member avatars + task assignees. */

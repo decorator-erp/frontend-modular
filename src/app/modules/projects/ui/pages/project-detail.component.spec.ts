@@ -7,7 +7,8 @@ import {
   convertToParamMap,
   provideRouter,
 } from '@angular/router';
-import { of } from 'rxjs';
+import { HttpErrorResponse } from '@angular/common/http';
+import { Observable, of, throwError } from 'rxjs';
 import { ProjectDetailComponent } from './project-detail.component';
 import { ProjectService } from '../../data/project.service';
 import { ProjectMemberService } from '../../data/project-member.service';
@@ -123,18 +124,18 @@ describe('ProjectDetailComponent', () => {
   let granted: Set<string>;
   let data: ProjectDetails;
   let navCalls: unknown[][];
+  let detailsCalls: number;
+  let detailsResponse: () => Observable<ProjectDetails>;
 
   function providers() {
     return [
       {
         provide: ProjectService,
         useValue: {
-          getDetails: () => of(data),
-          getApprovalRequests: () =>
-            of([
-              { projectId: 'p1', approvalType: 'ManagerApproval' },
-              { projectId: 'other', approvalType: 'ManagerApproval' },
-            ]),
+          getDetails: () => {
+            detailsCalls++;
+            return detailsResponse();
+          },
         },
       },
       {
@@ -204,6 +205,8 @@ describe('ProjectDetailComponent', () => {
     granted = new Set();
     data = details();
     navCalls = [];
+    detailsCalls = 0;
+    detailsResponse = () => of(data);
   });
 
   function render() {
@@ -246,14 +249,14 @@ describe('ProjectDetailComponent', () => {
     expect(meta).toContain('Nov'); // due date Nov 22
   });
 
-  it('derives the KPI strip — progress, task counts and open actions (this project only)', () => {
+  it('derives the KPI strip — progress and task counts; no Open actions KPI (crm-prod B2-fe: no backend route)', () => {
     granted = new Set(ALL);
     const fixture = render();
     const c = fixture.componentInstance;
     expect(c.totalTasks()).toBe(3);
     expect(c.doneCount()).toBe(1);
     expect(c.inProgressCount()).toBe(1);
-    expect(c.openActions()).toBe(1); // filters out the 'other' project's request
+    expect(c.headerKpis().map((k) => k.caption)).toEqual(['Progress', 'Tasks', 'Days remaining']);
     const strip = Array.from(
       (fixture.nativeElement as HTMLElement).querySelectorAll('pera-kpi-tile'),
     )
@@ -410,5 +413,36 @@ describe('ProjectDetailComponent', () => {
     // must NOT fabricate schedule/budget health it can't know
     expect(sub).not.toContain('clean schedule');
     expect(sub).not.toContain('Marina Tower');
+  });
+
+  describe('load states (crm-prod B2-fe)', () => {
+    it('shows the not-found state, not a blank page, when the project load answers 404', () => {
+      granted = new Set(ALL);
+      detailsResponse = () => throwError(() => new HttpErrorResponse({ status: 404 }));
+      const fixture = render();
+      const el = fixture.nativeElement as HTMLElement;
+      expect(fixture.componentInstance.loadError()).toBe('notFound');
+      expect(el.querySelector('[data-load-state="not-found"]')).not.toBeNull();
+      expect(el.querySelector('[data-load-state="error"]')).toBeNull();
+      expect(el.querySelector('pera-entity-header-card')).toBeNull();
+    });
+
+    it('shows the error state on any other failure, and Retry loads again', () => {
+      granted = new Set(ALL);
+      detailsResponse = () => throwError(() => new HttpErrorResponse({ status: 500 }));
+      const fixture = render();
+      const el = fixture.nativeElement as HTMLElement;
+      expect(fixture.componentInstance.loadError()).toBe('error');
+      expect(el.querySelector('[data-load-state="error"]')).not.toBeNull();
+      expect(detailsCalls).toBe(1);
+
+      detailsResponse = () => of(data);
+      fixture.componentInstance.retryLoad();
+      fixture.detectChanges();
+      expect(detailsCalls).toBe(2);
+      expect(fixture.componentInstance.loadError()).toBeNull();
+      expect(el.querySelector('[data-load-state="error"]')).toBeNull();
+      expect(el.querySelector('pera-entity-header-card')?.textContent).toContain('Marina Tower');
+    });
   });
 });
