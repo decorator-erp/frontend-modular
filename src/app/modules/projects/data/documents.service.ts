@@ -34,13 +34,16 @@ export interface ProjectDocument {
  */
 @Injectable({ providedIn: 'root' })
 export class DocumentFoldersService extends ApiService {
-  /** POST / — CreateDocumentFolderRequest { projectId, name, parentFolderId? }. */
+  /**
+   * `POST /api/document-folders` — `CreateDocumentFolderCommand { projectId, name, parentFolderId? }`
+   * → `200 { folderId }` (DocumentFolderEndpoints.cs:23-27). Emits the new folder id.
+   */
   create(projectId: string, name: string, parentFolderId?: string | null): Observable<string> {
     return this.post<unknown>('/document-folders', {
       projectId,
       name,
       parentFolderId: parentFolderId ?? null,
-    }).pipe(map((r) => this.unwrap<string>(r)));
+    }).pipe(map((r) => this.unwrapId(r, 'folderId')));
   }
 
   /** `GET /api/projects/{projectId}/document-folders` — ALL active folders of the project, by name (008b #6). */
@@ -62,9 +65,12 @@ export class DocumentFoldersService extends ApiService {
     return this.put(`/document-folders/${folderId}/rename`, { name });
   }
 
-  /** PUT /{id}/move — MoveDocumentFolderRequest { targetParentFolderId? } (null = root). */
-  move(folderId: string, targetParentFolderId: string | null): Observable<unknown> {
-    return this.put(`/document-folders/${folderId}/move`, { targetParentFolderId });
+  /**
+   * `PUT /api/document-folders/{id}/move` — `MoveFolderRequest { newParentFolderId? }` (null = root)
+   * → 204 (DocumentFolderEndpoints.cs:45-50, record at :107).
+   */
+  move(folderId: string, newParentFolderId: string | null): Observable<unknown> {
+    return this.put(`/document-folders/${folderId}/move`, { newParentFolderId });
   }
 
   /** DELETE /{id} — folder must be empty (document_folders.NotEmpty). */
@@ -86,7 +92,8 @@ export class DocumentFoldersService extends ApiService {
 }
 
 /**
- * Project documents — `/api/project-documents` per api-docs/09. Upload is
+ * Project documents — `/api/project-documents` and `/api/projects/{id}/documents`
+ * (Documents.Infrastructure `DocumentEndpoints.cs`, `DocumentUploadEndpoints.cs`). Upload is
  * multipart/form-data; mutations require Projects.ManageDocuments.
  */
 @Injectable({ providedIn: 'root' })
@@ -124,8 +131,12 @@ export class ProjectDocumentsService extends ApiService {
     );
   }
 
+  /**
+   * `GET /api/projects/{projectId}/documents` → `ProjectDocumentResponse[]` (DocumentEndpoints.cs:55-63).
+   * Feeds both the documents tab and the project dashboard's recent-documents panel.
+   */
   getByProject(projectId: string): Observable<ProjectDocument[]> {
-    return this.get<unknown>(`/project-documents/by-project/${projectId}`).pipe(
+    return this.get<unknown>(`/projects/${projectId}/documents`).pipe(
       map((r) => this.unwrapArray(r).map((d) => this.normalizeDocument(d))),
     );
   }
@@ -142,16 +153,22 @@ export class ProjectDocumentsService extends ApiService {
     return this.http.get(`${this.base}/project-documents/${id}/download`, { responseType: 'blob' });
   }
 
-  /** PUT /{id}/move — MoveProjectDocumentRequest { targetFolderId? } (null = root). */
-  move(id: string, targetFolderId: string | null): Observable<unknown> {
-    return this.put(`/project-documents/${id}/move`, { targetFolderId });
+  /**
+   * `PUT /api/project-documents/{id}/move` — `MoveDocumentRequest { folderId? }` (null = root)
+   * → 204 (DocumentEndpoints.cs:32-37, record at :96).
+   */
+  move(id: string, folderId: string | null): Observable<unknown> {
+    return this.put(`/project-documents/${id}/move`, { folderId });
   }
 
   remove(id: string): Observable<unknown> {
     return this.delete(`/project-documents/${id}`);
   }
 
-  /** ProjectDocumentResponse names first, the old ones as fallbacks (008b #9). */
+  /**
+   * `ProjectDocumentResponse` (DocumentContracts.cs:24-39) names first — `fileSizeBytes`,
+   * `uploadedById`, `uploadedOnUtc` — the old ones as fallbacks (008b #9).
+   */
   private normalizeDocument(source: unknown): ProjectDocument {
     return {
       id: this.field<string>(source, 'id') ?? '',

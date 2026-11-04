@@ -129,4 +129,81 @@ describe('documents.service', () => {
       expect(doc.createdAtUtc).toBe('2026-09-01T10:00:00Z');
     });
   });
+
+  describe('crm-prod H6 — routes and bodies match Documents endpoints', () => {
+    it('getByProject calls GET /api/projects/{projectId}/documents and maps ProjectDocumentResponse', () => {
+      let docs: ProjectDocument[] = [];
+      TestBed.inject(ProjectDocumentsService)
+        .getByProject('p1')
+        .subscribe((r) => (docs = r));
+
+      const req = http.expectOne(`${environment.apiUrl}/projects/p1/documents`);
+      expect(req.request.method).toBe('GET');
+      req.flush([
+        {
+          id: 'd1',
+          projectId: 'p1',
+          folderId: 'f1',
+          projectStageId: null,
+          projectTaskId: null,
+          fileName: 'plan.pdf',
+          contentType: 'application/pdf',
+          fileSizeBytes: 4096,
+          fileExtension: '.pdf',
+          description: 'Site plan',
+          uploadedById: 'e1',
+          uploadedOnUtc: '2026-10-01T10:00:00Z',
+          version: 1,
+          rootDocumentId: 'd1',
+          isLocked: false,
+        },
+      ]);
+
+      expect(docs).toEqual([
+        {
+          id: 'd1',
+          projectId: 'p1',
+          folderId: 'f1',
+          fileName: 'plan.pdf',
+          contentType: 'application/pdf',
+          sizeBytes: 4096,
+          description: 'Site plan',
+          uploadedByUserId: 'e1',
+          createdAtUtc: '2026-10-01T10:00:00Z',
+        },
+      ]);
+    });
+
+    it('document move sends PUT /api/project-documents/{id}/move with { folderId }', () => {
+      TestBed.inject(ProjectDocumentsService).move('d1', 'f2').subscribe();
+
+      const req = http.expectOne(`${environment.apiUrl}/project-documents/d1/move`);
+      expect(req.request.method).toBe('PUT');
+      expect(req.request.body).toEqual({ folderId: 'f2' });
+      req.flush(null, { status: 204, statusText: 'No Content' });
+    });
+
+    it('folder move sends PUT /api/document-folders/{id}/move with { newParentFolderId }', () => {
+      TestBed.inject(DocumentFoldersService).move('f1', null).subscribe();
+
+      const req = http.expectOne(`${environment.apiUrl}/document-folders/f1/move`);
+      expect(req.request.method).toBe('PUT');
+      expect(req.request.body).toEqual({ newParentFolderId: null });
+      req.flush(null, { status: 204, statusText: 'No Content' });
+    });
+
+    it('folder create POSTs /api/document-folders and reads { folderId } from the response', () => {
+      let id: unknown;
+      TestBed.inject(DocumentFoldersService)
+        .create('p1', 'Drawings')
+        .subscribe((r) => (id = r));
+
+      const req = http.expectOne(`${environment.apiUrl}/document-folders`);
+      expect(req.request.method).toBe('POST');
+      expect(req.request.body).toEqual({ projectId: 'p1', name: 'Drawings', parentFolderId: null });
+      req.flush({ folderId: 'f9' });
+
+      expect(id).toBe('f9');
+    });
+  });
 });

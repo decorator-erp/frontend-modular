@@ -30,9 +30,9 @@ import {
 /**
  * Documents tab — renders through `pera-attachments-shell` (Step 4 — locked
  * template port). Replaces the previous folder-tree + file-list pair. Folders
- * come from `/api/document-folders/by-project` (root + immediate children
- * fetched lazily); files come from `/api/project-documents/by-folder` for the
- * selected folder, or by-project for the "All files" root.
+ * come from `/api/projects/{id}/document-folders` (root + immediate children
+ * fetched lazily); files come from `/api/document-folders/{id}/documents` for the
+ * selected folder, or `/api/projects/{id}/documents` for the "All files" root.
  */
 @Component({
   selector: 'app-documents-tab',
