@@ -18,22 +18,34 @@ describe('StageTemplatesService', () => {
 
   afterEach(() => httpMock.verify());
 
-  it('create POSTs to /stage-templates and unwraps the new id', () => {
+  it('crm-prod H7: create POSTs CreateStageTemplateCommand with type = 2 (Custom) and reads { stageTemplateId }', () => {
     let id: string | undefined;
     service
-      .create({ name: 'Fit-out', stageTemplateType: 'Custom', isDefault: false, description: null })
+      .create({ name: 'Fit-out', type: 'Custom', isDefault: false, description: null })
       .subscribe((r) => (id = r));
     const req = httpMock.expectOne(
       (r) => r.method === 'POST' && r.url.endsWith('/stage-templates'),
     );
     expect(req.request.body).toEqual({
       name: 'Fit-out',
-      stageTemplateType: 'Custom',
+      type: 2,
       isDefault: false,
       description: null,
     });
-    req.flush({ value: 'st-1' });
+    expect(req.request.body).not.toHaveProperty('stageTemplateType');
+    req.flush({ stageTemplateId: 'st-1' });
     expect(id).toBe('st-1');
+  });
+
+  it('crm-prod H7: list maps StageTemplateResponse.Type ints (1 System, 2 Custom)', () => {
+    let items: StageTemplateRef[] = [];
+    service.list().subscribe((r) => (items = r));
+    const req = httpMock.expectOne((r) => r.method === 'GET' && r.url.endsWith('/stage-templates'));
+    req.flush([
+      { id: 'a', name: 'Seeded', description: null, type: 1, isDefault: true },
+      { id: 'b', name: 'Mine', description: null, type: 2, isDefault: false },
+    ]);
+    expect(items.map((t) => t.type)).toEqual(['System', 'Custom']);
   });
 
   it('update PUTs to /stage-templates/{id}', () => {
