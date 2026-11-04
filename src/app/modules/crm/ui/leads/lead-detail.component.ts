@@ -8,7 +8,6 @@ import {
   inject,
   input,
   signal,
-  untracked,
   viewChild,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -519,17 +518,25 @@ export class CrmLeadDetailComponent {
       if (id) this.store.load(id);
     });
 
-    // FINDING-P2-14: one lookup per owner id, success or not, and only with `employees.read` (the
-    // route's claim) — a failed or still-pending lookup is never re-sent on a lead reload. A 404 (no
-    // such employee) falls back to "—" silently.
+    // FINDING-P2-14: one lookup per owner id, and only with `employees.read` (the route's claim) —
+    // a pending or 404 lookup is never re-sent on a lead reload. A 404 (no such employee) falls back
+    // to "—" silently. FINDING-P2-22: the claim is tracked, so a late grant runs the lookup (the Set
+    // keeps it to one); a 0 / 5xx failure forgets the id, so a later reload retries.
     effect(() => {
       const ownerId = this.store.lead()?.ownerId;
       if (!ownerId || this.ownerLookups.has(ownerId)) return;
-      if (!untracked(() => this.permissions.can(PERM.employees.read))) return;
+      if (!this.permissions.can(PERM.employees.read)) return;
       this.ownerLookups.add(ownerId);
       this.directory
         .getById(ownerId, { context: handled(404) })
-        .pipe(catchError(() => of(null)))
+        .pipe(
+          catchError((e: unknown) => {
+            if (e instanceof HttpErrorResponse && (e.status === 0 || e.status >= 500)) {
+              this.ownerLookups.delete(ownerId);
+            }
+            return of(null);
+          }),
+        )
         .subscribe((e) => {
           if (e?.fullName) this.owners.update((m) => ({ ...m, [ownerId]: e.fullName }));
         });

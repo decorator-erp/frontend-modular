@@ -1,3 +1,4 @@
+import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { HttpErrorResponse, provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
@@ -404,6 +405,42 @@ describe('CrmLeadDetailComponent — owner lookup (FINDING-P2-14)', () => {
       '[data-testid="lead-owner"]',
     );
     expect(owner?.textContent).toContain('—');
+  });
+
+  it('FINDING-P2-22: a late employees.read grant runs the lookup once', () => {
+    const granted = signal(false);
+    const { store, flushLead, employeeGets, fixture } = makeOwner(
+      (p) => p !== 'employees.read' || granted(),
+    );
+    flushLead();
+    expect(employeeGets()).toHaveLength(0);
+    granted.set(true);
+    fixture.detectChanges();
+    const gets = employeeGets();
+    expect(gets).toHaveLength(1);
+    gets[0].flush({ id: 'E1', fullName: 'Sara Nabil' });
+    store.load('L');
+    flushLead();
+    expect(employeeGets()).toHaveLength(0);
+  });
+
+  it('FINDING-P2-22: a 5xx or network failure is retried on the next reload; a 404 is not', () => {
+    const { store, flushLead, employeeGets } = makeOwner(() => true);
+    flushLead();
+    employeeGets()[0].flush(null, { status: 503, statusText: 'Unavailable' });
+    store.load('L');
+    flushLead();
+    const second = employeeGets();
+    expect(second).toHaveLength(1);
+    second[0].error(new ProgressEvent('error'), { status: 0, statusText: '' });
+    store.load('L');
+    flushLead();
+    const third = employeeGets();
+    expect(third).toHaveLength(1);
+    third[0].flush(null, { status: 404, statusText: 'Not Found' });
+    store.load('L');
+    flushLead();
+    expect(employeeGets()).toHaveLength(0);
   });
 
   it('without employees.read there is no GET /employees/{id} and no toast', () => {
