@@ -7,7 +7,7 @@ import {
 import { signal } from '@angular/core';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { of, throwError } from 'rxjs';
+import { of, Subject, throwError } from 'rxjs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ToastService } from '@platform/feedback/toast.service';
 import { EN } from '@platform/i18n/catalog/en';
@@ -55,11 +55,13 @@ describe('CrmApprovalsInboxComponent (crm-prod B1-fe)', () => {
   let http: HttpTestingController;
   let perms: ReturnType<typeof signal<string[]>>;
   let getHeadDiff: ReturnType<typeof vi.fn>;
+  let getMyBrief: ReturnType<typeof vi.fn>;
   let toast: { show: ReturnType<typeof vi.fn> };
 
   beforeEach(() => {
     perms = signal<string[]>([PERM.crm.approvals.viewOwn, PERM.crm.approvals.decideOwn]);
     getHeadDiff = vi.fn();
+    getMyBrief = vi.fn();
     toast = { show: vi.fn() };
     TestBed.configureTestingModule({
       imports: [CrmApprovalsInboxComponent],
@@ -67,7 +69,7 @@ describe('CrmApprovalsInboxComponent (crm-prod B1-fe)', () => {
         provideRouter([]),
         provideHttpClient(),
         provideHttpClientTesting(),
-        { provide: CrmBriefService, useValue: { getHeadDiff, getMyBrief: vi.fn() } },
+        { provide: CrmBriefService, useValue: { getHeadDiff, getMyBrief } },
         { provide: ToastService, useValue: toast },
         {
           provide: PermissionsService,
@@ -340,6 +342,45 @@ describe('CrmApprovalsInboxComponent (crm-prod B1-fe)', () => {
     (el(fixture).querySelector('li button') as HTMLButtonElement).click();
     fixture.detectChanges();
     expect(el(fixture).textContent).toContain('The brief has no such round.');
+  });
+
+  it('FINDING-P2-7: a slow diff reply for a row no longer expanded is dropped', () => {
+    const slowA1 = new Subject<BriefHeadDiff>();
+    const fastA2 = new Subject<BriefHeadDiff>();
+    getHeadDiff.mockImplementation((_briefId: string, round: number) =>
+      round === 1 ? slowA1 : fastA2,
+    );
+    const fixture = render([wire('A1'), wire('A2', { round: 2 })]);
+    const toggles = () => Array.from(el(fixture).querySelectorAll<HTMLButtonElement>('li button'));
+    toggles()[0].click(); // A1, round 1 — slow
+    fixture.detectChanges();
+    const a2Toggle = el(fixture).querySelector<HTMLButtonElement>('[data-approval="A2"] button')!;
+    a2Toggle.click(); // switch to A2 before A1 answers
+    fixture.detectChanges();
+    fastA2.next({
+      briefId: 'B',
+      round: 2,
+      previousRound: 1,
+      changes: [{ field: 'Sector', previousValue: '1', currentValue: '2' }],
+    });
+    slowA1.next({
+      briefId: 'B',
+      round: 1,
+      previousRound: null,
+      changes: [{ field: 'Sector', previousValue: null, currentValue: '1' }],
+    });
+    fixture.detectChanges();
+    const text = el(fixture).textContent ?? '';
+    expect(text).not.toContain('Initial values (round 1):');
+    expect(text).toContain('Medical');
+  });
+
+  it('FINDING-P2-7: an entry reads the brief of its own stage', () => {
+    getMyBrief.mockReturnValue(of({ head: null, spaces: [] }));
+    const fixture = render([wire('E1', { subjectType: 4, subjectId: 'SP', stageId: 'ST9' })]);
+    (el(fixture).querySelector('li button') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(getMyBrief).toHaveBeenCalledWith('P', 'ST9');
   });
 
   it('carries every new inbox key in EN and AR', () => {

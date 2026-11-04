@@ -515,13 +515,18 @@ export class CrmApprovalsInboxComponent {
     this.spaceDetail.set(null);
     this.detailLoading.set(true);
 
+    // FINDING-P2-7: a reply for a row that is no longer the expanded one is dropped — a slow read
+    // must not paint its detail under the row the client switched to.
+    const current = (): boolean => this.expandedId() === row.id;
     if (row.subjectType === ApprovalSubjectType.DesignBrief && row.round !== null) {
       this.briefApi.getHeadDiff(row.briefId ?? row.subjectId, row.round).subscribe({
         next: (diff) => {
+          if (!current()) return;
           this.headDiff.set(diff);
           this.detailLoading.set(false);
         },
         error: (err: unknown) => {
+          if (!current()) return;
           this.diffError.set(
             err instanceof HttpErrorResponse ? friendly(this.errors.parse(err)) : null,
           );
@@ -529,12 +534,16 @@ export class CrmApprovalsInboxComponent {
         },
       });
     } else if (row.subjectType === ApprovalSubjectType.BriefSpace) {
-      this.briefApi.getMyBrief(row.projectId).subscribe({
+      // The entry's own stage's brief — a multi-stage project has one brief per stage.
+      this.briefApi.getMyBrief(row.projectId, row.stageId).subscribe({
         next: (view) => {
+          if (!current()) return;
           this.spaceDetail.set(view.spaces.find((s) => s.id === row.subjectId) ?? null);
           this.detailLoading.set(false);
         },
-        error: () => this.detailLoading.set(false),
+        error: () => {
+          if (current()) this.detailLoading.set(false);
+        },
       });
     } else {
       this.detailLoading.set(false);
