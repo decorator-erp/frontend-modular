@@ -14,6 +14,7 @@ import {
 import { BriefSpaceGroup, BriefStore } from '../../stores/brief.store';
 import { CrmAddEntryFormComponent } from './add-entry-form.component';
 import { CrmSupersedeEntryModalComponent } from './supersede-entry.modal';
+import { CrmSelectionsViewComponent } from '../spaces/selections-view.component';
 
 /**
  * The ONE unified gathering-ledger card (T062, FR-024 + FR-024a). Since feature 006 an
@@ -32,6 +33,7 @@ import { CrmSupersedeEntryModalComponent } from './supersede-entry.modal';
     PeraButtonComponent,
     PeraIconComponent,
     PeraStatusBadgeComponent,
+    CrmSelectionsViewComponent,
   ],
   host: { class: 'block' },
   template: `
@@ -128,6 +130,15 @@ import { CrmSupersedeEntryModalComponent } from './supersede-entry.modal';
                           <span class="fs-caption text-text-secondary" dir="auto">{{
                             entry.requirements
                           }}</span>
+                        }
+                        <!-- crmp C-6: the storefront picks frozen at this entry's last send (read-only). -->
+                        @if (entry.selections.length > 0) {
+                          <div class="flex flex-col gap-1 pt-1" data-entry-picks>
+                            <span class="fs-caption font-medium text-text-muted">{{
+                              catalog.t('storefront.snapshotTitle')
+                            }}</span>
+                            <app-crm-selections-view [selections]="entry.selections" />
+                          </div>
                         }
                       </div>
                     </div>

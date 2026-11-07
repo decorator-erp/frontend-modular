@@ -39,6 +39,7 @@ import {
 } from '@ds';
 import { ApprovalsInboxStore } from '../../stores/approvals-inbox.store';
 import { formatHeadDiffValue, headDiffFieldLabel } from './head-diff-format';
+import { CrmSelectionsViewComponent } from '../spaces/selections-view.component';
 
 const SUBJECT_NOUN_KEYS: Record<ApprovalSubjectType, CatalogKey> = {
   [ApprovalSubjectType.GateCondition]: 'appr.subjectEntry',
@@ -81,6 +82,7 @@ const DECISION_CHIP: Record<ApprovalDecision, { tone: StatusBadgeTone; key: Cata
     PeraStatusBadgeComponent,
     PeraTextareaComponent,
     RouterLink,
+    CrmSelectionsViewComponent,
   ],
   host: { class: 'flex flex-col gap-4', '(keydown.escape)': 'onEscape()' },
   template: `
@@ -218,6 +220,13 @@ const DECISION_CHIP: Record<ApprovalDecision, { tone: StatusBadgeTone; key: Cata
                                 <p class="fs-body-sm text-text-secondary m-0" dir="auto">
                                   {{ space.requirements }}
                                 </p>
+                              }
+                              <!-- crmp C-6: the picks the client approves with this entry (read-only, no notes). -->
+                              @if (space.selections.length > 0) {
+                                <p class="fs-caption font-medium text-text-muted m-0">
+                                  {{ catalog.t('storefront.snapshotTitle') }}
+                                </p>
+                                <app-crm-selections-view [selections]="space.selections" />
                               }
                             } @else {
                               <pera-empty [title]="catalog.t('appr.subjectEntry')" />

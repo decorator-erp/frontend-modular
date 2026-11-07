@@ -10,6 +10,7 @@ import {
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { CatalogService } from '@platform/i18n/catalog.service';
 import { CanDirective, PERM } from '@platform/permissions';
+import { PermissionsService } from '@platform/permissions/permissions.service';
 import { ToastService } from '@platform/feedback/toast.service';
 import { friendly } from '@platform/http/error-handler.service';
 import type { CrmSpace } from '../../model';
@@ -23,6 +24,7 @@ import {
 } from '@ds';
 import { SpacesStore } from '../../stores/spaces.store';
 import { CrmSpaceBriefNoteComponent } from './space-brief-note.component';
+import { CrmSpaceStorefrontComponent } from './space-storefront.component';
 import { AddSpaceDialogData, CrmAddSpaceDialogComponent } from './add-space-dialog.component';
 
 /**
@@ -46,6 +48,7 @@ import { AddSpaceDialogData, CrmAddSpaceDialogComponent } from './add-space-dial
     PeraButtonComponent,
     PeraIconComponent,
     CrmSpaceBriefNoteComponent,
+    CrmSpaceStorefrontComponent,
   ],
   template: `
     <pera-page-header [title]="catalog.t('space.title')" [count]="store.spaces().length">
@@ -164,6 +167,10 @@ import { AddSpaceDialogData, CrmAddSpaceDialogComponent } from './add-space-dial
       <div class="min-w-0 flex flex-col gap-4">
         @if (selectedSpace(); as space) {
           <app-crm-space-brief-note [space]="space" [projectId]="projectId()" />
+          <!-- crmp C-6: the space's storefront picks (office only, #110-#114). -->
+          @if (canReadSpaces()) {
+            <app-crm-space-storefront [space]="space" />
+          }
         } @else {
           <p class="fs-caption text-text-muted p-4 m-0">{{ catalog.t('space.selectPrompt') }}</p>
         }
@@ -185,6 +192,8 @@ export class CrmSpacesPageComponent {
    */
   private readonly injector = inject(Injector);
   protected readonly PERM = PERM;
+  private readonly permissions = inject(PermissionsService);
+  protected readonly canReadSpaces = computed(() => this.permissions.can(PERM.crm.spaces.read));
 
   readonly projectId = signal('');
   readonly selectedId = signal<string | null>(null);

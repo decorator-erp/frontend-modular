@@ -232,6 +232,20 @@ describe('CrmBriefService', () => {
           projectTaskId: null,
           createdById: 'emp',
           isCurrent: true,
+          selections: [
+            {
+              id: 'sel-1',
+              spaceId: 'SP1',
+              catalogItemId: 'item-1',
+              itemCode: 'SOFA',
+              itemNameEn: 'Sofa',
+              itemNameAr: 'كنبة',
+              quantity: 2,
+              notes: 'office note',
+              sortOrder: 1,
+              options: [],
+            },
+          ],
         },
         {
           id: 'E1',
@@ -269,6 +283,11 @@ describe('CrmBriefService', () => {
       expect(entries[0].space?.spaceType.nameEn).toBe('Reception');
       expect(entries[2].space).toBeNull();
       expect(entries[0]).not.toHaveProperty('createdAtUtc');
+      // crmp C-6: the frozen storefront picks (#34 `selections`); a missing member reads as [].
+      expect(entries[0].selections.map((p) => [p.itemNameEn, p.quantity, p.notes])).toEqual([
+        ['Sofa', 2, 'office note'],
+      ]);
+      expect(entries[1].selections).toEqual([]);
     });
 
     it('keeps an entry on an unresolvable space grouped by its id', () => {
@@ -333,9 +352,27 @@ describe('CrmBriefService', () => {
             approvalStatus: ApprovalState.PendingApproval,
             supersedesSpaceId: null,
             isCurrent: true,
+            selections: [
+              {
+                id: 'sel-1',
+                spaceId: 'SP1',
+                catalogItemId: 'item-1',
+                itemCode: 'SOFA',
+                itemNameEn: 'Sofa',
+                itemNameAr: 'كنبة',
+                quantity: 2,
+                notes: null,
+                sortOrder: 1,
+                options: [],
+              },
+            ],
           },
         ],
       });
+      // crmp C-6: the portal snapshot (#84), notes always null (FINDING-F-9).
+      expect(view?.spaces[0].selections.map((p) => [p.itemNameEn, p.notes])).toEqual([
+        ['Sofa', null],
+      ]);
 
       expect(view?.head).toMatchObject({
         id: 'B',

@@ -253,3 +253,59 @@ export interface ProvisionSummary {
   status: CrmProvisionStatus;
   count: number;
 }
+
+// ── Storefront picks (crmp C-6, contract §2.9.1 #110–#114) ──────────────────
+
+/** `CrmSpaceSelectionOptionResponse` (`Crm.Contracts/Spaces/StorefrontContracts.cs:8`). */
+export interface SpaceSelectionOption {
+  attributeId: string;
+  attributeNameEn: string;
+  attributeNameAr: string;
+  optionId: string;
+  optionCode: string;
+  optionNameEn: string;
+  optionNameAr: string;
+}
+
+/**
+ * `CrmSpaceSelectionResponse` (`StorefrontContracts.cs:14-16`): one storefront pick with the
+ * catalog names resolved. The same shape is the brief entry's frozen `selections` snapshot;
+ * on the portal `notes` is always `null` (FINDING-F-9).
+ */
+export interface SpaceSelection {
+  id: string;
+  spaceId: string;
+  catalogItemId: string;
+  itemCode: string;
+  itemNameEn: string;
+  itemNameAr: string;
+  quantity: number;
+  notes: string | null;
+  sortOrder: number;
+  options: SpaceSelectionOption[];
+}
+
+/** `SpaceSelectionOptionInput` (`StorefrontContracts.cs:6`): the option chosen for one attribute. */
+export interface SpaceSelectionOptionInput {
+  attributeId: string;
+  optionId: string;
+}
+
+/** `POST …/selections` body (`CrmStorefrontEndpoints.cs:66`, `SelectionRequest`). */
+export interface AddSpaceSelectionRequest {
+  catalogItemId: string;
+  /** 0.001..1,000,000, at most 3 decimals. */
+  quantity: number;
+  notes?: string | null;
+  options?: SpaceSelectionOptionInput[];
+}
+
+/**
+ * `PUT …/selections/{selectionId}` body. The item can't change. `options` omitted/`null` KEEPS
+ * the chosen options, `[]` clears them; `notes` is full replace (omitted = cleared).
+ */
+export interface UpdateSpaceSelectionRequest {
+  quantity: number;
+  notes: string | null;
+  options?: SpaceSelectionOptionInput[] | null;
+}

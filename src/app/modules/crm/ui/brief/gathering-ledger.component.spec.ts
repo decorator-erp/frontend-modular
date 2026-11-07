@@ -26,19 +26,34 @@ const entry = (id: string, approvalStatus: ApprovalState): BriefSpace => ({
   projectTaskId: null,
   createdById: 'E',
   isCurrent: true,
+  selections: [],
 });
 
 function make(can: (p: string) => boolean) {
   const api = {
     getBrief: vi.fn().mockReturnValue(of(HEAD)),
-    listSpaces: vi
-      .fn()
-      .mockReturnValue(
-        of([
-          entry('draft-entry', ApprovalState.Draft),
-          entry('sent-entry', ApprovalState.PendingApproval),
-        ]),
-      ),
+    listSpaces: vi.fn().mockReturnValue(
+      of([
+        entry('draft-entry', ApprovalState.Draft),
+        {
+          ...entry('sent-entry', ApprovalState.PendingApproval),
+          selections: [
+            {
+              id: 'sel-1',
+              spaceId: 'SP',
+              catalogItemId: 'i',
+              itemCode: 'SOFA',
+              itemNameEn: 'Velvet sofa',
+              itemNameAr: 'كنبة',
+              quantity: 2,
+              notes: null,
+              sortOrder: 1,
+              options: [],
+            },
+          ],
+        },
+      ]),
+    ),
     listRounds: vi.fn().mockReturnValue(of([])),
     sendSpace: vi.fn().mockReturnValue(of(undefined)),
   };
@@ -86,5 +101,16 @@ describe('CrmGatheringLedgerComponent — Send to client (crm-prod M5)', () => {
   it('hides Send to client without crm.briefs.send', () => {
     const { sendButtons } = make((p) => p === 'crm.briefs.manage');
     expect(sendButtons()).toHaveLength(0);
+  });
+});
+
+describe('CrmGatheringLedgerComponent — frozen storefront picks (crmp C-6)', () => {
+  it("renders an entry's snapshot picks read-only, and nothing for an entry without picks", () => {
+    const { row } = make(() => true);
+    expect(row('sent-entry')?.querySelector('[data-entry-picks]')?.textContent).toContain(
+      'Velvet sofa',
+    );
+    expect(row('sent-entry')?.querySelector('[data-entry-picks] button')).toBeNull();
+    expect(row('draft-entry')?.querySelector('[data-entry-picks]')).toBeNull();
   });
 });

@@ -10,6 +10,7 @@
  * they are normalized at the api boundary and never reach a store in wire form.
  */
 
+import type { SpaceSelection } from './space.model';
 import {
   ApprovalState,
   ApprovalDecision,
@@ -316,6 +317,13 @@ export interface BriefSpace {
   createdById: string;
   /** `false` once another entry supersedes this one (C §8.2.10). No `createdAtUtc`: order is the server's, newest first. */
   isCurrent: boolean;
+  /**
+   * crmp C-6: the space's storefront picks as FROZEN at this entry's last send (#38), read-only
+   * (`CrmBriefSpaceResponse.Selections`, `BriefContracts.cs:46-50`; portal
+   * `PortalBriefSpaceResponse.Selections`, `PortalContracts.cs:53-56`). `[]` for an entry never
+   * sent or with no space. On the portal each pick's `notes` is `null` (FINDING-F-9).
+   */
+  selections: SpaceSelection[];
 }
 
 /** The write shape for add / update / supersede — one shape for all three. */

@@ -30,6 +30,7 @@ import {
 } from '@ds';
 import { MEETING_STATUS_CHIP, MEETING_TYPE_KEYS } from '../scheduler/meeting-labels';
 import { CrmIdentityCardComponent } from './identity-card.component';
+import { CrmSelectionsViewComponent } from '../spaces/selections-view.component';
 
 const PROJECT_STATUS_KEYS: Readonly<Record<string, CatalogKey>> = {
   Draft: 'projects.status.Draft',
@@ -67,6 +68,7 @@ type ProfileTab = 'overview' | 'brief' | 'requirements' | 'meetings';
     PeraStatusBadgeComponent,
     CrmIdentityCardComponent,
     CanDirective,
+    CrmSelectionsViewComponent,
   ],
   host: { class: 'flex flex-col gap-4' },
   template: `
@@ -220,6 +222,18 @@ type ProfileTab = 'overview' | 'brief' | 'requirements' | 'meetings';
                         </span>
                       </span>
                     </div>
+                    <!-- crmp C-6: the storefront picks each current entry was sent with (read-only, no notes). -->
+                    @for (entry of entriesWithPicks(); track entry.id) {
+                      <div class="flex flex-col gap-1 pt-2" data-portal-picks>
+                        <span class="fs-body-sm font-medium text-text-primary" dir="auto">{{
+                          entry.space?.name || catalog.t('brief.general')
+                        }}</span>
+                        <span class="fs-caption text-text-muted">{{
+                          catalog.t('storefront.snapshotTitle')
+                        }}</span>
+                        <app-crm-selections-view [selections]="entry.selections" />
+                      </div>
+                    }
                   } @else {
                     <pera-empty [title]="catalog.t('client.tabBrief')" />
                   }
@@ -288,6 +302,10 @@ export class CrmClientProfileComponent {
     const head = this.brief.head();
     return head ? isUnconfirmed(head.status, false) : false;
   });
+  /** crmp C-6: current entries that carry a frozen pick snapshot (#84 `selections`). */
+  protected readonly entriesWithPicks = computed(() =>
+    this.brief.spaces().filter((e) => e.isCurrent && e.selections.length > 0),
+  );
   protected readonly headChip = computed(() => {
     const head = this.brief.head();
     return trustChip(head?.status ?? ApprovalState.Draft, false);

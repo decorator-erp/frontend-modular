@@ -1,4 +1,4 @@
-import { signal } from '@angular/core';
+import { Component, input, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -7,6 +7,13 @@ import { ConfirmService } from '@ds';
 import type { CrmSpace } from '../../model';
 import { SpacesStore } from '../../stores/spaces.store';
 import { CrmSpacesPageComponent } from './spaces-page.component';
+import { CrmSpaceStorefrontComponent } from './space-storefront.component';
+
+/** crmp C-6: the storefront panel has its own spec; here it is a stub that records its input. */
+@Component({ selector: 'app-crm-space-storefront', template: '{{ space().id }}' })
+class StorefrontStub {
+  readonly space = input.required<CrmSpace>();
+}
 
 const OTHER = (): CrmSpace => ({ ...SPACE, id: 'S2', name: 'Bath' });
 
@@ -71,6 +78,18 @@ describe('CrmSpacesPageComponent (009b #N-5)', () => {
         },
       ],
     });
+    TestBed.overrideComponent(CrmSpacesPageComponent, {
+      remove: { imports: [CrmSpaceStorefrontComponent] },
+      add: { imports: [StorefrontStub] },
+    });
+  });
+
+  it('renders the storefront panel for the selected space (crmp C-6)', () => {
+    const fixture = TestBed.createComponent(CrmSpacesPageComponent);
+    fixture.detectChanges();
+    fixture.detectChanges();
+    const panel = (fixture.nativeElement as HTMLElement).querySelector('app-crm-space-storefront');
+    expect(panel?.textContent?.trim()).toBe('S');
   });
 
   it('keeps the space list and renders no board or completeness panel', () => {
