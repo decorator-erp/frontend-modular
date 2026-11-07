@@ -1,5 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { HttpErrorResponse } from '@angular/common/http';
 import { NEVER, of, throwError } from 'rxjs';
 import { CrmClientPortalService } from '../data/crm-portal.service';
 import { ContactRole } from '../model/crm-enums';
@@ -10,6 +11,8 @@ function profile(over: Partial<ClientProfile> = {}): ClientProfile {
   return {
     client: {
       id: 'client-1',
+      name: 'Ahmed Mansour',
+      email: null,
       firstName: 'Ahmed',
       lastName: 'Mansour',
       phoneNumber: null,
@@ -33,7 +36,8 @@ function profile(over: Partial<ClientProfile> = {}): ClientProfile {
         code: 'PRJ-1',
         name: 'Villa',
         status: 'InProgress',
-        productOwnerName: 'Nourhan',
+        activeStageId: null,
+        activeStageName: null,
         progressPercentage: 40,
         openPeriodId: 'period-1',
       },
@@ -84,6 +88,46 @@ describe('ClientProfileStore', () => {
     expect(s.loaded()).toBe(true);
   });
 
+  it('crmp C-2: a 404 (no linked client) reads client.profileNoClient', () => {
+    api.getMyProfile.mockReturnValue(
+      throwError(
+        () =>
+          new HttpErrorResponse({
+            status: 404,
+            error: { errors: { 'crm.portal.NotFound': ['x'] } },
+          }),
+      ),
+    );
+    const s = store();
+    s.load();
+    expect(s.error()).toBe('client.profileNoClient');
+  });
+
+  it('crmp C-2: a 403 (not a client login) reads client.profileNotClient', () => {
+    api.getMyProfile.mockReturnValue(
+      throwError(
+        () =>
+          new HttpErrorResponse({
+            status: 403,
+            error: { errors: { 'crm.portal.NotAClient': ['x'] } },
+          }),
+      ),
+    );
+    const s = store();
+    s.load();
+    expect(s.error()).toBe('client.profileNotClient');
+  });
+
+  it('crmp C-2: a 500 reads client.profileUnavailable and load() retries', () => {
+    api.getMyProfile.mockReturnValueOnce(throwError(() => new HttpErrorResponse({ status: 500 })));
+    const s = store();
+    s.load();
+    expect(s.error()).toBe('client.profileUnavailable');
+    s.load();
+    expect(s.error()).toBeNull();
+    expect(s.projects()).toHaveLength(1);
+  });
+
   it('does not re-enter while already loading', () => {
     api.getMyProfile.mockReturnValueOnce(NEVER);
     const s = store();
@@ -109,7 +153,8 @@ describe('ClientProfileStore', () => {
                 code: 'PRJ-1',
                 name: 'Villa',
                 status: 'InProgress',
-                productOwnerName: null,
+                activeStageId: null,
+                activeStageName: null,
                 progressPercentage: 0,
                 openPeriodId: null,
               },
@@ -118,7 +163,8 @@ describe('ClientProfileStore', () => {
                 code: 'PRJ-2',
                 name: 'Chalet',
                 status: 'InProgress',
-                productOwnerName: null,
+                activeStageId: null,
+                activeStageName: null,
                 progressPercentage: 0,
                 openPeriodId: null,
               },

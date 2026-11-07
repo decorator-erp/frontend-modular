@@ -708,8 +708,8 @@ export interface CrmTaskBlock {
 }
 
 /**
- * `GET /api/crm/portal/profile` (`CrmClientPortalEndpoints.cs`, gated
- * `portal.profile.view_own`) — one combined read, mirroring the brief's "head AND every
+ * `GET /api/crm/portal/profile` (`CrmPortalEndpoints.cs:53`, gated `crm.portal`;
+ * `PortalProfileResponse`, `PortalContracts.cs:146-160`) — one combined read, mirroring the brief's "head AND every
  * entry in one call" shape:
  * the client's own identity (never `notes` — FR-016), organized contacts (the primary
  * badge, FR-021), and every project the caller can see, each carrying its own
@@ -724,8 +724,12 @@ export interface ClientProfile {
 /** Deliberately excludes `notes` — an office-authored field, never client-facing (FR-016). */
 export interface ClientIdentity {
   id: string;
+  /** The primary contact's full name (or the login's display name). */
+  name: string;
   firstName: string;
   lastName: string;
+  /** The portal login's email. */
+  email: string | null;
   phoneNumber: string | null;
   address: string | null;
 }
@@ -746,9 +750,11 @@ export interface ClientProfileProject {
   id: string;
   code: string;
   name: string;
+  /** A `ProjectStatus` NAME (`Draft` … `Cancelled`), not an int (`PortalContracts.cs:158`). */
   status: string;
-  productOwnerName: string | null;
   progressPercentage: number;
+  activeStageId: string | null;
+  activeStageName: string | null;
   /** `null` ⇒ no period currently open — add-requirement/schedule must not render. */
   openPeriodId: string | null;
 }

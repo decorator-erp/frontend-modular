@@ -1459,6 +1459,14 @@ export const EN = {
   'pitems.state.3': 'Approved',
   'pitems.state.4': 'Changes requested',
   'pitems.state.5': 'Recorded',
+  // crmp C-2: the client's portal profile (contract §2.14 #106).
+  'client.profileNoClient':
+    'Your login is not linked to a client record yet. Please contact the office.',
+  'client.profileNotClient': 'This page is for client accounts only.',
+  'client.profileRetry': 'Try again',
+  'client.email': 'Email',
+  'client.activeStage': 'Current stage',
+  'client.progress': 'Progress',
 } as const;
 
 /** The key set of record. Every catalog lookup is typed against this. */

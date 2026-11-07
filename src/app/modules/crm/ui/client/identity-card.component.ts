@@ -28,9 +28,15 @@ import { PeraCardComponent } from '@ds';
           <div class="flex items-center justify-between gap-3">
             <dt class="text-text-secondary">{{ catalog.t('client.lbl') }}</dt>
             <dd class="text-text-primary font-medium m-0">
-              {{ identity().firstName }} {{ identity().lastName }}
+              {{ identity().name || identity().firstName + ' ' + identity().lastName }}
             </dd>
           </div>
+          @if (identity().email) {
+            <div class="flex items-center justify-between gap-3">
+              <dt class="text-text-secondary">{{ catalog.t('client.email') }}</dt>
+              <dd class="text-text-primary m-0" dir="ltr">{{ identity().email }}</dd>
+            </div>
+          }
           @if (identity().phoneNumber) {
             <div class="flex items-center justify-between gap-3">
               <dt class="text-text-secondary">{{ catalog.t('brief.fPhone') }}</dt>

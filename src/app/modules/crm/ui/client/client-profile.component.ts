@@ -31,6 +31,14 @@ import {
 import { MEETING_STATUS_CHIP, MEETING_TYPE_KEYS } from '../scheduler/meeting-labels';
 import { CrmIdentityCardComponent } from './identity-card.component';
 
+const PROJECT_STATUS_KEYS: Readonly<Record<string, CatalogKey>> = {
+  Draft: 'projects.status.Draft',
+  InProgress: 'projects.status.InProgress',
+  OnHold: 'projects.status.OnHold',
+  Completed: 'projects.status.Completed',
+  Cancelled: 'projects.status.Cancelled',
+};
+
 type ProfileTab = 'overview' | 'brief' | 'requirements' | 'meetings';
 
 /**
@@ -39,11 +47,9 @@ type ProfileTab = 'overview' | 'brief' | 'requirements' | 'meetings';
  * as cards with the selected one's data beneath. Per project: overview / brief /
  * requirements / meetings tabs, plus quick actions.
  *
- * ⚠️ Depends on `ClientProfileStore`, which targets **Dependency 13** — not yet
- * shipped on the backend (see that store's docblock). Until it ships, this screen
- * shows the store's friendly `error()` alert instead of a broken layout; every piece
- * below is built against the real, documented contract so it activates the moment
- * the route lands, with zero further frontend change.
+ * crmp C-2: backed by `GET /api/crm/portal/profile` through `ClientProfileStore`. A 404
+ * (no linked client) / 403 (not a client) shows its catalog message; any other failure
+ * shows a retry. Read-only — the backend maps no profile edit route (DEVIATION-12).
  */
 @Component({
   selector: 'app-crm-client-profile',
@@ -66,8 +72,15 @@ type ProfileTab = 'overview' | 'brief' | 'requirements' | 'meetings';
   template: `
     @if (profile.loading() && !profile.loaded()) {
       <div class="flex justify-center py-8"><pera-spinner /></div>
-    } @else if (profile.error()) {
-      <pera-alert tone="warning">{{ catalog.t(profile.error()!) }}</pera-alert>
+    } @else if (profile.error(); as errorKey) {
+      <pera-alert tone="warning">{{ catalog.t(errorKey) }}</pera-alert>
+      @if (errorKey === 'client.profileUnavailable') {
+        <div>
+          <pera-button variant="secondary" size="sm" (click)="profile.load()">{{
+            catalog.t('client.profileRetry')
+          }}</pera-button>
+        </div>
+      }
     } @else {
       @if (profile.client(); as identity) {
         <app-crm-identity-card [identity]="identity" />
@@ -157,16 +170,20 @@ type ProfileTab = 'overview' | 'brief' | 'requirements' | 'meetings';
                   <dl class="flex flex-col gap-2 fs-body-sm m-0">
                     <div class="flex items-center justify-between gap-3">
                       <dt class="text-text-secondary">{{ catalog.t('common.status') }}</dt>
-                      <dd class="text-text-primary m-0">{{ project.status }}</dd>
+                      <dd class="text-text-primary m-0" data-testid="project-status">
+                        {{ statusLabel(project.status) }}
+                      </dd>
                     </div>
-                    @if (project.productOwnerName) {
+                    @if (project.activeStageName) {
                       <div class="flex items-center justify-between gap-3">
-                        <dt class="text-text-secondary">{{ catalog.t('sched.coordLbl') }}</dt>
-                        <dd class="text-text-primary m-0">{{ project.productOwnerName }}</dd>
+                        <dt class="text-text-secondary">{{ catalog.t('client.activeStage') }}</dt>
+                        <dd class="text-text-primary m-0" dir="auto">
+                          {{ project.activeStageName }}
+                        </dd>
                       </div>
                     }
                     <div class="flex flex-col gap-1">
-                      <dt class="text-text-secondary">{{ catalog.t('common.inProgress') }}</dt>
+                      <dt class="text-text-secondary">{{ catalog.t('client.progress') }}</dt>
                       <dd class="m-0">
                         <pera-progress-bar [value]="project.progressPercentage" />
                       </dd>
@@ -318,6 +335,12 @@ export class CrmClientProfileComponent {
       case 'meetings':
         return 'client.tabMeetings';
     }
+  }
+
+  /** crmp C-2: `status` is a `ProjectStatus` NAME on the wire; unknown names render as sent. */
+  protected statusLabel(status: string): string {
+    const key = PROJECT_STATUS_KEYS[status];
+    return key ? this.catalog.t(key) : status;
   }
 
   protected whenLabel(iso: string): string {

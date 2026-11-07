@@ -1384,4 +1384,11 @@ export const AR: Partial<Record<CatalogKey, string>> = {
   'pitems.state.3': 'معتمد',
   'pitems.state.4': 'طُلبت تعديلات',
   'pitems.state.5': 'مسجّل',
+  // crmp C-2: the client's portal profile (contract §2.14 #106).
+  'client.profileNoClient': 'حسابك غير مرتبط بسجل عميل بعد. يرجى التواصل مع المكتب.',
+  'client.profileNotClient': 'هذه الصفحة مخصصة لحسابات العملاء فقط.',
+  'client.profileRetry': 'حاول مرة أخرى',
+  'client.email': 'البريد الإلكتروني',
+  'client.activeStage': 'المرحلة الحالية',
+  'client.progress': 'نسبة الإنجاز',
 };
