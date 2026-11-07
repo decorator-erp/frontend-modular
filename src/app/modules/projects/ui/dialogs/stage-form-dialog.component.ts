@@ -13,8 +13,13 @@ import {
   PeraFormModalComponent,
   PeraInputComponent,
   PeraModalRef,
+  PeraSelectComponent,
   PeraTextareaComponent,
+  SelectOption,
 } from '@ds';
+import { StageTemplatesService } from '@modules/library';
+import { CatalogService } from '@platform/i18n/catalog.service';
+import { catchError, of } from 'rxjs';
 
 export interface StageFormDialogData {
   mode: 'create' | 'edit';
@@ -49,10 +54,13 @@ export interface StageFormDialogData {
     PeraInputComponent,
     PeraTextareaComponent,
     PeraDateInputComponent,
+    PeraSelectComponent,
   ],
   template: `
     <pera-form-modal
-      [eyebrow]="isEdit ? 'PUT /api/project-stages/{id}' : 'POST /api/project-stages'"
+      [eyebrow]="
+        isEdit ? 'PUT /api/projects/{id}/stages/{stageId}' : 'POST /api/projects/{id}/stages'
+      "
       [title]="isEdit ? 'Edit stage' : 'New stage'"
       [subtitle]="
         isEdit
@@ -73,6 +81,23 @@ export interface StageFormDialogData {
         [serverErrors]="serverError()"
         class="grid grid-cols-2 gap-x-4 gap-y-4"
       >
+        @if (!isEdit) {
+          <!-- crmp P-2 (D2): optionally copy a template stage (StageRequest.templateStageId). -->
+          <pera-form-field [label]="catalog.t('ps.fromTemplate')" [hint]="catalog.t('ps.optional')">
+            <pera-select
+              formControlName="templateId"
+              [options]="templateOptions()"
+              [placeholder]="catalog.t('ps.noTemplate')"
+            />
+          </pera-form-field>
+          <pera-form-field [label]="catalog.t('ps.templateStage')">
+            <pera-select
+              formControlName="templateStageId"
+              [options]="templateStageOptions()"
+              [placeholder]="catalog.t('ps.pickTemplateStage')"
+            />
+          </pera-form-field>
+        }
         <pera-form-field label="Stage name" [required]="true" [error]="errorOf('name')">
           <pera-input
             formControlName="name"
@@ -143,9 +168,47 @@ export class StageFormDialogComponent {
       estimatedEndDate: [this.data.initial?.estimatedEndDate ?? ''],
       description: [this.data.initial?.description ?? '', [Validators.maxLength(1000)]],
       notes: [this.data.initial?.notes ?? '', [Validators.maxLength(1000)]],
+      templateId: [null as string | null],
+      templateStageId: [null as string | null],
     },
     { validators: [PeraValidators.dateRange('estimatedStartDate', 'estimatedEndDate')] },
   );
+
+  protected readonly catalog = inject(CatalogService);
+  private readonly templates = inject(StageTemplatesService);
+  readonly templateOptions = signal<SelectOption[]>([]);
+  readonly templateStageOptions = signal<SelectOption[]>([]);
+  private templateStageNames = new Map<string, string>();
+
+  constructor() {
+    if (this.isEdit) return;
+    this.templates
+      .list()
+      .pipe(catchError(() => of([])))
+      .subscribe((list) =>
+        this.templateOptions.set([
+          { value: null, label: this.catalog.t('ps.noTemplate') },
+          ...list.filter((t) => t.isActive).map((t) => ({ value: t.id, label: t.name })),
+        ]),
+      );
+    this.form.controls.templateId.valueChanges.subscribe((id) => {
+      this.form.controls.templateStageId.setValue(null);
+      this.templateStageOptions.set([]);
+      if (!id) return;
+      this.templates
+        .stages(id)
+        .pipe(catchError(() => of([])))
+        .subscribe((stages) => {
+          this.templateStageNames = new Map(stages.map((st) => [st.id, st.name]));
+          this.templateStageOptions.set(stages.map((st) => ({ value: st.id, label: st.name })));
+        });
+    });
+    // A picked template stage names the new stage unless the user already typed a name.
+    this.form.controls.templateStageId.valueChanges.subscribe((id) => {
+      const name = id ? this.templateStageNames.get(id) : undefined;
+      if (name && !this.form.controls.name.value.trim()) this.form.controls.name.setValue(name);
+    });
+  }
 
   readonly serverError = signal<ParsedApiError | null>(null);
   readonly submitting = signal(false);
@@ -187,7 +250,10 @@ export class StageFormDialogComponent {
           this.data.stageId!,
           base satisfies UpdateProjectStageRequest,
         )
-      : this.stages.create(this.data.projectId, { ...base } satisfies CreateProjectStageRequest);
+      : this.stages.create(this.data.projectId, {
+          ...base,
+          templateStageId: v.templateStageId || null,
+        } satisfies CreateProjectStageRequest);
     call.subscribe({
       next: () => {
         this.toast.show({

@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { of } from 'rxjs';
 import { StageFormDialogComponent, StageFormDialogData } from './stage-form-dialog.component';
+import { StageTemplatesService } from '@modules/library';
 import { ProjectStageService } from '../../data/project-stage.service';
 import { ErrorHandlerService } from '@platform/http/error-handler.service';
 import { ToastService } from '@platform/feedback/toast.service';
@@ -45,6 +46,13 @@ describe('StageFormDialogComponent', () => {
           },
         },
         {
+          provide: StageTemplatesService,
+          useValue: {
+            list: () => of([{ id: 'tpl1', name: 'Villa', isActive: true }]),
+            stages: () => of([{ id: 'ts1', name: 'Concept design' }]),
+          },
+        },
+        {
           provide: ErrorHandlerService,
           useValue: {
             parse: () => ({
@@ -80,6 +88,7 @@ describe('StageFormDialogComponent', () => {
       estimatedEndDate: '2026-08-12',
       description: null,
       notes: null,
+      templateStageId: null,
     });
     expect(closedWith).toBe(true);
   });
@@ -105,6 +114,16 @@ describe('StageFormDialogComponent', () => {
     expect(updated?.id).toBe('s1');
     expect(updated?.req.name).toBe('Design');
     expect(created).toBeNull();
+  });
+
+  it('crmp P-2: a picked template stage is sent as templateStageId and names the stage', () => {
+    const c = make({ mode: 'create', projectId: 'p1', nextOrder: 20 });
+    c.form.controls.templateId.setValue('tpl1');
+    c.form.controls.templateStageId.setValue('ts1');
+    expect(c.form.controls.name.value).toBe('Concept design');
+    c.submit();
+    expect(created?.templateStageId).toBe('ts1');
+    expect(created?.name).toBe('Concept design');
   });
 
   it('blocks submit when end date is before start date', () => {

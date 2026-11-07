@@ -1389,6 +1389,12 @@ export const EN = {
   // crmp review R2-1: a DocumentApproved gate read from the list cannot be re-created (no document id in the response).
   'gates.notRecreatable':
     "This gate can't be edited here: its document isn't known. Delete it and add a new one instead.",
+  // crmp P-2: manual stages after the scope of work is confirmed (contract §2.19 #125-127, D2).
+  'ps.fromTemplate': 'From a template',
+  'ps.optional': 'optional',
+  'ps.noTemplate': 'No template',
+  'ps.templateStage': 'Template stage',
+  'ps.pickTemplateStage': 'Pick a stage',
 } as const;
 
 /** The key set of record. Every catalog lookup is typed against this. */

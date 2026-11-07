@@ -29,7 +29,16 @@
     </div>
   } @else if (project(); as proj) {
     <!-- ============ Project header card ============ -->
-    <div class="px-8 pt-6">
+    <div class="px-8 pt-6 flex flex-col gap-3">
+      <app-project-closed-banner [project]="proj" />
+      @if (scopeBlocksStages()) {
+        <pera-alert tone="info" data-scope-not-confirmed>
+          {{ scopeNotConfirmedMessage() }}
+          <a class="underline" [routerLink]="['/projects', proj.id, 'scope-of-work']">{{
+            catalog.t('sow.title')
+          }}</a>
+        </pera-alert>
+      }
       <pera-entity-header-card
         kind="project"
         [name]="proj.name"
@@ -101,20 +110,22 @@
             data-members-link
             >{{ catalog.t('projects.membersLink') }}</a
           >
-          <button type="button" [class]="btnClass" *peraCan="perm.newStage" (click)="newStage()">
-            <svg
-              width="13"
-              height="13"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              class="shrink-0"
-            >
-              <path d="M12 5v14M5 12h14" />
-            </svg>
-            New stage
-          </button>
+          @if (canAddStage()) {
+            <button type="button" [class]="btnClass" (click)="newStage()" data-new-stage>
+              <svg
+                width="13"
+                height="13"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                class="shrink-0"
+              >
+                <path d="M12 5v14M5 12h14" />
+              </svg>
+              New stage
+            </button>
+          }
           <ng-container *peraCan="perm.newTask">
             @if (newTaskStage()) {
               <button type="button" [class]="btnPrimaryClass" (click)="newTask()">

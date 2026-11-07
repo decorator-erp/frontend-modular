@@ -22,6 +22,8 @@ import {
 } from '@platform/composition/task-workspace.token';
 import { Observable, catchError, of } from 'rxjs';
 import { ProjectStageService } from '../../data/project-stage.service';
+import { ProjectAccessStore } from '../../stores/project-access.store';
+import type { ProjectAction } from '../../model/project-actions';
 import { StageGateConditionService } from '../../data/stage-gate-condition.service';
 import { ProjectService } from '../../data/project.service';
 import { StageTeamsService } from '../../data/stage-teams.service';
@@ -201,7 +203,11 @@ type TaskFilter = 'all' | RollupStatus;
                     </span>
                   }
 
-                  <ng-container *peraCan="canManageStages">
+                  <ng-container
+                    *peraCan="
+                      stageCan('stage.complete') || stageCan('stage.reject') ? canManageStages : []
+                    "
+                  >
                     @switch (s.status) {
                       @case ('Active') {
                         <button
@@ -209,6 +215,7 @@ type TaskFilter = 'all' | RollupStatus;
                           [class]="BT_PRI_SM"
                           [disabled]="busy() || submitBlocked()"
                           (click)="complete()"
+                          [hidden]="!stageCan('stage.complete')"
                         >
                           <svg
                             width="12"
@@ -227,6 +234,7 @@ type TaskFilter = 'all' | RollupStatus;
                           [class]="BT_DGR_SM"
                           [disabled]="busy()"
                           (click)="reject()"
+                          [hidden]="!stageCan('stage.reject')"
                         >
                           Send back
                         </button>
@@ -242,7 +250,7 @@ type TaskFilter = 'all' | RollupStatus;
                   </ng-container>
 
                   <div class="ms-auto flex items-center gap-3">
-                    <ng-container *peraCan="canManageStages">
+                    <ng-container *peraCan="stageCan('stage.update') ? canManageStages : []">
                       <button type="button" [class]="BT_SEC_SM" (click)="editStage()">
                         <svg
                           width="13"
@@ -285,7 +293,7 @@ type TaskFilter = 'all' | RollupStatus;
                       </svg>
                       Documentation
                     </button>
-                    <ng-container *peraCan="canManageStages">
+                    <ng-container *peraCan="stageCan('stage.delete') ? canManageStages : []">
                       <button
                         type="button"
                         [class]="BT_SEC_SM"
@@ -575,6 +583,7 @@ export class DmsStageDetailComponent implements OnInit, OnDestroy {
   private readonly router = inject(Router);
   private readonly stagesApi = inject(ProjectStageService);
   private readonly stageGates = inject(StageGateConditionService);
+  protected readonly access = inject(ProjectAccessStore);
   private readonly projectsApi = inject(ProjectService);
   private readonly directory = inject(EmployeeService);
   private readonly teamsApi = inject(StageTeamsService);
@@ -642,7 +651,15 @@ export class DmsStageDetailComponent implements OnInit, OnDestroy {
   readonly gateTotal = computed(() => this.gates().length + 1);
 
   /** Drives the in-place editors on the Details card (Projects.ManageStages). */
-  readonly canEditStage = computed(() => this.perms.can(PERM.stages.manage));
+  /**
+   * crmp P-2: stage writes need the route claim AND the Manager level AND an open project
+   * (`canProjectAction`, contract §2.17.2), read through the shared ProjectAccessStore.
+   */
+  stageCan(action: ProjectAction): boolean {
+    return this.access.can(this.projectId(), action);
+  }
+
+  readonly canEditStage = computed(() => this.stageCan('stage.update'));
   /** Employee picklist for the inline owner select, reusing the already-loaded directory. */
   readonly employeeOptions = computed<SelectOption[]>(() =>
     [...this.employeeNames()]
@@ -704,6 +721,7 @@ export class DmsStageDetailComponent implements OnInit, OnDestroy {
       const stageId = pm.get('stageId') ?? '';
       const projectChanged = projectId !== this.projectId();
       this.projectId.set(projectId);
+      this.access.ensure(projectId);
       this.stageId.set(stageId);
       this.filter.set('all');
       this.load();

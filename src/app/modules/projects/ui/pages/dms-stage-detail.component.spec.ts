@@ -1,3 +1,5 @@
+import { ProjectAccessStore } from '../../stores/project-access.store';
+import { ProjectAction, ProjectLevel, canProjectAction } from '../../model/project-actions';
 import { NO_ERRORS_SCHEMA } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router, convertToParamMap } from '@angular/router';
@@ -44,6 +46,7 @@ describe('DmsStageDetailComponent', () => {
   let granted: Set<string>;
   let theStage: ProjectStage;
   let updates: unknown[];
+  let level: ProjectLevel;
 
   function providers() {
     return [
@@ -70,6 +73,19 @@ describe('DmsStageDetailComponent', () => {
       { provide: StageGateConditionService, useValue: { getByStage: () => of([]) } },
       { provide: ProjectService, useValue: { getById: () => of(null) } },
       { provide: StageTeamsService, useValue: { getByProjectStage: () => of([]) } },
+      // crmp P-2: the real gate (claim AND level AND open project) over this spec's grants.
+      {
+        provide: ProjectAccessStore,
+        useValue: {
+          ensure: () => undefined,
+          can: (_id: string, action: ProjectAction) =>
+            canProjectAction(
+              { myLevel: level, status: 'InProgress', isActive: true },
+              action,
+              (p) => granted.has(p),
+            ),
+        },
+      },
       { provide: EmployeeService, useValue: { listPaged: () => of(null) } },
       { provide: BreadcrumbService, useValue: { set: () => undefined, clear: () => undefined } },
       {
@@ -100,6 +116,7 @@ describe('DmsStageDetailComponent', () => {
     detailsCalls = 0;
     byProjectCalls = 0;
     updates = [];
+    level = 'Manager';
     granted = new Set();
     theStage = stage('Active');
   });
@@ -213,7 +230,13 @@ describe('DmsStageDetailComponent', () => {
   });
 
   it('shows lifecycle actions for ManageStages and enables in-place editing', () => {
-    granted = new Set([PERM.projects.read, PERM.stages.manage]);
+    // crmp P-2: complete and send back carry their own claims (StageEndpoints.cs:70,78).
+    granted = new Set([
+      PERM.projects.read,
+      PERM.stages.manage,
+      PERM.stages.complete,
+      PERM.stages.reject,
+    ]);
     theStage = stage('Active', ['Completed']);
     const fixture = render();
     const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
@@ -224,4 +247,23 @@ describe('DmsStageDetailComponent', () => {
     expect((fixture.nativeElement as HTMLElement).querySelector('[data-rail-link]')).toBeTruthy();
     expect(fixture.componentInstance.canEditStage()).toBe(true);
   });
+
+  it.each(['Viewer', 'Editor'] as const)(
+    'crmp P-2: a %s with every stage claim sees no stage write and cannot edit in place',
+    (lvl) => {
+      level = lvl;
+      granted = new Set([
+        PERM.projects.read,
+        PERM.stages.manage,
+        PERM.stages.complete,
+        PERM.stages.reject,
+      ]);
+      theStage = stage('Active', ['Completed']);
+      const fixture = render();
+      const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
+      expect(text).not.toContain('Submit for approval');
+      expect(text).not.toContain('Send back');
+      expect(fixture.componentInstance.canEditStage()).toBe(false);
+    },
+  );
 });

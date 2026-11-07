@@ -11,6 +11,13 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { EMPTY, forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { ProjectService } from '../../data/project.service';
+import { ScopeOfWorkService } from '../../data/scope-of-work.service';
+import { friendlyMessage } from '@platform/errors/error-catalog';
+import { ScopeOfWorkStatus } from '../../model/scope-of-work.model';
+import { ProjectAccessStore } from '../../stores/project-access.store';
+import { ProjectAction } from '../../model/project-actions';
+import { ProjectClosedBannerComponent } from '../shared/project-closed-banner.component';
+import { PeraAlertComponent } from '@ds';
 import { ProjectMemberService } from '../../data/project-member.service';
 import { StageTeam, StageTeamsService } from '../../data/stage-teams.service';
 import { LocaleService } from '@platform/i18n';
@@ -118,6 +125,8 @@ const STL_GRID = 'grid grid-cols-[minmax(0,1fr)_9rem_8rem_6rem_9rem] gap-3 items
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     CanDirective,
+    PeraAlertComponent,
+    ProjectClosedBannerComponent,
     PeraDonutComponent,
     PeraEmptyComponent,
     PeraEntityHeaderCardComponent,
@@ -135,6 +144,8 @@ export class ProjectDetailComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly projects = inject(ProjectService);
   private readonly membersApi = inject(ProjectMemberService);
+  private readonly scopeApi = inject(ScopeOfWorkService);
+  protected readonly access = inject(ProjectAccessStore);
   private readonly teamsApi = inject(StageTeamsService);
   private readonly docsApi = inject(ProjectDocumentsService);
   private readonly directory = inject(EmployeeService);
@@ -190,6 +201,31 @@ export class ProjectDetailComponent implements OnInit {
   readonly stages = computed(() => this.details()?.stages ?? []);
   readonly unstagedTasks = computed<ProjectTask[]>(() => this.details()?.unstagedTasks ?? []);
   readonly isStage = computed(() => this.project()?.workflowType === 'Stage');
+
+  /**
+   * crmp P-2 (D2): on a Stage project, stages are added by hand only after the scope of work is
+   * confirmed (409 `projects.stages.ScopeNotConfirmed`, contract §2.19 #125); a FreeStyle project has
+   * no stages (`projects.stages.WorkflowNotSupported`). `null` until the scope is read.
+   */
+  readonly scopeConfirmed = signal<boolean | null>(null);
+
+  /** Permission AND level AND open project (canProjectAction), read through the shared store. */
+  can(action: ProjectAction): boolean {
+    const id = this.project()?.id;
+    return !!id && this.access.can(id, action);
+  }
+
+  readonly canAddStage = computed(
+    () => this.isStage() && this.scopeConfirmed() === true && this.can('stage.create'),
+  );
+  /** The backend's own reason (`projects.stages.ScopeNotConfirmed`) from the error catalog, EN or AR. */
+  readonly scopeNotConfirmedMessage = computed(() =>
+    friendlyMessage('projects.stages.ScopeNotConfirmed', '', this.catalog.locale()),
+  );
+  /** A Manager on an unconfirmed Stage project sees why "New stage" is missing, with the SoW link. */
+  readonly scopeBlocksStages = computed(
+    () => this.isStage() && this.scopeConfirmed() === false && this.can('stage.create'),
+  );
   readonly activeStage = computed<ProjectStage | null>(
     () => this.stages().find((s) => s.status === 'Active') ?? null,
   );
@@ -396,12 +432,26 @@ export class ProjectDetailComponent implements OnInit {
       )
       .subscribe(({ details, members }) => {
         this.details.set(details);
+        this.access.seed(details.project);
+        this.loadScope(id);
         this.members.set(members);
         this.loading.set(false);
         this.resolveNames();
         this.loadStageHeads(id);
         this.loadRecentDocuments(id);
       });
+  }
+
+  /** crmp P-2: whether the scope of work is confirmed (manual stages need it). */
+  private loadScope(id: string): void {
+    if (!this.isStage()) {
+      this.scopeConfirmed.set(false);
+      return;
+    }
+    this.scopeApi
+      .getScope(id)
+      .pipe(catchError(() => of(null)))
+      .subscribe((scope) => this.scopeConfirmed.set(scope?.status === ScopeOfWorkStatus.Confirmed));
   }
 
   /** Resolve employee ids → names for member avatars + task assignees. */

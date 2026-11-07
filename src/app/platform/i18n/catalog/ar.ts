@@ -1314,4 +1314,10 @@ export const AR: Partial<Record<CatalogKey, string>> = {
   // crmp review R2-1: a DocumentApproved gate read from the list cannot be re-created (no document id in the response).
   'gates.notRecreatable':
     'لا يمكن تعديل هذه البوابة هنا لأن مستندها غير معروف. احذفها وأضف بوابة جديدة بدلًا منها.',
+  // crmp P-2: manual stages after the scope of work is confirmed (contract §2.19 #125-127, D2).
+  'ps.fromTemplate': 'من قالب',
+  'ps.optional': 'اختياري',
+  'ps.noTemplate': 'بدون قالب',
+  'ps.templateStage': 'مرحلة القالب',
+  'ps.pickTemplateStage': 'اختر مرحلة',
 };
