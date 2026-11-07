@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { Observable, forkJoin, of } from 'rxjs';
 import { catchError, map, switchMap } from 'rxjs/operators';
 import { ApiService } from '@platform/http/api.service';
+import { handled } from '@platform/http/handled-errors';
 
 /**
  * The role picked in the team dialog. The backend enum is `StageTeamMemberRole` (dms
@@ -152,9 +153,12 @@ export class StageTeamsService extends ApiService {
    * crmp review R1-F2: the list needs `stages.read`, but the members route needs `stage_teams.manage`
    * (dms `TeamEndpoints.cs:23,57`). A caller without it still gets the teams — head, head name and
    * member count come from the list row — with an empty member list instead of a failed page.
+   * Review B4 (CP-5): the 403 is `handled`, so a Viewer gets no generic toast per team.
    */
   private membersOf(projectId: string, teamId: string): Observable<unknown[]> {
-    return this.get<unknown>(`/projects/${projectId}/teams/${teamId}/members`).pipe(
+    return this.get<unknown>(`/projects/${projectId}/teams/${teamId}/members`, undefined, {
+      context: handled(403),
+    }).pipe(
       map((r) => this.unwrapArray(r)),
       catchError(() => of([] as unknown[])),
     );

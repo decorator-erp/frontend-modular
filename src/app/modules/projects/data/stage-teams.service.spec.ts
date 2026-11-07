@@ -3,6 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { provideHttpClient } from '@angular/common/http';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { environment } from '../../../../environments/environment';
+import { HANDLED_ERROR_STATUSES } from '@platform/http/handled-errors';
 import { StageTeamsService } from './stage-teams.service';
 
 /** crmp A-2: stage teams moved under the project (dms `TeamEndpoints.cs:23-83`); role is an int. */
@@ -58,9 +59,10 @@ describe('StageTeamsService (crmp A-2)', () => {
     http
       .expectOne(`${api}/projects/P1/teams`)
       .flush([{ id: 'TM1', projectStageId: 'S1', headId: 'E1', headName: 'Hany', memberCount: 4 }]);
-    http
-      .expectOne(`${api}/projects/P1/teams/TM1/members`)
-      .flush(null, { status: 403, statusText: 'Forbidden' });
+    const members = http.expectOne(`${api}/projects/P1/teams/TM1/members`);
+    // Review B4 (CP-5): the 403 is handled here, so the global interceptor shows no toast per team.
+    expect(members.request.context.get(HANDLED_ERROR_STATUSES)).toContain(403);
+    members.flush(null, { status: 403, statusText: 'Forbidden' });
     expect(heads).toEqual(['Hany']);
     expect(counts).toEqual([0]);
   });
