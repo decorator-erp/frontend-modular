@@ -819,7 +819,7 @@ export class TaskDetailComponent implements OnInit, OnDestroy {
         const sid = details.task.projectStageId;
         if (sid && !this.stageName()) {
           this.stagesApi
-            .getDetails(sid)
+            .getDetails(this.projectId(), sid)
             .pipe(catchError(() => of(null)))
             .subscribe((s) => {
               if (s) {

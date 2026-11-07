@@ -131,7 +131,7 @@ export class WorkflowBuilderComponent {
     if (!project) return;
     const nextOrder = (this.stages().reduce((max, s) => Math.max(max, s.order), 0) || 0) + 1;
     const name = `Stage ${nextOrder}`;
-    this.stagesApi.create({ projectId: project.id, name, order: nextOrder }).subscribe({
+    this.stagesApi.create(project.id, { name, order: nextOrder }).subscribe({
       next: (newId) => {
         this.feedback.show({ tone: 'success', message: `Stage "${name}" created` });
         if (typeof newId === 'string') this.selectedId.set(newId);
@@ -153,7 +153,7 @@ export class WorkflowBuilderComponent {
     const maxOrder = this.stages().reduce((m, s) => Math.max(m, s.order), 0);
     const targetOrder = maxOrder + 1;
     const name = chip.title === 'Task' ? `Stage ${this.stages().length + 1}` : `New ${chip.title}`;
-    this.stagesApi.create({ projectId: project.id, name, order: targetOrder }).subscribe({
+    this.stagesApi.create(project.id, { name, order: targetOrder }).subscribe({
       next: (newId) => {
         this.feedback.show({ tone: 'success', message: `${chip.title} stage added` });
         if (typeof newId === 'string') {
@@ -196,7 +196,7 @@ export class WorkflowBuilderComponent {
     const stage = this.stages().find((s) => s.id === id);
     if (!stage) return;
     this.stagesApi
-      .update(id, {
+      .update(stage.projectId, id, {
         name,
         order: stage.order,
         description: stage.description,
@@ -228,7 +228,8 @@ export class WorkflowBuilderComponent {
       tone: 'danger',
     });
     if (!ok) return;
-    this.stagesApi.remove(id).subscribe({
+    const projectId = this.project()?.id ?? '';
+    this.stagesApi.remove(projectId, id).subscribe({
       next: () => {
         this.feedback.show({ tone: 'success', message: 'Stage deleted' });
         if (this.selectedId() === id) this.selectedId.set(null);

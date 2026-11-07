@@ -182,11 +182,12 @@ export class StageFormDialogComponent {
       notes: v.notes.trim() || null,
     };
     const call = this.isEdit
-      ? this.stages.update(this.data.stageId!, base satisfies UpdateProjectStageRequest)
-      : this.stages.create({
-          projectId: this.data.projectId,
-          ...base,
-        } satisfies CreateProjectStageRequest);
+      ? this.stages.update(
+          this.data.projectId,
+          this.data.stageId!,
+          base satisfies UpdateProjectStageRequest,
+        )
+      : this.stages.create(this.data.projectId, { ...base } satisfies CreateProjectStageRequest);
     call.subscribe({
       next: () => {
         this.toast.show({

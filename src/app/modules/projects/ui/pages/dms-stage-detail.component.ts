@@ -20,12 +20,11 @@ import {
   WorkspaceHost,
   resolveWorkspacePanels,
 } from '@platform/composition/task-workspace.token';
-import { catchError, of } from 'rxjs';
+import { Observable, catchError, of } from 'rxjs';
 import { ProjectStageService } from '../../data/project-stage.service';
 import { StageGateConditionService } from '../../data/stage-gate-condition.service';
 import { ProjectService } from '../../data/project.service';
 import { StageTeamsService } from '../../data/stage-teams.service';
-import { StageLifecycleService } from '../../data/stage-lifecycle.service';
 import { BreadcrumbService, BreadcrumbCrumb } from '@platform/navigation/breadcrumb.service';
 import { ErrorHandlerService, friendly } from '@platform/http/error-handler.service';
 import { ToastService } from '@platform/feedback/toast.service';
@@ -204,16 +203,6 @@ type TaskFilter = 'all' | RollupStatus;
 
                   <ng-container *peraCan="canManageStages">
                     @switch (s.status) {
-                      @case ('Locked') {
-                        <button
-                          type="button"
-                          [class]="BT_PRI_SM"
-                          [disabled]="busy()"
-                          (click)="activate()"
-                        >
-                          Activate stage
-                        </button>
-                      }
                       @case ('Active') {
                         <button
                           type="button"
@@ -235,14 +224,6 @@ type TaskFilter = 'all' | RollupStatus;
                         </button>
                         <button
                           type="button"
-                          [class]="BT_OK_SM"
-                          [disabled]="busy()"
-                          (click)="approve()"
-                        >
-                          Approve stage
-                        </button>
-                        <button
-                          type="button"
                           [class]="BT_DGR_SM"
                           [disabled]="busy()"
                           (click)="reject()"
@@ -256,16 +237,6 @@ type TaskFilter = 'all' | RollupStatus;
                             >Resolve blocking tasks to submit</span
                           >
                         }
-                      }
-                      @default {
-                        <button
-                          type="button"
-                          [class]="BT_SEC_SM"
-                          [disabled]="busy()"
-                          (click)="activate()"
-                        >
-                          Reopen stage
-                        </button>
                       }
                     }
                   </ng-container>
@@ -605,7 +576,6 @@ export class DmsStageDetailComponent implements OnInit, OnDestroy {
   private readonly stagesApi = inject(ProjectStageService);
   private readonly stageGates = inject(StageGateConditionService);
   private readonly projectsApi = inject(ProjectService);
-  private readonly lifecycle = inject(StageLifecycleService);
   private readonly directory = inject(EmployeeService);
   private readonly teamsApi = inject(StageTeamsService);
   private readonly destroyRef = inject(DestroyRef);
@@ -753,7 +723,7 @@ export class DmsStageDetailComponent implements OnInit, OnDestroy {
     this.loading.set(true);
     this.failed.set(false);
     // `/details` now carries the planned/actual dates alongside the tasks.
-    this.stagesApi.getDetails(this.stageId()).subscribe({
+    this.stagesApi.getDetails(this.projectId(), this.stageId()).subscribe({
       next: (stage) => {
         this.stage.set(stage);
         this.loading.set(false);
@@ -892,7 +862,7 @@ export class DmsStageDetailComponent implements OnInit, OnDestroy {
       notes: s.notes,
     };
     req[field] = value;
-    this.stagesApi.update(s.id, req).subscribe({
+    this.stagesApi.update(this.projectId(), s.id, req).subscribe({
       next: () => {
         const cur = this.stage();
         if (cur) this.stage.set({ ...cur, [field]: value });
@@ -924,7 +894,12 @@ export class DmsStageDetailComponent implements OnInit, OnDestroy {
     this.savingDesc.set(true);
     const draft = this.descriptionDraft;
     this.stagesApi
-      .update(s.id, { name: s.name, order: s.order, description: draft || null, notes: s.notes })
+      .update(this.projectId(), s.id, {
+        name: s.name,
+        order: s.order,
+        description: draft || null,
+        notes: s.notes,
+      })
       .subscribe({
         next: () => {
           this.savingDesc.set(false);
@@ -980,38 +955,17 @@ export class DmsStageDetailComponent implements OnInit, OnDestroy {
 
   // ---- lifecycle actions (Projects.ManageStages on the backend) ------------
 
-  activate(): void {
-    this.run(this.stagesApi.activate(this.stageId()), 'Stage activated');
-  }
-
+  // crmp A-2: stage transitions are POSTs under the project (dms `StageEndpoints.cs:70,78`). Activate,
+  // reopen and approve are gone: stages unlock through Unlock gates and approval runs through Approval
+  // gates (gap table REMOVED P-24, P-76). Complete takes no body, so it asks for a confirm, not a note.
   async complete(): Promise<void> {
-    const result = await this.openNote({
+    const ok = await this.confirm.open({
       title: 'Submit stage for approval',
-      label: 'Notes',
-      required: false,
+      body: `Complete "${this.stage()?.name}"? Every task must be completed or cancelled first.`,
       confirmLabel: 'Submit',
     });
-    if (!result) return;
-    this.run(
-      this.stagesApi.complete(this.stageId(), { notes: result.note || null }),
-      'Stage submitted',
-    );
-  }
-
-  async approve(): Promise<void> {
-    const result = await this.openNote({
-      title: 'Approve stage',
-      label: 'Note',
-      required: false,
-      confirmLabel: 'Approve',
-      withApprovalType: true,
-      approvalRequired: true,
-    });
-    if (!result || !result.approvalType) return;
-    this.run(
-      this.lifecycle.approve(this.stageId(), result.approvalType, result.note || null),
-      'Stage approved',
-    );
+    if (!ok) return;
+    this.run(this.stagesApi.complete(this.projectId(), this.stageId()), 'Stage submitted');
   }
 
   async reject(): Promise<void> {
@@ -1021,11 +975,10 @@ export class DmsStageDetailComponent implements OnInit, OnDestroy {
       required: true,
       confirmLabel: 'Send back',
       tone: 'danger',
-      withApprovalType: true,
     });
     if (!result) return;
     this.run(
-      this.lifecycle.reject(this.stageId(), result.note, result.approvalType),
+      this.stagesApi.reject(this.projectId(), this.stageId(), result.note),
       'Stage sent back',
     );
   }
@@ -1039,7 +992,7 @@ export class DmsStageDetailComponent implements OnInit, OnDestroy {
     });
     if (!ok) return;
     this.busy.set(true);
-    this.stagesApi.remove(this.stageId()).subscribe({
+    this.stagesApi.remove(this.projectId(), this.stageId()).subscribe({
       next: () => {
         this.busy.set(false);
         this.toast.show({ tone: 'success', message: 'Stage deleted' });
@@ -1063,7 +1016,7 @@ export class DmsStageDetailComponent implements OnInit, OnDestroy {
       .afterClosed();
   }
 
-  private run(call: ReturnType<ProjectStageService['activate']>, successMessage: string): void {
+  private run(call: Observable<unknown>, successMessage: string): void {
     if (this.busy()) return;
     this.busy.set(true);
     call.subscribe({

@@ -7,7 +7,6 @@ import { ProjectStageService } from '../../data/project-stage.service';
 import { StageGateConditionService } from '../../data/stage-gate-condition.service';
 import { ProjectService } from '../../data/project.service';
 import { StageTeamsService } from '../../data/stage-teams.service';
-import { StageLifecycleService } from '../../data/stage-lifecycle.service';
 import { EmployeeService } from '@modules/people';
 import { BreadcrumbService } from '@platform/navigation/breadcrumb.service';
 import { ErrorHandlerService } from '@platform/http/error-handler.service';
@@ -58,18 +57,14 @@ describe('DmsStageDetailComponent', () => {
             byProjectCalls++;
             return of([theStage]);
           },
-          activate: () => of(undefined),
           complete: () => of(undefined),
+          reject: () => of(undefined),
           remove: () => of(undefined),
         },
       },
       { provide: StageGateConditionService, useValue: { getByStage: () => of([]) } },
       { provide: ProjectService, useValue: { getById: () => of(null) } },
       { provide: StageTeamsService, useValue: { getByProjectStage: () => of([]) } },
-      {
-        provide: StageLifecycleService,
-        useValue: { approve: () => of(undefined), reject: () => of(undefined) },
-      },
       { provide: EmployeeService, useValue: { listPaged: () => of(null) } },
       { provide: BreadcrumbService, useValue: { set: () => undefined, clear: () => undefined } },
       {
@@ -177,7 +172,9 @@ describe('DmsStageDetailComponent', () => {
     const fixture = render();
     const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
     expect(text).toContain('Submit for approval');
-    expect(text).toContain('Approve stage');
+    expect(text).toContain('Send back');
+    // crmp A-2: no approve route (gap table REMOVED P-76) — approval runs through Approval gates.
+    expect(text).not.toContain('Approve stage');
     expect((fixture.nativeElement as HTMLElement).querySelector('[data-rail-link]')).toBeTruthy();
     expect(fixture.componentInstance.canEditStage()).toBe(true);
   });

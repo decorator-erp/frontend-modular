@@ -280,11 +280,12 @@ export interface UpdateProjectStatusRequest {
   status: ProjectStatus;
 }
 
+/** `StageRequest` (dms `StageEndpoints.cs:93`); the project is in the route. */
 export interface CreateProjectStageRequest {
-  projectId: string;
   name: string;
   order: number;
-  stageId?: string | null;
+  /** The template stage to copy from (P-2: "optionally from a template stage"). */
+  templateStageId?: string | null;
   description?: string | null;
   notes?: string | null;
   estimatedStartDate?: string | null;
@@ -297,10 +298,6 @@ export interface UpdateProjectStageRequest {
   notes?: string | null;
   estimatedStartDate?: string | null;
   estimatedEndDate?: string | null;
-}
-export interface CompleteProjectStageRequest {
-  completedById?: string | null;
-  notes?: string | null;
 }
 
 /** `TaskRequest` (dms `TaskEndpoints.cs:228`); the project is in the route. */
