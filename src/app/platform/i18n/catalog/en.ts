@@ -1342,6 +1342,47 @@ export const EN = {
   // crmp A-4: paged task and comment lists (contract §1.6, opt-in paging).
   'projects.loadMore': 'Load more',
   'projects.loadingMore': 'Loading…',
+  // crmp P-1: project members with levels (contract §2.19 #121-124, D1).
+  'pm.title': 'Members',
+  'pm.subtitle': 'People on this project and the level each one works at.',
+  'pm.back': 'Back to the project',
+  'pm.level.Viewer': 'Viewer',
+  'pm.level.Editor': 'Editor',
+  'pm.level.Manager': 'Manager',
+  'pm.levelHelp':
+    'Viewer reads. Editor works on tasks, sub-tasks and comments. Manager runs the project.',
+  'pm.yourLevel': 'Your level: {level}',
+  'pm.add': 'Add member',
+  'pm.adding': 'Adding…',
+  'pm.employee': 'Employee',
+  'pm.pickEmployee': 'Pick an employee',
+  'pm.level': 'Level',
+  'pm.changeLevel': 'Change level for {name}',
+  'pm.remove': 'Remove',
+  'pm.removeTitle': 'Remove member',
+  'pm.removeBody':
+    'Remove {name} from this project? They lose access unless another role still grants it.',
+  'pm.added': 'Member added',
+  'pm.levelChanged': 'Level changed',
+  'pm.removed': 'Member removed',
+  'pm.addedOn': 'Added {date}',
+  'pm.empty': 'No members yet',
+  'pm.emptyBody': 'The owner, stage-team heads and task assignees reach the project too.',
+  'pm.managerOnly': 'Only a project Manager can change members.',
+  'pm.loadFailed': 'Members could not be loaded.',
+  'pm.notFound': 'Project not found',
+  'pm.notFoundBody': 'It was deleted, or you no longer have access to it.',
+  'pm.retry': 'Try again',
+  'pm.closedBanner': 'This project is {status}. Its work is read-only.',
+  'pm.inactive': 'inactive',
+  'projects.status.OnHold': 'on hold',
+  'projects.status.Completed': 'completed',
+  'projects.status.Cancelled': 'cancelled',
+  'projects.status.Draft': 'draft',
+  'projects.status.InProgress': 'in progress',
+  'projects.membersLink': 'Members',
+  // crmp P-1: breadcrumb for the members page.
+  'route.projectMembers': 'Members',
 } as const;
 
 /** The key set of record. Every catalog lookup is typed against this. */

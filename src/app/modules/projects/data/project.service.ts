@@ -307,6 +307,7 @@ export class ProjectService extends ApiService {
       canManage: this.field<boolean>(source, 'canManage') ?? false,
       canExecuteTasks: this.field<boolean>(source, 'canExecuteTasks') ?? false,
       employeeName: this.field<string | null>(source, 'employeeName') ?? null,
+      addedAtUtc: this.field<string | null>(source, 'addedAtUtc') ?? null,
     };
   }
 

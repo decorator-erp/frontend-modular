@@ -78,4 +78,14 @@ export const projectsRoutes: Routes = [
         (m) => m.ScopeOfWorkPageComponent,
       ),
   },
+  // crmp P-1 (DEVIATION-4: the project page has no tabs): the members and their levels.
+  {
+    path: 'projects/:id/members',
+    canActivate: [PermissionGuard],
+    data: { permission: PERM.projects.read, breadcrumb: 'route.projectMembers' },
+    loadComponent: () =>
+      import('./ui/members/project-members-page.component').then(
+        (m) => m.ProjectMembersPageComponent,
+      ),
+  },
 ];

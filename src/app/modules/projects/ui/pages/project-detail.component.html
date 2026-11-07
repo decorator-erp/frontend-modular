@@ -95,6 +95,12 @@
             [routerLink]="['/projects', proj.id, 'scope-of-work']"
             >{{ catalog.t('sow.title') }}</a
           >
+          <a
+            [class]="btnClass"
+            [routerLink]="['/projects', proj.id, 'members']"
+            data-members-link
+            >{{ catalog.t('projects.membersLink') }}</a
+          >
           <button type="button" [class]="btnClass" *peraCan="perm.newStage" (click)="newStage()">
             <svg
               width="13"

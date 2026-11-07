@@ -243,6 +243,8 @@ export interface ProjectMember {
   canExecuteTasks: boolean;
   /** Resolved client-side (response only exposes employeeId — docs §9.5). */
   employeeName?: string | null;
+  /** crmp P-1: `ProjectMemberResponse.AddedAtUtc` (dms `MemberContracts.cs:7`). */
+  addedAtUtc?: string | null;
 }
 
 export interface TaskComment {
