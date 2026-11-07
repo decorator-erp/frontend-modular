@@ -98,6 +98,8 @@ export const PERM = {
     setActive: 'project.set_active',
     changeStatus: 'project.change_status',
     delete: 'project.delete',
+    /** crmp P-1: add/remove members and change their level (dms `ProjectsPermissions.cs:30`). */
+    manageMembers: 'project.manage_members',
   },
   stages: {
     read: 'stages.read',
@@ -332,6 +334,7 @@ export const ALL_PERMISSIONS: { group: string; key: string; displayName: string 
   { group: 'Projects', key: PERM.projects.setActive, displayName: 'Activate/Deactivate Projects' },
   { group: 'Projects', key: PERM.projects.changeStatus, displayName: 'Change Project Status' },
   { group: 'Projects', key: PERM.projects.delete, displayName: 'Delete Projects' },
+  { group: 'Projects', key: PERM.projects.manageMembers, displayName: 'Manage Project Members' },
   { group: 'Stages', key: PERM.stages.read, displayName: 'Read Stages' },
   { group: 'Stages', key: PERM.stages.manage, displayName: 'Manage Stages' },
   { group: 'Stages', key: PERM.stages.complete, displayName: 'Complete Stage' },

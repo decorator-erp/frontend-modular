@@ -36,6 +36,7 @@ import type {
   VariationResponse,
 } from '@modules/finance';
 import { ApiService } from '@platform/http/api.service';
+import { toProjectLevel } from '../model/project-actions';
 import { handled } from '@platform/http/handled-errors';
 import { PagedResult } from '@platform/types';
 
@@ -204,6 +205,7 @@ export class ProjectService extends ApiService {
       actualEndDate: this.field<string | null>(source, 'actualEndDate', 'actualEndData') ?? null,
       stageCount: this.num(this.field(source, 'stageCount')),
       isActive: this.field<boolean>(source, 'isActive') ?? true,
+      myLevel: toProjectLevel(this.field(source, 'myLevel')),
       financial: this.field<ProjectFinancialBlock>(source, 'financial'),
     };
   }
@@ -360,8 +362,10 @@ export class ProjectService extends ApiService {
     const unstagedTasks = (this.field<unknown[]>(source, 'unstagedTasks') ?? []).map((t) =>
       this.normalizeTask(t, project.id),
     );
+    const myLevel = toProjectLevel(this.field(source, 'myLevel'));
     return {
-      project,
+      myLevel,
+      project: { ...project, myLevel },
       stages,
       unstagedTasks,
       taskCounts: this.normalizeTaskCounts(this.field(source, 'taskCounts')),

@@ -94,6 +94,7 @@ function details(): ProjectDetails {
     ],
   };
   return {
+    myLevel: 'Manager',
     project: {
       id: 'p1',
       trackKey: 'p1',
@@ -116,6 +117,7 @@ function details(): ProjectDetails {
       actualEndDate: null,
       stageCount: 1,
       isActive: true,
+      myLevel: 'Manager',
     },
     stages: [stage],
     unstagedTasks: [],

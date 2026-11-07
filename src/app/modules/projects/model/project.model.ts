@@ -1,3 +1,4 @@
+import type { ProjectLevel } from './project-actions';
 // ============================================================================
 // Project workflow domain — TypeScript mirror of the .NET backend DTOs/enums.
 //
@@ -75,6 +76,11 @@ export interface Project {
   stageCount: number;
   /** ProjectResponse.IsActive — the soft-delete flag; `true` when absent (008b #4). */
   isActive: boolean;
+  /**
+   * crmp A-3: the caller's effective level on this project (`ProjectResponse.MyLevel`, contract
+   * §2.17.2; 1 Viewer, 2 Editor, 3 Manager). Viewer when absent, the least privilege.
+   */
+  myLevel: ProjectLevel;
   /** Financial block — present on enriched project responses (financial-queries spec). */
   financial?: ProjectFinancialBlock;
   /** Render-only `@for` key — synthetic when the server omitted `id`. Never send it. */
@@ -103,6 +109,11 @@ export interface GateSummary {
  * `taskCounts` counts every task of the project by status; `gates` summarises every gate.
  */
 export interface ProjectDetails {
+  /**
+   * The caller's level, at the top of `ProjectDetailsResponse` (not inside `project`, whose
+   * `ProjectDetailsProjectResponse` has none). The normalizer copies it onto `project.myLevel` too.
+   */
+  myLevel: ProjectLevel;
   project: Project;
   stages: ProjectStage[];
   unstagedTasks: ProjectTask[];
