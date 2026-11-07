@@ -844,9 +844,9 @@ export class DmsStageDetailComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Patch a single planned date. Only the edited field is sent — the backend
-   * leaves unspecified dates untouched, so the other date can't be clobbered by a
-   * concurrent edit. Local state updates on success (no full reload, no flicker).
+   * Patch a single planned date. crmp review R1-F1: the stage PUT is a full replace — an omitted
+   * nullable date is cleared (dms `ManualStageHandlers.cs:183-184`), so every current field is sent
+   * and only the edited one changes. Local state updates on success (no full reload, no flicker).
    */
   private persistDate(
     field: 'estimatedStartDate' | 'estimatedEndDate',
@@ -860,6 +860,8 @@ export class DmsStageDetailComponent implements OnInit, OnDestroy {
       order: s.order,
       description: s.description,
       notes: s.notes,
+      estimatedStartDate: s.estimatedStartDate,
+      estimatedEndDate: s.estimatedEndDate,
     };
     req[field] = value;
     this.stagesApi.update(this.projectId(), s.id, req).subscribe({
@@ -899,6 +901,9 @@ export class DmsStageDetailComponent implements OnInit, OnDestroy {
         order: s.order,
         description: draft || null,
         notes: s.notes,
+        // R1-F1: full replace — resend the planned dates or the save clears them.
+        estimatedStartDate: s.estimatedStartDate,
+        estimatedEndDate: s.estimatedEndDate,
       })
       .subscribe({
         next: () => {

@@ -43,6 +43,7 @@ describe('DmsStageDetailComponent', () => {
   let byProjectCalls: number;
   let granted: Set<string>;
   let theStage: ProjectStage;
+  let updates: unknown[];
 
   function providers() {
     return [
@@ -59,6 +60,10 @@ describe('DmsStageDetailComponent', () => {
           },
           complete: () => of(undefined),
           reject: () => of(undefined),
+          update: (_p: string, _s: string, req: unknown) => {
+            updates.push(req);
+            return of(undefined);
+          },
           remove: () => of(undefined),
         },
       },
@@ -94,6 +99,7 @@ describe('DmsStageDetailComponent', () => {
   beforeEach(() => {
     detailsCalls = 0;
     byProjectCalls = 0;
+    updates = [];
     granted = new Set();
     theStage = stage('Active');
   });
@@ -112,6 +118,46 @@ describe('DmsStageDetailComponent', () => {
     expect(c.submitBlocked()).toBe(false);
     c.stage.set(stage('Locked', ['Rejected']));
     expect(c.submitBlocked()).toBe(false);
+  });
+
+  // crmp review R1-F1: the stage PUT is a full replace (dms ManualStageHandlers.cs:183-184).
+  it('saving the description resends both planned dates so they are not cleared', () => {
+    granted = new Set([PERM.stages.manage]);
+    const c = makeLogic();
+    c.stage.set({
+      ...stage('Active'),
+      description: 'old',
+      notes: 'n',
+      estimatedStartDate: '2026-12-01T00:00:00Z',
+      estimatedEndDate: '2027-01-01T00:00:00Z',
+    } as ProjectStage);
+    c.descriptionDraft = 'new';
+    c.saveDescription();
+    expect(updates[0]).toEqual({
+      name: 'Design Phase',
+      order: 3,
+      description: 'new',
+      notes: 'n',
+      estimatedStartDate: '2026-12-01T00:00:00Z',
+      estimatedEndDate: '2027-01-01T00:00:00Z',
+    });
+  });
+
+  it('editing one planned date keeps the other', () => {
+    granted = new Set([PERM.stages.manage]);
+    const c = makeLogic();
+    c.stage.set({
+      ...stage('Active'),
+      description: null,
+      notes: null,
+      estimatedStartDate: '2026-12-01T00:00:00Z',
+      estimatedEndDate: '2027-01-01T00:00:00Z',
+    } as ProjectStage);
+    c.onSaveStartDate('2026-12-05');
+    expect(updates[0]).toMatchObject({
+      estimatedStartDate: '2026-12-05',
+      estimatedEndDate: '2027-01-01T00:00:00Z',
+    });
   });
 
   it('reload refetches the stage details and the project stage list', () => {
