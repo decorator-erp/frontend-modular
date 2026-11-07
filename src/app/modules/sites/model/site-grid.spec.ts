@@ -195,6 +195,28 @@ describe('site-grid — mapping a refused save (sites S-5)', () => {
     expect(m.banner).toBeNull();
   });
 
+  it('S-09: Values[j] indexes the SENT body — a stored hidden value appended after the visible ones → banner; an unknown row → banner', () => {
+    const withHidden = [
+      { ...rows[0], hidden: [{ itemId: SECRET.itemId, valueText: 'kept' }] },
+      rows[1],
+    ];
+    const sent = bulkBody(withHidden, 'M1', visible);
+    expect(sent[0].values.map((v) => v.itemId)).toEqual([WIDTH.itemId, KIND.itemId, SECRET.itemId]);
+    const m = mapSaveErrors(
+      {
+        'Request.Records[0].Values[2].ValueText': ['Hidden bad'],
+        'Request.Records[0].Values[0].ValueNumber': ['Width bad'],
+        'Request.Records[7].Label': ['No such row'],
+      },
+      null,
+      'fallback',
+      ctx({ rows: withHidden, sent }),
+    );
+    expect(m.cells).toEqual({ [`a:${WIDTH.itemId}`]: 'Width bad' });
+    expect(m.banner).toContain('Hidden bad');
+    expect(m.banner).toContain('No such row');
+  });
+
   it('sites.validation.<code>.<rule> → the first row failing it locally, else a banner', () => {
     let m = mapSaveErrors(
       { 'sites.validation.width_cm.Max': ['m'] },

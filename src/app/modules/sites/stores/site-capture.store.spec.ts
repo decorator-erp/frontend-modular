@@ -165,6 +165,24 @@ describe('SiteCaptureStore (sites S-5)', () => {
     expect(calls).toEqual(['DELETE R1', 'DELETE R2', 'POST bulk']);
   });
 
+  it('S-09: a bulk refused after the deletes committed → the retry sends no DELETE again', async () => {
+    api['bulkSave'].mockReturnValueOnce(
+      throwError(() => problem(400, { 'Request.Records[0].Label': ['bad'] })),
+    );
+    const store = make();
+    store.startEdit();
+    const [, r2] = store.draft()!;
+    store.remove(r2.key);
+    expect(await store.save()).toBe(false);
+    expect(calls).toEqual(['DELETE R2']); // the refused bulk (mocked once) records no call
+    expect(api['bulkSave']).toHaveBeenCalledTimes(1);
+    expect(store.removed()).toEqual([]);
+    expect(store.cellErrors()[`${store.draft()![0].key}:label`]).toBe('bad');
+    calls = [];
+    expect(await store.save()).toBe(true);
+    expect(calls).toEqual(['POST bulk']);
+  });
+
   it('dirty only after a change; cancel and save clear it (A3)', async () => {
     const store = make();
     store.startEdit();
