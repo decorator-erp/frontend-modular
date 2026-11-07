@@ -248,6 +248,16 @@ describe('ProjectDetailComponent', () => {
     PERM.activities.read,
   ];
 
+  it('sites (NEW-FEATURE-1): the "Site surveys" link renders with sites.read only', () => {
+    granted = new Set(ALL);
+    let el = render().nativeElement as HTMLElement;
+    expect(el.querySelector('[data-sites-link]')).toBeNull();
+    TestBed.resetTestingModule();
+    granted = new Set([...ALL, 'sites.read']);
+    el = render().nativeElement as HTMLElement;
+    expect(el.querySelector('[data-sites-link]')?.textContent).toContain('Site surveys');
+  });
+
   // 003 Batch 1: the header is now a `pera-entity-header-card`. The `.ph-title` /
   // `.ph-meta` / `.kpis` / `.dms-st--*` vocabulary these two tests located by was
   // retired with the hand-built header (T023). The *expectations* below are

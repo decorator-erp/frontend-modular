@@ -68,6 +68,21 @@ describe('app.routes / nav-config — the catalog admin gate', () => {
   });
 });
 
+describe('nav-config — sites (NEW-FEATURE-1)', () => {
+  it('Site surveys (Operations, sites.read) and Survey definitions (Admin, sites.definitions.manage)', () => {
+    const surveys = NAV_ITEMS.find((i: NavItem) => i.route === '/sites');
+    const defs = NAV_ITEMS.find((i: NavItem) => i.route === '/admin/site-definitions');
+    expect(surveys).toEqual({
+      label: 'Site surveys',
+      icon: 'folder',
+      route: '/sites',
+      capability: 'sites.read',
+    });
+    expect(defs?.capability).toBe('sites.definitions.manage');
+    expect(defs?.label).toBe('Survey definitions');
+  });
+});
+
 describe('app.routes — the 004 shell skeleton', () => {
   it('declares portal before the office shell, so the shell catch-all never swallows it', () => {
     const portalIndex = routes.findIndex((r) => r.path === 'portal');
