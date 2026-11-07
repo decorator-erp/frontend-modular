@@ -131,7 +131,6 @@ export class CrmArtifactLinksComponent {
   protected readonly actionError = signal<string | null>(null);
   protected readonly hasMore = signal(false);
   private readonly docs = signal<Map<string, ProjectDocument>>(new Map());
-  private page = 0;
   /** Bumped on every reset so a late page of a previous subject is dropped. */
   private generation = 0;
 
@@ -170,7 +169,8 @@ export class CrmArtifactLinksComponent {
 
   reload(): void {
     this.generation++;
-    this.page = 0;
+    // A7: a page still in flight belongs to the old generation and is dropped; it must not block this one.
+    this.loading.set(false);
     this.links.set([]);
     this.error.set(null);
     this.actionError.set(null);
@@ -180,13 +180,17 @@ export class CrmArtifactLinksComponent {
   loadMore(): void {
     if (this.loading()) return;
     const gen = this.generation;
-    const next = this.page + 1;
+    // A7: offset paging (#70–#73, GetCrmArtifactDocumentsQueryHandlers.cs:65-66). After an unlink
+    // the server window shifts left, so ask for the page holding the next unseen row and drop repeats.
+    const next = Math.floor(this.links().length / ARTIFACT_PAGE_SIZE) + 1;
     this.loading.set(true);
     this.api.listBySubject(this.subject(), this.subjectId(), next, ARTIFACT_PAGE_SIZE).subscribe({
       next: (rows) => {
         if (gen !== this.generation) return;
-        this.page = next;
-        this.links.update((all) => [...all, ...rows]);
+        this.links.update((all) => {
+          const seen = new Set(all.map((l) => l.id));
+          return [...all, ...rows.filter((l) => !seen.has(l.id))];
+        });
         // A plain array (no totalCount): a short page is the last one.
         this.hasMore.set(rows.length === ARTIFACT_PAGE_SIZE);
         this.loading.set(false);
