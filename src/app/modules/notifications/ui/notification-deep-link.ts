@@ -38,6 +38,11 @@ export class NotificationDeepLink {
         case NotificationEntityType.Project:
           return ['/projects', id]; // single id — no fetch
 
+        // crmp A-4: SiteApproved / SiteRejected (530/531) carry the survey id; the survey page
+        // reads its own project (Part 4, `/sites/:siteId`).
+        case NotificationEntityType.Site:
+          return ['/sites', id];
+
         // crmp A-2 (BLOCKED): task and stage reads are nested under the project now
         // (`/projects/{projectId}/tasks/{taskId}`), and a notification carries only the entity id
         // (dms `Notifications.Contracts/NotificationContracts.cs:14`). The old `/project-tasks/{id}` and

@@ -20,6 +20,11 @@ export const CONCURRENCY_CONFLICT_CODES: ReadonlySet<string> = new Set([
   'crm.briefs.ConcurrentSend',
   'crm.contacts.ConcurrentPrimaryChange',
   'projects.scope.ConcurrentUpdate',
+  // crmp A-4: the sites-projects fixes and crm-complete conflict codes (contract §1.4, §5.5, §5.6).
+  'projects.ConcurrentUpdate',
+  'projects.members.ConcurrentUpdate',
+  'crm.storefront.ConcurrentUpdate',
+  'sites.ConcurrencyConflict',
 ]);
 
 /** True for a 409 whose code says the row changed concurrently. */

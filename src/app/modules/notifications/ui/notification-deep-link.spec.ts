@@ -65,6 +65,13 @@ describe('NotificationDeepLink', () => {
     expect(invoices.getById).not.toHaveBeenCalled();
   });
 
+  it('Site (SiteApproved/SiteRejected, crmp A-4) opens the survey without a fetch', async () => {
+    expect(await resolver.resolve(view(NotificationEntityType.Site, 'st1'))).toEqual([
+      '/sites',
+      'st1',
+    ]);
+  });
+
   // crmp A-2 (BLOCKED): task and stage reads need the project id in the route, and a notification
   // carries only the entity id (dms NotificationContracts.cs:14), so these fall back.
   it('ProjectTask falls back: the task route needs a project id the notification does not carry', async () => {

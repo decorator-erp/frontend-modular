@@ -25,6 +25,8 @@ export enum NotificationEntityType {
   // ── CRM (feature 004) ──
   BriefSpace = 13,
   Lead = 14,
+  /** crmp A-4: a site survey (dms Notifications.Contracts/Enums.cs:111). */
+  Site = 15,
 }
 
 /**
@@ -84,4 +86,8 @@ export enum NotificationType {
   CrmPeriodOpened = 515,
   CrmPeriodExtended = 516,
   CrmPeriodClosed = 517,
+
+  // ── Sites: 530–531 (crmp A-4; dms Notifications.Contracts/Enums.cs:83-84) ──
+  SiteApproved = 530,
+  SiteRejected = 531,
 }
