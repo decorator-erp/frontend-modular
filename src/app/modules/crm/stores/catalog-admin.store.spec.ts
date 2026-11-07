@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { of } from 'rxjs';
+import { of, throwError } from 'rxjs';
+import { HttpErrorResponse } from '@angular/common/http';
 import { CrmCatalogService } from '../data/crm-catalog.service';
 import { CatalogSelectionMode } from '../model/crm-enums';
 import type { CatalogCategory } from '../model';
@@ -44,6 +45,11 @@ function apiMock() {
     itemsByCategory: vi.fn().mockReturnValue(of([])),
     addAttribute: vi.fn().mockReturnValue(of('attr-id')),
     addOption: vi.fn().mockReturnValue(of('opt-id')),
+    setEntryActive: vi.fn().mockReturnValue(of(undefined)),
+    deleteEntry: vi.fn().mockReturnValue(of(undefined)),
+    attributeOptions: vi.fn().mockReturnValue(of([])),
+    unmapCategorySpaceType: vi.fn().mockReturnValue(of(undefined)),
+    treeForSpaceType: vi.fn().mockReturnValue(of([])),
   };
 }
 
@@ -114,39 +120,56 @@ describe('CatalogAdminStore', () => {
     });
   });
 
-  // 009b #N-8: no category update, reorder, activate, clone, delete or unmap route (C §2.11).
-  it('has no category update, reorder, activate, clone, delete or unmap (009b #N-8)', () => {
-    const s = store() as unknown as Record<string, unknown>;
-    for (const name of [
-      'updateCategory',
-      'reorderChild',
-      'setCategoryActive',
-      'cloneCategory',
-      'deleteCategory',
-      'unmapSpaceType',
-    ]) {
-      expect(s[name], name).toBeUndefined();
-    }
-  });
+  // crmp C-4 (D4): activate/deactivate, delete (409 InUse), options, unmap, tree filter.
+  describe('catalog admin (crmp C-4)', () => {
+    it('setActive() calls api.setEntryActive and reports done', () => {
+      const onDone = vi.fn();
+      store().setActive('items', 'i1', false, { onDone });
+      expect(api.setEntryActive).toHaveBeenCalledWith('items', 'i1', false);
+      expect(onDone).toHaveBeenCalledOnce();
+    });
 
-  // 009b #N-9: no item activate or delete route (C §2.11).
-  it('has no item activate or delete (009b #N-9)', () => {
-    const s = store() as unknown as Record<string, unknown>;
-    expect(s['setItemActive']).toBeUndefined();
-    expect(s['deleteItem']).toBeUndefined();
-  });
+    it('deleteEntry() on 409 crm.catalog.InUse hands the code back and sets no page error', () => {
+      api.deleteEntry.mockReturnValue(
+        throwError(
+          () =>
+            new HttpErrorResponse({
+              status: 409,
+              error: { errors: { 'crm.catalog.InUse': ['in use'] } },
+            }),
+        ),
+      );
+      const onError = vi.fn();
+      const s = store();
+      s.deleteEntry('categories', 'c1', { onError });
+      expect(onError.mock.calls[0][0].code).toBe('crm.catalog.InUse');
+      expect(s.error()).toBeNull();
+      expect(s.saving()).toBe(false);
+    });
 
-  // 009b #N-10: attributes and options are add-only (C §2.11).
-  it('has no attribute or option update, delete or reorder (009b #N-10)', () => {
-    const s = store() as unknown as Record<string, unknown>;
-    for (const name of [
-      'updateAttribute',
-      'deleteAttribute',
-      'updateOption',
-      'deleteOption',
-      'reorderOption',
-    ]) {
-      expect(s[name], name).toBeUndefined();
-    }
+    it('loadOptions() reads with the toggle and the toggle re-reads loaded attributes', () => {
+      const s = store();
+      s.loadOptions('a1');
+      expect(api.attributeOptions).toHaveBeenLastCalledWith('a1', false);
+      s.setIncludeInactiveOptions(true);
+      expect(api.attributeOptions).toHaveBeenLastCalledWith('a1', true);
+      expect(s.options()['a1']).toEqual([]);
+    });
+
+    it('unmapSpaceType() calls the unmap route', () => {
+      store().unmapSpaceType('c1', 'st-1');
+      expect(api.unmapCategorySpaceType).toHaveBeenCalledWith('c1', 'st-1');
+    });
+
+    it('filterBySpaceType() reads tree?spaceTypeId; null clears it', () => {
+      api.treeForSpaceType.mockReturnValue(of([category('kitchen')]));
+      const s = store();
+      s.filterBySpaceType('st-1');
+      expect(api.treeForSpaceType).toHaveBeenCalledWith('st-1');
+      expect(s.spaceTypeResults().map((c) => c.id)).toEqual(['kitchen']);
+      s.filterBySpaceType(null);
+      expect(s.spaceTypeFilter()).toBeNull();
+      expect(s.spaceTypeResults()).toEqual([]);
+    });
   });
 });

@@ -1,13 +1,14 @@
 import { TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
 import { of } from 'rxjs';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import { ConfirmService } from '@ds';
 import { PermissionsService } from '@platform/permissions/permissions.service';
 import { CrmLookupService } from '../../../data/crm-lookup.service';
 import { CatalogAdminStore } from '../../../stores/catalog-admin.store';
 import { CrmCatalogService } from '../../../data/crm-catalog.service';
 import { CatalogAttributeType, CatalogSelectionMode } from '../../../model/crm-enums';
-import type { CatalogCategory, CrmSpaceType } from '../../../model';
+import type { CatalogCategory, CatalogItem, CrmSpaceType } from '../../../model';
 import { CrmCatalogCategoryDetailComponent } from './catalog-category-detail.component';
 
 const types: CrmSpaceType[] = [
@@ -16,213 +17,189 @@ const types: CrmSpaceType[] = [
   { id: 'T3', code: 'kids', nameEn: 'Kids', nameAr: 'أطفال', sortOrder: 3, isActive: true },
 ];
 
+/** The C-4 store surface the rail reads, with overrides. */
+function storeMock(over: Record<string, unknown> = {}) {
+  return {
+    currentCategory: signal<CatalogCategory | null>(null),
+    effectiveAttributes: signal([]),
+    items: signal([]),
+    saving: signal(false),
+    options: signal<Record<string, unknown[]>>({}),
+    includeInactiveOptions: signal(false),
+    spaceTypeFilter: signal<string | null>(null),
+    spaceTypeResults: signal([]),
+    loadOptions: vi.fn(),
+    setIncludeInactiveOptions: vi.fn(),
+    setActive: vi.fn(),
+    deleteEntry: vi.fn(),
+    unmapSpaceType: vi.fn(),
+    mapSpaceType: vi.fn(),
+    reload: vi.fn(),
+    ...over,
+  };
+}
+
+const CATEGORY: CatalogCategory = {
+  id: 'C',
+  parentId: null,
+  code: 'c',
+  nameEn: 'Cat',
+  nameAr: 'Cat',
+  path: '/C/',
+  depth: 0,
+  selectionMode: CatalogSelectionMode.None,
+  isRequired: false,
+  sortOrder: 0,
+  isActive: true,
+  trackKey: 'C',
+};
+
+const ITEM: CatalogItem = {
+  id: 'I',
+  categoryId: 'C',
+  code: 'oak',
+  nameEn: 'Oak',
+  nameAr: 'Oak',
+  descriptionEn: null,
+  descriptionAr: null,
+  imageUri: null,
+  isPurchasable: true,
+  sortOrder: 0,
+  isActive: true,
+  attributes: [],
+  trackKey: 'I',
+};
+
 describe('CrmCatalogCategoryDetailComponent — targeting picker (009b #27)', () => {
-  function make(mapped: string[]) {
+  function make() {
     TestBed.configureTestingModule({
       imports: [CrmCatalogCategoryDetailComponent],
       providers: [
         { provide: CrmLookupService, useValue: { spaceTypes: () => of(types) } },
-        {
-          provide: CatalogAdminStore,
-          useValue: {
-            currentCategory: signal(null),
-            effectiveAttributes: signal([]),
-            items: signal([]),
-            spaceTypeIds: signal(mapped),
-          },
-        },
+        { provide: CatalogAdminStore, useValue: storeMock() },
       ],
     });
     return TestBed.createComponent(CrmCatalogCategoryDetailComponent).componentInstance;
   }
 
-  // 009b #N-7: the current mappings cannot be read, so every active type is offered.
-  it('offers every active type for a new mapping (009b #N-7)', () => {
-    const c = make(['T3']);
-    expect(c.unmappedSpaceTypeOptions().map((o) => o.value)).toEqual(['T1', 'T3']);
+  it('offers every active type for a mapping', () => {
+    expect(
+      make()
+        .unmappedSpaceTypeOptions()
+        .map((o) => o.value),
+    ).toEqual(['T1', 'T3']);
   });
 
-  it('still names an inactive type on an existing mapping', () => {
-    const c = make(['T2']);
-    expect(c.spaceTypeName('T2')).toBe('Attic');
+  it('still names an inactive type', () => {
+    expect(make().spaceTypeName('T2')).toBe('Attic');
   });
 });
 
-describe('CrmCatalogCategoryDetailComponent — targeting read (009b #34)', () => {
-  it('renders the current mappings as "not available" instead of "global"', () => {
+// crmp C-4 (D4): edit / activate / delete, options read, unmap — gated on crm.catalog.manage.
+describe('CrmCatalogCategoryDetailComponent — catalog admin (crmp C-4)', () => {
+  let store: ReturnType<typeof storeMock>;
+  const confirmOpen = vi.fn();
+
+  function render(over: Record<string, unknown> = {}, canManage = true) {
+    store = storeMock({ currentCategory: signal(CATEGORY), ...over });
+    confirmOpen.mockReset();
     TestBed.configureTestingModule({
       imports: [CrmCatalogCategoryDetailComponent],
       providers: [
+        { provide: PermissionsService, useValue: { can: () => canManage } },
         { provide: CrmLookupService, useValue: { spaceTypes: () => of(types) } },
         { provide: CrmCatalogService, useValue: {} },
-        {
-          provide: CatalogAdminStore,
-          useValue: {
-            currentCategory: signal<CatalogCategory>({
-              id: 'C',
-              parentId: null,
-              code: 'c',
-              nameEn: 'Cat',
-              nameAr: 'Cat',
-              path: '/C/',
-              depth: 0,
-              selectionMode: CatalogSelectionMode.None,
-              isRequired: false,
-              sortOrder: 0,
-              isActive: true,
-              trackKey: 'C',
-            }),
-            effectiveAttributes: signal([]),
-            items: signal([]),
-            spaceTypeIds: signal([]),
-            spaceTypesLoading: signal(false),
-            saving: signal(false),
-          },
-        },
+        { provide: ConfirmService, useValue: { open: confirmOpen } },
+        { provide: CatalogAdminStore, useValue: store },
       ],
     });
     const fixture = TestBed.createComponent(CrmCatalogCategoryDetailComponent);
     fixture.detectChanges();
-    const el = fixture.nativeElement as HTMLElement;
-
-    expect(el.querySelector('[data-testid="cat-targeting-unavailable"]')?.textContent).toContain(
-      'Not available yet.',
-    );
-    expect(el.textContent).not.toContain('No mappings');
-  });
-});
-
-// 009b #N-8..#N-10: C §2.11 — "No update, delete or activate route for categories, items,
-// attributes or options". The rail keeps create/move/map and the add actions only.
-describe('CrmCatalogCategoryDetailComponent — write actions without a route', () => {
-  const CATEGORY: CatalogCategory = {
-    id: 'C',
-    parentId: null,
-    code: 'c',
-    nameEn: 'Cat',
-    nameAr: 'Cat',
-    path: '/C/',
-    depth: 0,
-    selectionMode: CatalogSelectionMode.None,
-    isRequired: false,
-    sortOrder: 0,
-    isActive: true,
-    trackKey: 'C',
-  };
-
-  function render(over: Record<string, unknown> = {}): HTMLElement {
-    TestBed.configureTestingModule({
-      imports: [CrmCatalogCategoryDetailComponent],
-      providers: [
-        { provide: PermissionsService, useValue: { can: () => true } },
-        { provide: CrmLookupService, useValue: { spaceTypes: () => of(types) } },
-        { provide: CrmCatalogService, useValue: {} },
-        {
-          provide: CatalogAdminStore,
-          useValue: {
-            currentCategory: signal(CATEGORY),
-            effectiveAttributes: signal([]),
-            items: signal([]),
-            saving: signal(false),
-            ...over,
-          },
-        },
-      ],
-    });
-    const fixture = TestBed.createComponent(CrmCatalogCategoryDetailComponent);
-    fixture.detectChanges();
-    return fixture.nativeElement as HTMLElement;
+    return { el: fixture.nativeElement as HTMLElement, fixture };
   }
 
-  const buttonTexts = (el: HTMLElement) =>
-    [...el.querySelectorAll('pera-button')].map((b) => b.textContent?.trim());
+  const byLabel = (el: HTMLElement, label: string) =>
+    el.querySelector(`button[aria-label="${label}"]`) as HTMLButtonElement | null;
 
-  it('offers Move but no Save, Activate/Deactivate or Delete for the category (009b #N-8)', () => {
-    const texts = buttonTexts(render());
-
-    expect(texts).toContain('Move');
-    expect(texts).not.toContain('Save');
-    expect(texts).not.toContain('Deactivate');
-    expect(texts).not.toContain('Delete');
+  it('gives the category Edit, Deactivate and Delete and each item labelled row actions', () => {
+    const { el } = render({ items: signal([ITEM]) });
+    const texts = [...el.querySelectorAll('[data-testid="cat-category-actions"] pera-button')].map(
+      (b) => b.textContent?.trim(),
+    );
+    expect(texts).toEqual(['Edit', 'Deactivate', 'Delete']);
+    expect(byLabel(el, 'Edit Oak')).toBeTruthy();
+    expect(byLabel(el, 'Deactivate Oak')).toBeTruthy();
+    expect(byLabel(el, 'Delete Oak')).toBeTruthy();
   });
 
-  it('lists items with no edit, activate or delete action, keeping Add item (009b #N-9)', () => {
-    const el = render({
-      items: signal([
+  it('shows no write action without crm.catalog.manage', () => {
+    const { el } = render({ items: signal([ITEM]) }, false);
+    expect(el.querySelector('[data-testid="cat-category-actions"]')).toBeNull();
+    expect(byLabel(el, 'Delete Oak')).toBeNull();
+  });
+
+  it('Deactivate on an item calls setActive(items, id, false)', () => {
+    const { el } = render({ items: signal([ITEM]) });
+    byLabel(el, 'Deactivate Oak')!.click();
+    expect(store.setActive).toHaveBeenCalledWith('items', 'I', false, expect.anything());
+  });
+
+  it('a 409 crm.catalog.InUse on delete offers deactivate instead', async () => {
+    const { el } = render({ items: signal([ITEM]) });
+    confirmOpen.mockResolvedValue(true);
+    store.deleteEntry.mockImplementation(
+      (_k: string, _id: string, h: { onError: (e: { code: string }) => void }) =>
+        h.onError({ code: 'crm.catalog.InUse' }),
+    );
+    byLabel(el, 'Delete Oak')!.click();
+    await vi.waitFor(() => expect(confirmOpen).toHaveBeenCalledTimes(2));
+    expect(confirmOpen.mock.calls[1][0].confirmLabel).toBe('Deactivate');
+    await vi.waitFor(() =>
+      expect(store.setActive).toHaveBeenCalledWith('items', 'I', false, expect.anything()),
+    );
+  });
+
+  it('reads the options of a Select attribute (row 115) and renders them; the toggle flips includeInactive', () => {
+    const attr = {
+      id: 'A',
+      categoryId: 'C',
+      code: 'style',
+      nameEn: 'Style',
+      nameAr: 'Style',
+      dataType: CatalogAttributeType.Select,
+      unit: null,
+      isRequired: false,
+      sortOrder: 0,
+      isActive: true,
+      options: [],
+    };
+    const { el, fixture } = render({ effectiveAttributes: signal([attr]) });
+    expect(store.loadOptions).toHaveBeenCalledWith('A');
+    store.options.set({
+      A: [
         {
-          id: 'I',
-          categoryId: 'C',
-          code: 'oak',
-          nameEn: 'Oak',
-          nameAr: 'Oak',
-          descriptionEn: null,
-          descriptionAr: null,
+          id: 'O1',
+          code: 'm',
+          nameEn: 'Modern',
+          nameAr: 'Modern',
           imageUri: null,
-          isPurchasable: true,
           sortOrder: 0,
-          isActive: true,
-          attributes: [],
-          trackKey: 'I',
+          isActive: false,
         },
-      ]),
+      ],
     });
-    const labels = [...el.querySelectorAll('button')].map((b) => b.getAttribute('aria-label'));
-
-    expect(el.textContent).toContain('Oak');
-    expect(el.textContent).toContain('Add item');
-    expect(labels).not.toContain('Edit');
-    expect(labels).not.toContain('Deactivate');
-    expect(labels).not.toContain('Delete');
+    fixture.detectChanges();
+    expect(el.querySelectorAll('[data-testid="cat-option"]')).toHaveLength(1);
+    expect(byLabel(el, 'Activate Modern')).toBeTruthy();
+    (el.querySelector('[data-testid="cat-include-inactive"] button') as HTMLButtonElement).click();
+    expect(store.setIncludeInactiveOptions).toHaveBeenCalledWith(true);
   });
 
-  it('keeps Add attribute and Add option but no attribute or option edit, delete or reorder (009b #N-10)', () => {
-    const el = render({
-      effectiveAttributes: signal([
-        {
-          id: 'A',
-          categoryId: 'C',
-          code: 'style',
-          nameEn: 'Style',
-          nameAr: 'Style',
-          dataType: CatalogAttributeType.Select,
-          unit: null,
-          isRequired: false,
-          sortOrder: 0,
-          isActive: true,
-          options: [
-            {
-              id: 'O1',
-              code: 'o1',
-              nameEn: 'Modern',
-              nameAr: 'Modern',
-              imageUri: null,
-              sortOrder: 0,
-              isActive: true,
-            },
-            {
-              id: 'O2',
-              code: 'o2',
-              nameEn: 'Classic',
-              nameAr: 'Classic',
-              imageUri: null,
-              sortOrder: 1,
-              isActive: true,
-            },
-          ],
-        },
-      ]),
-    });
-    const buttons = [...el.querySelectorAll('button')];
-    const texts = buttons.map((b) => b.textContent?.trim());
-    const labels = buttons.map((b) => b.getAttribute('aria-label'));
-
-    expect(el.textContent).toContain('Modern');
-    expect(texts).toContain('Add attribute');
-    expect(texts).toContain('Add option');
-    expect(texts).not.toContain('Edit');
-    expect(texts).not.toContain('Delete');
-    for (const label of ['Edit', 'Move up', 'Move down', 'Delete']) {
-      expect(labels).not.toContain(label);
-    }
+  it('Unmap sends the picked space type (row 116)', () => {
+    const { fixture } = render();
+    const c = fixture.componentInstance;
+    c.targetType.set('T1');
+    c.unmapType(CATEGORY);
+    expect(store.unmapSpaceType).toHaveBeenCalledWith('C', 'T1', expect.anything());
   });
 });

@@ -1,4 +1,6 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { CrmLookupService } from '../../../data/crm-lookup.service';
+import type { CrmSpaceType } from '../../../model';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { CatalogService } from '@platform/i18n/catalog.service';
@@ -8,7 +10,10 @@ import {
   ModalService,
   PeraAlertComponent,
   PeraButtonComponent,
+  PeraEmptyComponent,
   PeraInputComponent,
+  PeraSelectComponent,
+  type SelectOption,
   PeraPageHeaderComponent,
   PeraSpinnerComponent,
 } from '@ds';
@@ -36,7 +41,9 @@ import {
     PeraAlertComponent,
     PeraPageHeaderComponent,
     PeraButtonComponent,
+    PeraEmptyComponent,
     PeraInputComponent,
+    PeraSelectComponent,
     PeraSpinnerComponent,
     CrmCatalogChildrenListComponent,
     CrmCatalogCategoryDetailComponent,
@@ -64,6 +71,15 @@ import {
         }
       </div>
       <div actions class="flex items-center gap-2">
+        <!-- crmp C-4: GET /tree?spaceTypeId — what one space type's picker offers. -->
+        <pera-select
+          class="min-w-0"
+          data-testid="cat-space-type-filter"
+          [options]="spaceTypeOptions()"
+          [ngModel]="store.spaceTypeFilter() ?? ''"
+          (ngModelChange)="store.filterBySpaceType($event || null)"
+          [placeholder]="catalog.t('cat.spaceTypeFilter')"
+        />
         <!-- Server-side: matches code, nameEn AND nameAr — an Arabic name will not be
              found by filtering the client-side tree with an English query. -->
         <pera-input
@@ -98,6 +114,17 @@ import {
       <div class="min-w-0">
         @if (store.catalogLoading() && store.children().length === 0) {
           <div class="flex justify-center p-8"><pera-spinner /></div>
+        } @else if (store.spaceTypeFilter()) {
+          @if (store.spaceTypeLoading()) {
+            <div class="flex justify-center p-8"><pera-spinner /></div>
+          } @else if (store.spaceTypeResults().length === 0) {
+            <pera-empty [title]="catalog.t('cat.spaceTypeEmpty')" />
+          } @else {
+            <app-crm-catalog-children-list
+              [categories]="store.spaceTypeResults()"
+              (open)="goto($event.id)"
+            />
+          }
         } @else if (store.searchTerm()) {
           <!-- Search replaces the level view; clicking a hit drills to that category. -->
           <p class="fs-caption text-text-muted m-0 pb-2">
@@ -124,8 +151,19 @@ export class CrmCatalogAdminPageComponent {
   private readonly router = inject(Router);
   private readonly modal = inject(ModalService);
   protected readonly PERM = PERM;
+  private readonly spaceTypes = signal<CrmSpaceType[]>([]);
+  protected readonly spaceTypeOptions = computed<SelectOption[]>(() => [
+    { value: '', label: this.catalog.t('cat.allSpaceTypes') },
+    ...this.spaceTypes()
+      .filter((t) => t.isActive !== false)
+      .map((t) => ({ value: t.id, label: this.categoryName(t) })),
+  ]);
 
   constructor() {
+    inject(CrmLookupService)
+      .spaceTypes()
+      .subscribe({ next: (t) => this.spaceTypes.set(t), error: () => undefined });
+
     // Position follows the URL — drill-down is linkable and Back moves up a level.
     this.route.queryParamMap
       .pipe(takeUntilDestroyed())

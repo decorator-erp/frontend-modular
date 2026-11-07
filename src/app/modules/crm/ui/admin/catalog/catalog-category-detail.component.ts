@@ -8,21 +8,32 @@ import {
   signal,
 } from '@angular/core';
 import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
+import { NgTemplateOutlet } from '@angular/common';
 import { CatalogService } from '@platform/i18n/catalog.service';
 import type { CatalogKey } from '@platform/i18n/catalog/en';
-import { CanDirective, PERM } from '@platform/permissions';
+import { CanDirective, PERM, PermissionsService } from '@platform/permissions';
 import { ToastService } from '@platform/feedback/toast.service';
+import { friendly } from '@platform/http/error-handler.service';
+import { Router } from '@angular/router';
+import type { CatalogEntryKind } from '../../../data/crm-catalog.service';
+import {
+  CatalogEntryDialogData,
+  CrmCatalogEntryDialogComponent,
+} from './catalog-entry-dialog.component';
 import { CatalogAttributeType, CatalogSelectionMode } from '../../../model/crm-enums';
 import { CrmLookupService } from '../../../data/crm-lookup.service';
 import type {
   CatalogAttribute,
   CatalogAttributeOption,
   CatalogCategory,
+  CatalogItem,
   CrmSpaceType,
 } from '../../../model';
 import {
+  ConfirmService,
   ModalService,
   PeraButtonComponent,
+  PeraSwitchComponent,
   PeraCheckboxComponent,
   PeraFormFieldComponent,
   PeraInputComponent,
@@ -43,9 +54,10 @@ import {
 /**
  * The detail rail for the current category (v2, Run B F6): bilingual identity, branch
  * rules, attribute definitions (own + inherited), items, targeting, and move. Replaces
- * `catalog-node-detail.component.ts`. 009b #N-8: no category update, activate or delete
- * route exists, so the identity form is read-only (disabled, no Save) and Activate/Delete
- * are gone.
+ * `catalog-node-detail.component.ts`. The identity form stays a read-only view; crmp C-4
+ * (D4) adds Edit (`CrmCatalogEntryDialogComponent`), Activate/Deactivate and Delete for the
+ * category, its own attributes, their options and its items — every write gated on
+ * `crm.catalog.manage` — plus the options read with an "include inactive" toggle and unmap.
  *
  * Two things that existed in the v1 admin are gone, not merely changed: the
  * `isSelectable` checkbox and its invariant-enforcement (categories are ALWAYS branches
@@ -53,12 +65,14 @@ import {
  * nothing left for the field to mean here), and the Specs card (F6c — a category has no
  * spec values of its own; only its items do, edited through the item dialog below).
  *
- * Targeting is write-only: no route reads a category's mappings (009b #34, #N-7).
+ * Targeting: no route reads one category's mappings, so the card maps or unmaps a picked
+ * type; the page's space-type filter (`tree?spaceTypeId`) shows what a type targets.
  */
 @Component({
   selector: 'app-crm-catalog-category-detail',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
+    NgTemplateOutlet,
     ReactiveFormsModule,
     FormsModule,
     CanDirective,
@@ -69,6 +83,7 @@ import {
     PeraSelectComponent,
     PeraTextareaComponent,
     PeraStatusBadgeComponent,
+    PeraSwitchComponent,
   ],
   template: `
     @if (category(); as c) {
@@ -88,6 +103,30 @@ import {
             }
             <span class="font-mono fs-micro text-text-muted ms-auto">{{ c.code }}</span>
           </header>
+          @if (canManage()) {
+            <div
+              class="flex items-center gap-2 flex-wrap px-4 pt-3"
+              data-testid="cat-category-actions"
+            >
+              <pera-button variant="secondary" size="xs" (click)="edit('categories', c)">{{
+                catalog.t('cat.edit')
+              }}</pera-button>
+              <pera-button
+                variant="secondary"
+                size="xs"
+                [disabled]="store.saving()"
+                (click)="toggleActive('categories', c)"
+                >{{ catalog.t(c.isActive ? 'cat.deactivate' : 'cat.activate') }}</pera-button
+              >
+              <pera-button
+                variant="danger"
+                size="xs"
+                [disabled]="store.saving()"
+                (click)="remove('categories', c)"
+                >{{ catalog.t('cat.delete') }}</pera-button
+              >
+            </div>
+          }
           <div [formGroup]="form" class="flex flex-col gap-4 p-4">
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
               <pera-form-field [label]="catalog.t('cat.nameEnL')" [required]="true">
@@ -135,9 +174,16 @@ import {
             <span class="fs-label uppercase tracking-wide text-text-muted">{{
               catalog.t('cat.effectiveAttributes')
             }}</span>
+            <pera-switch
+              class="ms-auto fs-caption"
+              data-testid="cat-include-inactive"
+              [ngModel]="store.includeInactiveOptions()"
+              (ngModelChange)="store.setIncludeInactiveOptions($event)"
+              >{{ catalog.t('cat.includeInactive') }}</pera-switch
+            >
             <button
               type="button"
-              class="ms-auto fs-caption text-accent hover:underline"
+              class="fs-caption text-accent hover:underline"
               *peraCan="PERM.crm.catalog.manage"
               (click)="toggleAddAttr()"
             >
@@ -159,7 +205,19 @@ import {
                       [dot]="false"
                     />
                   }
+                  @if (!attr.isActive) {
+                    <pera-status-badge
+                      tone="neutral"
+                      [label]="catalog.t('cat.inactive')"
+                      [dot]="false"
+                    />
+                  }
                   <span class="fs-micro text-text-muted ms-auto">{{ origin(attr, c) }}</span>
+                  @if (canManage() && attr.categoryId === c.id) {
+                    <ng-container
+                      *ngTemplateOutlet="rowActions; context: { kind: 'attributes', entry: attr }"
+                    />
+                  }
                 </div>
 
                 <!--
@@ -169,17 +227,26 @@ import {
                 @if (attr.dataType === ATTR_TYPE.Select) {
                   <div class="flex flex-col gap-1 ps-3 border-s border-border">
                     <div class="flex items-center gap-1.5 flex-wrap">
-                      @for (opt of sortedOptions(attr); track opt.id) {
+                      @for (opt of optionsOf(attr); track opt.id) {
                         <span
                           class="inline-flex items-center gap-1 fs-micro px-1.5 py-0.5 rounded bg-surface-muted text-text-secondary"
+                          [class.opacity-50]="!opt.isActive"
+                          data-testid="cat-option"
                         >
                           <span dir="auto">{{ name(opt) }}</span>
+                          @if (canManage() && attr.categoryId === c.id) {
+                            <ng-container
+                              *ngTemplateOutlet="
+                                rowActions;
+                                context: { kind: 'options', entry: opt }
+                              "
+                            />
+                          }
                         </span>
                       } @empty {
-                        <!-- 009b #36: no route reads an attribute's options. -->
-                        <span class="fs-micro text-text-muted" data-testid="cat-options-unavailable"
-                          >{{ catalog.t('cat.options') }}: {{ catalog.t('cat.notAvailable') }}</span
-                        >
+                        <span class="fs-micro text-text-muted">{{
+                          catalog.t('cat.noOptions')
+                        }}</span>
                       }
 
                       @if (attr.categoryId === c.id) {
@@ -306,6 +373,11 @@ import {
                     [dot]="false"
                   />
                 }
+                @if (canManage()) {
+                  <ng-container
+                    *ngTemplateOutlet="rowActions; context: { kind: 'items', entry: item }"
+                  />
+                }
               </div>
             } @empty {
               <p class="fs-caption text-text-muted m-0 p-2">{{ catalog.t('cat.noItems') }}</p>
@@ -314,8 +386,8 @@ import {
         </section>
 
         <!--
-          Space-type targeting. 009b #34: no route reads a category's mappings, so the
-          current set is "not available"; mapping a new type still works (row 37).
+          Space-type targeting. No route reads one category's mappings: pick a type, then map
+          (#61) or unmap (#116, 404 MappingNotFound shown). The page filter shows a type's tree.
         -->
         <section class="bg-surface border border-border rounded-card">
           <header class="px-4 py-3 border-b border-border">
@@ -324,9 +396,16 @@ import {
             }}</span>
           </header>
           <div class="p-4 flex flex-col gap-2">
-            <p class="fs-caption text-text-muted m-0" data-testid="cat-targeting-unavailable">
-              {{ catalog.t('cat.notAvailable') }}
+            <p class="fs-caption text-text-muted m-0" data-testid="cat-targeting-hint">
+              {{ catalog.t('cat.targetingHint') }}
             </p>
+            @if (store.spaceTypeFilter() && targetedByFilter(c)) {
+              <pera-status-badge
+                tone="info"
+                [label]="catalog.t('cat.targetedHere')"
+                [dot]="false"
+              />
+            }
             <div class="flex items-center gap-2" *peraCan="PERM.crm.catalog.manage">
               <pera-select
                 class="flex-1"
@@ -341,6 +420,13 @@ import {
                 [disabled]="!targetType()"
                 (click)="mapType(c)"
                 >{{ catalog.t('cat.mapType') }}</pera-button
+              >
+              <pera-button
+                variant="secondary"
+                size="sm"
+                [disabled]="!targetType() || store.saving()"
+                (click)="unmapType(c)"
+                >{{ catalog.t('cat.unmapType') }}</pera-button
               >
             </div>
           </div>
@@ -373,6 +459,42 @@ import {
     } @else {
       <p class="fs-caption text-text-muted p-4 m-0">{{ catalog.t('cat.selectPrompt') }}</p>
     }
+
+    <!-- crmp C-4: Edit / Activate-Deactivate / Delete for one entry (real buttons, labelled). -->
+    <ng-template #rowActions let-kind="kind" let-entry="entry">
+      <span class="inline-flex items-center gap-1">
+        <button
+          type="button"
+          class="fs-micro text-accent hover:underline"
+          [attr.aria-label]="catalog.t('cat.editAria', { name: name(entry) })"
+          (click)="edit(kind, entry)"
+        >
+          {{ catalog.t('cat.edit') }}
+        </button>
+        <button
+          type="button"
+          class="fs-micro text-accent hover:underline"
+          [disabled]="store.saving()"
+          [attr.aria-label]="
+            catalog.t(entry.isActive ? 'cat.deactivateAria' : 'cat.activateAria', {
+              name: name(entry),
+            })
+          "
+          (click)="toggleActive(kind, entry)"
+        >
+          {{ catalog.t(entry.isActive ? 'cat.deactivate' : 'cat.activate') }}
+        </button>
+        <button
+          type="button"
+          class="fs-micro text-danger hover:underline"
+          [disabled]="store.saving()"
+          [attr.aria-label]="catalog.t('cat.deleteAria', { name: name(entry) })"
+          (click)="remove(kind, entry)"
+        >
+          {{ catalog.t('cat.delete') }}
+        </button>
+      </span>
+    </ng-template>
   `,
 })
 export class CrmCatalogCategoryDetailComponent {
@@ -383,6 +505,11 @@ export class CrmCatalogCategoryDetailComponent {
   private readonly toast = inject(ToastService);
   private readonly fb = inject(FormBuilder);
   private readonly modal = inject(ModalService);
+  private readonly confirm = inject(ConfirmService);
+  private readonly permissions = inject(PermissionsService);
+  private readonly router = inject(Router);
+  /** crmp C-4: every catalog write is gated on `crm.catalog.manage`. */
+  protected readonly canManage = computed(() => this.permissions.can(PERM.crm.catalog.manage));
   /** Lent to the item dialog so it can reach this route's `CatalogAdminStore`. */
   private readonly injector = inject(Injector);
   protected readonly PERM = PERM;
@@ -483,7 +610,100 @@ export class CrmCatalogCategoryDetailComponent {
     });
 
     this.form.controls.imageUri.valueChanges.subscribe((v) => this.imagePreview.set(v ?? ''));
-    this.form.disable(); // 009b #N-8: no update route — the identity is read-only.
+    // A read-only view: edits go through the Edit dialog (crmp C-4), which sends only what it shows.
+    this.form.disable();
+
+    // crmp C-4: read the options of every Select attribute on screen (#115), once each.
+    effect(() => {
+      const loaded = this.store.options();
+      for (const attr of this.attributes()) {
+        if (attr.dataType === CatalogAttributeType.Select && !(attr.id in loaded)) {
+          this.store.loadOptions(attr.id);
+        }
+      }
+    });
+  }
+
+  /** The options read for this attribute (falls back to whatever the attribute carried). */
+  optionsOf(attr: CatalogAttribute): CatalogAttributeOption[] {
+    const list = this.store.options()[attr.id] ?? attr.options;
+    return [...list].sort((a, b) => a.sortOrder - b.sortOrder);
+  }
+
+  /** True when the page's space-type filter tree holds this category. */
+  targetedByFilter(category: CatalogCategory): boolean {
+    return this.store.spaceTypeResults().some((r) => r.id === category.id);
+  }
+
+  // ── crmp C-4: edit / activate / delete ─────────────────────────────
+
+  async edit(kind: CatalogEntryKind, entry: CatalogEntryLike): Promise<void> {
+    const data: CatalogEntryDialogData = {
+      kind,
+      id: entry.id,
+      code: entry.code,
+      nameEn: entry.nameEn,
+      nameAr: entry.nameAr,
+      selectionMode: 'selectionMode' in entry ? entry.selectionMode : undefined,
+      isRequired: 'isRequired' in entry ? entry.isRequired : undefined,
+      isPurchasable: 'isPurchasable' in entry ? entry.isPurchasable : undefined,
+      unit: 'unit' in entry ? entry.unit : undefined,
+    };
+    const saved = await this.modal
+      .open<boolean>(CrmCatalogEntryDialogComponent, { size: 'md', data })
+      .afterClosed();
+    if (saved) this.store.reload();
+  }
+
+  toggleActive(kind: CatalogEntryKind, entry: CatalogEntryLike): void {
+    const next = !entry.isActive;
+    this.store.setActive(
+      kind,
+      entry.id,
+      next,
+      this.toastOn(next ? 'cat.activated' : 'cat.deactivated'),
+    );
+  }
+
+  async remove(kind: CatalogEntryKind, entry: CatalogEntryLike): Promise<void> {
+    const ok = await this.confirm.open({
+      title: this.catalog.t('cat.delete'),
+      body: this.catalog.t('cat.deleteEntryConfirm', { name: this.name(entry) }),
+      confirmLabel: this.catalog.t('cat.delete'),
+      cancelLabel: this.catalog.t('common.cancel'),
+      tone: 'danger',
+    });
+    if (!ok) return;
+    this.store.deleteEntry(kind, entry.id, {
+      onDone: () => {
+        this.toast.show({ tone: 'success', message: this.catalog.t('cat.entryDeleted') });
+        if (kind === 'categories' && entry.id === this.category()?.id) {
+          const parentId = 'parentId' in entry ? entry.parentId : null;
+          void this.router.navigate([], {
+            queryParams: { category: parentId },
+            queryParamsHandling: 'merge',
+          });
+        }
+      },
+      onError: (err) => {
+        if (err.code === 'crm.catalog.InUse') {
+          void this.offerDeactivate(kind, entry);
+          return;
+        }
+        this.toast.show({ tone: 'danger', message: friendly(err) });
+      },
+    });
+  }
+
+  /** 409 `crm.catalog.InUse`: the entry is referenced — offer deactivate instead (D4). */
+  private async offerDeactivate(kind: CatalogEntryKind, entry: CatalogEntryLike): Promise<void> {
+    const ok = await this.confirm.open({
+      title: this.catalog.t('cat.inUseTitle'),
+      body: this.catalog.t('cat.inUseOffer', { name: this.name(entry) }),
+      confirmLabel: this.catalog.t('cat.deactivate'),
+      cancelLabel: this.catalog.t('common.cancel'),
+    });
+    if (ok) this.store.setActive(kind, entry.id, false, this.toastOn('cat.deactivated'));
   }
 
   name(x: { nameEn: string; nameAr: string }): string {
@@ -537,7 +757,7 @@ export class CrmCatalogCategoryDetailComponent {
       onError: (err, fallback) =>
         this.toast.show({
           tone: 'danger',
-          message: this.catalog.t(domainErrorKey(err.code, fallback)),
+          message: err.code ? friendly(err) : this.catalog.t(domainErrorKey(err.code, fallback)),
         }),
     };
   }
@@ -560,15 +780,18 @@ export class CrmCatalogCategoryDetailComponent {
     this.addingAttr.set(false);
   }
 
-  /** Options render in server order; sort defensively so reorder feedback is stable. */
-  sortedOptions(attr: CatalogAttribute): CatalogAttributeOption[] {
-    return [...attr.options].sort((a, b) => a.sortOrder - b.sortOrder);
-  }
-
   mapType(category: CatalogCategory): void {
     const id = this.targetType();
     if (!id) return;
     this.store.mapSpaceType(category.id, id, this.toastOn('cat.nodeSaved'));
+    this.targetType.set('');
+  }
+
+  /** #116 — 404 `crm.catalog.MappingNotFound` when the category is not targeted to the type. */
+  unmapType(category: CatalogCategory): void {
+    const id = this.targetType();
+    if (!id) return;
+    this.store.unmapSpaceType(category.id, id, this.toastOn('cat.nodeSaved'));
     this.targetType.set('');
   }
 
@@ -623,3 +846,6 @@ export class CrmCatalogCategoryDetailComponent {
     });
   }
 }
+
+/** Any one catalog entry the row actions act on. */
+type CatalogEntryLike = CatalogCategory | CatalogItem | CatalogAttribute | CatalogAttributeOption;

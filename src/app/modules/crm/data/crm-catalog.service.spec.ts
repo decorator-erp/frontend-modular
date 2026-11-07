@@ -4,6 +4,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { describe, expect, it, beforeEach, afterEach } from 'vitest';
 import { CatalogAttributeType, CatalogSelectionMode } from '../model/crm-enums';
 import { environment } from '../../../../environments/environment';
+import { HANDLED_ERROR_STATUSES } from '@platform/http/handled-errors';
 import { CrmCatalogService } from './crm-catalog.service';
 import type { CatalogCategory, CatalogItem } from '../model';
 
@@ -374,40 +375,91 @@ describe('CrmCatalogService', () => {
     });
   });
 
-  // 009b #N-8: CrmCatalogEndpoints.cs:27-47 maps category create, move and map only (C §2.11).
-  it('has no category update, reorder, activate, clone, delete or unmap (009b #N-8)', () => {
-    const methods = service as unknown as Record<string, unknown>;
-    for (const name of [
-      'updateCategory',
-      'reorderCategories',
-      'setCategoryActive',
-      'cloneCategory',
-      'deleteCategory',
-      'unmapCategorySpaceType',
-    ]) {
-      expect(methods[name], name).toBeUndefined();
-    }
-  });
+  // crmp C-4 (D4): CrmCatalogEndpoints.cs:83-129 — the admin writes and reads (contract §2.11).
+  describe('catalog admin (crmp C-4)', () => {
+    it('row 117 updateEntry() PUTs {kind}/{id} with only the given members, 409/404 handled', () => {
+      service
+        .updateEntry('attributes', 'a1', {
+          code: 'w',
+          nameEn: 'Width',
+          nameAr: 'العرض',
+          unit: 'cm',
+          isRequired: true,
+        })
+        .subscribe();
+      const req = http.expectOne(url('/crm/catalog/attributes/a1'));
+      expect(req.request.method).toBe('PUT');
+      expect(req.request.body).toEqual({
+        code: 'w',
+        nameEn: 'Width',
+        nameAr: 'العرض',
+        unit: 'cm',
+        isRequired: true,
+      });
+      expect(req.request.context.get(HANDLED_ERROR_STATUSES)).toEqual([404, 409]);
+      req.flush(null);
+    });
 
-  // 009b #N-9: CrmCatalogEndpoints.cs:49-62 maps item create and attribute-values only (C §2.11).
-  it('has no item update, move, activate or delete (009b #N-9)', () => {
-    const methods = service as unknown as Record<string, unknown>;
-    for (const name of ['updateItem', 'moveItemToCategory', 'setItemActive', 'deleteItem']) {
-      expect(methods[name], name).toBeUndefined();
-    }
-  });
+    it('row 118 setEntryActive() PUTs {kind}/{id}/active { isActive }', () => {
+      service.setEntryActive('options', 'o1', false).subscribe();
+      const req = http.expectOne(url('/crm/catalog/options/o1/active'));
+      expect(req.request.method).toBe('PUT');
+      expect(req.request.body).toEqual({ isActive: false });
+      req.flush(null);
+    });
 
-  // 009b #N-10: CrmCatalogEndpoints.cs:64-81 maps attribute and option add only (C §2.11).
-  it('has no attribute or option update, delete or reorder (009b #N-10)', () => {
-    const methods = service as unknown as Record<string, unknown>;
-    for (const name of [
-      'updateAttribute',
-      'deleteAttribute',
-      'updateOption',
-      'deleteOption',
-      'reorderOptions',
-    ]) {
-      expect(methods[name], name).toBeUndefined();
-    }
+    it('row 119 deleteEntry() DELETEs {kind}/{id} with the 409 InUse handled', () => {
+      let code: string | undefined;
+      service.deleteEntry('items', 'i1').subscribe({
+        error: (e: { error: { errors: Record<string, string[]> } }) =>
+          (code = Object.keys(e.error.errors)[0]),
+      });
+      const req = http.expectOne(url('/crm/catalog/items/i1'));
+      expect(req.request.method).toBe('DELETE');
+      expect(req.request.context.get(HANDLED_ERROR_STATUSES)).toContain(409);
+      req.flush(
+        { errors: { 'crm.catalog.InUse': ['in use'] } },
+        { status: 409, statusText: 'Conflict' },
+      );
+      expect(code).toBe('crm.catalog.InUse');
+    });
+
+    it('row 115 attributeOptions() GETs options with includeInactive', () => {
+      let names: string[] = [];
+      service.attributeOptions('a1', true).subscribe((o) => (names = o.map((x) => x.nameEn)));
+      const req = http.expectOne((r) => r.url === url('/crm/catalog/attributes/a1/options'));
+      expect(req.request.method).toBe('GET');
+      expect(req.request.params.get('includeInactive')).toBe('true');
+      req.flush([
+        {
+          id: 'o1',
+          attributeId: 'a1',
+          code: 'm',
+          nameEn: 'Modern',
+          nameAr: 'حديث',
+          sortOrder: 0,
+          isActive: false,
+        },
+      ]);
+      expect(names).toEqual(['Modern']);
+    });
+
+    it('row 116 unmapCategorySpaceType() DELETEs the space-types sub-route, 404 MappingNotFound handled', () => {
+      service.unmapCategorySpaceType('cat-1', 'st-1').subscribe({ error: () => undefined });
+      const req = http.expectOne(url('/crm/catalog/categories/cat-1/space-types/st-1'));
+      expect(req.request.method).toBe('DELETE');
+      expect(req.request.context.get(HANDLED_ERROR_STATUSES)).toEqual([404]);
+      req.flush(
+        { errors: { 'crm.catalog.MappingNotFound': ['x'] } },
+        { status: 404, statusText: 'Not Found' },
+      );
+    });
+
+    it('treeForSpaceType() GETs /tree?spaceTypeId', () => {
+      service.treeForSpaceType('st-1').subscribe();
+      const req = http.expectOne((r) => r.url === url('/crm/catalog/tree'));
+      expect(req.request.params.get('spaceTypeId')).toBe('st-1');
+      req.flush([]);
+    });
   });
 });

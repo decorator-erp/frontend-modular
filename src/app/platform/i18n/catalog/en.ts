@@ -1481,6 +1481,30 @@ export const EN = {
   'mywork.periodCloses': 'Period closes {date}',
   'mywork.nextMeeting': 'Next meeting {date}',
   'mywork.meetingsUpcoming': '{n} upcoming meetings',
+  // crmp C-4: catalog admin edit/activate/delete/options/targeting (contract §2.11, D4).
+  'cat.deleteFailed': 'Could not delete the entry.',
+  'cat.optionsLoadFailed': 'Could not load the options.',
+  'cat.edit': 'Edit',
+  'cat.editEntry': 'Edit catalog entry',
+  'cat.entrySaved': 'Saved',
+  'cat.entryDeleted': 'Deleted',
+  'cat.activated': 'Activated',
+  'cat.deactivated': 'Deactivated',
+  'cat.deleteEntryConfirm': 'Delete "{name}"? This cannot be undone.',
+  'cat.inUseTitle': 'Entry in use',
+  'cat.inUseOffer':
+    '"{name}" is in use, so it can\'t be deleted. Deactivate it instead? It will drop out of pickers but stay in history.',
+  'cat.includeInactive': 'Show inactive options',
+  'cat.noOptions': 'No options yet.',
+  'cat.spaceTypeFilter': 'Space type',
+  'cat.allSpaceTypes': 'All space types',
+  'cat.spaceTypeEmpty': 'No active categories target this space type.',
+  'cat.targetingHint': 'Pick a space type, then map this category to it or unmap it.',
+  'cat.targetedHere': 'Targets the filtered space type',
+  'cat.editAria': 'Edit {name}',
+  'cat.deleteAria': 'Delete {name}',
+  'cat.activateAria': 'Activate {name}',
+  'cat.deactivateAria': 'Deactivate {name}',
 } as const;
 
 /** The key set of record. Every catalog lookup is typed against this. */
