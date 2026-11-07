@@ -27,6 +27,7 @@ describe('SiteListComponent (sites S-2)', () => {
   let api: { list: ReturnType<typeof vi.fn>; create: ReturnType<typeof vi.fn> };
   let modalOpen: ReturnType<typeof vi.fn>;
   let afterClosed: Promise<unknown>;
+  let nav: ReturnType<typeof vi.fn>;
 
   function render(query: Record<string, string> = {}) {
     TestBed.configureTestingModule({
@@ -56,6 +57,7 @@ describe('SiteListComponent (sites S-2)', () => {
         { provide: ToastService, useValue: { show: vi.fn() } },
       ],
     });
+    nav = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
     const fixture = TestBed.createComponent(SiteListComponent);
     fixture.detectChanges();
     return { fixture, el: fixture.nativeElement as HTMLElement };
@@ -102,6 +104,30 @@ describe('SiteListComponent (sites S-2)', () => {
     expect(el.textContent).toContain('Nasr City');
   });
 
+  it('A10: project, status and page live in the URL — read on load, written back (replaceUrl)', async () => {
+    const { fixture, el } = render({ projectId: 'B', status: '2', page: '3' });
+    expect(api.list).toHaveBeenCalledWith(
+      expect.objectContaining({ projectId: 'B', status: 2, pageIndex: 3, pageSize: 25 }),
+    );
+    expect(nav).toHaveBeenLastCalledWith(['/sites'], {
+      queryParams: { projectId: 'B', status: 2, page: 3 },
+      replaceUrl: true,
+    });
+    (el.querySelector('[data-pill="4"] button') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    await Promise.resolve();
+    expect(nav).toHaveBeenLastCalledWith(['/sites'], {
+      queryParams: { projectId: 'B', status: 4, page: null },
+      replaceUrl: true,
+    });
+    // junk in the URL falls back to All / page 1
+    TestBed.resetTestingModule();
+    render({ projectId: 'A', status: '9', page: '-1' });
+    expect(api.list).toHaveBeenCalledWith(
+      expect.objectContaining({ projectId: 'A', status: null, pageIndex: 1, pageSize: 25 }),
+    );
+  });
+
   it('New survey: needs sites.create AND Editor on an open project', () => {
     let { el } = render({ projectId: 'A' });
     expect(el.querySelector('[data-new-survey]')).toBeTruthy();
@@ -121,7 +147,6 @@ describe('SiteListComponent (sites S-2)', () => {
   it('the create modal offers only Editor+ open projects and navigates to the new survey', async () => {
     afterClosed = Promise.resolve('S9');
     const { el } = render({ projectId: 'A' });
-    const nav = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
     (el.querySelector('[data-new-survey] button') as HTMLButtonElement).click();
     const data = modalOpen.mock.calls[0][1].data as SiteUnitDialogData;
     expect(data.projects!.map((p) => p.id)).toEqual(['A']);

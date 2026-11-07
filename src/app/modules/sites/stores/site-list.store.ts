@@ -57,7 +57,15 @@ export class SiteListStore {
   private generation = 0;
 
   /** Load every reachable project, then select `initial` when listed, else the first. */
-  loadProjects(initial: string | null): void {
+  /**
+   * `initial` (and its `status` / `pageIndex`) come from the URL (A10); they apply only when that
+   * project is listed, otherwise the first project opens on All, page 1.
+   */
+  loadProjects(
+    initial: string | null,
+    initialStatus: SiteStatus | null = null,
+    initialPage = 1,
+  ): void {
     this.projectsLoading.set(true);
     this.projectsError.set(null);
     this.projectsApi
@@ -78,8 +86,9 @@ export class SiteListStore {
           const projects = all.filter((p) => !!p.myLevel);
           this.projects.set(projects);
           this.projectsLoading.set(false);
-          const pick = projects.find((p) => p.id === initial) ?? projects[0] ?? null;
-          this.select(pick?.id ?? null);
+          const asked = projects.find((p) => p.id === initial);
+          if (asked) this.select(asked.id, initialStatus, initialPage);
+          else this.select(projects[0]?.id ?? null);
         },
         error: (err: unknown) => {
           this.projectsLoading.set(false);
@@ -88,10 +97,10 @@ export class SiteListStore {
       });
   }
 
-  select(projectId: string | null): void {
+  select(projectId: string | null, status: SiteStatus | null = null, pageIndex = 1): void {
     this.projectId.set(projectId);
-    this.status.set(null);
-    this.pageIndex.set(1);
+    this.status.set(status);
+    this.pageIndex.set(pageIndex);
     this.reload();
   }
 

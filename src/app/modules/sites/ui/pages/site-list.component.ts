@@ -4,7 +4,9 @@ import {
   OnInit,
   TemplateRef,
   computed,
+  effect,
   inject,
+  untracked,
   viewChild,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
@@ -252,8 +254,32 @@ export class SiteListComponent implements OnInit {
     ];
   });
 
+  constructor() {
+    // A10: the picked project, status filter and page live in the URL (Back, refresh, a shared link).
+    effect(() => {
+      const projectId = this.store.projectId();
+      const status = this.store.status();
+      const page = this.store.pageIndex();
+      if (!projectId) return;
+      untracked(
+        () =>
+          void this.router.navigate(['/sites'], {
+            queryParams: { projectId, status, page: page > 1 ? page : null },
+            replaceUrl: true,
+          }),
+      );
+    });
+  }
+
   ngOnInit(): void {
-    this.store.loadProjects(this.route.snapshot.queryParamMap.get('projectId'));
+    const q = this.route.snapshot.queryParamMap;
+    const status = Number(q.get('status'));
+    const page = Number(q.get('page'));
+    this.store.loadProjects(
+      q.get('projectId'),
+      (STATUS_ORDER as readonly number[]).includes(status) ? (status as SiteStatus) : null,
+      Number.isInteger(page) && page >= 1 ? page : 1,
+    );
   }
 
   protected t(key: CatalogKey, params?: Record<string, string | number>): string {
