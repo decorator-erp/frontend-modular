@@ -32,13 +32,21 @@ import { SiteOverviewComponent } from '../detail/site-overview.component';
 import { SiteSpacesComponent } from '../detail/site-spaces.component';
 import { SiteFamiliesComponent } from '../detail/site-families.component';
 import { SiteBoqComponent } from '../detail/site-boq.component';
+import { SiteDocumentsComponent } from '../detail/site-documents.component';
 import {
   SiteUnitDialogComponent,
   type SiteUnitDialogData,
 } from '../detail/site-unit-dialog.component';
 
-/** The tabs built so far; documents lands with S-9. */
-const BUILT_TABS: readonly SiteTab[] = ['overview', 'capture', 'spaces', 'families', 'boq'];
+/** Every tab of spec §6. */
+const BUILT_TABS: readonly SiteTab[] = [
+  'overview',
+  'capture',
+  'spaces',
+  'families',
+  'boq',
+  'documents',
+];
 
 /**
  * sites S-3 / S-4: `/sites/:siteId` — header (code, status, project link, level chip), the actions
@@ -65,6 +73,7 @@ const BUILT_TABS: readonly SiteTab[] = ['overview', 'capture', 'spaces', 'famili
     SiteSpacesComponent,
     SiteFamiliesComponent,
     SiteBoqComponent,
+    SiteDocumentsComponent,
   ],
   template: `
     @if (store.notFound()) {
@@ -252,6 +261,9 @@ const BUILT_TABS: readonly SiteTab[] = ['overview', 'capture', 'spaces', 'famili
           }
           @case ('boq') {
             <app-site-boq />
+          }
+          @case ('documents') {
+            <app-site-documents />
           }
           @default {
             <app-site-overview (editUnit)="editUnit()" />

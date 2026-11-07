@@ -1,7 +1,7 @@
 /**
  * sites: the claim strings of dms `Sites.Contracts/SitesPermissions.cs` (`:31-53`). The platform `PERM`
  * catalog has no `sites` group and the spec allows no edit to it (§6), so the module keeps its own
- * (DEVIATION-20). `project.read_all` is the projects claim the self-approval rule checks.
+ * (DEVIATION-20). `project.read_all` is the projects claim the self-approval rule checks; `documents.*` gate the S-9 actions.
  */
 export const SITE_PERM = {
   read: 'sites.read',
@@ -12,4 +12,7 @@ export const SITE_PERM = {
   delete: 'sites.delete',
   definitionsManage: 'sites.definitions.manage',
   projectReadAll: 'project.read_all',
+  /** S-9 / A1: the project documents the Documents tab reads and uploads to (BF-1). */
+  documentsRead: 'documents.read',
+  documentsUpload: 'documents.upload',
 } as const;

@@ -27,6 +27,8 @@ interface DetailHarness {
   query: BehaviorSubject<ReturnType<typeof convertToParamMap>>;
   spaces: Observable<unknown>;
   catalog: Observable<unknown>;
+  docs: Observable<unknown>;
+  upload: ReturnType<typeof vi.fn>;
 }
 
 function harness(): DetailHarness {
@@ -49,6 +51,8 @@ function harness(): DetailHarness {
     query: new BehaviorSubject(convertToParamMap({})),
     spaces: of([{ id: 'SP1', name: 'Hall', sortOrder: 1, isActive: true }]),
     catalog: of([]),
+    docs: of([{ id: 'D1', fileName: 'hall.jpg', contentType: 'image/jpeg', sizeBytes: 1 }]),
+    upload: vi.fn(() => of('D9')),
   };
 }
 
@@ -123,6 +127,8 @@ function renderDetail(h: DetailHarness, extra: unknown[] = []) {
           spaces: () => h.spaces,
           catalogCategories: () => h.catalog,
           allCatalogItems: () => h.catalog,
+          projectDocuments: () => h.docs,
+          uploadDocument: h.upload,
         },
       },
       {
@@ -618,5 +624,154 @@ describe('SiteDetailComponent — quantities (sites S-8)', () => {
     h.api['boq'] = vi.fn(() => of({ siteId: 'S1', lines: [] }));
     const { el } = renderDetail(h);
     expect(el.querySelector('[data-boq-empty]')).toBeTruthy();
+  });
+});
+
+describe('SiteDetailComponent — documents (sites S-9)', () => {
+  let h: DetailHarness;
+  const link = (id: string, kind: number, recordId: string | null, documentId = 'D1') => ({
+    id,
+    documentId,
+    siteId: recordId ? null : 'S1',
+    recordId,
+    kind,
+    addedById: 'E-add',
+    createdAtUtc: '2026-11-02T08:00:00Z',
+  });
+  beforeEach(() => {
+    h = harness();
+    h.perms.add('documents.read');
+    h.perms.add('documents.upload');
+    h.query.next(convertToParamMap({ tab: 'documents' }));
+    h.site = detail({ recordCounts: [{ moduleId: 'M1', code: 'DOORS', recordCount: 1 }] });
+    h.api['documents'] = vi.fn(() =>
+      of([link('L1', 3, null), link('L2', 1, 'R1', 'D-gone'), link('L3', 3, 'R1')]),
+    );
+    h.api['grouped'] = vi.fn(() =>
+      of({
+        siteId: 'S1',
+        groups: [
+          {
+            spaceId: null,
+            spaceName: 'x',
+            records: [
+              {
+                id: 'R1',
+                moduleId: 'M1',
+                label: 'DO-01',
+                spaceId: null,
+                spaceName: null,
+                catalogItemId: null,
+                sortOrder: 1,
+                note: null,
+              },
+            ],
+          },
+        ],
+      }),
+    );
+    h.api['linkDocument'] = vi.fn(() => of('L9'));
+    h.api['unlinkDocument'] = vi.fn(() => of(undefined));
+  });
+
+  it('groups by kind in enum order (Sketch, Video, Photo) with counts; cards carry file name, subject, adder', () => {
+    const { el } = renderDetail(h);
+    const groups = [...el.querySelectorAll('[data-kind-group]')];
+    expect(groups.map((g) => g.getAttribute('data-kind-group'))).toEqual(['1', '3']);
+    expect(groups[1].querySelector('h3')?.textContent).toContain('Photo · 2');
+    const l1 = el.querySelector('[data-link="L1"]')!;
+    expect(l1.querySelector('[data-file-name]')?.textContent).toContain('hall.jpg');
+    expect(l1.querySelector('[data-subject]')?.textContent).toContain('Whole survey');
+    expect(l1.textContent).toContain('Name E-add');
+    expect(el.querySelector('[data-link="L2"] [data-subject]')?.textContent).toContain(
+      'DOORS · DO-01',
+    );
+    // a document not in the project list → generic name
+    expect(el.querySelector('[data-link="L2"] [data-file-name]')?.textContent).toContain(
+      'Document',
+    );
+    expect(el.querySelector('[data-upload]')).toBeTruthy();
+    expect(el.querySelector('[data-attach]')).toBeTruthy();
+  });
+
+  it('Attach existing → dialog save posts R19 {documentId, kind, recordId}; DocumentAlreadyLinked comes back inline', async () => {
+    const { el } = renderDetail(h);
+    (el.querySelector('[data-attach] button') as HTMLButtonElement).click();
+    const data = h.modalOpen.mock.calls[0][1].data;
+    expect(data.mode).toBe('link');
+    expect(data.documents).toEqual([{ value: 'D1', label: 'hall.jpg' }]);
+    expect(data.subjects.map((o: { label: string }) => o.label)).toEqual([
+      'Whole survey',
+      'DOORS · DO-01',
+    ]);
+    expect(await data.save({ file: null, documentId: 'D1', kind: 3, recordId: 'R1' })).toEqual({
+      ok: true,
+    });
+    expect(h.api['linkDocument']).toHaveBeenCalledWith('S1', {
+      documentId: 'D1',
+      kind: 3,
+      recordId: 'R1',
+    });
+    h.api['linkDocument'].mockReturnValue(
+      throwError(
+        () =>
+          new HttpErrorResponse({
+            status: 409,
+            error: {
+              title: 'sites.DocumentAlreadyLinked',
+              errors: { 'sites.DocumentAlreadyLinked': ['dup'] },
+            },
+          }),
+      ),
+    );
+    const out = await data.save({ file: null, documentId: 'D1', kind: 3, recordId: null });
+    expect(out.ok).toBe(false);
+    expect(out.code).toBe('sites.DocumentAlreadyLinked');
+    expect(out.message).toBeTruthy();
+  });
+
+  it('Upload stores the file in the project documents, then links the new id', async () => {
+    const { el } = renderDetail(h);
+    (el.querySelector('[data-upload] button') as HTMLButtonElement).click();
+    const data = h.modalOpen.mock.calls[0][1].data;
+    expect(data.mode).toBe('upload');
+    const file = new File(['x'], 'a.jpg');
+    expect((await data.save({ file, documentId: null, kind: 1, recordId: null })).ok).toBe(true);
+    expect(h.upload).toHaveBeenCalledWith('P', file);
+    expect(h.api['linkDocument']).toHaveBeenCalledWith('S1', {
+      documentId: 'D9',
+      kind: 1,
+      recordId: null,
+    });
+  });
+
+  it('Detach: danger confirm → DELETE the link', async () => {
+    const { fixture, el } = renderDetail(h);
+    (el.querySelector('[data-link="L1"] [data-detach] button') as HTMLButtonElement).click();
+    await new Promise((r) => setTimeout(r));
+    fixture.detectChanges();
+    expect(h.confirmOpen.mock.calls[0][0].tone).toBe('danger');
+    expect(h.api['unlinkDocument']).toHaveBeenCalledWith('S1', 'L1');
+  });
+
+  it('A1 / BF-1: documents.read 403 → names hidden, Attach hidden, reason shown; no upload claim → Upload hidden with reason', () => {
+    h.docs = throwError(() => new HttpErrorResponse({ status: 403 }));
+    h.perms.delete('documents.upload');
+    const { el } = renderDetail(h);
+    expect(el.querySelector('[data-docs-read-unavailable]')).toBeTruthy();
+    expect(el.querySelector('[data-docs-upload-unavailable]')).toBeTruthy();
+    expect(el.querySelector('[data-attach]')).toBeNull();
+    expect(el.querySelector('[data-upload]')).toBeNull();
+    expect(el.querySelector('[data-link="L1"] [data-file-name]')?.textContent).toContain(
+      'Document',
+    );
+  });
+
+  it('no writes for a viewer or on a submitted survey', () => {
+    h.site = detail({ status: 2 });
+    const { el } = renderDetail(h);
+    expect(el.querySelector('[data-upload]')).toBeNull();
+    expect(el.querySelector('[data-attach]')).toBeNull();
+    expect(el.querySelector('[data-detach]')).toBeNull();
   });
 });

@@ -83,4 +83,29 @@ describe('SiteLookupService (sites A1)', () => {
     http.expectOne(url('/employees/E2')).flush({ id: 'E2', fullName: 'Youssef Kamal' });
     expect(name).toBe('Youssef Kamal');
   });
+
+  it('S-9: GET /projects/{p}/documents (403/404 handled) → id + file name', () => {
+    let rows: unknown;
+    service.projectDocuments('P').subscribe((r) => (rows = r));
+    const req = http.expectOne(url('/projects/P/documents'));
+    expect(req.request.method).toBe('GET');
+    expect(req.request.context.get(HANDLED_ERROR_STATUSES)).toEqual([403, 404]);
+    req.flush([{ id: 'D1', fileName: 'hall.jpg', contentType: 'image/jpeg', fileSizeBytes: 10 }]);
+    expect(rows).toEqual([
+      { id: 'D1', fileName: 'hall.jpg', contentType: 'image/jpeg', sizeBytes: 10 },
+    ]);
+  });
+
+  it('S-9: POST /projects/{p}/documents multipart (part "file", errors handled) → documentId', () => {
+    let id: unknown;
+    const file = new File(['x'], 'hall.jpg', { type: 'image/jpeg' });
+    service.uploadDocument('P', file).subscribe((r) => (id = r));
+    const req = http.expectOne(url('/projects/P/documents'));
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body instanceof FormData).toBe(true);
+    expect((req.request.body as FormData).get('file')).toBe(file);
+    expect(req.request.context.get(HANDLED_ERROR_STATUSES)).toEqual([400, 403, 404, 409, 413]);
+    req.flush({ documentId: 'D9' });
+    expect(id).toBe('D9');
+  });
 });

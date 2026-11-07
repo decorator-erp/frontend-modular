@@ -21,6 +21,14 @@ export interface SiteCatalogEntry {
   isActive: boolean;
 }
 
+/** A project document as the survey's documents tab needs it (`ProjectDocumentResponse`). */
+export interface SiteProjectDocument {
+  id: string;
+  fileName: string;
+  contentType: string;
+  sizeBytes: number;
+}
+
 const s = (o: unknown, k: string) => {
   const v = readField<unknown>(o, k);
   return typeof v === 'string' ? v : '';
@@ -121,6 +129,40 @@ export class SiteLookupService extends ApiService {
       this.names.set(id, cached);
     }
     return cached;
+  }
+
+  /**
+   * S-9 / A1 (DEVIATION-27): `GET /api/projects/{projectId}/documents` (`DocumentEndpoints.cs:57`,
+   * `documents.read`) → id + file name, marked handled(403, 404) so a caller without the claim (BF-1)
+   * gets the fallback, not a global toast. `ProjectDocumentsService.getByProject` takes no HttpContext.
+   */
+  projectDocuments(projectId: string): Observable<SiteProjectDocument[]> {
+    return this.get<unknown>(`/projects/${projectId}/documents`, undefined, {
+      context: handled(403, 404),
+    }).pipe(
+      map((r) =>
+        this.unwrapArray<unknown>(r).map((x) => ({
+          id: s(x, 'id'),
+          fileName: s(x, 'fileName'),
+          contentType: s(x, 'contentType'),
+          sizeBytes: n(x, 'fileSizeBytes') || n(x, 'sizeBytes'),
+        })),
+      ),
+    );
+  }
+
+  /**
+   * S-9 / A1: `POST /api/projects/{projectId}/documents` multipart (`DocumentUploadEndpoints.cs:34`,
+   * `documents.upload`) → 200 `{ documentId }`. The part is named `file`; no Content-Type header (the
+   * browser adds the boundary). Same call as `ProjectDocumentsService.upload`, but with its errors
+   * marked handled: the upload dialog shows them inline.
+   */
+  uploadDocument(projectId: string, file: File): Observable<string> {
+    const form = new FormData();
+    form.append('file', file);
+    return this.post<unknown>(`/projects/${projectId}/documents`, form, {
+      context: handled(400, 403, 404, 409, 413),
+    }).pipe(map((r) => this.unwrapId(r, 'documentId')));
   }
 
   private entry(x: unknown, categoryId: string | null): SiteCatalogEntry {
