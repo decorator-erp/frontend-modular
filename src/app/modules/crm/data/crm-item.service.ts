@@ -121,8 +121,9 @@ export class CrmItemService extends ApiService {
     if (query.projectId) params['projectId'] = query.projectId;
     if (query.periodId) params['periodId'] = query.periodId;
     if (query.status) params['status'] = query.status;
+    // 403 until the client holds requirements.view_own (CrmPortalEndpoints.cs:61-68): shown inline.
     return this.get<unknown>('/crm/portal/requirement-items', params, {
-      context: handled(404),
+      context: handled(403, 404),
     }).pipe(
       map((r) => {
         const v = this.unwrap(r);

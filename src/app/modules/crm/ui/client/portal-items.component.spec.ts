@@ -4,6 +4,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { provideHttpClient } from '@angular/common/http';
 import { of, throwError } from 'rxjs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { HANDLED_ERROR_STATUSES } from '@platform/http/handled-errors';
 import { environment } from '../../../../../environments/environment';
 import { CrmItemService } from '../../data/crm-item.service';
 import { ApprovalState } from '../../model/crm-enums';
@@ -33,6 +34,10 @@ describe('portal items (crmp C-1)', () => {
     expect(r.request.params.get('periodId')).toBe('PE1');
     expect(r.request.params.get('status')).toBe('3');
     expect(r.request.params.get('pageNumber')).toBe('2');
+    // A9: a 403 (no requirements.view_own) is shown inline by the tab, so the global toast skips it
+    expect(r.request.context.get(HANDLED_ERROR_STATUSES)).toEqual(
+      expect.arrayContaining([403, 404]),
+    );
     r.flush({
       items: [{ id: 'I1', title: 't', approvalStatus: 3, decisionComment: 'ok' }],
       totalCount: 1,
