@@ -127,7 +127,7 @@ import {
       @if (store.error(); as message) {
         <pera-alert tone="danger" data-defs-error>
           {{ message }}
-          <pera-button variant="secondary" size="sm" (click)="store.load()">{{
+          <pera-button variant="secondary" size="sm" (click)="store.load(true)">{{
             t('sv.retry')
           }}</pera-button>
         </pera-alert>
@@ -411,7 +411,14 @@ export class SiteDefinitionsComponent {
       edit: (i) => this.editItem(i),
       shape: (i) => this.shapeItem(i),
       toggleActive: (i) =>
-        void this.toggle(() => this.api.setItemActive(i.id, !i.isActive), i.isActive),
+        void this.toggle(
+          () => this.api.setItemActive(i.id, !i.isActive),
+          i.isActive,
+          () => {
+            this.store.itemActiveChanged(i.id);
+            this.store.load();
+          },
+        ),
       remove: (i) => void this.removeItem(i),
       addOption: (i) => this.optionDialog(i, null),
       editOption: (i, o) => this.optionDialog(i, o),
@@ -463,8 +470,12 @@ export class SiteDefinitionsComponent {
   }
 
   /** A5: activate/deactivate an item or option; a refusal shows its catalog message. */
-  private async toggle(call: () => Observable<void>, wasActive: boolean): Promise<void> {
-    const out = await this.store.run(call, wasActive ? 'sv.deactivated' : 'sv.activated');
+  private async toggle(
+    call: () => Observable<void>,
+    wasActive: boolean,
+    after?: () => void,
+  ): Promise<void> {
+    const out = await this.store.run(call, wasActive ? 'sv.deactivated' : 'sv.activated', after);
     if (!out.ok && out.message) this.toast.show({ tone: 'warning', message: out.message });
   }
 

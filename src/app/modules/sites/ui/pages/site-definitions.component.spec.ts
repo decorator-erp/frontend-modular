@@ -266,6 +266,42 @@ describe('SiteDefinitionsComponent (sites S-10)', () => {
     expect(h.toast.show).toHaveBeenCalledWith(expect.objectContaining({ tone: 'warning' }));
   });
 
+  it('A6: a write re-reads the lists, not every usage / schema; an item toggle re-reads only its modules', async () => {
+    h = (TestBed.resetTestingModule(), setup({ tab: 'items' }));
+    const fx = TestBed.createComponent(SiteDefinitionsComponent);
+    fx.detectChanges();
+    // first load: one usage per item, one schema per ACTIVE module (M1)
+    expect(h.api['usage']).toHaveBeenCalledTimes(3);
+    expect(h.api['schema']).toHaveBeenCalledTimes(1);
+    (
+      fx.nativeElement.querySelector('[data-item="kind"] [data-open-item]') as HTMLButtonElement
+    ).click();
+    const d = ((h.drawerOpen.mock.calls[0] as unknown[])[1] as { data: SiteItemDrawerData }).data;
+    const store = fx.componentInstance['store'];
+    const kind = store.items()!.find((i) => i.code === 'kind')!;
+    const usage = h.api['usage'].mock.calls.length; // + the drawer's own refresh
+    d.toggleOption(kind, {
+      id: 'O1',
+      code: 'single',
+      nameEn: 'Single',
+      nameAr: 'مفرد',
+      sortOrder: 1,
+      isActive: true,
+    });
+    await tick();
+    await tick();
+    expect(h.api['modules']).toHaveBeenCalledTimes(2);
+    expect(h.api['usage']).toHaveBeenCalledTimes(usage);
+    expect(h.api['schema']).toHaveBeenCalledTimes(1);
+    // an item's active flag changes the field count of the modules it is linked to (D2 lists active only)
+    d.toggleActive(kind);
+    await tick();
+    await tick();
+    expect(h.api['schema']).toHaveBeenCalledTimes(2);
+    expect(h.api['usage']).toHaveBeenCalledTimes(usage);
+    expect(store.usage()['I-free']).toBeTruthy();
+  });
+
   it('options: add → D20 under the item, edit → D13 under /options/{id}', async () => {
     h = (TestBed.resetTestingModule(), setup({ tab: 'items' }));
     const fx = TestBed.createComponent(SiteDefinitionsComponent);
@@ -336,6 +372,22 @@ describe('SiteModuleDetailComponent (sites S-10)', () => {
       { itemId: 'I-secret', sortOrder: 3 },
       { itemId: 'I-finish', sortOrder: 4 },
     ]);
+  });
+
+  it('B7: a 409 ConcurrencyConflict on the module page re-reads its schema, not the lists-page usage', async () => {
+    h = setup({}, { moduleId: 'M1' });
+    const fx = TestBed.createComponent(SiteModuleDetailComponent);
+    fx.detectChanges();
+    const schema = h.api['schema'].mock.calls.length;
+    h.api['reorderItems'].mockReturnValue(conflict('sites.ConcurrencyConflict'));
+    const cmp = fx.componentInstance as unknown as {
+      move: (m: SiteModule, i: number, d: number) => void;
+    };
+    cmp.move(mod({}), 0, 1);
+    await tick();
+    await tick();
+    expect(h.api['schema'].mock.calls.length).toBe(schema + 1);
+    expect(h.api['usage']).not.toHaveBeenCalled();
   });
 
   it('live preview renders only the visible fields, read-only', () => {

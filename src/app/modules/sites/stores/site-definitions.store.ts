@@ -1,6 +1,16 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { Injectable, inject, signal } from '@angular/core';
-import { Observable, catchError, forkJoin, firstValueFrom, of } from 'rxjs';
+import {
+  Observable,
+  catchError,
+  forkJoin,
+  firstValueFrom,
+  from,
+  map,
+  mergeMap,
+  of,
+  toArray,
+} from 'rxjs';
 import { ToastService } from '@platform/feedback/toast.service';
 import { injectReloadOnConflict } from '@platform/http/concurrency';
 import { ErrorHandlerService, friendly } from '@platform/http/error-handler.service';
@@ -22,6 +32,9 @@ import type {
  * module page. Every write goes through `run()`: one in flight at a time, 409 ConcurrencyConflict
  * reloads, anything else comes back as an inline outcome with the catalog message.
  */
+/** A6: per-row detail reads in flight at once. */
+const DETAIL_CONCURRENCY = 4;
+
 @Injectable()
 export class SiteDefinitionsStore {
   private readonly api = inject(SiteDefinitionService);
@@ -42,13 +55,27 @@ export class SiteDefinitionsStore {
   readonly schema = signal<SiteModuleSchema | null | 'inactive'>(null);
 
   private generation = 0;
+  /** What a write's default `after` and a conflict reload: the lists page or the module page. */
+  private reloadAll: (full: boolean) => void = (full) => this.load(full);
 
   setIncludeInactive(on: boolean): void {
     this.includeInactive.set(on);
     this.load();
   }
 
-  load(): void {
+  /**
+   * The lists page. Usage (D15) and field counts (D2) have no batch read on the backend
+   * (SiteDefinitionEndpoints.cs:43,164), so they are read per row — at most `DETAIL_CONCURRENCY` at a
+   * time — and kept: a later `load()` reads only rows it has not seen (A6). `full` drops them first
+   * (Retry, a 409 conflict). Writes on this page change neither links nor captured values; an item's
+   * active flag changes its modules' field counts, which `itemActiveChanged` re-reads.
+   */
+  load(full = false): void {
+    this.reloadAll = (f) => this.load(f);
+    if (full) {
+      this.usage.set({});
+      this.fieldCounts.set({});
+    }
     const gen = ++this.generation;
     this.error.set(null);
     const inactive = this.includeInactive();
@@ -73,6 +100,7 @@ export class SiteDefinitionsStore {
 
   /** The module page: modules (inactive included, to find this one) + items + its schema. */
   loadModule(moduleId: string): void {
+    this.reloadAll = () => this.loadModule(moduleId);
     this.includeInactive.set(true);
     const gen = ++this.generation;
     this.error.set(null);
@@ -109,26 +137,57 @@ export class SiteDefinitionsStore {
   }
 
   private loadFieldCounts(modules: SiteModule[]): void {
-    const active = modules.filter((m) => m.isActive);
-    if (!active.length) return this.fieldCounts.set({});
-    forkJoin(active.map((m) => this.api.schema(m.code).pipe(catchError(() => of(null))))).subscribe(
-      (schemas) => {
-        const out: Record<string, number | null> = {};
-        active.forEach((m, i) => (out[m.id] = schemas[i]?.fields.length ?? null));
-        this.fieldCounts.set(out);
-      },
+    const have = this.fieldCounts();
+    const missing = modules.filter((m) => m.isActive && !(m.id in have));
+    this.readEach(
+      missing,
+      (m) => this.api.schema(m.code).pipe(map((s) => s.fields.length)),
+      (m) => m.id,
+      this.fieldCounts,
     );
   }
 
   private loadUsage(items: SiteItem[]): void {
-    if (!items.length) return this.usage.set({});
-    forkJoin(items.map((i) => this.api.usage(i.id).pipe(catchError(() => of(null))))).subscribe(
-      (list) => {
-        const out: Record<string, SiteItemUsage | null> = {};
-        items.forEach((i, k) => (out[i.id] = list[k]));
-        this.usage.set(out);
-      },
+    const have = this.usage();
+    const missing = items.filter((i) => !(i.id in have));
+    this.readEach(
+      missing,
+      (i) => this.api.usage(i.id),
+      (i) => i.id,
+      this.usage,
     );
+  }
+
+  /** A6: an item was (de)activated — its modules' field counts change (D2 lists active items). */
+  itemActiveChanged(itemId: string): void {
+    const linked = new Set((this.usage()[itemId]?.modules ?? []).map((m) => m.moduleId));
+    this.fieldCounts.update((c) => {
+      const next = { ...c };
+      for (const id of linked) delete next[id];
+      return next;
+    });
+  }
+
+  private readEach<R, V>(
+    rows: R[],
+    read: (row: R) => Observable<V>,
+    key: (row: R) => string,
+    into: { update(fn: (m: Record<string, V | null>) => Record<string, V | null>): void },
+  ): void {
+    if (!rows.length) return;
+    from(rows)
+      .pipe(
+        mergeMap(
+          (r) =>
+            read(r).pipe(
+              catchError(() => of(null)),
+              map((v) => [key(r), v] as const),
+            ),
+          DETAIL_CONCURRENCY,
+        ),
+        toArray(),
+      )
+      .subscribe((pairs) => into.update((m) => ({ ...m, ...Object.fromEntries(pairs) })));
   }
 
   /** One item's usage, fresh (the drawer). */
@@ -147,7 +206,7 @@ export class SiteDefinitionsStore {
   async run<T>(
     call: () => Observable<T>,
     successKey: CatalogKey | null,
-    after: (value: T) => void = () => this.load(),
+    after: (value: T) => void = () => this.reloadAll(false),
   ): Promise<WriteOutcome<T>> {
     if (this.busy()) return { ok: false, message: null };
     this.busy.set(true);
@@ -157,7 +216,9 @@ export class SiteDefinitionsStore {
       after(value);
       return { ok: true, value };
     } catch (err) {
-      if (this.reloadOnConflict(err, () => this.load())) return { ok: false, reloaded: true };
+      // B7: the module page reloads itself (schema included), the lists page drops its caches.
+      if (this.reloadOnConflict(err, () => this.reloadAll(true)))
+        return { ok: false, reloaded: true };
       const outcome = failureOutcome(err, (e) => this.errors.parse(e));
       // `Request.NameEn` → `nameEn`: a FluentValidation path names the form field.
       const fieldErrors: Record<string, string> = {};
