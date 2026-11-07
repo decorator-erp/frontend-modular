@@ -122,25 +122,27 @@ export const PROJECT_ACTIONS = {
     anyOf: [PERM.stageTasks.manageGates],
     endpoint: 'GateEndpoints.cs:50',
   },
-  // R1-F7: delete and satisfy take either gates claim (RequireAnyPermission, GateEndpoints.cs:66,75).
+  // Review B1 (supersedes R1-F7): the route takes either gates claim (RequireAnyPermission, GateEndpoints.cs:66,75),
+  // but the handler then needs the owner's claim: stage gate → stages.manage_gates, task gate →
+  // stage_tasks.manage_gates (GateConditionHandlers.cs:294,355; GateOwners.MayManage :401-404).
   'stageGate.delete': {
     level: 'Manager',
-    anyOf: [PERM.stages.manageGates, PERM.stageTasks.manageGates],
+    anyOf: [PERM.stages.manageGates],
     endpoint: 'GateEndpoints.cs:60',
   },
   'taskGate.delete': {
     level: 'Manager',
-    anyOf: [PERM.stages.manageGates, PERM.stageTasks.manageGates],
+    anyOf: [PERM.stageTasks.manageGates],
     endpoint: 'GateEndpoints.cs:60',
   },
   'stageGate.satisfy': {
     level: 'Manager',
-    anyOf: [PERM.stages.manageGates, PERM.stageTasks.manageGates],
+    anyOf: [PERM.stages.manageGates],
     endpoint: 'GateEndpoints.cs:68',
   },
   'taskGate.satisfy': {
     level: 'Manager',
-    anyOf: [PERM.stages.manageGates, PERM.stageTasks.manageGates],
+    anyOf: [PERM.stageTasks.manageGates],
     endpoint: 'GateEndpoints.cs:68',
   },
   'task.create': {

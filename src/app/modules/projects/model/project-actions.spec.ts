@@ -143,10 +143,17 @@ describe('crmp review loop 1 (R1-F6, R1-F7)', () => {
     expect(canProjectAction(completed, 'member.add', canAll)).toBe(true);
   });
 
-  it('R1-F7: gate delete/satisfy accept either gates claim', () => {
+  it('B1 (supersedes R1-F7): gate delete/satisfy need the claim of the gate owner (GateConditionHandlers.cs:294,355,401-404)', () => {
     const onlyTaskGates = (p: string) => p === PERM.stageTasks.manageGates;
-    expect(canProjectAction(open('Manager'), 'stageGate.satisfy', onlyTaskGates)).toBe(true);
-    expect(canProjectAction(open('Manager'), 'stageGate.delete', onlyTaskGates)).toBe(true);
+    const onlyStageGates = (p: string) => p === PERM.stages.manageGates;
+    expect(canProjectAction(open('Manager'), 'stageGate.satisfy', onlyTaskGates)).toBe(false);
+    expect(canProjectAction(open('Manager'), 'stageGate.delete', onlyTaskGates)).toBe(false);
     expect(canProjectAction(open('Manager'), 'stageGate.create', onlyTaskGates)).toBe(false);
+    expect(canProjectAction(open('Manager'), 'taskGate.satisfy', onlyTaskGates)).toBe(true);
+    expect(canProjectAction(open('Manager'), 'taskGate.delete', onlyTaskGates)).toBe(true);
+    expect(canProjectAction(open('Manager'), 'taskGate.satisfy', onlyStageGates)).toBe(false);
+    expect(canProjectAction(open('Manager'), 'taskGate.delete', onlyStageGates)).toBe(false);
+    expect(canProjectAction(open('Manager'), 'stageGate.satisfy', onlyStageGates)).toBe(true);
+    expect(canProjectAction(open('Manager'), 'stageGate.delete', onlyStageGates)).toBe(true);
   });
 });
