@@ -673,7 +673,11 @@ export class TaskDetailComponent implements OnInit, OnDestroy {
 
   readonly canManageTasks = computed(() => this.perms.can(PERM.stageTasks.manage));
   /** Planned start is editable whenever the caller can manage tasks (backend accepts it on update). */
-  readonly canEditStart = computed(() => this.canManageTasks());
+  /**
+   * crmp review R1-F8: the planned start is read-only. The task PUT (`TaskRequest`, dms
+   * `TaskEndpoints.cs:228`) has no start-date field, so an edit would toast success and save nothing.
+   */
+  readonly canEditStart = computed(() => false);
 
   readonly loading = signal(true);
   readonly failed = signal(false);
