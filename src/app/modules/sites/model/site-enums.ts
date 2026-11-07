@@ -59,10 +59,10 @@ export const UNIT_POSITION_LABEL = labels('sv.e.UnitPosition', UnitPosition);
 export const BUILDING_KIND_LABEL = labels('sv.e.BuildingKind', BuildingKind);
 export const ELEVATOR_STATUS_LABEL = labels('sv.e.ElevatorStatus', ElevatorStatus);
 
-/** Status → design-system badge tone (prototype `statusChip`, `sites.js:226`). */
-export const SITE_STATUS_TONE: Record<SiteStatus, 'neutral' | 'warning' | 'success' | 'danger'> = {
+/** Status → `pera-status-badge` tone (prototype `statusChip`, `sites.js:226`). */
+export const SITE_STATUS_TONE: Record<SiteStatus, 'neutral' | 'pending' | 'success' | 'error'> = {
   1: 'neutral',
-  2: 'warning',
+  2: 'pending',
   3: 'success',
-  4: 'danger',
+  4: 'error',
 };

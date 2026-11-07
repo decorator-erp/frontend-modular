@@ -10,6 +10,7 @@ import { ClientsListComponent } from '@modules/clients';
 import { AuditLogComponent } from '@modules/audit';
 import { libraryRoutes } from '@modules/library';
 import { financeRoutes } from '@modules/finance';
+import { sitesRoutes } from '@modules/sites';
 import { projectsRoutes } from '@modules/projects';
 import { NotificationsPageComponent } from '@modules/notifications';
 import { CatalogAdminStore, crmPages } from '@modules/crm';
@@ -131,7 +132,8 @@ describe('app.routes — the 004 shell skeleton', () => {
   // +1 audit, +4 library, +1 notifications. 007: +1 finance. 008: +8 projects. 009: +1 admin/catalog,
   // +1 crm, +1 approvals, +1 crm/designer/projects/:projectId. sow (NEW-FEATURE-1): +1
   // projects/:id/scope-of-work. crmp: +3 projects/:id/members, /tasks, /teams (P-1, P-3, P-7).
-  const EXPECTED_SHELL_CHILDREN_AT_009 = 34;
+  // sites (NEW-FEATURE-1): +1 sites loadChildren
+  const EXPECTED_SHELL_CHILDREN_AT_009 = 35;
 
   it('has exactly the expected number of real (non-stub) shell children', () => {
     expect(shellChildren()).toHaveLength(EXPECTED_SHELL_CHILDREN_AT_009);
@@ -283,5 +285,15 @@ describe('app.routes — the 009 CRM routes', () => {
       breadcrumb: 'route.designProfile',
     });
     expect(route.loadComponent).toBe(crmPages.designProfile);
+  });
+});
+
+describe('app.routes — sites (NEW-FEATURE-1)', () => {
+  it("one '' loadChildren entry before '403' resolves sitesRoutes (lazy)", async () => {
+    const children = shellChildren();
+    const entry = children.find((r) => r.path === '' && r.loadChildren);
+    expect(entry).toBeTruthy();
+    expect(children.indexOf(entry!)).toBeLessThan(children.findIndex((r) => r.path === '403'));
+    expect(await entry!.loadChildren!()).toBe(sitesRoutes);
   });
 });
