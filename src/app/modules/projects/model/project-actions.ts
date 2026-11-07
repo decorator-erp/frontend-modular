@@ -122,24 +122,25 @@ export const PROJECT_ACTIONS = {
     anyOf: [PERM.stageTasks.manageGates],
     endpoint: 'GateEndpoints.cs:50',
   },
+  // R1-F7: delete and satisfy take either gates claim (RequireAnyPermission, GateEndpoints.cs:66,75).
   'stageGate.delete': {
     level: 'Manager',
-    anyOf: [PERM.stages.manageGates],
+    anyOf: [PERM.stages.manageGates, PERM.stageTasks.manageGates],
     endpoint: 'GateEndpoints.cs:60',
   },
   'taskGate.delete': {
     level: 'Manager',
-    anyOf: [PERM.stageTasks.manageGates],
+    anyOf: [PERM.stages.manageGates, PERM.stageTasks.manageGates],
     endpoint: 'GateEndpoints.cs:60',
   },
   'stageGate.satisfy': {
     level: 'Manager',
-    anyOf: [PERM.stages.manageGates],
+    anyOf: [PERM.stages.manageGates, PERM.stageTasks.manageGates],
     endpoint: 'GateEndpoints.cs:68',
   },
   'taskGate.satisfy': {
     level: 'Manager',
-    anyOf: [PERM.stageTasks.manageGates],
+    anyOf: [PERM.stages.manageGates, PERM.stageTasks.manageGates],
     endpoint: 'GateEndpoints.cs:68',
   },
   'task.create': {
@@ -274,7 +275,12 @@ export function isProjectClosed(p: Pick<ProjectGateInput, 'status' | 'isActive'>
   return !p.isActive || CLOSED_STATUSES.includes(p.status);
 }
 
+// crmp review R1-F6: comments are not refused on a closed project (no closed check in dms
+// TaskCommentHandlers.cs), so they stay open with the project housekeeping.
 const OPEN_ON_CLOSED: ReadonlySet<ProjectAction> = new Set<ProjectAction>([
+  'comment.add',
+  'comment.edit',
+  'comment.delete',
   'project.update',
   'project.delete',
   'project.status',
@@ -314,6 +320,8 @@ export function canProjectAction(
   if (!rule.anyOf.some((p) => can(p))) return false;
   if (!levelAtLeast(gate.myLevel, rule.level)) return false;
   if (!OPEN_ON_CLOSED.has(action) && isProjectClosed(gate)) return false;
+  // R1-F6: member writes on an inactive project answer 404 (ProjectMemberHandlers.cs:33-49).
+  if (action.startsWith('member.') && !gate.isActive) return false;
   return true;
 }
 

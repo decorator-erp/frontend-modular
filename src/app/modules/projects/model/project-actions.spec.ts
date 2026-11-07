@@ -125,3 +125,25 @@ describe('rules that do not depend on the level', () => {
     expect(canChangeComment(open('Editor'), comment, 'E2', canAll, 'comment.delete')).toBe(true);
   });
 });
+
+describe('crmp review loop 1 (R1-F6, R1-F7)', () => {
+  it('R1-F6: comments stay open on a closed project; member writes close on an inactive one', () => {
+    const onHold: ProjectGateInput = { myLevel: 'Editor', status: 'OnHold', isActive: true };
+    expect(canProjectAction(onHold, 'comment.add', canAll)).toBe(true);
+    const inactive: ProjectGateInput = {
+      myLevel: 'Manager',
+      status: 'InProgress',
+      isActive: false,
+    };
+    expect(canProjectAction(inactive, 'member.add', canAll)).toBe(false);
+    const completed: ProjectGateInput = { myLevel: 'Manager', status: 'Completed', isActive: true };
+    expect(canProjectAction(completed, 'member.add', canAll)).toBe(true);
+  });
+
+  it('R1-F7: gate delete/satisfy accept either gates claim', () => {
+    const onlyTaskGates = (p: string) => p === PERM.stageTasks.manageGates;
+    expect(canProjectAction(open('Manager'), 'stageGate.satisfy', onlyTaskGates)).toBe(true);
+    expect(canProjectAction(open('Manager'), 'stageGate.delete', onlyTaskGates)).toBe(true);
+    expect(canProjectAction(open('Manager'), 'stageGate.create', onlyTaskGates)).toBe(false);
+  });
+});

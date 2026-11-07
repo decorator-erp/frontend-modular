@@ -23,7 +23,11 @@ async function typescript(): Promise<typeof TS> {
 }
 
 const ROOT = (globalThis as unknown as { process: { cwd(): string } }).process.cwd();
-const DATA = `${ROOT}/src/app/modules/projects/data`;
+// R1-F10: approvals/data too — it held the last PUT /project-stages|tasks/{id}/reject.
+const DATA_DIRS = [
+  `${ROOT}/src/app/modules/projects/data`,
+  `${ROOT}/src/app/modules/approvals/data`,
+];
 
 /** Old route prefixes and the row that removed or moved each one. */
 const REMOVED: readonly [RegExp, string][] = [
@@ -54,24 +58,25 @@ async function urlLiterals(): Promise<{ file: string; url: string }[]> {
   const fs = await nodeImport<NodeFs>('node:fs');
   const ts = await typescript();
   const out: { file: string; url: string }[] = [];
-  for (const file of fs
-    .readdirSync(DATA)
-    .filter((f) => f.endsWith('.ts') && !f.endsWith('.spec.ts'))) {
-    const code = fs.readFileSync(`${DATA}/${file}`, 'utf8');
-    const src = ts.createSourceFile(file, code, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
-    const visit = (node: TS.Node): void => {
-      if (
-        ts.isStringLiteral(node) ||
-        ts.isNoSubstitutionTemplateLiteral(node) ||
-        ts.isTemplateExpression(node)
-      ) {
-        const text = node.getText(src).slice(1, -1);
-        if (text.startsWith('/')) out.push({ file, url: text });
-        return;
-      }
-      ts.forEachChild(node, visit);
-    };
-    visit(src);
+  for (const dir of DATA_DIRS) {
+    const files = fs.readdirSync(dir).filter((f) => f.endsWith('.ts') && !f.endsWith('.spec.ts'));
+    for (const file of files) {
+      const code = fs.readFileSync(`${dir}/${file}`, 'utf8');
+      const src = ts.createSourceFile(file, code, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+      const visit = (node: TS.Node): void => {
+        if (
+          ts.isStringLiteral(node) ||
+          ts.isNoSubstitutionTemplateLiteral(node) ||
+          ts.isTemplateExpression(node)
+        ) {
+          const text = node.getText(src).slice(1, -1);
+          if (text.startsWith('/')) out.push({ file, url: text });
+          return;
+        }
+        ts.forEachChild(node, visit);
+      };
+      visit(src);
+    }
   }
   return out;
 }

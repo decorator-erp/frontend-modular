@@ -36,12 +36,6 @@ export class ApprovalService extends ApiService {
     );
   }
 
-  /** Reject the stage/task that owns an approval gate. */
-  reject(ownerKind: string, ownerId: string, reason?: string): Observable<unknown> {
-    const path =
-      ownerKind === 'Stage'
-        ? `/project-stages/${ownerId}/reject`
-        : `/project-tasks/${ownerId}/reject`;
-    return this.put(path, { reason: reason ?? null });
-  }
+  // crmp review R1-F10: `reject(ownerKind, ownerId)` is removed — it had no caller and PUT
+  // `/project-stages/{id}/reject` / `/project-tasks/{id}/reject` no longer exist (gap table P-77, P-105).
 }

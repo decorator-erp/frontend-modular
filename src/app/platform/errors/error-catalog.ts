@@ -881,7 +881,7 @@ export const ERROR_MESSAGES_AR: Record<string, string> = {
   'sites.ItemLocked':
     'لهذا البند قيم مسجّلة؛ لم يعد بالإمكان تغيير رمزه أو نوع بياناته أو وحدته أو سماحيته.',
   'sites.ItemNotFound': 'بند المعاينة غير موجود.',
-  'sites.LabelTaken': 'هذا الرمز مستخدم لسجل آخر في هذه الوحدة.',
+  'sites.LabelTaken': 'هذا الاسم المختصر مستخدم لسجل آخر في هذه الوحدة.',
   'sites.LimitNotLegalForType': 'هذا الحد غير صالح لنوع بيانات البند.',
   'sites.LinkNotFound': 'البند غير مرتبط بهذه الوحدة.',
   'sites.ModuleInUse': 'لهذه الوحدة سجلات مسجّلة ولا يمكن حذفها. يمكنك تعطيلها بدلًا من ذلك.',
@@ -894,7 +894,7 @@ export const ERROR_MESSAGES_AR: Record<string, string> = {
   'sites.ProjectNotFound': 'المشروع غير موجود.',
   'sites.RecordNotFound': 'سجل المعاينة غير موجود.',
   'sites.SelfApprovalNotAllowed': 'لا يعتمد المعاينة من أنشأها أو أرسلها.',
-  'sites.SiteLocked': 'أُرسلت هذه المعاينة للاعتماد؛ لا يمكن تغيير سجلاتها.',
+  'sites.SiteLocked': 'لا تتغير إلا المعاينات المسودة أو المرفوضة؛ هذه المعاينة مقفلة.',
   'sites.SpaceNotFound': 'الفراغ غير موجود.',
   'sites.SpaceNotInProject': 'هذا الفراغ يتبع مشروعًا آخر.',
   'sites.SystemDefinitionNotRenameable': 'لا يمكن إعادة تسمية تعريفات النظام.',

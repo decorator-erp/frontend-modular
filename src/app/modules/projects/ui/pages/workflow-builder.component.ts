@@ -228,8 +228,8 @@ export class WorkflowBuilderComponent {
       tone: 'danger',
     });
     if (!ok) return;
-    const projectId = this.project()?.id ?? '';
-    this.stagesApi.remove(projectId, id).subscribe({
+    // R1-F11: the stage carries its own project id.
+    this.stagesApi.remove(stage.projectId, id).subscribe({
       next: () => {
         this.feedback.show({ tone: 'success', message: 'Stage deleted' });
         if (this.selectedId() === id) this.selectedId.set(null);
