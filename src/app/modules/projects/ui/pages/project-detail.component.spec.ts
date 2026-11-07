@@ -670,12 +670,21 @@ describe('ProjectDetailComponent', () => {
 
     it('before the scope is confirmed: no New stage, the backend reason and the scope link instead', () => {
       scopeStatus = ScopeOfWorkStatus.Draft;
+      data = { ...data, stages: [] };
       granted = new Set([...ALL, PERM.stages.manage]);
       const el = render().nativeElement as HTMLElement;
       expect(el.querySelector('[data-new-stage]')).toBeNull();
       expect(el.querySelector('[data-scope-not-confirmed]')?.textContent).toContain(
         'scope of work is confirmed',
       );
+    });
+
+    it('B3 (CP-4): a project that already has stages (built from a template) takes New stage without a confirmed scope (ManualStageHandlers.cs:63-71)', () => {
+      scopeStatus = ScopeOfWorkStatus.Draft;
+      granted = new Set([...ALL, PERM.stages.manage]);
+      const el = render().nativeElement as HTMLElement;
+      expect(el.querySelector('[data-new-stage]')).toBeTruthy();
+      expect(el.querySelector('[data-scope-not-confirmed]')).toBeNull();
     });
   });
 

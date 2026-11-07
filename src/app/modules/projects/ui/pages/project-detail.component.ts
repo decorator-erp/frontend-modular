@@ -214,6 +214,15 @@ export class ProjectDetailComponent implements OnInit {
    * no stages (`projects.stages.WorkflowNotSupported`). `null` until the scope is read.
    */
   readonly scopeConfirmed = signal<boolean | null>(null);
+  /**
+   * Review B3 (CP-4): the backend also takes a project that already has stages (one built from a
+   * template) as settled — `Confirmed || ProjectStages.Any` (ManualStageHandlers.cs:63-71).
+   */
+  readonly stagesSettled = computed<boolean | null>(() => {
+    const confirmed = this.scopeConfirmed();
+    if (this.stages().length > 0) return true;
+    return confirmed;
+  });
 
   /** Permission AND level AND open project (canProjectAction), read through the shared store. */
   can(action: ProjectAction): boolean {
@@ -222,7 +231,7 @@ export class ProjectDetailComponent implements OnInit {
   }
 
   readonly canAddStage = computed(
-    () => this.isStage() && this.scopeConfirmed() === true && this.can('stage.create'),
+    () => this.isStage() && this.stagesSettled() === true && this.can('stage.create'),
   );
   /** The backend's own reason (`projects.stages.ScopeNotConfirmed`) from the error catalog, EN or AR. */
   readonly scopeNotConfirmedMessage = computed(() =>
@@ -230,7 +239,7 @@ export class ProjectDetailComponent implements OnInit {
   );
   /** A Manager on an unconfirmed Stage project sees why "New stage" is missing, with the SoW link. */
   readonly scopeBlocksStages = computed(
-    () => this.isStage() && this.scopeConfirmed() === false && this.can('stage.create'),
+    () => this.isStage() && this.stagesSettled() === false && this.can('stage.create'),
   );
   readonly activeStage = computed<ProjectStage | null>(
     () => this.stages().find((s) => s.status === 'Active') ?? null,
