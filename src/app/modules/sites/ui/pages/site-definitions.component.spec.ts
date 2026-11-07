@@ -318,6 +318,7 @@ describe('SiteModuleDetailComponent (sites S-10)', () => {
     expect(preview.querySelectorAll('[data-preview-field]')).toHaveLength(2);
     expect(preview.textContent).toContain('width_cm (cm)');
     expect(preview.textContent).not.toContain('secret');
+    expect(el.querySelector('[data-act="delete"]')?.textContent).toContain('Delete');
   });
 
   it('Attach offers active unlinked items only → D7; AlreadyLinked inline', async () => {

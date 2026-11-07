@@ -168,8 +168,12 @@ import {
                       }
                     </td>
                     <td class="p-2">
-                      <div dir="ltr" class="text-start">{{ m.nameEn }}</div>
-                      <div class="fs-label text-text-muted" dir="rtl">{{ m.nameAr }}</div>
+                      <div>
+                        <bdi>{{ m.nameEn }}</bdi>
+                      </div>
+                      <div class="fs-label text-text-muted">
+                        <bdi>{{ m.nameAr }}</bdi>
+                      </div>
                     </td>
                     <td class="p-2 text-end" data-fields-count>{{ fieldCount(m) }}</td>
                     <td class="p-2">
@@ -223,8 +227,12 @@ import {
                       }
                     </td>
                     <td class="p-2">
-                      <div dir="ltr" class="text-start">{{ i.nameEn }}</div>
-                      <div class="fs-label text-text-muted" dir="rtl">{{ i.nameAr }}</div>
+                      <div>
+                        <bdi>{{ i.nameEn }}</bdi>
+                      </div>
+                      <div class="fs-label text-text-muted">
+                        <bdi>{{ i.nameAr }}</bdi>
+                      </div>
                     </td>
                     <td class="p-2">
                       <pera-badge tone="info">{{ t(typeKey(i.dataType)) }}</pera-badge>
@@ -463,7 +471,7 @@ export class SiteDefinitionsComponent {
     const ok = await this.confirm.open({
       title: this.t('sv.deleteItemQ', { c: i.code }),
       body: this.t('sv.deleteDefBody'),
-      confirmLabel: this.t('sv.remove'),
+      confirmLabel: this.t('sv.delete'),
       cancelLabel: this.t('sv.cancel'),
       tone: 'danger',
     });

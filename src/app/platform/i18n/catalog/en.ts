@@ -1936,6 +1936,8 @@ export const EN = {
   'sv.detachedModule': 'detached',
   'sv.allLinked': 'Every active item is already linked.',
   'sv.yesPreview': 'Yes',
+  // sites parity — Delete label
+  'sv.delete': 'Delete',
 } as const;
 
 /** The key set of record. Every catalog lookup is typed against this. */

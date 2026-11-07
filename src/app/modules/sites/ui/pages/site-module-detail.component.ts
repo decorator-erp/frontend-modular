@@ -113,7 +113,7 @@ import { attachForm, moduleForm } from '../definitions/site-def-forms';
               (click)="remove(m)"
               data-act="delete"
             >
-              {{ t('sv.remove') }}
+              {{ t('sv.delete') }}
             </pera-button>
           </div>
         </div>
@@ -267,12 +267,9 @@ import { attachForm, moduleForm } from '../definitions/site-def-forms';
                     />
                   }
                   @case (types.Bool) {
-                    <pera-select
-                      [options]="boolOptions()"
-                      placeholder="—"
-                      [disabled]="true"
-                      [ngModel]="null"
-                    />
+                    <pera-checkbox [disabled]="true" [ngModel]="false">{{
+                      t('sv.yes')
+                    }}</pera-checkbox>
                   }
                   @default {
                     <pera-input
@@ -324,13 +321,6 @@ export class SiteModuleDetailComponent {
     return [...s.fields].sort((a, b) => a.sortOrder - b.sortOrder);
   });
   protected readonly preview = computed(() => (this.fields() ?? []).filter((f) => f.isVisible));
-  protected readonly boolOptions = computed<SelectOption[]>(() => {
-    this.catalog.locale();
-    return [
-      { value: true, label: this.t('sv.yes') },
-      { value: false, label: this.t('sv.no') },
-    ];
-  });
 
   protected readonly backCta = {
     label: this.catalog.t('sv.backToDefs'),
@@ -424,7 +414,7 @@ export class SiteModuleDetailComponent {
     const ok = await this.confirm.open({
       title: this.t('sv.deleteModuleQ', { c: m.code }),
       body: this.t('sv.deleteDefBody'),
-      confirmLabel: this.t('sv.remove'),
+      confirmLabel: this.t('sv.delete'),
       cancelLabel: this.t('sv.cancel'),
       tone: 'danger',
     });

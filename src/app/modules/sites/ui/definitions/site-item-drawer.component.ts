@@ -134,7 +134,7 @@ export interface SiteItemDrawerData {
               (click)="data.remove(i)"
               data-item-delete
             >
-              {{ t('sv.remove') }}
+              {{ t('sv.delete') }}
             </pera-button>
             <span class="flex-1"></span>
             <pera-button [disabled]="busy()" (click)="data.shape(i)" data-item-shape>{{

@@ -1849,4 +1849,6 @@ export const AR: Partial<Record<CatalogKey, string>> = {
   'sv.detachedModule': 'مفكوك',
   'sv.allLinked': 'كل العناصر النشطة مربوطة بالفعل.',
   'sv.yesPreview': 'نعم',
+  // sites parity — Delete label
+  'sv.delete': 'حذف',
 };
