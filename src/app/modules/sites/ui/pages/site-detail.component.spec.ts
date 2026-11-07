@@ -772,6 +772,30 @@ describe('SiteDetailComponent — documents (sites S-9)', () => {
     });
   });
 
+  it('A4: uploaded but not linked → a retry with the same file links the kept id, no second upload', async () => {
+    const { el } = renderDetail(h);
+    (el.querySelector('[data-upload] button') as HTMLButtonElement).click();
+    const data = h.modalOpen.mock.calls[0][1].data;
+    const file = new File(['x'], 'a.jpg');
+    h.api['linkDocument'].mockReturnValueOnce(
+      throwError(
+        () =>
+          new HttpErrorResponse({ status: 409, error: { errors: { 'sites.SiteLocked': ['x'] } } }),
+      ),
+    );
+    const first = await data.save({ file, documentId: null, kind: 1, recordId: null });
+    expect(first.ok).toBe(false);
+    expect(first.message).toBeTruthy();
+    expect((await data.save({ file, documentId: null, kind: 1, recordId: null })).ok).toBe(true);
+    expect(h.upload).toHaveBeenCalledTimes(1);
+    expect(h.api['linkDocument']).toHaveBeenCalledTimes(2);
+    expect(h.api['linkDocument']).toHaveBeenLastCalledWith('S1', {
+      documentId: 'D9',
+      kind: 1,
+      recordId: null,
+    });
+  });
+
   it('Detach: danger confirm → DELETE the link', async () => {
     const { fixture, el } = renderDetail(h);
     (el.querySelector('[data-link="L1"] [data-detach] button') as HTMLButtonElement).click();

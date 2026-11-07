@@ -352,6 +352,9 @@ export class SiteDocumentsComponent {
     this.modal.open(SiteDocumentDialogComponent, { size: 'md', data });
   }
 
+  /** Files this page uploaded to the project documents, by the dialog's `File` (A4). */
+  private readonly uploaded = new WeakMap<File, string>();
+
   /** Upload (when a file is given) then link (R19). */
   async save(req: SiteDocumentDialogRequest): Promise<WriteOutcome> {
     const site = this.detail.site();
@@ -359,9 +362,13 @@ export class SiteDocumentsComponent {
     this.busy.set(true);
     let documentId = req.documentId;
     try {
-      if (req.file) {
+      // A4: a file already uploaded whose link failed is not uploaded again; the retry links its id.
+      const kept = req.file ? this.uploaded.get(req.file) : undefined;
+      if (kept) documentId = kept;
+      else if (req.file) {
         try {
           documentId = await firstValueFrom(this.lookup.uploadDocument(site.projectId, req.file));
+          if (documentId) this.uploaded.set(req.file, documentId);
         } catch (err) {
           if (err instanceof HttpErrorResponse && err.status === 403)
             this.uploadForbidden.set(true);
