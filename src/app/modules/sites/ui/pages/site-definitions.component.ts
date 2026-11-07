@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
+import type { Observable } from 'rxjs';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import {
@@ -410,18 +411,12 @@ export class SiteDefinitionsComponent {
       edit: (i) => this.editItem(i),
       shape: (i) => this.shapeItem(i),
       toggleActive: (i) =>
-        void this.store.run(
-          () => this.api.setItemActive(i.id, !i.isActive),
-          i.isActive ? 'sv.deactivated' : 'sv.activated',
-        ),
+        void this.toggle(() => this.api.setItemActive(i.id, !i.isActive), i.isActive),
       remove: (i) => void this.removeItem(i),
       addOption: (i) => this.optionDialog(i, null),
       editOption: (i, o) => this.optionDialog(i, o),
-      toggleOption: (i, o) =>
-        void this.store.run(
-          () => this.api.setOptionActive(o.id, !o.isActive),
-          o.isActive ? 'sv.deactivated' : 'sv.activated',
-        ),
+      toggleOption: (_i, o) =>
+        void this.toggle(() => this.api.setOptionActive(o.id, !o.isActive), o.isActive),
     };
     this.drawerRef = this.drawer.open(SiteItemDrawerComponent, { data });
   }
@@ -465,6 +460,12 @@ export class SiteDefinitionsComponent {
           : this.store.run(() => this.api.addOption(i.id, v), 'sv.saved'),
       ),
     );
+  }
+
+  /** A5: activate/deactivate an item or option; a refusal shows its catalog message. */
+  private async toggle(call: () => Observable<void>, wasActive: boolean): Promise<void> {
+    const out = await this.store.run(call, wasActive ? 'sv.deactivated' : 'sv.activated');
+    if (!out.ok && out.message) this.toast.show({ tone: 'warning', message: out.message });
   }
 
   private async removeItem(i: SiteItem): Promise<void> {

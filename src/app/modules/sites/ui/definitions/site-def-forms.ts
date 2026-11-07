@@ -351,7 +351,13 @@ export function shapeForm(
         options: dataTypeOptions(t),
       },
       { key: 'unit', label: t('sv.unit'), kind: 'text', dir: 'ltr' },
-      { key: 'tolerance', label: t('sv.tolerance'), kind: 'number', hint: t('sv.toleranceHint') },
+      {
+        key: 'tolerance',
+        label: t('sv.tolerance'),
+        kind: 'number',
+        hint: t('sv.toleranceHint'),
+        show: isNumber,
+      },
     ],
     initial: {
       code: item.code,
@@ -363,9 +369,15 @@ export function shapeForm(
       const out: Record<string, string> = {};
       checkCode(v, t, out);
       if (str(v['unit']).length > DEF_UNIT_MAX) out['unit'] = t('sv.err.unitLong');
-      const tol = numOrNull(v['tolerance']);
+      const tol = isNumber(v) ? numOrNull(v['tolerance']) : null;
       if (tol !== null && (!Number.isFinite(tol) || tol < 0))
         out['tolerance'] = t('sv.err.tolerance');
+      // D17 keeps the stored limits and re-checks them against the new type
+      // (SiteItem.ChangeCapturedShape → ValidateLimits, SiteItem.cs:129-147,239-272).
+      const numberLimits = item.minValue !== null || item.maxValue !== null;
+      const textLimits = item.maxLength !== null || !!item.regexPattern;
+      if ((!isNumber(v) && numberLimits) || (!isText(v) && textLimits))
+        out['dataType'] = t('sv.err.shapeLimits');
       return out;
     },
     save: (v) =>
@@ -373,7 +385,7 @@ export function shapeForm(
         code: str(v['code']),
         dataType: Number(v['dataType']) as SiteItemDataType,
         unit: str(v['unit']) || null,
-        tolerance: numOrNull(v['tolerance']) ?? 0,
+        tolerance: isNumber(v) ? (numOrNull(v['tolerance']) ?? 0) : 0,
       }),
   };
 }

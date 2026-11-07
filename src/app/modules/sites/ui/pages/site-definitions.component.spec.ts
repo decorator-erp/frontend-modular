@@ -237,6 +237,35 @@ describe('SiteDefinitionsComponent (sites S-10)', () => {
     expect(h.toast.show).toHaveBeenCalledWith(expect.objectContaining({ tone: 'warning' }));
   });
 
+  it('A5: a refused item or option toggle shows the catalog message', async () => {
+    h = (TestBed.resetTestingModule(), setup({ tab: 'items' }));
+    const fx = TestBed.createComponent(SiteDefinitionsComponent);
+    fx.detectChanges();
+    (
+      fx.nativeElement.querySelector('[data-item="kind"] [data-open-item]') as HTMLButtonElement
+    ).click();
+    const d = ((h.drawerOpen.mock.calls[0] as unknown[])[1] as { data: SiteItemDrawerData }).data;
+    const kind = fx.componentInstance['store'].items()!.find((i) => i.code === 'kind')!;
+    h.api['setItemActive'].mockReturnValue(conflict('sites.ItemNotFound', 404));
+    d.toggleActive(kind);
+    await tick();
+    await tick();
+    expect(h.toast.show).toHaveBeenCalledWith(expect.objectContaining({ tone: 'warning' }));
+    h.toast.show.mockClear();
+    h.api['setOptionActive'].mockReturnValue(conflict('sites.OptionNotFound', 404));
+    d.toggleOption(kind, {
+      id: 'O1',
+      code: 'single',
+      nameEn: 'Single',
+      nameAr: 'مفرد',
+      sortOrder: 1,
+      isActive: true,
+    });
+    await tick();
+    await tick();
+    expect(h.toast.show).toHaveBeenCalledWith(expect.objectContaining({ tone: 'warning' }));
+  });
+
   it('options: add → D20 under the item, edit → D13 under /options/{id}', async () => {
     h = (TestBed.resetTestingModule(), setup({ tab: 'items' }));
     const fx = TestBed.createComponent(SiteDefinitionsComponent);

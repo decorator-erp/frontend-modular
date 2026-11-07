@@ -155,6 +155,28 @@ describe('site definition forms (sites S-10, spec §5)', () => {
     expect(shapeForm(t as never, item(), false, ok).note).toBe('sv.note.shapeFree');
   });
 
+  it('A5: change shape shows tolerance for Number only, sends 0 otherwise, and refuses a type the stored limits do not fit', async () => {
+    const save = vi.fn(ok);
+    const f = shapeForm(t as never, item(), false, save);
+    const tol = f.fields.find((x) => x.key === 'tolerance')!;
+    expect(tol.show?.({ ...f.initial })).toBe(true);
+    expect(tol.show?.({ ...f.initial, dataType: 2 })).toBe(false);
+    // stored min/max (10..400) are kept by D17 (SiteItem.ChangeCapturedShape) → LimitNotLegalForType
+    expect(f.validate({ ...f.initial, dataType: 2 })['dataType']).toBe('sv.err.shapeLimits');
+    const bare = shapeForm(t as never, item({ minValue: null, maxValue: null }), false, save);
+    expect(bare.validate({ ...bare.initial, dataType: 2 })).toEqual({});
+    await bare.save({ ...bare.initial, dataType: 2 });
+    expect(save).toHaveBeenCalledWith({ code: 'width_cm', dataType: 2, unit: 'cm', tolerance: 0 });
+    // Text limits (maxLength / regex) do not fit any other type either
+    const text = shapeForm(
+      t as never,
+      item({ dataType: 2, minValue: null, maxValue: null, tolerance: 0, maxLength: 20 }),
+      false,
+      save,
+    );
+    expect(text.validate({ ...text.initial, dataType: 3 })['dataType']).toBe('sv.err.shapeLimits');
+  });
+
   it('attach needs an item', () => {
     const f = attachForm(t as never, 'DOORS', [{ value: 'I1', label: 'x' }], ok);
     expect(f.validate(f.initial)).toEqual({ itemId: 'sv.err.pickItem' });

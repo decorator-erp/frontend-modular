@@ -1943,6 +1943,9 @@ export const EN = {
   'sv.discardBody': 'The grid has edits that are not saved yet. They will be lost.',
   'sv.discard': 'Discard',
   'sv.keepEditing': 'Keep editing',
+  // review A5: change shape vs stored limits
+  'sv.err.shapeLimits':
+    'This item still has limits that do not fit this type. Clear them in Edit first.',
 } as const;
 
 /** The key set of record. Every catalog lookup is typed against this. */

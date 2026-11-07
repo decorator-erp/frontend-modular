@@ -1856,4 +1856,6 @@ export const AR: Partial<Record<CatalogKey, string>> = {
   'sv.discardBody': 'في الجدول تعديلات لم تُحفظ بعد، وستضيع.',
   'sv.discard': 'تجاهل',
   'sv.keepEditing': 'متابعة التعديل',
+  // review A5: change shape vs stored limits
+  'sv.err.shapeLimits': 'لهذا البند حدود لا تناسب هذا النوع. امسحها من «تعديل» أولًا.',
 };
