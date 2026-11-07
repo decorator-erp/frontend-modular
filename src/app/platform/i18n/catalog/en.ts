@@ -1422,6 +1422,9 @@ export const EN = {
   'route.projectTasks': 'Tasks',
   // crmp P-5: sub-tasks (contract §2.19 #132-135).
   'psub.optional': 'Optional',
+  // crmp P-7: stage teams page (contract §2.19 #138-140).
+  'pteam.title': 'Stage teams',
+  'route.projectTeams': 'Teams',
 } as const;
 
 /** The key set of record. Every catalog lookup is typed against this. */

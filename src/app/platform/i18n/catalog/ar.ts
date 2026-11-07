@@ -1347,4 +1347,7 @@ export const AR: Partial<Record<CatalogKey, string>> = {
   'route.projectTasks': 'المهام',
   // crmp P-5: sub-tasks (contract §2.19 #132-135).
   'psub.optional': 'اختيارية',
+  // crmp P-7: stage teams page (contract §2.19 #138-140).
+  'pteam.title': 'فرق المراحل',
+  'route.projectTeams': 'الفرق',
 };

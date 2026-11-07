@@ -12,6 +12,8 @@ import { FormsModule } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { catchError, forkJoin, of } from 'rxjs';
+import { ProjectAccessStore } from '../stores/project-access.store';
+import type { ProjectAction } from '../model/project-actions';
 import { StageTeam, StageTeamsService } from '../data/stage-teams.service';
 import { EmployeeService } from '@modules/people';
 import { ProjectStageService } from '../data/project-stage.service';
@@ -233,7 +235,7 @@ const NEW_TEAM_TAB = '__new__';
         description="Create a team to assign a department to a stage."
       />
       <div class="mt-3 text-center">
-        <ng-container *peraCan="manageStageTeams">
+        <ng-container *peraCan="teamCan('team.create') ? manageStageTeams : []">
           <pera-button variant="primary" iconStart="plus" (click)="openNewTeam()"
             >New team</pera-button
           >
@@ -256,7 +258,7 @@ const NEW_TEAM_TAB = '__new__';
                 Team head · {{ team.departmentName }}
               </div>
             </div>
-            <ng-container *peraCan="manageStageTeams">
+            <ng-container *peraCan="teamCan('team.head') ? manageStageTeams : []">
               <button
                 type="button"
                 (click)="changeHead(team)"
@@ -273,7 +275,7 @@ const NEW_TEAM_TAB = '__new__';
                 <h3 class="m-0 fs-body font-semibold">Members</h3>
                 <span class="font-mono fs-label text-text-muted">{{ team.memberCount }}</span>
               </div>
-              <ng-container *peraCan="manageStageTeams">
+              <ng-container *peraCan="teamCan('team.addMember') ? manageStageTeams : []">
                 <button
                   type="button"
                   (click)="addMember(team)"
@@ -309,7 +311,11 @@ const NEW_TEAM_TAB = '__new__';
                     }
                   </div>
                 </div>
-                <ng-container *peraCan="manageStageTeams">
+                <ng-container
+                  *peraCan="
+                    teamCan('team.removeMember') || teamCan('team.role') ? manageStageTeams : []
+                  "
+                >
                   <button
                     type="button"
                     class="border border-border bg-bg px-2 py-1 font-mono fs-label uppercase text-text-secondary cursor-pointer hover:bg-surface-muted transition-colors"
@@ -341,6 +347,15 @@ const NEW_TEAM_TAB = '__new__';
 })
 export class ProjectTeamsComponent {
   readonly projectId = input.required<string>();
+  private readonly access = inject(ProjectAccessStore);
+
+  /**
+   * crmp P-7: team writes need `stage_teams.manage` AND the Manager level AND an open project
+   * (contract §2.17.2, #138-140); the `teams.*` refusals arrive as catalog messages.
+   */
+  teamCan(action: ProjectAction): boolean {
+    return this.access.can(this.projectId(), action);
+  }
 
   private readonly api = inject(StageTeamsService);
   private readonly errors = inject(ErrorHandlerService);
@@ -364,13 +379,16 @@ export class ProjectTeamsComponent {
 
   readonly tabDefs = computed<TabDef[]>(() => [
     ...this.teams().map((t) => ({ id: t.id, label: `${t.departmentName} (${t.memberCount})` })),
-    { id: NEW_TEAM_TAB, label: '+ New team', capability: this.manageStageTeams },
+    ...(this.teamCan('team.create')
+      ? [{ id: NEW_TEAM_TAB, label: '+ New team', capability: this.manageStageTeams }]
+      : []),
   ]);
 
   constructor() {
     effect(() => {
       const id = this.projectId();
       if (!id) return;
+      this.access.ensure(id);
       this.load(id);
     });
   }

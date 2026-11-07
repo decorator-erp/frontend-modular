@@ -96,4 +96,12 @@ export const projectsRoutes: Routes = [
     loadComponent: () =>
       import('./ui/tasks/project-tasks-page.component').then((m) => m.ProjectTasksPageComponent),
   },
+  // crmp P-7: the project's stage teams (the project page's "Manage team" already links here).
+  {
+    path: 'projects/:id/teams',
+    canActivate: [PermissionGuard],
+    data: { permission: PERM.stages.read, breadcrumb: 'route.projectTeams' },
+    loadComponent: () =>
+      import('./ui/teams/project-teams-page.component').then((m) => m.ProjectTeamsPageComponent),
+  },
 ];

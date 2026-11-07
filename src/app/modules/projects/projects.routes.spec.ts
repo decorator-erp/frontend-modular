@@ -32,6 +32,7 @@ describe('projectsRoutes', () => {
       'projects/:id/scope-of-work',
       'projects/:id/members',
       'projects/:id/tasks',
+      'projects/:id/teams',
     ]);
   });
 
@@ -72,7 +73,7 @@ describe('projectsRoutes', () => {
     const crumbs = projectsRoutes
       .map((r) => r.data?.['breadcrumb'] as string | undefined)
       .filter((c): c is string => !!c);
-    expect(crumbs.length).toBe(10); // 8 + crmp P-1 members, P-3 tasks
+    expect(crumbs.length).toBe(11); // 8 + crmp P-1 members, P-3 tasks, P-7 teams
     for (const crumb of crumbs) {
       expect(isCatalogKey(crumb)).toBe(true);
       if (!isCatalogKey(crumb)) continue;
