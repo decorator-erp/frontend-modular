@@ -5,6 +5,14 @@ import { ApiService } from '@platform/http/api.service';
 import { handled } from '@platform/http/handled-errors';
 import type { CrmArtifactLink, CrmArtifactSubject } from '../model';
 
+/** One literal route per subject, so each URL is greppable against the backend route list. */
+const LIST_PATH: Record<CrmArtifactSubject, (id: string) => string> = {
+  brief: (id) => `/crm/artifacts/by-brief/${id}`,
+  space: (id) => `/crm/artifacts/by-space/${id}`,
+  'requirement-item': (id) => `/crm/artifacts/by-requirement-item/${id}`,
+  meeting: (id) => `/crm/artifacts/by-meeting/${id}`,
+};
+
 /** The backend's default and maximum page (`CrmArtifactLists.MaxRows`, contract §2.12). */
 export const ARTIFACT_MAX_PAGE_SIZE = 200;
 
@@ -26,7 +34,7 @@ export class CrmArtifactService extends ApiService {
     pageSize: number,
   ): Observable<CrmArtifactLink[]> {
     return this.get<unknown>(
-      `/crm/artifacts/by-${subject}/${subjectId}`,
+      LIST_PATH[subject](subjectId),
       { pageNumber, pageSize },
       { context: handled(403, 404) },
     ).pipe(map((r) => this.unwrapArray<unknown>(r).map((l) => this.normalizeLink(l))));
