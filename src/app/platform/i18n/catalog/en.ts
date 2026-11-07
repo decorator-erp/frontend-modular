@@ -1420,6 +1420,8 @@ export const EN = {
   'pt.summary': '{done}/{total} sub-tasks · {comments} comments · {gates} gates satisfied',
   'projects.tasksLink': 'Tasks',
   'route.projectTasks': 'Tasks',
+  // crmp P-5: sub-tasks (contract §2.19 #132-135).
+  'psub.optional': 'Optional',
 } as const;
 
 /** The key set of record. Every catalog lookup is typed against this. */

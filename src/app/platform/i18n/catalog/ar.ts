@@ -1345,4 +1345,6 @@ export const AR: Partial<Record<CatalogKey, string>> = {
   'pt.summary': '{done}/{total} مهام فرعية · {comments} تعليقات · {gates} بوابات مستوفاة',
   'projects.tasksLink': 'المهام',
   'route.projectTasks': 'المهام',
+  // crmp P-5: sub-tasks (contract §2.19 #132-135).
+  'psub.optional': 'اختيارية',
 };

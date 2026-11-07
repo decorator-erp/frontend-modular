@@ -5,8 +5,10 @@ import { ErrorHandlerService, friendly } from '@platform/http/error-handler.serv
 import { ToastService } from '@platform/feedback/toast.service';
 import { PERM } from '@platform/permissions';
 import { CanDirective } from '@platform/permissions';
-import { PermissionsService } from '@platform/permissions';
 import { ProjectSubTask } from '../../model/project.model';
+import type { ProjectAction } from '../../model/project-actions';
+import { ProjectAccessStore } from '../../stores/project-access.store';
+import { CatalogService } from '@platform/i18n/catalog.service';
 import { ConfirmService, ModalService } from '@ds';
 import { SubtaskFormDialogComponent, SubtaskFormDialogData } from './subtask-form-dialog.component';
 
@@ -103,14 +105,25 @@ import { SubtaskFormDialogComponent, SubtaskFormDialogData } from './subtask-for
             class="inline-flex items-center fs-micro font-semibold tracking-[0.03em] px-1.5 py-0.5 border border-warning bg-warning-soft text-warning"
             >REQUIRED</span
           >
+        } @else {
+          <!-- crmp P-5: only required sub-tasks block the task's completion (tasks.SubTasksIncomplete). -->
+          <span
+            class="inline-flex items-center fs-micro px-1.5 py-0.5 border border-border-soft text-text-muted"
+            data-optional
+            >{{ catalog.t('psub.optional') }}</span
+          >
         }
         <span
           class="opacity-0 group-hover:opacity-100 flex items-center gap-1.5 font-mono fs-micro text-text-muted uppercase transition-opacity"
         >
-          <ng-container *peraCan="manageTasks">
+          <ng-container *peraCan="can('subtask.update') ? manageTasks : []">
             <button type="button" class="hover:text-accent" (click)="openEdit(sub)">Edit</button>
             <span class="text-border">·</span>
-            <button type="button" class="hover:text-danger" (click)="remove(sub)">Delete</button>
+            @if (!sub.isDone && can('subtask.delete')) {
+              <button type="button" class="hover:text-danger" (click)="remove(sub)" data-delete>
+                Delete
+              </button>
+            }
           </ng-container>
         </span>
       </div>
@@ -120,7 +133,7 @@ import { SubtaskFormDialogComponent, SubtaskFormDialogData } from './subtask-for
       </p>
     }
     <!-- Create — opens the DMS Forms sub-task dialog (CreateProjectSubTaskRequest) -->
-    <ng-container *peraCan="manageTasks">
+    <ng-container *peraCan="can('subtask.create') ? manageTasks : []">
       <div class="px-4 py-2.5">
         <button
           type="button"
@@ -155,7 +168,8 @@ export class SubtasksPanelComponent implements OnInit {
   private readonly toast = inject(ToastService);
   private readonly confirm = inject(ConfirmService);
   private readonly modal = inject(ModalService);
-  private readonly permissions = inject(PermissionsService);
+  private readonly access = inject(ProjectAccessStore);
+  protected readonly catalog = inject(CatalogService);
 
   readonly manageTasks = PERM.stageTasks.manage;
   readonly subtasks = signal<ProjectSubTask[]>([]);
@@ -171,9 +185,17 @@ export class SubtasksPanelComponent implements OnInit {
     return total ? Math.round((this.doneCount() / total) * 100) : 0;
   }
 
-  /** Mirrors the *peraCan="manageTasks" gate so the leading box is interactive only when permitted. */
+  /**
+   * crmp P-5: sub-task writes are Editor-level (contract §2.17.2) and need their route claim
+   * (create/update/delete: stage_tasks.manage; complete/reopen: manage or complete) AND an open project.
+   */
+  can(action: ProjectAction): boolean {
+    return this.access.can(this.projectId(), action);
+  }
+
+  /** The leading box toggles done/reopen; interactive only when the caller may do that. */
   canManage(): boolean {
-    return this.permissions.can(this.manageTasks);
+    return this.can('subtask.complete') || this.can('subtask.reopen');
   }
 
   ngOnInit(): void {
