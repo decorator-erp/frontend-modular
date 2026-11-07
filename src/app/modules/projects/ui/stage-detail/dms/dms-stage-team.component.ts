@@ -53,6 +53,7 @@ interface TeamMember {
   `,
 })
 export class DmsStageTeamComponent implements OnInit {
+  readonly projectId = input.required<string>();
   readonly stageId = input.required<string>();
 
   private readonly teamsApi = inject(StageTeamsService);
@@ -76,7 +77,7 @@ export class DmsStageTeamComponent implements OnInit {
 
   ngOnInit(): void {
     this.teamsApi
-      .getByProjectStage(this.stageId())
+      .getByProjectStage(this.projectId(), this.stageId())
       .pipe(catchError(() => of([])))
       .subscribe((teams) => {
         const seen = new Set<string>();

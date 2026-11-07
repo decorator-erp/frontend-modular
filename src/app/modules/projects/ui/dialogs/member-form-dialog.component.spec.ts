@@ -8,8 +8,8 @@ import { ToastService } from '@platform/feedback/toast.service';
 import { PERA_MODAL_DATA, PeraModalRef } from '@ds';
 
 describe('MemberFormDialogComponent', () => {
-  let added: { stageTeamId: string; employeeId: string; role: string } | null;
-  let roleChanged: { memberId: string; role: string } | null;
+  let added: { projectId: string; stageTeamId: string; employeeId: string; role: string } | null;
+  let roleChanged: { projectId: string; memberId: string; role: string } | null;
   let closedWith: unknown;
   const modalRef = {
     close: (r: unknown) => {
@@ -30,12 +30,17 @@ describe('MemberFormDialogComponent', () => {
           useValue: {
             getByProject: () =>
               of([{ id: 'team1', departmentName: 'Engineering', memberCount: 2 }]),
-            addMember: (stageTeamId: string, employeeId: string, role: string) => {
-              added = { stageTeamId, employeeId, role };
+            addMember: (
+              projectId: string,
+              stageTeamId: string,
+              employeeId: string,
+              role: string,
+            ) => {
+              added = { projectId, stageTeamId, employeeId, role };
               return of(undefined);
             },
-            changeMemberRole: (memberId: string, role: string) => {
-              roleChanged = { memberId, role };
+            changeMemberRole: (projectId: string, memberId: string, role: string) => {
+              roleChanged = { projectId, memberId, role };
               return of(undefined);
             },
           },
@@ -68,7 +73,12 @@ describe('MemberFormDialogComponent', () => {
     const c = make({ mode: 'create', projectId: 'p1', stageTeamId: 'team1' });
     c.form.patchValue({ employeeId: 'e1', role: 'Lead' });
     c.submit();
-    expect(added).toEqual({ stageTeamId: 'team1', employeeId: 'e1', role: 'Lead' });
+    expect(added).toEqual({
+      projectId: 'p1',
+      stageTeamId: 'team1',
+      employeeId: 'e1',
+      role: 'Lead',
+    });
     expect(closedWith).toBe(true);
   });
 
@@ -77,7 +87,7 @@ describe('MemberFormDialogComponent', () => {
     expect(c.isEdit).toBe(true);
     c.form.patchValue({ role: 'Reviewer' });
     c.submit();
-    expect(roleChanged).toEqual({ memberId: 'm9', role: 'Reviewer' });
+    expect(roleChanged).toEqual({ projectId: 'p1', memberId: 'm9', role: 'Reviewer' });
     expect(added).toBeNull();
   });
 

@@ -195,7 +195,7 @@ export class NewTeamModalComponent {
     if (!stageId || !departmentId || this.submitting()) return;
     this.submitting.set(true);
     this.errorMessage.set('');
-    this.teamsApi.create(stageId, departmentId).subscribe({
+    this.teamsApi.create(this.data.projectId, stageId, departmentId).subscribe({
       next: () => this.ref.close(true),
       error: (err: HttpErrorResponse) => {
         this.submitting.set(false);
@@ -443,7 +443,7 @@ export class ProjectTeamsComponent {
       })
       .afterClosed();
     if (!result) return;
-    this.api.changeHead(team.id, result.employeeId).subscribe({
+    this.api.changeHead(this.projectId(), team.id, result.employeeId).subscribe({
       next: () => this.reload(),
       error: (err: HttpErrorResponse) => {
         // stage_teams.HeadRequired / NotAuthorizedToManage per api-docs/08.
@@ -487,7 +487,7 @@ export class ProjectTeamsComponent {
       tone: 'danger',
     });
     if (!ok) return;
-    this.api.removeMember(memberId).subscribe({
+    this.api.removeMember(this.projectId(), memberId).subscribe({
       next: () => this.reload(),
       error: (err: HttpErrorResponse) =>
         this.toast.show({ tone: 'danger', message: friendly(this.errors.parse(err)) }),

@@ -551,7 +551,7 @@ type TaskFilter = 'all' | RollupStatus;
               </ng-container>
 
               <ng-container *peraCan="canRead">
-                <app-dms-stage-team [stageId]="s.id" />
+                <app-dms-stage-team [projectId]="projectId()" [stageId]="s.id" />
               </ng-container>
 
               <!-- CRM stage-rail panels (feature 004) -->
@@ -792,7 +792,7 @@ export class DmsStageDetailComponent implements OnInit, OnDestroy {
   /** Resolve the stage owner (the stage-team head) for the Details card + Edit modal. */
   private loadTeams(): void {
     this.teamsApi
-      .getByProjectStage(this.stageId())
+      .getByProjectStage(this.projectId(), this.stageId())
       .pipe(catchError(() => of([])))
       .subscribe((teams) => {
         const owning = teams.find((t) => t.headId) ?? null;
@@ -945,8 +945,8 @@ export class DmsStageDetailComponent implements OnInit, OnDestroy {
     if (!employeeId || employeeId === this.ownerId()) return;
     const teamId = this.ownerTeamId();
     const call = teamId
-      ? this.teamsApi.changeHead(teamId, employeeId)
-      : this.teamsApi.createStandalone(this.stageId(), employeeId);
+      ? this.teamsApi.changeHead(this.projectId(), teamId, employeeId)
+      : this.teamsApi.createStandalone(this.projectId(), this.stageId(), employeeId);
     this.ownerId.set(employeeId); // optimistic — resolves the name immediately
     call.subscribe({
       next: () => {
