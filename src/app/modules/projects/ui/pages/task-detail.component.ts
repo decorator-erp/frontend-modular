@@ -28,7 +28,6 @@ import { ErrorHandlerService, friendly } from '@platform/http/error-handler.serv
 import { ToastService } from '@platform/feedback/toast.service';
 import { ProjectTask, TaskDetails, TaskPriority } from '../../model/project.model';
 import { PermissionsService } from '@platform/permissions';
-import { PERM } from '@platform/permissions';
 import { formatShortDate } from '@shared/ui/status';
 import { EmployeeService } from '@modules/people';
 import {

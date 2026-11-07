@@ -13,8 +13,6 @@ import { Observable } from 'rxjs';
 import { ProjectTaskService } from '../../data/project-task.service';
 import { ErrorHandlerService, friendly } from '@platform/http/error-handler.service';
 import { ToastService } from '@platform/feedback/toast.service';
-import { PERM } from '@platform/permissions';
-import { CanDirective } from '@platform/permissions';
 import { ProjectTask } from '../../model/project.model';
 import type { ProjectAction } from '../../model/project-actions';
 import { ProjectAccessStore } from '../../stores/project-access.store';
