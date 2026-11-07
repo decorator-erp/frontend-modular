@@ -83,8 +83,8 @@ describe('ProjectService', () => {
     });
   });
 
-  describe('getByClient (008b #1) — GET /api/projects, filtered on clientId client-side', () => {
-    it("lists the first 100 visible projects and keeps only the client's", () => {
+  describe('getByClient (crmp A-2, gap table E8) — GET /api/projects?clientId=', () => {
+    it('sends clientId to the server and keeps every returned row (ProjectEndpoints.cs:26)', () => {
       let ids: string[] = [];
       service.getByClient('c1').subscribe((r) => (ids = r.map((p) => p.id)));
 
@@ -95,19 +95,17 @@ describe('ProjectService', () => {
           r.params.get('pageNumber') === '1' &&
           r.params.get('pageSize') === '100',
       );
-      expect(call.request.params.has('clientId')).toBe(false);
+      expect(call.request.params.get('clientId')).toBe('c1');
       call.flush({
         items: [
           { id: 'p1', clientId: 'c1' },
-          { id: 'p2', clientId: 'c2' },
           { id: 'p3', clientId: 'c1' },
         ],
         pageNumber: 1,
         pageSize: 100,
-        totalCount: 3,
+        totalCount: 2,
         totalPages: 1,
       });
-
       expect(ids).toEqual(['p1', 'p3']);
     });
   });

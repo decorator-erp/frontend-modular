@@ -54,13 +54,12 @@ export class ProjectService extends ApiService {
   }
 
   /**
-   * A client's projects (008b #1). `GET /api/projects` has no `clientId` filter (008b N-2), so this
-   * reads the caller's first `pageSize` visible projects and filters on `clientId` here — a
-   * client's projects beyond that first page are missing.
+   * A client's projects (008b #1): `GET /api/projects?clientId=` (crmp A-2; gap table E8, dms
+   * `ProjectEndpoints.cs:26`). Was a client-side filter over the first page.
    */
   getByClient(clientId: string, pageSize = 100): Observable<Project[]> {
-    return this.get<unknown>('/projects', { pageNumber: 1, pageSize }).pipe(
-      map((response) => this.normalizePaged(response).items.filter((p) => p.clientId === clientId)),
+    return this.get<unknown>('/projects', { pageNumber: 1, pageSize, clientId }).pipe(
+      map((response) => this.normalizePaged(response).items),
     );
   }
 

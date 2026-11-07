@@ -17,6 +17,8 @@ export interface ProjectSearchQuery {
   status?: ProjectStatus;
   workflowType?: WorkflowType;
   clientId?: string;
+  /** Only the projects the caller owns or is a member of (`mine=true`). */
+  mine?: boolean;
   sortBy?: string;
   sortDir?: 'asc' | 'desc';
   page?: number;
@@ -49,20 +51,21 @@ export class ProjectSearchService extends ApiService {
     return this.get<unknown>(`/projects/${id}`).pipe(map((r) => this.withCode(this.unwrap(r))));
   }
 
+  /**
+   * crmp A-2 (gap table E8): there is no `/projects/search`; `GET /api/projects` takes `search` (name or
+   * code), `clientId` and `mine`, with `pageNumber`/`pageSize` required (dms `ProjectEndpoints.cs:26`,
+   * contract §2.19). The backend has no status, workflow-type or sort parameter (backend DEVIATION-5), so
+   * those query fields are not sent; the list is ordered by name, then id.
+   */
   search(q: ProjectSearchQuery = {}): Observable<ProjectSearchResult> {
     const params: Record<string, unknown> = {
       pageNumber: q.page ?? 1,
       pageSize: q.pageSize ?? 20,
     };
-    if (q.searchTerm) params['searchTerm'] = q.searchTerm;
-    if (q.status) params['status'] = this.projects.statusInt(q.status);
-    if (q.workflowType) params['workflowType'] = this.projects.workflowInt(q.workflowType);
+    if (q.searchTerm) params['search'] = q.searchTerm;
     if (q.clientId) params['clientId'] = q.clientId;
-    if (q.sortBy) {
-      params['sortBy'] = q.sortBy;
-      params['sortDir'] = q.sortDir ?? 'asc';
-    }
-    return this.get<unknown>('/projects/search', params).pipe(
+    if (q.mine) params['mine'] = true;
+    return this.get<unknown>('/projects', params).pipe(
       map((r) => this.normalize(r, q.page ?? 1, q.pageSize ?? 20)),
     );
   }
