@@ -1309,4 +1309,6 @@ export const AR: Partial<Record<CatalogKey, string>> = {
   'projects.membersLink': 'الأعضاء',
   // crmp P-1: breadcrumb for the members page.
   'route.projectMembers': 'الأعضاء',
+  // crmp review R1-F4: a gate edit is delete + re-create; the re-create can fail after the delete.
+  'gates.removedNotRecreated': 'حُذفت البوابة لكن تعذّر إنشاء بديلها: {reason} أضفها مرة أخرى.',
 };

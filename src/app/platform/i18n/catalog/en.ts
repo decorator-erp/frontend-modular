@@ -1383,6 +1383,9 @@ export const EN = {
   'projects.membersLink': 'Members',
   // crmp P-1: breadcrumb for the members page.
   'route.projectMembers': 'Members',
+  // crmp review R1-F4: a gate edit is delete + re-create; the re-create can fail after the delete.
+  'gates.removedNotRecreated':
+    'The gate was removed, but its replacement could not be created: {reason} Add it again.',
 } as const;
 
 /** The key set of record. Every catalog lookup is typed against this. */

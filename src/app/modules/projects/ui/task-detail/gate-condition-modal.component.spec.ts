@@ -22,6 +22,7 @@ function gate(overrides: Partial<GateCondition> = {}): GateCondition {
     trigger: 'Complete',
     referencedTaskId: null,
     referencedStageId: null,
+    referencedDocumentId: null,
     approvalType: 'ManagerApproval',
     label: 'Manager approval',
     status: 'Pending',
@@ -158,10 +159,30 @@ describe('GateConditionModalComponent', () => {
         label: 'New label',
         referencedTaskId: null,
         referencedStageId: null,
+        referencedDocumentId: null,
         approvalType: 'ManagerApproval',
       },
     });
     expect(closedWith).toBe(true);
+  });
+
+  it('R1-F4: a DocumentApproved gate keeps its document when re-created', () => {
+    const c = make({
+      ...base,
+      mode: 'edit',
+      gate: gate({
+        conditionType: 'DocumentApproved',
+        approvalType: null,
+        referencedDocumentId: 'D1',
+        label: 'Old',
+      }),
+    });
+    c.label.set('New');
+    c.save();
+    expect(recreated?.req).toMatchObject({
+      conditionType: 'DocumentApproved',
+      referencedDocumentId: 'D1',
+    });
   });
 
   it('Edit mode with an unchanged label flipping status to Satisfied only satisfies the same gate', () => {

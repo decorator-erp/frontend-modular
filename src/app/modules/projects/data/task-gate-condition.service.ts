@@ -1,13 +1,13 @@
 import { Injectable, inject } from '@angular/core';
-import { Observable } from 'rxjs';
-import { map, switchMap } from 'rxjs/operators';
+import { Observable, throwError } from 'rxjs';
+import { catchError, map, switchMap } from 'rxjs/operators';
 import {
   CreateGateConditionRequest,
   GateCondition,
   SatisfyGateConditionRequest,
 } from '../model/project.model';
 import { ApiService } from '@platform/http/api.service';
-import { ProjectService } from './project.service';
+import { GateRemovedError, ProjectService } from './project.service';
 
 /**
  * Task gate conditions, nested under the project (crmp A-2; gap table P-98..102):
@@ -41,7 +41,11 @@ export class TaskGateConditionService extends ApiService {
     req: CreateGateConditionRequest,
   ): Observable<string> {
     return this.remove(projectId, gateConditionId).pipe(
-      switchMap(() => this.create(projectId, taskId, req)),
+      switchMap(() =>
+        this.create(projectId, taskId, req).pipe(
+          catchError((cause: unknown) => throwError(() => new GateRemovedError(cause))),
+        ),
+      ),
     );
   }
 

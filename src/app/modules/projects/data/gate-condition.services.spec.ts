@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { environment } from '../../../../environments/environment';
 import { StageGateConditionService } from './stage-gate-condition.service';
 import { TaskGateConditionService } from './task-gate-condition.service';
+import { GateRemovedError } from './project.service';
 import type { CreateGateConditionRequest } from '../model/project.model';
 
 /** crmp A-2: gates moved under the project (dms `GateEndpoints.cs:24-74`); PUT update removed. */
@@ -20,6 +21,7 @@ describe('Stage/Task gate condition services (crmp A-2)', () => {
     referencedTaskId: null,
     referencedStageId: null,
     approvalType: 'ClientReview',
+    referencedDocumentId: null,
   };
 
   beforeEach(() => {
@@ -65,6 +67,7 @@ describe('Stage/Task gate condition services (crmp A-2)', () => {
       label: 'Sign-off',
       referencedTaskId: null,
       referencedStageId: null,
+      referencedDocumentId: null,
       approvalType: 2,
     });
     r.flush({ gateConditionId: 'G9' });
@@ -91,5 +94,36 @@ describe('Stage/Task gate condition services (crmp A-2)', () => {
     http.expectOne(`${api}/projects/P1/gates/G1`).flush(null);
     http.expectOne(`${api}/projects/P1/stages/S1/gates`).flush({ gateConditionId: 'G2' });
     expect(id).toBe('G2');
+  });
+
+  it('R1-F4: reads and sends DocumentApproved (10) with its document', () => {
+    let types: string[] = [];
+    stage
+      .getByStage('P1', 'S1')
+      .subscribe((g) => (types = g.map((x) => `${x.conditionType}:${x.referencedDocumentId}`)));
+    http
+      .expectOne(`${api}/projects/P1/stages/S1/gates`)
+      .flush([{ id: 'G1', conditionType: 10, referencedDocumentId: 'D1', status: 1 }]);
+    expect(types).toEqual(['DocumentApproved:D1']);
+    stage
+      .create('P1', 'S1', {
+        ...req,
+        conditionType: 'DocumentApproved',
+        approvalType: null,
+        referencedDocumentId: 'D1',
+      })
+      .subscribe();
+    const r = http.expectOne(`${api}/projects/P1/stages/S1/gates`);
+    expect(r.request.body).toMatchObject({ conditionType: 10, referencedDocumentId: 'D1' });
+  });
+
+  it('R1-F4: a failed create after the delete surfaces as GateRemovedError', () => {
+    let err: unknown;
+    stage.recreate('P1', 'S1', 'G1', req).subscribe({ error: (e) => (err = e) });
+    http.expectOne(`${api}/projects/P1/gates/G1`).flush(null);
+    http
+      .expectOne(`${api}/projects/P1/stages/S1/gates`)
+      .flush(null, { status: 409, statusText: 'Conflict' });
+    expect(err).toBeInstanceOf(GateRemovedError);
   });
 });

@@ -44,7 +44,9 @@ export type ConditionType =
   | 'Budget'
   | 'CrmPeriodClosed'
   | 'CrmBriefApproved'
-  | 'CrmItemsResolved';
+  | 'CrmItemsResolved'
+  /** crmp review R1-F4: dms `Projects.Contracts/Enums.cs:100`. */
+  | 'DocumentApproved';
 export type GateTrigger = 'Unlock' | 'Complete';
 export type ApprovalType = 'ManagerApproval' | 'ClientReview';
 export type ProjectMemberAccess = 'Viewer' | 'Contributor' | 'Manager';
@@ -220,6 +222,8 @@ export interface GateCondition {
   trigger: GateTrigger;
   referencedTaskId: string | null;
   referencedStageId: string | null;
+  /** crmp review R1-F4: the document a DocumentApproved gate waits on (`GateEndpoints.cs:78-81`). */
+  referencedDocumentId: string | null;
   approvalType: ApprovalType | null;
   label: string;
   /** crmp A-2: the backend's GateStatus (1 Pending, 2 Satisfied, 3 Rejected). */
@@ -344,6 +348,7 @@ export interface CreateGateConditionRequest {
   label: string;
   referencedTaskId?: string | null;
   referencedStageId?: string | null;
+  referencedDocumentId?: string | null;
   approvalType?: ApprovalType | null;
 }
 export interface SatisfyGateConditionRequest {

@@ -14,6 +14,7 @@ function gate(o: Partial<GateCondition> = {}): GateCondition {
     trigger: 'Complete',
     referencedTaskId: null,
     referencedStageId: null,
+    referencedDocumentId: null,
     approvalType: 'ManagerApproval',
     label: 'Manager approval',
     status: 'Pending',

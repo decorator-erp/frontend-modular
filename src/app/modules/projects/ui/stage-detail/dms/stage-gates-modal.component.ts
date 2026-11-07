@@ -29,6 +29,7 @@ const GATE_KIND: Record<ConditionType, string> = {
   CrmPeriodClosed: 'Requirement period',
   CrmBriefApproved: 'Brief approved',
   CrmItemsResolved: 'Requirements resolved',
+  DocumentApproved: 'Document approved',
 };
 
 const APPROVAL_LABEL: Record<ApprovalType, string> = {

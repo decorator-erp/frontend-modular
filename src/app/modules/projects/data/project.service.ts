@@ -46,6 +46,16 @@ import { PagedResult } from '@platform/types';
  * core/http services. No mock fallback — failures surface through the error
  * interceptor.
  */
+/**
+ * crmp review R1-F4: a gate edit is a delete followed by a create (no update route). When the create
+ * fails after the delete went through, the old gate is gone; callers tell the user so and reload.
+ */
+export class GateRemovedError extends Error {
+  constructor(override readonly cause: unknown) {
+    super('gate removed, re-create failed');
+  }
+}
+
 @Injectable({ providedIn: 'root' })
 export class ProjectService extends ApiService {
   getAll(page = 1, pageSize = 20): Observable<PagedResult<Project>> {
@@ -327,6 +337,7 @@ export class ProjectService extends ApiService {
       ),
       referencedTaskId: this.field<string | null>(source, 'referencedTaskId') ?? null,
       referencedStageId: this.field<string | null>(source, 'referencedStageId') ?? null,
+      referencedDocumentId: this.field<string | null>(source, 'referencedDocumentId') ?? null,
       approvalType: this.mapEnumNullable<GateCondition['approvalType'] & string>(
         this.field(source, 'approvalType'),
         this.APPROVAL,
@@ -448,6 +459,7 @@ export class ProjectService extends ApiService {
     7: 'CrmPeriodClosed',
     8: 'CrmBriefApproved',
     9: 'CrmItemsResolved',
+    10: 'DocumentApproved',
   };
   private readonly APPROVAL: Record<number, string> = { 1: 'ManagerApproval', 2: 'ClientReview' };
 
@@ -512,6 +524,7 @@ export class ProjectService extends ApiService {
           CrmPeriodClosed: 7,
           CrmBriefApproved: 8,
           CrmItemsResolved: 9,
+          DocumentApproved: 10,
         } as Record<string, number>
       )[v] ?? 4
     );
@@ -528,6 +541,7 @@ export class ProjectService extends ApiService {
       label: req.label,
       referencedTaskId: req.referencedTaskId ?? null,
       referencedStageId: req.referencedStageId ?? null,
+      referencedDocumentId: req.referencedDocumentId ?? null,
       approvalType: req.approvalType ? this.approvalInt(req.approvalType) : null,
     };
   }

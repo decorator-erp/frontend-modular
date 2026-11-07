@@ -134,6 +134,7 @@ describe('GateConditionFormDialogComponent', () => {
         label: 'New label',
         referencedTaskId: null,
         referencedStageId: null,
+        referencedDocumentId: null,
         approvalType: 'ManagerApproval',
       },
     });

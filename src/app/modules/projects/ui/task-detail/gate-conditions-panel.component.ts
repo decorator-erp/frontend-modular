@@ -36,6 +36,7 @@ const GATE_KIND: Record<ConditionType, string> = {
   CrmPeriodClosed: 'Requirement period',
   CrmBriefApproved: 'Brief approved',
   CrmItemsResolved: 'Requirements resolved',
+  DocumentApproved: 'Document approved',
 };
 
 const APPROVAL_LABEL: Record<ApprovalType, string> = {
@@ -230,6 +231,7 @@ export class GateConditionsPanelComponent implements OnInit {
         approvalType: gate.approvalType,
         referencedTaskId: gate.referencedTaskId,
         referencedStageId: gate.referencedStageId,
+        referencedDocumentId: gate.referencedDocumentId,
       },
     });
   }

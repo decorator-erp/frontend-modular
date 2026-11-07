@@ -1,6 +1,9 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
+import { ToastService } from '@platform/feedback/toast.service';
+import { CatalogService } from '@platform/i18n/catalog.service';
+import { GateRemovedError } from '../../data/project.service';
 import { catchError, of } from 'rxjs';
 import { TaskGateConditionService } from '../../data/task-gate-condition.service';
 import { StageGateConditionService } from '../../data/stage-gate-condition.service';
@@ -77,6 +80,7 @@ const GATE_KIND: Record<ConditionType, string> = {
   CrmPeriodClosed: 'Requirement period',
   CrmBriefApproved: 'Brief approved',
   CrmItemsResolved: 'Requirements resolved',
+  DocumentApproved: 'Document approved',
 };
 
 const APPROVAL_LABEL: Record<ApprovalType, string> = {
@@ -470,6 +474,9 @@ export class GateConditionModalComponent {
     else this.close(false);
   }
 
+  private readonly toast = inject(ToastService);
+  private readonly catalog = inject(CatalogService);
+
   close(changed: boolean): void {
     this.modalRef.close(changed);
   }
@@ -557,6 +564,7 @@ export class GateConditionModalComponent {
         label: this.label().trim(),
         referencedTaskId: g.referencedTaskId,
         referencedStageId: g.referencedStageId,
+        referencedDocumentId: g.referencedDocumentId,
         approvalType: g.approvalType,
       })
       .subscribe({
@@ -582,9 +590,22 @@ export class GateConditionModalComponent {
     return svc.remove(this.data.projectId, id);
   }
 
-  private fail(err: HttpErrorResponse): void {
+  private fail(err: unknown): void {
     this.busy.set(false);
-    this.errorMessage.set(friendly(this.errors.parse(err)));
+    if (err instanceof GateRemovedError) {
+      // R1-F4: the delete went through and the re-create did not — the old gate is gone.
+      const reason =
+        err.cause instanceof HttpErrorResponse ? friendly(this.errors.parse(err.cause)) : '';
+      this.toast.show({
+        tone: 'danger',
+        message: this.catalog.t('gates.removedNotRecreated', { reason }),
+      });
+      this.close(true);
+      return;
+    }
+    this.errorMessage.set(
+      err instanceof HttpErrorResponse ? friendly(this.errors.parse(err)) : String(err),
+    );
   }
 
   private formatDate(iso: string): string {
