@@ -166,3 +166,138 @@ describe('error catalog — backend CRM, scope and approvals codes (crm-prod M7)
     expect(ar).not.toBe(ERROR_MESSAGES[code]);
   });
 });
+
+/**
+ * crmp A-1: the Projects (contract §5.5/§5.6), crm-complete CRM, gate, stage-template and Sites codes
+ * the catalog was missing, copied from dms `master` (`20cf251`), each with its declaration site
+ * (paths under `src/Modules/`). Sites codes are `$"{Prefix}.{nameof(X)}"` with Prefix `sites`.
+ */
+const CRMP_CODES = [
+  'crm.artifacts.LinkNotFound', // Crm/Crm.Domain/Errors/Errors.cs:362
+  'crm.artifacts.NotLinker', // Crm/Crm.Domain/Errors/Errors.cs:366
+  'crm.catalog.CodeTaken', // Crm/Crm.Domain/Errors/Errors.cs:239
+  'crm.catalog.EntryNotFound', // Crm/Crm.Domain/Errors/Errors.cs:236
+  'crm.catalog.InUse', // Crm/Crm.Domain/Errors/Errors.cs:234
+  'crm.catalog.MappingNotFound', // Crm/Crm.Domain/Errors/Errors.cs:242
+  'crm.mywork.NotAnEmployee', // Crm/Crm.Domain/Errors/Errors.cs:470
+  'crm.spaces.InUse', // Crm/Crm.Domain/Errors/Errors.cs:172
+  'crm.spaces.InvalidOrder', // Crm/Crm.Domain/Errors/Errors.cs:176
+  'crm.storefront.CategoryNotTargeted', // Crm/Crm.Domain/Errors/Errors.cs:218
+  'crm.storefront.ConcurrentUpdate', // Crm/Crm.Domain/Errors/Errors.cs:227
+  'crm.storefront.InvalidOrder', // Crm/Crm.Domain/Errors/Errors.cs:224
+  'crm.storefront.ItemNotAvailable', // Crm/Crm.Domain/Errors/Errors.cs:215
+  'crm.storefront.OptionNotOfAttribute', // Crm/Crm.Domain/Errors/Errors.cs:221
+  'crm.storefront.SelectionNotFound', // Crm/Crm.Domain/Errors/Errors.cs:212
+  'gate_conditions.CrossProjectReference', // Projects/Projects.Domain/Errors/Errors.cs:258
+  'gate_conditions.InvalidReference', // Projects/Projects.Domain/Errors/Errors.cs:249
+  'gate_conditions.InvalidScope', // Projects/Projects.Domain/Errors/Errors.cs:246
+  'gate_conditions.NotDeletable', // Projects/Projects.Domain/Errors/Errors.cs:295
+  'gate_conditions.NotFound', // Projects/Projects.Domain/Errors/Errors.cs:243
+  'gate_conditions.NotManuallySatisfiable', // Projects/Projects.Domain/Errors/Errors.cs:284
+  'gate_conditions.OwnerNotOpen', // Projects/Projects.Domain/Errors/Errors.cs:290
+  'gate_conditions.ReferenceNotFound', // Projects/Projects.Domain/Errors/Errors.cs:255
+  'gate_conditions.SelfReference', // Projects/Projects.Domain/Errors/Errors.cs:252
+  'gate_conditions.UnsupportedConditionType', // Projects/Projects.Domain/Errors/Errors.cs:277
+  'projects.Closed', // Projects/Projects.Domain/Errors/Errors.cs:43
+  'projects.CodeTaken', // Projects/Projects.Domain/Errors/Errors.cs:34
+  'projects.ConcurrentUpdate', // Projects/Projects.Domain/Errors/Errors.cs:38
+  'projects.InsufficientLevel', // Projects/Projects.Domain/Errors/Errors.cs:21
+  'projects.InvalidStatusTransition', // Projects/Projects.Domain/Errors/Errors.cs:10
+  'projects.NotDeletable', // Projects/Projects.Domain/Errors/Errors.cs:57
+  'projects.StagesOpen', // Projects/Projects.Domain/Errors/Errors.cs:47
+  'projects.TasksOpen', // Projects/Projects.Domain/Errors/Errors.cs:52
+  'projects.comments.NotAuthor', // Projects/Projects.Domain/Errors/Errors.cs:184
+  'projects.comments.NotFound', // Projects/Projects.Domain/Errors/Errors.cs:181
+  'projects.members.AlreadyMember', // Projects/Projects.Domain/Errors/Errors.cs:150
+  'projects.members.ConcurrentUpdate', // Projects/Projects.Domain/Errors/Errors.cs:153
+  'projects.members.EmployeeNotFound', // Projects/Projects.Domain/Errors/Errors.cs:147
+  'projects.members.NotFound', // Projects/Projects.Domain/Errors/Errors.cs:144
+  'projects.stages.NotDeletable', // Projects/Projects.Domain/Errors/Errors.cs:92
+  'projects.stages.ScopeNotConfirmed', // Projects/Projects.Domain/Errors/Errors.cs:83
+  'projects.stages.WorkflowNotSupported', // Projects/Projects.Domain/Errors/Errors.cs:87
+  'projects.subtasks.NotAssignee', // Projects/Projects.Domain/Errors/Errors.cs:175
+  'projects.subtasks.NotDeletable', // Projects/Projects.Domain/Errors/Errors.cs:167
+  'projects.subtasks.NotDone', // Projects/Projects.Domain/Errors/Errors.cs:163
+  'projects.subtasks.TaskClosed', // Projects/Projects.Domain/Errors/Errors.cs:171
+  'projects.tasks.AssigneeNotFound', // Projects/Projects.Domain/Errors/Errors.cs:128
+  'projects.tasks.NotAssignee', // Projects/Projects.Domain/Errors/Errors.cs:133
+  'projects.tasks.NotDeletable', // Projects/Projects.Domain/Errors/Errors.cs:116
+  'projects.tasks.StageClosed', // Projects/Projects.Domain/Errors/Errors.cs:120
+  'projects.tasks.StageCompleted', // Projects/Projects.Domain/Errors/Errors.cs:125
+  'projects.teams.AlreadyExists', // Projects/Projects.Domain/Errors/Errors.cs:198
+  'projects.teams.HeadNotFound', // Projects/Projects.Domain/Errors/Errors.cs:201
+  'projects.teams.HeadOrDepartmentRequired', // Projects/Projects.Application/Features/Teams/ProjectTeamHandlers.cs:20
+  'sites.AddressRequiredToSubmit', // Sites/Sites.Domain/Errors/SiteErrors.cs:171
+  'sites.AlreadyLinked', // Sites/Sites.Domain/Errors/SiteErrors.cs:43
+  'sites.CatalogItemNotFound', // Sites/Sites.Domain/Errors/SiteErrors.cs:145
+  'sites.CodeTaken', // Sites/Sites.Domain/Errors/SiteErrors.cs:40
+  'sites.ConcurrencyConflict', // Sites/Sites.Domain/Errors/SiteErrors.cs:51
+  'sites.DocumentAlreadyLinked', // Sites/Sites.Domain/Errors/SiteErrors.cs:188
+  'sites.DocumentNotFound', // Sites/Sites.Domain/Errors/SiteErrors.cs:181
+  'sites.InsufficientLevel', // Sites/Sites.Domain/Errors/SiteErrors.cs:103
+  'sites.InvalidData', // Sites/Sites.Domain/Errors/SiteErrors.cs:37
+  'sites.InvalidDocumentSubject', // Sites/Sites.Domain/Errors/SiteErrors.cs:191
+  'sites.InvalidTransition', // Sites/Sites.Domain/Errors/SiteErrors.cs:148
+  'sites.ItemInUse', // Sites/Sites.Domain/Errors/SiteErrors.cs:64
+  'sites.ItemLocked', // Sites/Sites.Domain/Errors/SiteErrors.cs:60
+  'sites.ItemNotFound', // Sites/Sites.Domain/Errors/SiteErrors.cs:28
+  'sites.LabelTaken', // Sites/Sites.Domain/Errors/SiteErrors.cs:126
+  'sites.LimitNotLegalForType', // Sites/Sites.Domain/Errors/SiteErrors.cs:81
+  'sites.LinkNotFound', // Sites/Sites.Domain/Errors/SiteErrors.cs:34
+  'sites.ModuleInUse', // Sites/Sites.Domain/Errors/SiteErrors.cs:67
+  'sites.ModuleNotFound', // Sites/Sites.Domain/Errors/SiteErrors.cs:25
+  'sites.NotFound', // Sites/Sites.Domain/Errors/SiteErrors.cs:98
+  'sites.OptionNotFound', // Sites/Sites.Domain/Errors/SiteErrors.cs:31
+  'sites.OptionNotOfItem', // Sites/Sites.Domain/Errors/SiteErrors.cs:178
+  'sites.OptionsRequireSelect', // Sites/Sites.Domain/Errors/SiteErrors.cs:84
+  'sites.ProjectClosed', // Sites/Sites.Domain/Errors/SiteErrors.cs:122
+  'sites.ProjectNotFound', // Sites/Sites.Domain/Errors/SiteErrors.cs:115
+  'sites.RecordNotFound', // Sites/Sites.Domain/Errors/SiteErrors.cs:106
+  'sites.SelfApprovalNotAllowed', // Sites/Sites.Domain/Errors/SiteErrors.cs:167
+  'sites.SiteLocked', // Sites/Sites.Domain/Errors/SiteErrors.cs:157
+  'sites.SpaceNotFound', // Sites/Sites.Domain/Errors/SiteErrors.cs:138
+  'sites.SpaceNotInProject', // Sites/Sites.Domain/Errors/SiteErrors.cs:135
+  'sites.SystemDefinitionNotRenameable', // Sites/Sites.Domain/Errors/SiteErrors.cs:93
+  'sites.SystemItemNotDeletable', // Sites/Sites.Domain/Errors/SiteErrors.cs:74
+  'sites.SystemModuleNotDeletable', // Sites/Sites.Domain/Errors/SiteErrors.cs:71
+  'sites.ValueTypeMismatch', // Sites/Sites.Domain/Errors/SiteErrors.cs:175
+  'sites.families.NoDimensions', // Sites/Sites.Application/Features/Records/SiteRecordQueryHandlers.cs:303
+  'sites.families.UnknownGroupBy', // Sites/Sites.Application/Features/Records/SiteRecordQueryHandlers.cs:316
+  'stage_templates.InUse', // Projects/Projects.Domain/Errors/Errors.cs:220
+  'stage_templates.NameTaken', // Projects/Projects.Domain/Errors/Errors.cs:224
+  'stage_templates.StagesNotFound', // Projects/Projects.Domain/Errors/Errors.cs:215
+  'stages.GatesNotSatisfied', // Projects/Projects.Domain/Errors/Errors.cs:78
+  'stages.InvalidStatusTransition', // Projects/Projects.Domain/Errors/Errors.cs:65
+  'stages.NegativeCost', // Projects/Projects.Domain/Errors/Errors.cs:67
+  'stages.NotFound', // Projects/Projects.Domain/Errors/Errors.cs:62
+  'stages.TasksOpen', // Projects/Projects.Domain/Errors/Errors.cs:71
+  'stages.TemplateStageNotFound', // Projects/Projects.Domain/Errors/Errors.cs:233
+  'subtasks.AlreadyDone', // Projects/Projects.Domain/Errors/Errors.cs:160
+  'subtasks.NotFound', // Projects/Projects.Domain/Errors/Errors.cs:158
+  'tasks.GatesNotSatisfied', // Projects/Projects.Domain/Errors/Errors.cs:138
+  'tasks.InvalidStatusTransition', // Projects/Projects.Domain/Errors/Errors.cs:100
+  'tasks.NegativeCost', // Projects/Projects.Domain/Errors/Errors.cs:111
+  'tasks.NotFound', // Projects/Projects.Domain/Errors/Errors.cs:97
+  'tasks.StageNotAllowed', // Projects/Projects.Domain/Errors/Errors.cs:106
+  'tasks.StageRequired', // Projects/Projects.Domain/Errors/Errors.cs:103
+  'tasks.SubTasksIncomplete', // Projects/Projects.Domain/Errors/Errors.cs:109
+  'teams.MemberAlreadyExists', // Projects/Projects.Domain/Errors/Errors.cs:194
+  'teams.MemberNotFound', // Projects/Projects.Domain/Errors/Errors.cs:191
+  'teams.NotFound', // Projects/Projects.Domain/Errors/Errors.cs:189
+] as const;
+
+describe('error catalog — crmp Projects, CRM, gates, templates and Sites codes (crmp A-1)', () => {
+  it('lists each code once', () => {
+    expect(new Set(CRMP_CODES).size).toBe(CRMP_CODES.length);
+  });
+
+  it.each(CRMP_CODES)('%s has an English message', (code) => {
+    expect(ERROR_MESSAGES[code]?.trim()).toBeTruthy();
+  });
+
+  it.each(CRMP_CODES)('%s has an Arabic message that is not the English one', (code) => {
+    const ar = ERROR_MESSAGES_AR[code]?.trim();
+    expect(ar).toBeTruthy();
+    expect(ar).not.toBe(ERROR_MESSAGES[code]);
+  });
+});
