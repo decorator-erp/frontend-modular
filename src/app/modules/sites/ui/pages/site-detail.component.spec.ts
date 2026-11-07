@@ -435,6 +435,33 @@ describe('SiteDetailComponent — capture grid (sites S-5)', () => {
     expect(el.querySelector('[data-grid-banner]')).toBeTruthy();
   });
 
+  it('A8: every edit control is named "<column> – <row>"; row buttons name their row', () => {
+    const { fixture, el } = renderDetail(h);
+    (el.querySelector('[data-edit-grid] button') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    (el.querySelector('[data-add-row] button') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    const rows = [...el.querySelectorAll('[data-grid="edit"] [data-row]')];
+    const controls = [...rows[0].querySelectorAll('input, button[aria-haspopup="listbox"]')];
+    expect(controls.length).toBeGreaterThanOrEqual(6);
+    for (const c of controls) expect(c.getAttribute('aria-label')).toMatch(/ – DO-01$/);
+    const names = controls.map((c) => c.getAttribute('aria-label'));
+    expect(names).toContain('Label – DO-01');
+    expect(names).toContain('width_cm (cm) – DO-01');
+    expect(names).toContain('Note – DO-01');
+    expect(rows[0].querySelector('[data-remove] button')?.textContent).toContain('DO-01');
+    expect(rows[0].querySelector('[data-duplicate] button')?.textContent).toContain('DO-01');
+    // a row without a label yet is named by its position
+    (rows[1].querySelector('[data-cell="label"] input') as HTMLInputElement).value = '';
+    (rows[1].querySelector('[data-cell="label"] input') as HTMLInputElement).dispatchEvent(
+      new Event('input'),
+    );
+    fixture.detectChanges();
+    expect(rows[1].querySelector('[data-cell="note"] input')?.getAttribute('aria-label')).toBe(
+      'Note – Row 2',
+    );
+  });
+
   it('A3: an edited grid asks before a tab switch or leaving the route drops it; a clean one does not', async () => {
     const { fixture, el } = renderDetail(h);
     const page = fixture.componentInstance as unknown as {

@@ -198,6 +198,7 @@ import { SiteDetailStore } from '../../stores/site-detail.store';
                             dir="auto"
                             [ngModel]="row.label"
                             (ngModelChange)="store.setLabel(row.key, $event)"
+                            [ariaLabel]="cellName(t('sv.label'), row, i)"
                             [error]="err(row, 'label')"
                             data-cell="label"
                           />
@@ -213,6 +214,7 @@ import { SiteDetailStore } from '../../stores/site-detail.store';
                             [options]="spaceOptions(row)"
                             [ngModel]="row.spaceId"
                             (ngModelChange)="store.setSpace(row.key, $event)"
+                            [ariaLabel]="cellName(t('sv.space'), row, i)"
                             [error]="err(row, 'space')"
                             data-cell="space"
                           />
@@ -233,6 +235,7 @@ import { SiteDetailStore } from '../../stores/site-detail.store';
                                   [ngModel]="row.values[f.itemId] ?? ''"
                                   (ngModelChange)="setNumber(row, f, $event)"
                                   [error]="err(row, f.itemId)"
+                                  [ariaLabel]="cellName(fieldLabel(f), row, i)"
                                 />
                               }
                               @case (types.Bool) {
@@ -242,6 +245,7 @@ import { SiteDetailStore } from '../../stores/site-detail.store';
                                   [ngModel]="row.values[f.itemId] ?? null"
                                   (ngModelChange)="store.setValue(row.key, f.itemId, $event)"
                                   [error]="err(row, f.itemId)"
+                                  [ariaLabel]="cellName(fieldLabel(f), row, i)"
                                 />
                               }
                               @case (types.Select) {
@@ -251,6 +255,7 @@ import { SiteDetailStore } from '../../stores/site-detail.store';
                                   [ngModel]="row.values[f.itemId] ?? null"
                                   (ngModelChange)="store.setValue(row.key, f.itemId, $event)"
                                   [error]="err(row, f.itemId)"
+                                  [ariaLabel]="cellName(fieldLabel(f), row, i)"
                                 />
                               }
                               @case (types.Date) {
@@ -261,6 +266,7 @@ import { SiteDetailStore } from '../../stores/site-detail.store';
                                     store.setValue(row.key, f.itemId, $event || null)
                                   "
                                   [error]="err(row, f.itemId)"
+                                  [ariaLabel]="cellName(fieldLabel(f), row, i)"
                                 />
                               }
                               @default {
@@ -270,6 +276,7 @@ import { SiteDetailStore } from '../../stores/site-detail.store';
                                   [ngModel]="row.values[f.itemId] ?? ''"
                                   (ngModelChange)="store.setValue(row.key, f.itemId, $event)"
                                   [error]="err(row, f.itemId)"
+                                  [ariaLabel]="cellName(fieldLabel(f), row, i)"
                                 />
                               }
                             }
@@ -294,6 +301,7 @@ import { SiteDetailStore } from '../../stores/site-detail.store';
                                 [placeholder]="t('sv.catalogCategory')"
                                 [ngModel]="categoryOf(row)"
                                 (ngModelChange)="pickCategory(row, $event)"
+                                [ariaLabel]="cellName(t('sv.catalogCategory'), row, i)"
                                 data-cell="catalog-category"
                               />
                               <pera-select
@@ -301,6 +309,7 @@ import { SiteDetailStore } from '../../stores/site-detail.store';
                                 [options]="itemOptions(row)"
                                 [ngModel]="row.catalogItemId"
                                 (ngModelChange)="store.setCatalogItem(row.key, $event)"
+                                [ariaLabel]="cellName(t('sv.catalogItem'), row, i)"
                                 [error]="err(row, 'catalog')"
                                 data-cell="catalog"
                               />
@@ -318,6 +327,7 @@ import { SiteDetailStore } from '../../stores/site-detail.store';
                             dir="auto"
                             [ngModel]="row.note"
                             (ngModelChange)="store.setNote(row.key, $event)"
+                            [ariaLabel]="cellName(t('sv.note'), row, i)"
                             [error]="err(row, 'note')"
                             data-cell="note"
                           />
@@ -336,6 +346,7 @@ import { SiteDetailStore } from '../../stores/site-detail.store';
                               data-duplicate
                             >
                               {{ t('sv.duplicateRow') }}
+                              <span class="sr-only">{{ rowName(row, i) }}</span>
                             </pera-button>
                             <pera-button
                               size="xs"
@@ -345,6 +356,7 @@ import { SiteDetailStore } from '../../stores/site-detail.store';
                               data-remove
                             >
                               {{ t('sv.removeRow') }}
+                              <span class="sr-only">{{ rowName(row, i) }}</span>
                             </pera-button>
                           </div>
                         </td>
@@ -513,6 +525,16 @@ export class SiteCaptureComponent {
 
   protected fieldLabel(f: SiteSchemaField): string {
     return f.unit ? `${this.name(f)} (${f.unit})` : this.name(f);
+  }
+
+  /** A8: the row as a screen reader hears it — its label, or "Row n" while it has none. */
+  protected rowName(row: DraftRow, i: number): string {
+    return row.label.trim() || this.t('sv.rowN', { n: i + 1 });
+  }
+
+  /** A8: a grid cell's accessible name, "<column> – <row>". */
+  protected cellName(column: string, row: DraftRow, i: number): string {
+    return `${column} – ${this.rowName(row, i)}`;
   }
 
   protected err(row: DraftRow, field: string): string | undefined {

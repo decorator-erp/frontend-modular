@@ -43,6 +43,7 @@ const HEIGHT = { sm: 'h-7 fs-body-sm', md: 'h-8 text-sm', lg: 'h-10 text-sm' } a
         [readonly]="readonly()"
         [attr.autocomplete]="autocomplete() || null"
         [attr.aria-invalid]="error() ? 'true' : null"
+        [attr.aria-label]="ariaLabel() || null"
         [class]="classes()"
         (input)="onInput($event)"
         (blur)="onTouched()"
@@ -67,6 +68,8 @@ export class PeraInputComponent implements ControlValueAccessor {
   readonly readonly = input(false);
   readonly autocomplete = input<string | undefined>(undefined);
   readonly error = input<string | undefined>(undefined);
+  /** Accessible name for a control with no visible label (e.g. a grid cell). */
+  readonly ariaLabel = input<string | undefined>(undefined);
   readonly iconStart = input<string | undefined>(undefined);
   readonly iconEnd = input<string | undefined>(undefined);
   /** Drops the full-width host so the control can sit inline and be sized by the caller. */
