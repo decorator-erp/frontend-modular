@@ -345,14 +345,16 @@ export interface SatisfyGateConditionRequest {
 /** Task gate condition create — same shape as the stage one; ownerId = task id. */
 export type CreateTaskGateConditionRequest = CreateStageGateConditionRequest;
 
+/** `SubTaskRequest` (dms `TaskEndpoints.cs:232`); the task id is in the route. */
 export interface CreateProjectSubTaskRequest {
-  projectTaskId: string;
   title: string;
+  description?: string | null;
   order: number;
   isRequired: boolean;
 }
 export interface UpdateProjectSubTaskRequest {
   title: string;
+  description?: string | null;
   order: number;
   isRequired: boolean;
 }

@@ -11,7 +11,7 @@ import { ConfirmService, ModalService } from '@ds';
 import { SubtaskFormDialogComponent, SubtaskFormDialogData } from './subtask-form-dialog.component';
 
 /**
- * Subtasks checklist panel (A-08 pattern) — `/api/project-subtasks` per
+ * Subtasks checklist panel (A-08 pattern) — `/api/projects/{projectId}/tasks/{taskId}/sub-tasks` (crmp A-2; was `/api/project-subtasks`) per
  * api-docs/07-project-stages-tasks.md. Mutations gated by Projects.ManageTasks.
  * Create / edit open the DMS Forms sub-task dialog; the row keeps the inline
  * done-toggle + delete.
@@ -147,6 +147,7 @@ import { SubtaskFormDialogComponent, SubtaskFormDialogData } from './subtask-for
   `,
 })
 export class SubtasksPanelComponent implements OnInit {
+  readonly projectId = input.required<string>();
   readonly taskId = input.required<string>();
 
   private readonly api = inject(ProjectSubTaskService);
@@ -180,13 +181,17 @@ export class SubtasksPanelComponent implements OnInit {
   }
 
   load(): void {
-    this.api.getByTask(this.taskId()).subscribe((list) => this.subtasks.set(list));
+    this.api
+      .getByTask(this.projectId(), this.taskId())
+      .subscribe((list) => this.subtasks.set(list));
   }
 
   toggle(sub: ProjectSubTask): void {
     if (this.busy()) return;
     this.busy.set(true);
-    const call = sub.isDone ? this.api.reopen(sub.id) : this.api.markDone(sub.id);
+    const call = sub.isDone
+      ? this.api.reopen(this.projectId(), this.taskId(), sub.id)
+      : this.api.markDone(this.projectId(), sub.id);
     call.subscribe({
       next: () => {
         this.subtasks.update((list) =>
@@ -206,6 +211,7 @@ export class SubtasksPanelComponent implements OnInit {
   async openCreate(): Promise<void> {
     const data: SubtaskFormDialogData = {
       mode: 'create',
+      projectId: this.projectId(),
       projectTaskId: this.taskId(),
       nextOrder: (this.subtasks().length + 1) * 10,
     };
@@ -218,6 +224,7 @@ export class SubtasksPanelComponent implements OnInit {
   async openEdit(sub: ProjectSubTask): Promise<void> {
     const data: SubtaskFormDialogData = {
       mode: 'edit',
+      projectId: this.projectId(),
       projectTaskId: this.taskId(),
       subtaskId: sub.id,
       initial: { title: sub.title, order: sub.order, isRequired: sub.isRequired },
@@ -236,7 +243,7 @@ export class SubtasksPanelComponent implements OnInit {
       tone: 'danger',
     });
     if (!ok) return;
-    this.api.remove(sub.id).subscribe({
+    this.api.remove(this.projectId(), this.taskId(), sub.id).subscribe({
       next: () => this.subtasks.update((list) => list.filter((s) => s.id !== sub.id)),
       error: (err: HttpErrorResponse) =>
         this.toast.show({ tone: 'danger', message: friendly(this.errors.parse(err)) }),

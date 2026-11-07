@@ -14,6 +14,7 @@ describe('SubtaskFormDialogComponent', () => {
   let created: CreateProjectSubTaskRequest | null;
   let updated: { id: string; req: UpdateProjectSubTaskRequest } | null;
   let closedWith: unknown;
+  let route: { projectId: string; taskId: string } | null;
   const modalRef = {
     close: (r: unknown) => {
       closedWith = r;
@@ -23,6 +24,7 @@ describe('SubtaskFormDialogComponent', () => {
   function make(data: SubtaskFormDialogData): SubtaskFormDialogComponent {
     created = null;
     updated = null;
+    route = null;
     closedWith = undefined;
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({
@@ -31,12 +33,19 @@ describe('SubtaskFormDialogComponent', () => {
         {
           provide: ProjectSubTaskService,
           useValue: {
-            create: (req: CreateProjectSubTaskRequest) => {
+            create: (projectId: string, taskId: string, req: CreateProjectSubTaskRequest) => {
               created = req;
+              route = { projectId, taskId };
               return of('sub-1');
             },
-            update: (id: string, req: UpdateProjectSubTaskRequest) => {
+            update: (
+              projectId: string,
+              taskId: string,
+              id: string,
+              req: UpdateProjectSubTaskRequest,
+            ) => {
               updated = { id, req };
+              route = { projectId, taskId };
               return of(undefined);
             },
           },
@@ -61,12 +70,12 @@ describe('SubtaskFormDialogComponent', () => {
     return TestBed.createComponent(SubtaskFormDialogComponent).componentInstance;
   }
 
-  it('create posts projectTaskId + title/order/isRequired', () => {
-    const c = make({ mode: 'create', projectTaskId: 't1', nextOrder: 30 });
+  it('create posts title/order/isRequired to the project + task route (crmp A-2)', () => {
+    const c = make({ mode: 'create', projectId: 'p1', projectTaskId: 't1', nextOrder: 30 });
     c.form.patchValue({ title: 'Confirm ceiling heights', isRequired: true });
     c.submit();
+    expect(route).toEqual({ projectId: 'p1', taskId: 't1' });
     expect(created).toEqual({
-      projectTaskId: 't1',
       title: 'Confirm ceiling heights',
       order: 30,
       isRequired: true,
@@ -77,6 +86,7 @@ describe('SubtaskFormDialogComponent', () => {
   it('edit PUTs title/order/isRequired with the id', () => {
     const c = make({
       mode: 'edit',
+      projectId: 'p1',
       projectTaskId: 't1',
       subtaskId: 'sub9',
       initial: { title: 'Old', order: 10, isRequired: false },
@@ -84,12 +94,13 @@ describe('SubtaskFormDialogComponent', () => {
     c.form.patchValue({ title: 'New' });
     c.submit();
     expect(updated?.id).toBe('sub9');
+    expect(route).toEqual({ projectId: 'p1', taskId: 't1' });
     expect(updated?.req).toEqual({ title: 'New', order: 10, isRequired: false });
     expect(created).toBeNull();
   });
 
   it('blocks submit when the title is empty', () => {
-    const c = make({ mode: 'create', projectTaskId: 't1', nextOrder: 10 });
+    const c = make({ mode: 'create', projectId: 'p1', projectTaskId: 't1', nextOrder: 10 });
     c.form.patchValue({ title: '' });
     c.submit();
     expect(created).toBeNull();

@@ -20,6 +20,7 @@ import {
 
 export interface SubtaskFormDialogData {
   mode: 'create' | 'edit';
+  projectId: string;
   projectTaskId: string;
   subtaskId?: string;
   nextOrder?: number;
@@ -122,13 +123,12 @@ export class SubtaskFormDialogComponent {
     this.serverError.set(null);
     const v = this.form.getRawValue();
     const call = this.isEdit
-      ? this.api.update(this.data.subtaskId!, {
+      ? this.api.update(this.data.projectId, this.data.projectTaskId, this.data.subtaskId!, {
           title: v.title.trim(),
           order: Number(v.order),
           isRequired: v.isRequired,
         } satisfies UpdateProjectSubTaskRequest)
-      : this.api.create({
-          projectTaskId: this.data.projectTaskId,
+      : this.api.create(this.data.projectId, this.data.projectTaskId, {
           title: v.title.trim(),
           order: Number(v.order),
           isRequired: v.isRequired,
