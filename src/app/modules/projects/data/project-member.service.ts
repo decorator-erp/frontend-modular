@@ -10,14 +10,9 @@ import { ApiService } from '@platform/http/api.service';
 import { ProjectService } from './project.service';
 
 /**
- * Project members. Only the read endpoint is real:
- * GET /api/projects/{id}/members (ProjectMemberEndpoints.cs).
- *
- * BACKEND GAP: there is NO /api/project-members write API — the backend exposes
- * no POST/PUT/DELETE for project members (member management currently flows
- * through stage-teams). The mutations below would 404; they have no callers and
- * are kept only as a typed placeholder. Wire a UI button to them ONLY after a
- * backend gap ticket adds the routes (CLAUDE_CODE_PROMPT.md / backend-migration).
+ * Project members (crmp A-2; gap table E1 / P-13..16): `/api/projects/{projectId}/members`
+ * (dms `ProjectMemberEndpoints.cs:23-50`). Writes need `project.manage_members` and the Manager level;
+ * the access enum is 1 Viewer, 2 Editor ("Contributor" here), 3 Manager.
  */
 @Injectable({ providedIn: 'root' })
 export class ProjectMemberService extends ApiService {
@@ -29,21 +24,27 @@ export class ProjectMemberService extends ApiService {
     );
   }
 
-  // TODO(backend-gap): no POST /api/project-members route exists yet.
+  /** `POST …/members { employeeId, access }` → 200 `{ memberId }` (ProjectMemberEndpoints.cs:32). */
   add(req: AddProjectMemberRequest): Observable<string> {
-    const body = { ...req, access: this.projects.accessInt(req.access) };
-    return this.post<unknown>('/project-members', body).pipe(map((r) => this.unwrap<string>(r)));
+    return this.post<unknown>(`/projects/${req.projectId}/members`, {
+      employeeId: req.employeeId,
+      access: this.projects.accessInt(req.access),
+    }).pipe(map((r) => this.unwrapId(r, 'memberId')));
   }
 
-  // TODO(backend-gap): no PUT /api/project-members/{id}/access route exists yet.
-  changeAccess(id: string, req: ChangeProjectMemberAccessRequest): Observable<unknown> {
-    return this.put(`/project-members/${id}/access`, {
+  /** `PUT …/members/{memberId}/access { access }` (ProjectMemberEndpoints.cs:41). */
+  changeAccess(
+    projectId: string,
+    memberId: string,
+    req: ChangeProjectMemberAccessRequest,
+  ): Observable<unknown> {
+    return this.put(`/projects/${projectId}/members/${memberId}/access`, {
       access: this.projects.accessInt(req.access),
     });
   }
 
-  // TODO(backend-gap): no DELETE /api/project-members/{id} route exists yet.
-  remove(id: string): Observable<unknown> {
-    return this.delete(`/project-members/${id}`);
+  /** `DELETE …/members/{memberId}` (ProjectMemberEndpoints.cs:50). */
+  remove(projectId: string, memberId: string): Observable<unknown> {
+    return this.delete(`/projects/${projectId}/members/${memberId}`);
   }
 }
