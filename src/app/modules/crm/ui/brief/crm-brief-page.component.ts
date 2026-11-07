@@ -25,6 +25,7 @@ import { CrmBriefCreateComponent } from './brief-create.component';
 import { CrmBriefHeadComponent } from './brief-head.component';
 import { CrmBriefRoundsComponent } from './brief-rounds.component';
 import { CrmGatheringLedgerComponent } from './gathering-ledger.component';
+import { CrmArtifactLinksComponent } from '../artifacts/artifact-links.component';
 
 /**
  * `/crm/projects/:projectId/brief` — the design brief form (T061/T062/T065 composed).
@@ -48,6 +49,7 @@ import { CrmGatheringLedgerComponent } from './gathering-ledger.component';
     CrmGatheringLedgerComponent,
     CrmBriefAttachmentsComponent,
     CrmBriefCreateComponent,
+    CrmArtifactLinksComponent,
   ],
   host: { class: 'block bg-bg min-h-full' },
   template: `
@@ -79,6 +81,16 @@ import { CrmGatheringLedgerComponent } from './gathering-ledger.component';
         <app-crm-brief-rounds />
         <app-crm-gathering-ledger />
         <app-crm-brief-attachments [projectId]="projectId()" />
+        <!-- crmp C-7: documents linked to this brief (#70, paged; unlink #120). -->
+        @if (store.head(); as head) {
+          @if (head.id) {
+            <app-crm-artifact-links
+              subject="brief"
+              [subjectId]="head.id"
+              [projectId]="projectId()"
+            />
+          }
+        }
       }
     </div>
   `,

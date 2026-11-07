@@ -23,6 +23,9 @@ export type { CreateProjectRequest, Project } from './model/project.model';
 export { DocumentFoldersService, ProjectDocumentsService } from './data/documents.service';
 export type { ProjectDocument } from './data/documents.service';
 
+// crmp C-7: crm artifact unlink compares the link's author with the caller's employee id (`me()`).
+export { ProjectAccessStore } from './stores/project-access.store';
+
 // Future: dashboard (010).
 export { StageGateConditionService } from './data/stage-gate-condition.service';
 export { TaskGateConditionService } from './data/task-gate-condition.service';

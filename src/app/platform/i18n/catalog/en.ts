@@ -1548,6 +1548,19 @@ export const EN = {
   'storefront.removeFailed': 'Could not remove the pick.',
   'storefront.qtyLabel': 'Qty',
   'storefront.snapshotTitle': 'Catalog picks (as sent)',
+  // crmp C-7: artifact links — paged by-subject lists #70-#73 and unlink #120 (CrmArtifactEndpoints.cs:58-120).
+  'artifacts.title': 'Linked documents',
+  'artifacts.retry': 'Retry',
+  'artifacts.empty': 'No linked documents',
+  'artifacts.loadMore': 'Load more',
+  'artifacts.document': 'Document',
+  'artifacts.loadFailed': 'Could not load the linked documents.',
+  'artifacts.unlinkAria': 'Unlink {name}',
+  'artifacts.unlinkTitle': 'Unlink document',
+  'artifacts.unlinkConfirm': 'Unlink "{name}"? The document stays in the project\'s documents.',
+  'artifacts.unlink': 'Unlink',
+  'artifacts.unlinked': 'Document unlinked',
+  'artifacts.unlinkFailed': 'Could not unlink the document.',
 } as const;
 
 /** The key set of record. Every catalog lookup is typed against this. */

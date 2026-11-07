@@ -8,11 +8,20 @@ import type { CrmSpace } from '../../model';
 import { SpacesStore } from '../../stores/spaces.store';
 import { CrmSpacesPageComponent } from './spaces-page.component';
 import { CrmSpaceStorefrontComponent } from './space-storefront.component';
+import { CrmArtifactLinksComponent } from '../artifacts/artifact-links.component';
 
 /** crmp C-6: the storefront panel has its own spec; here it is a stub that records its input. */
 @Component({ selector: 'app-crm-space-storefront', template: '{{ space().id }}' })
 class StorefrontStub {
   readonly space = input.required<CrmSpace>();
+}
+
+/** crmp C-7: the artifact list has its own spec. */
+@Component({ selector: 'app-crm-artifact-links', template: '{{ subject() }}:{{ subjectId() }}' })
+class ArtifactLinksStub {
+  readonly subject = input.required<string>();
+  readonly subjectId = input.required<string>();
+  readonly projectId = input.required<string>();
 }
 
 const OTHER = (): CrmSpace => ({ ...SPACE, id: 'S2', name: 'Bath' });
@@ -79,8 +88,8 @@ describe('CrmSpacesPageComponent (009b #N-5)', () => {
       ],
     });
     TestBed.overrideComponent(CrmSpacesPageComponent, {
-      remove: { imports: [CrmSpaceStorefrontComponent] },
-      add: { imports: [StorefrontStub] },
+      remove: { imports: [CrmSpaceStorefrontComponent, CrmArtifactLinksComponent] },
+      add: { imports: [StorefrontStub, ArtifactLinksStub] },
     });
   });
 
@@ -90,6 +99,14 @@ describe('CrmSpacesPageComponent (009b #N-5)', () => {
     fixture.detectChanges();
     const panel = (fixture.nativeElement as HTMLElement).querySelector('app-crm-space-storefront');
     expect(panel?.textContent?.trim()).toBe('S');
+  });
+
+  it('lists the documents linked to the selected space (crmp C-7, by-space)', () => {
+    const fixture = TestBed.createComponent(CrmSpacesPageComponent);
+    fixture.detectChanges();
+    fixture.detectChanges();
+    const links = (fixture.nativeElement as HTMLElement).querySelector('app-crm-artifact-links');
+    expect(links?.textContent?.trim()).toBe('space:S');
   });
 
   it('keeps the space list and renders no board or completeness panel', () => {

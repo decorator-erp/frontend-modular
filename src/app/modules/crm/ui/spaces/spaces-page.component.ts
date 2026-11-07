@@ -25,6 +25,7 @@ import {
 import { SpacesStore } from '../../stores/spaces.store';
 import { CrmSpaceBriefNoteComponent } from './space-brief-note.component';
 import { CrmSpaceStorefrontComponent } from './space-storefront.component';
+import { CrmArtifactLinksComponent } from '../artifacts/artifact-links.component';
 import { AddSpaceDialogData, CrmAddSpaceDialogComponent } from './add-space-dialog.component';
 
 /**
@@ -49,6 +50,7 @@ import { AddSpaceDialogData, CrmAddSpaceDialogComponent } from './add-space-dial
     PeraIconComponent,
     CrmSpaceBriefNoteComponent,
     CrmSpaceStorefrontComponent,
+    CrmArtifactLinksComponent,
   ],
   template: `
     <pera-page-header [title]="catalog.t('space.title')" [count]="store.spaces().length">
@@ -171,6 +173,12 @@ import { AddSpaceDialogData, CrmAddSpaceDialogComponent } from './add-space-dial
           @if (canReadSpaces()) {
             <app-crm-space-storefront [space]="space" />
           }
+          <!-- crmp C-7: documents linked to this space (#71, paged; unlink #120). -->
+          <app-crm-artifact-links
+            subject="space"
+            [subjectId]="space.id"
+            [projectId]="projectId()"
+          />
         } @else {
           <p class="fs-caption text-text-muted p-4 m-0">{{ catalog.t('space.selectPrompt') }}</p>
         }

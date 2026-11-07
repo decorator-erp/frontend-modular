@@ -785,3 +785,23 @@ export interface ClientDesignProfile {
   architecturalRequests: string | null;
   otherNeeds: string | null;
 }
+
+// ---------------------------------------------------------------------------
+// crmp C-7 — artifact links (contract §2.12, `Crm.Contracts/Artifacts/ArtifactContracts.cs:5-7`).
+// ---------------------------------------------------------------------------
+
+/** The subject segment of the by-subject lists #70–#73 (`CrmArtifactEndpoints.cs:65,79,93,108`). */
+export type CrmArtifactSubject = 'brief' | 'space' | 'requirement-item' | 'meeting';
+
+/** `CrmArtifactDocumentResponse`: one document linked to one subject. `id` is the LINK id (#120). */
+export interface CrmArtifactLink {
+  id: string;
+  documentId: string;
+  briefId: string | null;
+  spaceId: string | null;
+  requirementItemId: string | null;
+  meetingId: string | null;
+  /** The HR employee who linked it — the only non-manager who may unlink it (#120). */
+  addedByEmployeeId: string | null;
+  addedByContactId: string | null;
+}

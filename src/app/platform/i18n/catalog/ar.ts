@@ -1471,4 +1471,17 @@ export const AR: Partial<Record<CatalogKey, string>> = {
   'storefront.removeFailed': 'تعذّر إزالة الاختيار.',
   'storefront.qtyLabel': 'الكمية',
   'storefront.snapshotTitle': 'اختيارات الكتالوج (كما أُرسلت)',
+  // crmp C-7: artifact links — paged by-subject lists #70-#73 and unlink #120 (CrmArtifactEndpoints.cs:58-120).
+  'artifacts.title': 'المستندات المرتبطة',
+  'artifacts.retry': 'إعادة المحاولة',
+  'artifacts.empty': 'لا توجد مستندات مرتبطة',
+  'artifacts.loadMore': 'تحميل المزيد',
+  'artifacts.document': 'مستند',
+  'artifacts.loadFailed': 'تعذّر تحميل المستندات المرتبطة.',
+  'artifacts.unlinkAria': 'إلغاء ربط {name}',
+  'artifacts.unlinkTitle': 'إلغاء ربط المستند',
+  'artifacts.unlinkConfirm': 'هل تريد إلغاء ربط "{name}"؟ يبقى المستند ضمن مستندات المشروع.',
+  'artifacts.unlink': 'إلغاء الربط',
+  'artifacts.unlinked': 'تم إلغاء ربط المستند',
+  'artifacts.unlinkFailed': 'تعذّر إلغاء ربط المستند.',
 };
