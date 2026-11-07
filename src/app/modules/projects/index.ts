@@ -26,6 +26,11 @@ export type { ProjectDocument } from './data/documents.service';
 // crmp C-7: crm artifact unlink compares the link's author with the caller's employee id (`me()`).
 export { ProjectAccessStore } from './stores/project-access.store';
 
+// sites (NEW-FEATURE-1): survey capabilities compare the caller's project level and the project's
+// liveness (site-capabilities.ts, the list's create gate).
+export { isProjectClosed, levelAtLeast, toProjectLevel } from './model/project-actions';
+export type { ProjectLevel } from './model/project-actions';
+
 // Future: dashboard (010).
 export { StageGateConditionService } from './data/stage-gate-condition.service';
 export { TaskGateConditionService } from './data/task-gate-condition.service';
