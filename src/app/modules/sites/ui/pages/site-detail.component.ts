@@ -82,7 +82,7 @@ const BUILT_TABS: readonly SiteTab[] = [
           [title]="t('sv.notFound')"
           [description]="t('sv.notFoundSub')"
           iconName="alert-circle"
-          [cta]="backCta"
+          [cta]="backCta()"
         />
       </div>
     } @else if (store.error() && !store.site()) {
@@ -285,10 +285,10 @@ export class SiteDetailComponent {
   protected readonly approved = SiteStatus.Approved;
   protected readonly rejected = SiteStatus.Rejected;
   protected readonly caps = this.store.caps;
-  protected readonly backCta = {
+  protected readonly backCta = computed(() => ({
     label: this.catalog.t('sv.backToList'),
     action: () => void this.router.navigate(['/sites']),
-  };
+  }));
 
   private readonly query = toSignal(this.route.queryParamMap, {
     initialValue: this.route.snapshot.queryParamMap,

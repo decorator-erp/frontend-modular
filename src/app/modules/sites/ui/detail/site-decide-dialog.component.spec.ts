@@ -1,6 +1,8 @@
 import { TestBed } from '@angular/core/testing';
 import { describe, expect, it, vi } from 'vitest';
 import { PERA_MODAL_DATA, PeraModalRef } from '@ds';
+import { LocaleService } from '@platform/i18n/locale.service';
+import { SiteDocumentDialogComponent } from './site-document-dialog.component';
 import { SiteDecideDialogComponent } from './site-decide-dialog.component';
 
 describe('SiteDecideDialogComponent (sites S-4)', () => {
@@ -41,5 +43,40 @@ describe('SiteDecideDialogComponent (sites S-4)', () => {
     expect(cmp.banner()).toBe('Not you');
     expect(cmp.bannerCode()).toBe('sites.SelfApprovalNotAllowed');
     expect(close).not.toHaveBeenCalled();
+  });
+
+  it('A9: the title follows a live EN ↔ AR switch', () => {
+    const { cmp } = render();
+    const locale = TestBed.inject(LocaleService);
+    locale.locale.set('en');
+    expect(cmp.title()).toBe('Reject SITE-1');
+    locale.locale.set('ar');
+    expect(cmp.title()).not.toBe('Reject SITE-1');
+    locale.locale.set('en');
+  });
+});
+
+describe('SiteDocumentDialogComponent (review A9)', () => {
+  it('kind labels follow a live EN ↔ AR switch', () => {
+    TestBed.configureTestingModule({
+      imports: [SiteDocumentDialogComponent],
+      providers: [
+        { provide: PeraModalRef, useValue: { close: vi.fn() } },
+        {
+          provide: PERA_MODAL_DATA,
+          useValue: { mode: 'link', documents: [], subjects: [], save: vi.fn() },
+        },
+      ],
+    });
+    const cmp = TestBed.createComponent(SiteDocumentDialogComponent)
+      .componentInstance as unknown as {
+      kinds: () => { label: string }[];
+    };
+    const locale = TestBed.inject(LocaleService);
+    locale.locale.set('en');
+    const en = cmp.kinds().map((k) => k.label);
+    locale.locale.set('ar');
+    expect(cmp.kinds().map((k) => k.label)).not.toEqual(en);
+    locale.locale.set('en');
   });
 });

@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import {
   PERA_MODAL_DATA,
@@ -97,7 +97,7 @@ export interface SiteDocumentDialogData {
         <div class="grid gap-4 sm:grid-cols-2">
           <pera-form-field [label]="catalog.t('sv.kind')" [required]="true">
             <pera-select
-              [options]="kinds"
+              [options]="kinds()"
               [ngModel]="kind()"
               (ngModelChange)="kind.set($event)"
               data-kind
@@ -121,10 +121,12 @@ export class SiteDocumentDialogComponent {
   readonly data = inject(PERA_MODAL_DATA) as SiteDocumentDialogData;
   protected readonly catalog = inject(CatalogService);
 
-  protected readonly kinds: SelectOption[] = Object.values(SiteDocumentKind).map((k) => ({
-    value: k,
-    label: this.catalog.t(SITE_DOCUMENT_KIND_LABEL[k]),
-  }));
+  protected readonly kinds = computed<SelectOption[]>(() =>
+    Object.values(SiteDocumentKind).map((k) => ({
+      value: k,
+      label: this.catalog.t(SITE_DOCUMENT_KIND_LABEL[k]),
+    })),
+  );
 
   readonly file = signal<File | null>(null);
   readonly documentId = signal<string | null>(null);

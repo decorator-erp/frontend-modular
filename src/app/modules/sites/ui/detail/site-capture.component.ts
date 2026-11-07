@@ -377,7 +377,7 @@ import { SiteDetailStore } from '../../stores/site-detail.store';
                 <pera-empty
                   [title]="t('sv.gridEmpty', { m: name(m) })"
                   [description]="canEdit() ? t('sv.gridEmptySub') : undefined"
-                  [cta]="canEdit() ? startCta : undefined"
+                  [cta]="canEdit() ? startCta() : undefined"
                   iconName="inbox"
                 />
               </div>
@@ -461,10 +461,10 @@ export class SiteCaptureComponent {
     }));
   });
 
-  protected readonly startCta = {
+  protected readonly startCta = computed(() => ({
     label: this.catalog.t('sv.startCapture'),
     action: () => this.store.startEdit(),
-  };
+  }));
 
   protected readonly boolOptions = computed<SelectOption[]>(() => {
     this.catalog.locale();

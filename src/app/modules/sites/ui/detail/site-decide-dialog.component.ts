@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import {
   PERA_MODAL_DATA,
@@ -28,7 +28,7 @@ export interface SiteDecideDialogData {
   template: `
     <pera-form-modal
       size="md"
-      [title]="title"
+      [title]="title()"
       [submitLabel]="catalog.t(data.approve ? 'sv.approve' : 'sv.reject')"
       [cancelLabel]="catalog.t('sv.cancel')"
       [submitting]="saving()"
@@ -73,9 +73,9 @@ export class SiteDecideDialogComponent {
   readonly bannerCode = signal<string | null>(null);
   readonly noteError = signal<string | null>(null);
 
-  readonly title = this.catalog.t(this.data.approve ? 'sv.approveQ' : 'sv.rejectQ', {
-    c: this.data.code,
-  });
+  readonly title = computed(() =>
+    this.catalog.t(this.data.approve ? 'sv.approveQ' : 'sv.rejectQ', { c: this.data.code }),
+  );
 
   async submit(): Promise<void> {
     if (this.saving()) return;

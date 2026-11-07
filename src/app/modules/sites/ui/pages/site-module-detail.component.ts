@@ -72,7 +72,7 @@ import { attachForm, moduleForm } from '../definitions/site-def-forms';
       </div>
     } @else if (!module()) {
       <div class="px-8 py-10" data-not-found>
-        <pera-empty [title]="t('sv.moduleNotFound')" iconName="alert-circle" [cta]="backCta" />
+        <pera-empty [title]="t('sv.moduleNotFound')" iconName="alert-circle" [cta]="backCta()" />
       </div>
     } @else if (module(); as m) {
       <header class="bg-surface border-b border-border px-8 pt-7 pb-5">
@@ -322,10 +322,10 @@ export class SiteModuleDetailComponent {
   });
   protected readonly preview = computed(() => (this.fields() ?? []).filter((f) => f.isVisible));
 
-  protected readonly backCta = {
+  protected readonly backCta = computed(() => ({
     label: this.catalog.t('sv.backToDefs'),
     action: () => void this.router.navigate(['/admin/site-definitions']),
-  };
+  }));
 
   private readonly tt = (k: CatalogKey, p?: Record<string, string | number>) => this.t(k, p);
 

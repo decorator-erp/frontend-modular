@@ -7,6 +7,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ConfirmService, ModalService } from '@ds';
 import { ProjectAccessStore } from '@modules/projects';
 import { ToastService } from '@platform/feedback/toast.service';
+import { LocaleService } from '@platform/i18n/locale.service';
 import { PermissionsService } from '@platform/permissions/permissions.service';
 import { SiteDefinitionService } from '../../data/site-definition.service';
 import { SiteLookupService } from '../../data/site-lookup.service';
@@ -211,6 +212,18 @@ describe('SiteDetailComponent — overview (sites S-3)', () => {
     });
     ({ el } = renderDetail(h));
     expect(el.querySelector('[data-banner="rejected"]')?.textContent).toContain('Redo');
+  });
+
+  it('A9: the back link label follows a live EN ↔ AR switch', () => {
+    const { fixture } = renderDetail(h);
+    const locale = TestBed.inject(LocaleService);
+    const cta = () =>
+      (fixture.componentInstance as unknown as { backCta: () => { label: string } }).backCta();
+    locale.locale.set('en');
+    const en = cta().label;
+    locale.locale.set('ar');
+    expect(cta().label).not.toBe(en);
+    locale.locale.set('en');
   });
 
   it('404 → not-found state; other failure → error with retry', () => {
