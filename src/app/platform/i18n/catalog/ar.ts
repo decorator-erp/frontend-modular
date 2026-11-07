@@ -1359,4 +1359,8 @@ export const AR: Partial<Record<CatalogKey, string>> = {
   'plc.deleteBody':
     'هل تريد حذف "{name}"؟ لا يمكن حذف مشروع بدأ العمل فيه أو يُستخدم في مكان آخر؛ يمكنك تعطيله بدلًا من ذلك.',
   'plc.deleted': 'تم حذف المشروع',
+  // crmp P-10: project list filters (GET /api/projects?clientId&search&mine).
+  'plist.client': 'العميل',
+  'plist.scope': 'العرض',
+  'plist.mine': 'مشاريعي فقط',
 };

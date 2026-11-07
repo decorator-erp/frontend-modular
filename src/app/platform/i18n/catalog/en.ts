@@ -1434,6 +1434,10 @@ export const EN = {
   'plc.deleteBody':
     'Delete "{name}"? A project that has started or is used elsewhere can\'t be deleted; deactivate it instead.',
   'plc.deleted': 'Project deleted',
+  // crmp P-10: project list filters (GET /api/projects?clientId&search&mine).
+  'plist.client': 'Client',
+  'plist.scope': 'Show',
+  'plist.mine': 'Only my projects',
 } as const;
 
 /** The key set of record. Every catalog lookup is typed against this. */

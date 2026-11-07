@@ -1,3 +1,4 @@
+import { CatalogService } from '@platform/i18n/catalog.service';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -98,10 +99,22 @@ export class ProjectsListComponent implements OnInit {
    * printed as inert `<span>` chips, plus the search box that already worked.
    */
   readonly facets = computed<FilterFacet[]>(() => [
-    { key: 'status', label: 'Status', options: this.facetOptions(this.statusOptions) },
-    { key: 'workflowType', label: 'Type', options: this.facetOptions(this.typeOptions) },
-    { key: 'clientId', label: 'Client', options: this.facetOptions(this.clientOptions()) },
+    // crmp P-10 (review R1-F5): GET /api/projects filters only by client, search and mine
+    // (dms ProjectEndpoints.cs:26). The status and type facets filtered nothing and are gone.
+    {
+      key: 'clientId',
+      label: this.catalog.t('plist.client'),
+      options: this.facetOptions(this.clientOptions()),
+    },
+    {
+      key: 'mine',
+      label: this.catalog.t('plist.scope'),
+      options: [{ value: 'mine', label: this.catalog.t('plist.mine') }],
+    },
   ]);
+  /** crmp P-10: only the projects I own or am a member of (`mine=true`). */
+  readonly mine = signal(false);
+  protected readonly catalog = inject(CatalogService);
 
   /** `pera-filter-bar` facets are string-keyed; drop the "All …" null sentinel. */
   private facetOptions(options: SelectOption[]): { value: string; label: string }[] {
@@ -118,16 +131,16 @@ export class ProjectsListComponent implements OnInit {
   private readonly budgetTpl = viewChild.required<TemplateRef<unknown>>('budgetTpl');
 
   readonly columns = computed<ColumnDef<ProjectWithCode>[]>(() => [
-    { key: 'code', header: 'Code', width: 100, sortable: true, template: this.codeTpl() },
-    { key: 'name', header: 'Project', minWidth: 200, sortable: true },
-    { key: 'status', header: 'Status', width: 120, sortable: true, template: this.statusTpl() },
+    { key: 'code', header: 'Code', width: 100, sortable: false, template: this.codeTpl() },
+    { key: 'name', header: 'Project', minWidth: 200, sortable: false },
+    { key: 'status', header: 'Status', width: 120, sortable: false, template: this.statusTpl() },
     { key: 'workflowType', header: 'Type', width: 100, template: this.typeTpl() },
-    { key: 'clientName', header: 'Client', width: 160, sortable: true },
+    { key: 'clientName', header: 'Client', width: 160, sortable: false },
     {
       key: 'progressPercentage',
       header: 'Progress',
       width: 120,
-      sortable: true,
+      sortable: false,
       template: this.progressTpl(),
     },
     { key: 'productOwnerName', header: 'Owner', width: 140, template: this.ownerTpl() },
@@ -135,7 +148,7 @@ export class ProjectsListComponent implements OnInit {
       key: 'estimatedBudget',
       header: 'Budget',
       width: 120,
-      sortable: true,
+      sortable: false,
       template: this.budgetTpl(),
     },
   ]);
@@ -173,6 +186,7 @@ export class ProjectsListComponent implements OnInit {
         status: this.status() ?? undefined,
         workflowType: this.workflowType() ?? undefined,
         clientId: this.clientId() ?? undefined,
+        mine: this.mine() || undefined,
         sortBy: this.sort().sortBy,
         sortDir: this.sort().sortDir,
         page: this.page(),
@@ -204,19 +218,20 @@ export class ProjectsListComponent implements OnInit {
    */
   onFilters(state: FilterState): void {
     const last = (key: string): string | null => state.facets?.[key]?.at(-1) ?? null;
-    const status = last('status') as ProjectStatus | null;
-    const workflowType = last('workflowType') as WorkflowType | null;
+    const status = null as ProjectStatus | null;
+    const workflowType = null as WorkflowType | null;
     const clientId = last('clientId');
+    const mine = last('mine') === 'mine';
 
     const facets: Record<string, string[]> = {};
-    if (status) facets['status'] = [status];
-    if (workflowType) facets['workflowType'] = [workflowType];
     if (clientId) facets['clientId'] = [clientId];
+    if (mine) facets['mine'] = ['mine'];
     this.filters.set({ search: state.search, facets });
 
     const term = state.search ?? '';
     const searchChanged = term !== this.search();
     const facetsChanged =
+      mine !== this.mine() ||
       status !== this.status() ||
       workflowType !== this.workflowType() ||
       clientId !== this.clientId();
@@ -224,6 +239,7 @@ export class ProjectsListComponent implements OnInit {
     this.status.set(status);
     this.workflowType.set(workflowType);
     this.clientId.set(clientId);
+    this.mine.set(mine);
 
     if (searchChanged) {
       this.onSearchInput(term);
@@ -241,6 +257,7 @@ export class ProjectsListComponent implements OnInit {
     this.status.set(null);
     this.workflowType.set(null);
     this.clientId.set(null);
+    this.mine.set(false);
     this.page.set(1);
     this.reload();
   }
