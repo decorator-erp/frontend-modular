@@ -48,6 +48,23 @@ describe('StageTeamsService (crmp A-2)', () => {
     expect(heads).toEqual([true, false]);
   });
 
+  it('R1-F2: a 403 on one team’s members keeps the team (head and count from the list row)', () => {
+    let heads: string[] = [];
+    let counts: number[] = [];
+    service.getByProject('P1').subscribe((t) => {
+      heads = t.map((x) => x.headName);
+      counts = t.map((x) => x.members.length);
+    });
+    http
+      .expectOne(`${api}/projects/P1/teams`)
+      .flush([{ id: 'TM1', projectStageId: 'S1', headId: 'E1', headName: 'Hany', memberCount: 4 }]);
+    http
+      .expectOne(`${api}/projects/P1/teams/TM1/members`)
+      .flush(null, { status: 403, statusText: 'Forbidden' });
+    expect(heads).toEqual(['Hany']);
+    expect(counts).toEqual([0]);
+  });
+
   it('filters one stage with ?stageId= (TeamEndpoints.cs:23)', () => {
     service.getByProjectStage('P1', 'S1').subscribe();
     const r = http.expectOne((x) => x.url === `${api}/projects/P1/teams`);

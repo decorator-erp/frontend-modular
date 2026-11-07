@@ -7,7 +7,8 @@ import {
   input,
   signal,
 } from '@angular/core';
-import { catchError, of } from 'rxjs';
+import { catchError, forkJoin, of } from 'rxjs';
+import { EmployeeService } from '@modules/people';
 import { StageTeamsService } from '../../../data/stage-teams.service';
 import { AvatarStackPerson, PeraAvatarStackComponent } from '@ds';
 import { CODE_C, PNL, PNL_B, PNL_H, PNL_H_C, PNL_H_T } from './dms-stage-chrome';
@@ -57,6 +58,7 @@ export class DmsStageTeamComponent implements OnInit {
   readonly stageId = input.required<string>();
 
   private readonly teamsApi = inject(StageTeamsService);
+  private readonly directory = inject(EmployeeService);
   protected readonly members = signal<TeamMember[]>([]);
 
   protected readonly PNL = PNL;
@@ -76,22 +78,30 @@ export class DmsStageTeamComponent implements OnInit {
   protected readonly overflow = computed(() => Math.max(0, this.members().length - 6));
 
   ngOnInit(): void {
-    this.teamsApi
-      .getByProjectStage(this.projectId(), this.stageId())
-      .pipe(catchError(() => of([])))
-      .subscribe((teams) => {
-        const seen = new Set<string>();
-        const flat: TeamMember[] = [];
-        let i = 0;
-        for (const team of teams) {
-          for (const m of team.members) {
-            if (seen.has(m.employeeId)) continue;
-            seen.add(m.employeeId);
-            flat.push({ id: m.id, name: m.employeeName, alt: i % 2 === 1 });
-            i++;
-          }
+    // crmp review R1-F3: StageTeamMemberResponse carries no employee name (dms TeamContracts.cs:7), so
+    // names come from the employee directory, the way project-teams resolves them.
+    forkJoin({
+      teams: this.teamsApi
+        .getByProjectStage(this.projectId(), this.stageId())
+        .pipe(catchError(() => of([]))),
+      directory: this.directory
+        .listPaged({ page: 1, pageSize: 500 })
+        .pipe(catchError(() => of({ items: [] as { id: string; fullName: string }[] }))),
+    }).subscribe(({ teams, directory }) => {
+      const names = new Map((directory?.items ?? []).map((e) => [e.id, e.fullName]));
+      const seen = new Set<string>();
+      const flat: TeamMember[] = [];
+      let i = 0;
+      for (const team of teams) {
+        for (const m of team.members) {
+          if (seen.has(m.employeeId)) continue;
+          seen.add(m.employeeId);
+          const name = m.employeeName || names.get(m.employeeId) || m.employeeId;
+          flat.push({ id: m.id, name, alt: i % 2 === 1 });
+          i++;
         }
-        this.members.set(flat);
-      });
+      }
+      this.members.set(flat);
+    });
   }
 }

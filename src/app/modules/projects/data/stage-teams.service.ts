@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { Observable, forkJoin, of } from 'rxjs';
-import { map, switchMap } from 'rxjs/operators';
+import { catchError, map, switchMap } from 'rxjs/operators';
 import { ApiService } from '@platform/http/api.service';
 
 /**
@@ -148,9 +148,15 @@ export class StageTeamsService extends ApiService {
     return this.put(`/projects/${projectId}/teams/${teamId}/head`, { headId });
   }
 
+  /**
+   * crmp review R1-F2: the list needs `stages.read`, but the members route needs `stage_teams.manage`
+   * (dms `TeamEndpoints.cs:23,57`). A caller without it still gets the teams — head, head name and
+   * member count come from the list row — with an empty member list instead of a failed page.
+   */
   private membersOf(projectId: string, teamId: string): Observable<unknown[]> {
     return this.get<unknown>(`/projects/${projectId}/teams/${teamId}/members`).pipe(
       map((r) => this.unwrapArray(r)),
+      catchError(() => of([] as unknown[])),
     );
   }
 
