@@ -4,8 +4,10 @@ import { map } from 'rxjs/operators';
 import {
   ApprovalType,
   ConditionType,
+  CreateGateConditionRequest,
   CreateProjectRequest,
   GateCondition,
+  GateStatus,
   GateTrigger,
   Project,
   ProjectDetails,
@@ -310,7 +312,7 @@ export class ProjectService extends ApiService {
   normalizeGate(source: unknown): GateCondition {
     return {
       id: this.field<string>(source, 'id') ?? '',
-      ownerId: this.field<string>(source, 'ownerId') ?? '',
+      ownerId: this.field<string>(source, 'ownerId', 'projectStageId', 'projectTaskId') ?? '',
       conditionType: this.mapEnum<GateCondition['conditionType']>(
         this.field(source, 'conditionType'),
         this.CONDITION,
@@ -328,7 +330,14 @@ export class ProjectService extends ApiService {
         this.APPROVAL,
       ),
       label: this.field<string>(source, 'label') ?? '',
-      isSatisfied: this.field<boolean>(source, 'isSatisfied') ?? false,
+      // crmp A-2: GateConditionResponse carries `status` (1 Pending, 2 Satisfied, 3 Rejected), not
+      // isSatisfied (gap table P-71/98; dms Projects.Contracts/Gates/GateContracts.cs:8).
+      status: this.mapEnum<GateStatus>(this.field(source, 'status'), this.GATE_STATUS, 'Pending'),
+      isSatisfied:
+        this.field<boolean>(source, 'isSatisfied') ??
+        this.mapEnum<GateStatus>(this.field(source, 'status'), this.GATE_STATUS, 'Pending') ===
+          'Satisfied',
+      approvalId: this.field<string | null>(source, 'approvalId') ?? null,
       satisfiedById: this.field<string | null>(source, 'satisfiedById') ?? null,
       satisfiedAt: this.field<string | null>(source, 'satisfiedAt') ?? null,
       satisfiedNote: this.field<string | null>(source, 'satisfiedNote') ?? null,
@@ -420,6 +429,11 @@ export class ProjectService extends ApiService {
     4: 'Urgent',
   };
   private readonly TRIGGER: Record<number, string> = { 1: 'Unlock', 2: 'Complete' };
+  private readonly GATE_STATUS: Record<number, string> = {
+    1: 'Pending',
+    2: 'Satisfied',
+    3: 'Rejected',
+  };
   private readonly CONDITION: Record<number, string> = {
     1: 'Task',
     2: 'Stage',
@@ -487,5 +501,17 @@ export class ProjectService extends ApiService {
   }
   approvalInt(v: ApprovalType): number {
     return v === 'ClientReview' ? 2 : 1;
+  }
+
+  /** `CreateGateRequest` (dms `GateEndpoints.cs:78`): enums as ints; the owner is in the route. */
+  gateBody(req: CreateGateConditionRequest): Record<string, unknown> {
+    return {
+      conditionType: this.conditionInt(req.conditionType),
+      trigger: this.triggerInt(req.trigger),
+      label: req.label,
+      referencedTaskId: req.referencedTaskId ?? null,
+      referencedStageId: req.referencedStageId ?? null,
+      approvalType: req.approvalType ? this.approvalInt(req.approvalType) : null,
+    };
   }
 }

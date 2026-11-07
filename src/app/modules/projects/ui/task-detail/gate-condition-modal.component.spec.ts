@@ -12,11 +12,7 @@ import { ErrorHandlerService } from '@platform/http/error-handler.service';
 import { PermissionsService } from '@platform/permissions';
 import { PERM } from '@platform/permissions';
 import { PERA_MODAL_DATA, PeraModalRef } from '@ds';
-import type {
-  CreateTaskGateConditionRequest,
-  GateCondition,
-  UpdateGateConditionRequest,
-} from '../../model/project.model';
+import type { CreateGateConditionRequest, GateCondition } from '../../model/project.model';
 
 function gate(overrides: Partial<GateCondition> = {}): GateCondition {
   return {
@@ -28,7 +24,9 @@ function gate(overrides: Partial<GateCondition> = {}): GateCondition {
     referencedStageId: null,
     approvalType: 'ManagerApproval',
     label: 'Manager approval',
+    status: 'Pending',
     isSatisfied: false,
+    approvalId: null,
     satisfiedById: null,
     satisfiedAt: null,
     satisfiedNote: null,
@@ -37,26 +35,31 @@ function gate(overrides: Partial<GateCondition> = {}): GateCondition {
 }
 
 describe('GateConditionModalComponent', () => {
-  let created: CreateTaskGateConditionRequest | null;
-  let updated: { id: string; req: UpdateGateConditionRequest } | null;
+  let created: CreateGateConditionRequest | null;
+  let recreated: {
+    projectId: string;
+    ownerId: string;
+    id: string;
+    req: CreateGateConditionRequest;
+  } | null;
   let satisfied: string | null;
   let removed: string | null;
   let closedWith: unknown;
 
   const taskGates = {
-    create: (req: CreateTaskGateConditionRequest) => {
+    create: (_projectId: string, _ownerId: string, req: CreateGateConditionRequest) => {
       created = req;
       return of('g-new');
     },
-    update: (id: string, req: UpdateGateConditionRequest) => {
-      updated = { id, req };
-      return of(undefined);
+    recreate: (projectId: string, ownerId: string, id: string, req: CreateGateConditionRequest) => {
+      recreated = { projectId, ownerId, id, req };
+      return of('g-re');
     },
-    satisfy: (id: string) => {
+    satisfy: (_projectId: string, id: string) => {
       satisfied = id;
       return of(undefined);
     },
-    remove: (id: string) => {
+    remove: (_projectId: string, id: string) => {
       removed = id;
       return of(undefined);
     },
@@ -69,7 +72,7 @@ describe('GateConditionModalComponent', () => {
 
   function setup(data: GateConditionModalData): void {
     created = null;
-    updated = null;
+    recreated = null;
     satisfied = null;
     removed = null;
     closedWith = undefined;
@@ -82,7 +85,7 @@ describe('GateConditionModalComponent', () => {
           provide: StageGateConditionService,
           useValue: {
             create: () => of('s'),
-            update: () => of(undefined),
+            recreate: () => of('s'),
             satisfy: () => of(undefined),
             remove: () => of(undefined),
           },
@@ -140,22 +143,42 @@ describe('GateConditionModalComponent', () => {
     expect(closedWith).toBe(true);
   });
 
-  it('Edit mode dispatches a PUT update with the label and does not POST', () => {
+  it('Edit mode with a new label deletes and re-creates the gate with its type and references (crmp A-2: no update route)', () => {
     const c = make({ ...base, mode: 'edit', gate: gate({ label: 'Old label' }) });
     c.label.set('New label');
     c.save();
     expect(created).toBeNull();
-    expect(updated?.id).toBe('g1');
-    expect(updated?.req.label).toBe('New label');
+    expect(recreated).toEqual({
+      projectId: 'p1',
+      ownerId: 't1',
+      id: 'g1',
+      req: {
+        conditionType: 'Approval',
+        trigger: 'Complete',
+        label: 'New label',
+        referencedTaskId: null,
+        referencedStageId: null,
+        approvalType: 'ManagerApproval',
+      },
+    });
     expect(closedWith).toBe(true);
   });
 
-  it('Edit mode flipping status to Satisfied updates then satisfies', () => {
+  it('Edit mode with an unchanged label flipping status to Satisfied only satisfies the same gate', () => {
     const c = make({ ...base, mode: 'edit', gate: gate({ isSatisfied: false }) });
     c.status.set('sat');
     c.save();
-    expect(updated?.id).toBe('g1');
+    expect(recreated).toBeNull();
     expect(satisfied).toBe('g1');
+  });
+
+  it('Edit mode with a new label and status Satisfied satisfies the re-created gate', () => {
+    const c = make({ ...base, mode: 'edit', gate: gate({ label: 'Old', isSatisfied: false }) });
+    c.label.set('New');
+    c.status.set('sat');
+    c.save();
+    expect(recreated?.id).toBe('g1');
+    expect(satisfied).toBe('g-re');
   });
 
   it('View mode Mark resolved calls /satisfy and closes changed', () => {

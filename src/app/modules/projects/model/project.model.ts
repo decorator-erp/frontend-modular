@@ -211,7 +211,11 @@ export interface GateCondition {
   referencedStageId: string | null;
   approvalType: ApprovalType | null;
   label: string;
+  /** crmp A-2: the backend's GateStatus (1 Pending, 2 Satisfied, 3 Rejected). */
+  status: GateStatus;
   isSatisfied: boolean;
+  /** The approval an Approval gate waits on (null otherwise). */
+  approvalId: string | null;
   satisfiedById: string | null;
   satisfiedAt: string | null;
   satisfiedNote: string | null;
@@ -325,8 +329,10 @@ export interface UpdateProjectTaskRequest {
   notes?: string | null;
 }
 
-export interface CreateStageGateConditionRequest {
-  ownerId: string; // stage id
+export type GateStatus = 'Pending' | 'Satisfied' | 'Rejected';
+
+/** Gate create body (dms `GateEndpoints.cs:78`); the stage or task is in the route. */
+export interface CreateGateConditionRequest {
   conditionType: ConditionType;
   trigger: GateTrigger;
   label: string;
@@ -334,16 +340,9 @@ export interface CreateStageGateConditionRequest {
   referencedStageId?: string | null;
   approvalType?: ApprovalType | null;
 }
-export interface UpdateGateConditionRequest {
-  label: string;
-  trigger: GateTrigger;
-}
 export interface SatisfyGateConditionRequest {
   note?: string | null;
 }
-
-/** Task gate condition create — same shape as the stage one; ownerId = task id. */
-export type CreateTaskGateConditionRequest = CreateStageGateConditionRequest;
 
 /** `SubTaskRequest` (dms `TaskEndpoints.cs:232`); the task id is in the route. */
 export interface CreateProjectSubTaskRequest {

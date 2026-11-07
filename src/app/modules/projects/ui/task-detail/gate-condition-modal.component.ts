@@ -505,7 +505,6 @@ export class GateConditionModalComponent {
   private createGate(): void {
     const conditionType = UI_TYPE_TO_CONDITION[this.uiType()];
     const req = {
-      ownerId: this.data.ownerId,
       conditionType,
       trigger: 'Complete' as const,
       label: this.label().trim(),
@@ -513,11 +512,8 @@ export class GateConditionModalComponent {
       referencedStageId: conditionType === 'Stage' ? this.referencedStageId() : null,
       approvalType: conditionType === 'Approval' ? this.approvalType() : null,
     };
-    // Live quirk: stage gates bind `projectStageId` alongside `ownerId`.
-    const call =
-      this.data.ownerKind === 'task'
-        ? this.taskGates.create(req)
-        : this.stageGates.create({ ...req, projectStageId: this.data.ownerId } as typeof req);
+    const svc = this.data.ownerKind === 'task' ? this.taskGates : this.stageGates;
+    const call = svc.create(this.data.projectId, this.data.ownerId, req);
     call.subscribe({
       next: (newId) => {
         // If the author pre-marked it satisfied, chain a satisfy on the new gate.
@@ -538,27 +534,52 @@ export class GateConditionModalComponent {
     const g = this.data.gate;
     if (!g) return;
     const wantsSatisfy = this.status() === 'sat' && !g.isSatisfied;
-    this.gateApi('update', g.id, { label: this.label().trim(), trigger: g.trigger }).subscribe({
-      next: () => {
-        if (wantsSatisfy) {
-          this.gateApi('satisfy', g.id, { note: this.note().trim() || null }).subscribe({
-            next: () => this.close(true),
-            error: (err: HttpErrorResponse) => this.fail(err),
-          });
-        } else {
-          this.close(true);
-        }
-      },
-      error: (err: HttpErrorResponse) => this.fail(err),
-    });
+    const satisfy = (id: string) =>
+      this.gateApi('satisfy', id, { note: this.note().trim() || null });
+    // crmp A-2: no update route. Only a changed label needs the delete + re-create; a bare satisfy
+    // keeps the gate (gap table REMOVED P-73/100).
+    if (this.label().trim() === g.label) {
+      if (!wantsSatisfy) {
+        this.close(true);
+        return;
+      }
+      satisfy(g.id).subscribe({
+        next: () => this.close(true),
+        error: (err: HttpErrorResponse) => this.fail(err),
+      });
+      return;
+    }
+    const svc = this.data.ownerKind === 'task' ? this.taskGates : this.stageGates;
+    svc
+      .recreate(this.data.projectId, this.data.ownerId, g.id, {
+        conditionType: g.conditionType,
+        trigger: g.trigger,
+        label: this.label().trim(),
+        referencedTaskId: g.referencedTaskId,
+        referencedStageId: g.referencedStageId,
+        approvalType: g.approvalType,
+      })
+      .subscribe({
+        next: (newId) => {
+          if (wantsSatisfy && newId) {
+            satisfy(newId).subscribe({
+              next: () => this.close(true),
+              error: (err: HttpErrorResponse) => this.fail(err),
+            });
+          } else {
+            this.close(true);
+          }
+        },
+        error: (err: HttpErrorResponse) => this.fail(err),
+      });
   }
 
   /** Dispatch a gate call to the task or stage service by owner kind. */
-  private gateApi(op: 'satisfy' | 'remove' | 'update', id: string, body?: unknown) {
+  private gateApi(op: 'satisfy' | 'remove', id: string, body?: unknown) {
     const svc = this.data.ownerKind === 'task' ? this.taskGates : this.stageGates;
-    if (op === 'satisfy') return svc.satisfy(id, (body as { note?: string | null }) ?? {});
-    if (op === 'remove') return svc.remove(id);
-    return svc.update(id, body as { label: string; trigger: 'Unlock' | 'Complete' });
+    if (op === 'satisfy')
+      return svc.satisfy(this.data.projectId, id, (body as { note?: string | null }) ?? {});
+    return svc.remove(this.data.projectId, id);
   }
 
   private fail(err: HttpErrorResponse): void {

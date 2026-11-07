@@ -765,7 +765,7 @@ export class DmsStageDetailComponent implements OnInit, OnDestroy {
       },
     });
     this.stageGates
-      .getByStage(this.stageId())
+      .getByStage(this.projectId(), this.stageId())
       .pipe(catchError(() => of([] as GateCondition[])))
       .subscribe((g) => this.gates.set(g));
   }

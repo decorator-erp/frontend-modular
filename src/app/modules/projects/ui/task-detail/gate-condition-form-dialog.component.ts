@@ -285,26 +285,25 @@ export class GateConditionFormDialogComponent {
     this.serverError.set(null);
     const v = this.form.getRawValue();
 
-    let call;
-    if (this.isEdit) {
-      const svc = this.data.ownerKind === 'task' ? this.taskGates : this.stageGates;
-      call = svc.update(this.data.gateId!, { label: v.label.trim(), trigger: v.trigger });
-    } else {
-      const req = {
-        ownerId: this.data.ownerId,
-        conditionType: v.conditionType,
-        trigger: v.trigger,
-        label: v.label.trim(),
-        referencedTaskId: v.conditionType === 'Task' ? v.referencedTaskId : null,
-        referencedStageId: v.conditionType === 'Stage' ? v.referencedStageId : null,
-        approvalType: v.conditionType === 'Approval' ? v.approvalType : null,
-      };
-      // Stage gates bind projectStageId alongside ownerId (live API quirk).
-      call =
-        this.data.ownerKind === 'task'
-          ? this.taskGates.create(req)
-          : this.stageGates.create({ ...req, projectStageId: this.data.ownerId } as typeof req);
-    }
+    // crmp A-2: no update route — an edit deletes the gate and re-creates it with the same type and
+    // references (gap table REMOVED P-73/100).
+    const kind = this.isEdit ? this.data.initial : undefined;
+    const conditionType = kind?.conditionType ?? v.conditionType;
+    const req = {
+      conditionType,
+      trigger: v.trigger,
+      label: v.label.trim(),
+      referencedTaskId:
+        conditionType === 'Task' ? (kind?.referencedTaskId ?? v.referencedTaskId) : null,
+      referencedStageId:
+        conditionType === 'Stage' ? (kind?.referencedStageId ?? v.referencedStageId) : null,
+      approvalType: conditionType === 'Approval' ? (kind?.approvalType ?? v.approvalType) : null,
+    };
+    const svc = this.data.ownerKind === 'task' ? this.taskGates : this.stageGates;
+    const call =
+      this.isEdit && this.data.gateId
+        ? svc.recreate(this.data.projectId, this.data.ownerId, this.data.gateId, req)
+        : svc.create(this.data.projectId, this.data.ownerId, req);
 
     call.subscribe({
       next: () => {

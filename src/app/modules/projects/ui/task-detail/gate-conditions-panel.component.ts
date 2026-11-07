@@ -187,8 +187,8 @@ export class GateConditionsPanelComponent implements OnInit {
   load(): void {
     const call =
       this.ownerKind() === 'task'
-        ? this.taskGates.getByTask(this.ownerId())
-        : this.stageGates.getByStage(this.ownerId());
+        ? this.taskGates.getByTask(this.projectId(), this.ownerId())
+        : this.stageGates.getByStage(this.projectId(), this.ownerId());
     call.subscribe((list) => this.gates.set(list));
   }
 

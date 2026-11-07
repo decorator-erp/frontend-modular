@@ -239,7 +239,7 @@ export class StageGatesModalComponent {
 
   private load(): void {
     this.stageGates
-      .getByStage(this.data.stageId)
+      .getByStage(this.data.projectId, this.data.stageId)
       .pipe(catchError(() => of([] as GateCondition[])))
       .subscribe((list) => {
         this.gates.set(list);
