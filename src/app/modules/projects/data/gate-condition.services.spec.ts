@@ -140,4 +140,13 @@ describe('Stage/Task gate condition services (crmp A-2)', () => {
     http.expectNone(`${api}/projects/P1/gates/G1`);
     expect(err).toBeInstanceOf(GateNotRecreatableError);
   });
+
+  it('R3-1: a Budget gate is never re-created (its variation link is not in the response)', () => {
+    let err: unknown;
+    task
+      .recreate('P1', 'T1', 'G1', { ...req, conditionType: 'Budget', approvalType: null })
+      .subscribe({ error: (e) => (err = e) });
+    http.expectNone(`${api}/projects/P1/gates/G1`);
+    expect(err).toBeInstanceOf(GateNotRecreatableError);
+  });
 });

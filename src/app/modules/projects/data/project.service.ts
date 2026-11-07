@@ -71,6 +71,10 @@ export class GateNotRecreatableError extends Error {
 
 /** True when the create body is complete enough to rebuild the gate after its delete. */
 export function isRecreatable(req: CreateGateConditionRequest): boolean {
+  // R3-1: a Budget gate opened by a finance variation is linked by VariationId, which the response
+  // does not carry either (dms GateCondition.cs:56; FinanceVariationIntegrationEventHandlers.cs:41-77),
+  // so a re-created Budget gate would lose that link. The frontend cannot tell which are linked.
+  if (req.conditionType === 'Budget') return false;
   return req.conditionType !== 'DocumentApproved' || !!req.referencedDocumentId;
 }
 
