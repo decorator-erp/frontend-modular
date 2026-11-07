@@ -10,6 +10,7 @@ import { CatalogService } from '@platform/i18n/catalog.service';
 import { PERM } from '@platform/permissions';
 import { CanDirective } from '@platform/permissions';
 import { TaskComment } from '../../model/project.model';
+import { ProjectAccessStore } from '../../stores/project-access.store';
 import { formatShortDate } from '@shared/ui/status';
 import { ConfirmService, PeraAvatarComponent, PeraButtonComponent } from '@ds';
 
@@ -47,7 +48,7 @@ export const COMMENT_PAGE_SIZE = 50;
   imports: [FormsModule, CanDirective, PeraAvatarComponent, PeraButtonComponent],
   template: `
     <!-- Composer (top, per A-06 / design .composer) -->
-    <ng-container *peraCan="manageTasks">
+    <ng-container *peraCan="canAdd() ? addClaims : []">
       <div class="flex gap-3 p-4 border-b border-border-soft">
         <pera-avatar [name]="composerName()" size="md" />
         <div class="flex-1 min-w-0 border border-border bg-surface">
@@ -98,10 +99,16 @@ export const COMMENT_PAGE_SIZE = 50;
             <span
               class="ms-auto opacity-0 group-hover:opacity-100 flex items-center gap-1.5 fs-label text-text-muted uppercase transition-opacity"
             >
-              <ng-container *peraCan="manageTasks">
-                <button type="button" class="hover:text-accent" (click)="startEdit(c)">Edit</button>
+              <ng-container *peraCan="canChange(c, 'comment.edit') ? readClaim : []">
+                <button type="button" class="hover:text-accent" (click)="startEdit(c)" data-edit>
+                  Edit
+                </button>
                 <span class="text-border">·</span>
-                <button type="button" class="hover:text-danger" (click)="remove(c)">Delete</button>
+                @if (canChange(c, 'comment.delete')) {
+                  <button type="button" class="hover:text-danger" (click)="remove(c)" data-delete>
+                    Delete
+                  </button>
+                }
               </ng-container>
             </span>
           </div>
@@ -167,6 +174,23 @@ export class CommentsThreadComponent implements OnInit {
   readonly locale = inject(LocaleService);
 
   readonly manageTasks = PERM.stageTasks.manage;
+  /** crmp P-6: add takes either execution claim (TaskEndpoints.cs:195); edit/delete route on read. */
+  readonly addClaims = [PERM.stageTasks.manage, PERM.stageTasks.complete];
+  readonly readClaim = PERM.stageTasks.read;
+  private readonly access = inject(ProjectAccessStore);
+
+  /** Add: Editor level and either claim (contract §2.17.2). */
+  canAdd(): boolean {
+    return this.access.can(this.projectId(), 'comment.add');
+  }
+
+  /**
+   * Edit/delete: Editor level AND the author or the `stage_tasks.manage` claim — the claim, not the
+   * Manager level (`projects.comments.NotAuthor`, dms TaskCommentHandlers.cs:87-107).
+   */
+  canChange(c: TaskComment, action: 'comment.edit' | 'comment.delete'): boolean {
+    return this.access.canComment(this.projectId(), c, action);
+  }
   readonly shortDate = formatShortDate;
 
   /** Avatar seed for the composer; falls back to a neutral label when no user. */

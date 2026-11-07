@@ -3,6 +3,7 @@ import { of } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
 import { COMMENT_PAGE_SIZE, CommentsThreadComponent } from './comments-thread.component';
 import { TaskCommentService } from '../../data/task-comment.service';
+import { ProjectAccessStore } from '../../stores/project-access.store';
 import type { TaskComment } from '../../model/project.model';
 
 const page = (from: number, n: number): TaskComment[] =>
@@ -23,7 +24,10 @@ describe('CommentsThreadComponent — paged loading (crmp A-4)', () => {
     );
     TestBed.configureTestingModule({
       imports: [CommentsThreadComponent],
-      providers: [{ provide: TaskCommentService, useValue: { getByTask } }],
+      providers: [
+        { provide: TaskCommentService, useValue: { getByTask } },
+        { provide: ProjectAccessStore, useValue: { can: () => true, canComment: () => true } },
+      ],
     });
     const fixture = TestBed.createComponent(CommentsThreadComponent);
     fixture.componentRef.setInput('projectId', 'P1');
