@@ -29,7 +29,7 @@ import { PaletteChip } from '../workflow-builder/builder.types';
 @Component({
   selector: 'app-workflow-builder',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [BuilderCanvasComponent, StagePaletteComponent, StageConfigPanelComponent, CanDirective],
+  imports: [BuilderCanvasComponent, StagePaletteComponent, StageConfigPanelComponent],
   host: { class: 'block h-[calc(100vh-3rem)] flex flex-col bg-bg' },
   template: `
     <div class="h-12 border-b border-border flex items-center gap-3.5 px-4 bg-surface">

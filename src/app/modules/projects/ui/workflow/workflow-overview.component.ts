@@ -35,7 +35,7 @@ const DAY_MS = 86_400_000;
 @Component({
   selector: 'app-workflow-overview',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, CanDirective, PeraEmptyComponent, TasksGanttViewComponent],
+  imports: [RouterLink, PeraEmptyComponent, TasksGanttViewComponent],
   template: `
     <!-- Header row -->
     <div class="flex items-center justify-between gap-3 mb-4 flex-wrap">
