@@ -364,14 +364,6 @@ export interface TaskDetails {
   gateConditions: GateCondition[];
 }
 
-export interface CreateTaskCommentRequest {
-  taskId: string;
-  content: string;
-}
-export interface UpdateTaskCommentRequest {
-  content: string;
-}
-
 export interface AddProjectMemberRequest {
   projectId: string;
   employeeId: string;

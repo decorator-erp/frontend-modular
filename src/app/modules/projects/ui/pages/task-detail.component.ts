@@ -300,7 +300,7 @@ const PRIORITY_DOT: Record<string, string> = {
               </div>
               @switch (activityView()) {
                 @case ('comments') {
-                  <app-comments-thread [taskId]="taskId()" />
+                  <app-comments-thread [projectId]="projectId()" [taskId]="taskId()" />
                 }
                 @case ('history') {
                   <app-activity-feed entityName="Task" [entityId]="taskId()" [take]="100" />

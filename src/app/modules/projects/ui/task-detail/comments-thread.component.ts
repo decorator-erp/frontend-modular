@@ -26,7 +26,7 @@ interface CommentVm extends TaskComment {
 }
 
 /**
- * Comments thread (A-06 pattern) — `/api/task-comments` per
+ * Comments thread (A-06 pattern) — `/api/projects/{projectId}/tasks/{taskId}/comments` (crmp A-2; was `/api/task-comments`) per
  * api-docs/09-documents-attachments-comments.md. Create/edit/delete gated by
  * Projects.ManageTasks; the backend additionally restricts edit/delete to the
  * author or task assignee (task_comments.NotAuthorized).
@@ -145,6 +145,7 @@ interface CommentVm extends TaskComment {
   `,
 })
 export class CommentsThreadComponent implements OnInit {
+  readonly projectId = input.required<string>();
   readonly taskId = input.required<string>();
 
   private readonly api = inject(TaskCommentService);
@@ -171,15 +172,16 @@ export class CommentsThreadComponent implements OnInit {
   }
 
   load(): void {
-    this.api.getByTask(this.taskId()).subscribe((list) => this.comments.set(list));
+    this.api
+      .getByTask(this.projectId(), this.taskId())
+      .subscribe((list) => this.comments.set(list));
   }
 
   submit(): void {
     const content = this.draft().trim();
     if (!content || this.busy()) return;
     this.busy.set(true);
-    // CreateTaskCommentRequest { taskId, content } per api-docs/09.
-    this.api.create({ taskId: this.taskId(), content }).subscribe({
+    this.api.create(this.projectId(), this.taskId(), content).subscribe({
       next: () => {
         this.draft.set('');
         this.busy.set(false);
@@ -201,7 +203,7 @@ export class CommentsThreadComponent implements OnInit {
     const content = this.editDraft().trim();
     if (!content || this.busy()) return;
     this.busy.set(true);
-    this.api.update(c.id, { content }).subscribe({
+    this.api.update(this.projectId(), this.taskId(), c.id, content).subscribe({
       next: () => {
         this.comments.update((list) =>
           list.map((x) =>
@@ -226,7 +228,7 @@ export class CommentsThreadComponent implements OnInit {
       tone: 'danger',
     });
     if (!ok) return;
-    this.api.remove(c.id).subscribe({
+    this.api.remove(this.projectId(), this.taskId(), c.id).subscribe({
       next: () => this.comments.update((list) => list.filter((x) => x.id !== c.id)),
       error: (err: HttpErrorResponse) =>
         this.toast.show({ tone: 'danger', message: friendly(this.errors.parse(err)) }),

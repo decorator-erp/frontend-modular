@@ -1,32 +1,48 @@
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
-import {
-  CreateTaskCommentRequest,
-  TaskComment,
-  UpdateTaskCommentRequest,
-} from '../model/project.model';
+import { TaskComment } from '../model/project.model';
 import { ApiService } from '@platform/http/api.service';
 
-/** Task comments — `/api/task-comments`. Edit/delete = author or task assignee (else 403). */
+/** Optional page of a task's comments (contract §1.6: opt-in; the body stays a plain array). */
+export interface TaskCommentPage {
+  pageNumber: number;
+  pageSize: number;
+}
+
+/**
+ * Task comments, nested under the project (crmp A-2; gap table P-94/95/96/97, E6):
+ * `/api/projects/{projectId}/tasks/{taskId}/comments` (dms `TaskEndpoints.cs:185-215`). Add needs
+ * Editor; edit/delete need Editor plus the author or the `stage_tasks.manage` claim
+ * (`projects.comments.NotAuthor`).
+ */
 @Injectable({ providedIn: 'root' })
 export class TaskCommentService extends ApiService {
-  getByTask(taskId: string): Observable<TaskComment[]> {
-    return this.get<unknown>(`/task-comments/by-task/${taskId}`).pipe(
-      map((r) => this.unwrapArray(r).map((c) => this.normalize(c, taskId))),
+  getByTask(projectId: string, taskId: string, page?: TaskCommentPage): Observable<TaskComment[]> {
+    return this.get<unknown>(
+      `/projects/${projectId}/tasks/${taskId}/comments`,
+      page ? { ...page } : undefined,
+    ).pipe(map((r) => this.unwrapArray(r).map((c) => this.normalize(c, taskId))));
+  }
+
+  /** `POST …/comments { content }` → 200 `{ commentId }`. */
+  create(projectId: string, taskId: string, content: string): Observable<string> {
+    return this.post<unknown>(`/projects/${projectId}/tasks/${taskId}/comments`, { content }).pipe(
+      map((r) => this.unwrapId(r, 'commentId')),
     );
   }
 
-  create(req: CreateTaskCommentRequest): Observable<string> {
-    return this.post<unknown>('/task-comments', req).pipe(map((r) => this.unwrap<string>(r)));
+  update(
+    projectId: string,
+    taskId: string,
+    commentId: string,
+    content: string,
+  ): Observable<unknown> {
+    return this.put(`/projects/${projectId}/tasks/${taskId}/comments/${commentId}`, { content });
   }
 
-  update(id: string, req: UpdateTaskCommentRequest): Observable<unknown> {
-    return this.put(`/task-comments/${id}`, req);
-  }
-
-  remove(id: string): Observable<unknown> {
-    return this.delete(`/task-comments/${id}`);
+  remove(projectId: string, taskId: string, commentId: string): Observable<unknown> {
+    return this.delete(`/projects/${projectId}/tasks/${taskId}/comments/${commentId}`);
   }
 
   private normalize(source: unknown, taskId: string): TaskComment {
