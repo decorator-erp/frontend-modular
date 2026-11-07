@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { ApiService } from '@platform/http/api.service';
+import { handled } from '@platform/http/handled-errors';
 
 /** CRM counts for one assigned gathering task — mirrors `CrmTaskBlock` (01-Models §12). */
 export interface CrmTaskBlock {
@@ -30,15 +31,20 @@ export interface MyGatheringWorkItem {
   trackKey: string;
 }
 
+/** The server returns at most this many rows (`GetMyGatheringWorkQueryHandler.MaxTasks`). */
+export const MY_GATHERING_WORK_CAP = 200;
+
 /**
- * `GET /api/crm/my-gathering-work` (`crm.design_profile.read`) — the logged-in employee's
- * assigned gathering tasks with CRM counts. Returns `[]` for non-employees or no assigned
- * CRM tasks (02-Office-APIs §11). Powers the dashboard "My gathering tasks" widget.
+ * `GET /api/crm/my-gathering-work` (`CrmMyWorkEndpoints.cs:19`, `crm.briefs.read`;
+ * `MyGatheringWorkItemResponse`, `MyWorkContracts.cs`) — the logged-in employee's open
+ * assigned tasks that carry gathering work, at most 200 (a full 200 may mean more). A
+ * non-employee gets 403 `crm.mywork.NotAnEmployee`, which is `handled(403)`: the page shows
+ * its catalog message.
  */
 @Injectable({ providedIn: 'root' })
 export class CrmMyGatheringWorkService extends ApiService {
   list(): Observable<MyGatheringWorkItem[]> {
-    return this.get<unknown>('/crm/my-gathering-work').pipe(
+    return this.get<unknown>('/crm/my-gathering-work', undefined, { context: handled(403) }).pipe(
       map((r) => this.unwrapArray<unknown>(r).map((i) => this.normalize(i))),
     );
   }

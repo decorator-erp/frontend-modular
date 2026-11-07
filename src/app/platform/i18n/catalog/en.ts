@@ -1467,6 +1467,20 @@ export const EN = {
   'client.email': 'Email',
   'client.activeStage': 'Current stage',
   'client.progress': 'Progress',
+  // crmp C-3: My gathering work (contract §2.18).
+  'mywork.sub': 'Your open tasks with gathering work waiting',
+  'mywork.empty': 'No gathering work right now',
+  'mywork.emptyBody':
+    'Tasks assigned to you that need a brief, entries, approvals or meetings will appear here.',
+  'mywork.capped': 'Showing the first {n} tasks — there may be more.',
+  'mywork.openTask': 'Open task',
+  'mywork.briefDraft': 'Brief draft to finish',
+  'mywork.briefRejected': 'Brief sent back — revise it',
+  'mywork.entriesToSend': '{n} entries to send',
+  'mywork.itemsPending': "{n} awaiting the client's decision",
+  'mywork.periodCloses': 'Period closes {date}',
+  'mywork.nextMeeting': 'Next meeting {date}',
+  'mywork.meetingsUpcoming': '{n} upcoming meetings',
 } as const;
 
 /** The key set of record. Every catalog lookup is typed against this. */

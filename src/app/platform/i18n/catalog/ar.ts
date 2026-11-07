@@ -1391,4 +1391,18 @@ export const AR: Partial<Record<CatalogKey, string>> = {
   'client.email': 'البريد الإلكتروني',
   'client.activeStage': 'المرحلة الحالية',
   'client.progress': 'نسبة الإنجاز',
+  // crmp C-3: My gathering work (contract §2.18).
+  'mywork.sub': 'مهامك المفتوحة التي تنتظر عمل جمع المتطلبات',
+  'mywork.empty': 'لا يوجد عمل لجمع المتطلبات حاليًا',
+  'mywork.emptyBody':
+    'ستظهر هنا المهام المسندة إليك التي تحتاج إلى ملخص أو بنود أو موافقات أو اجتماعات.',
+  'mywork.capped': 'يتم عرض أول {n} مهمة — قد توجد مهام أخرى.',
+  'mywork.openTask': 'فتح المهمة',
+  'mywork.briefDraft': 'مسودة ملخص بانتظار الإكمال',
+  'mywork.briefRejected': 'أُعيد الملخص — يرجى مراجعته',
+  'mywork.entriesToSend': '{n} بنود بانتظار الإرسال',
+  'mywork.itemsPending': '{n} بانتظار قرار العميل',
+  'mywork.periodCloses': 'تُغلق الفترة في {date}',
+  'mywork.nextMeeting': 'الاجتماع القادم {date}',
+  'mywork.meetingsUpcoming': '{n} اجتماعات قادمة',
 };
