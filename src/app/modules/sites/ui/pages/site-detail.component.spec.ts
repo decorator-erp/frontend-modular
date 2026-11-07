@@ -496,3 +496,90 @@ describe('SiteDetailComponent — by space (sites S-6)', () => {
     expect(el.querySelector('[data-record="R1"]')?.hasAttribute('data-highlight')).toBe(true);
   });
 });
+
+describe('SiteDetailComponent — families (sites S-7)', () => {
+  let h: DetailHarness;
+  const fam = {
+    siteId: 'S1',
+    moduleId: 'M1',
+    groupBy: ['width_cm'],
+    families: [
+      { familyKey: 'width_cm=90', instances: 2, spaceCount: 1, members: ['DO-01', 'DO-02'] },
+    ],
+  };
+  beforeEach(() => {
+    h = harness();
+    h.query.next(convertToParamMap({ tab: 'families' }));
+    h.site = detail({ recordCounts: [{ moduleId: 'M1', code: 'DOORS', recordCount: 2 }] });
+    h.api['families'] = vi.fn(() => of(fam));
+  });
+  const flush = async (fixture: { detectChanges: () => void }) => {
+    await new Promise((r) => setTimeout(r));
+    fixture.detectChanges();
+  };
+
+  it('Exact sends no groupBy; the table has one column per groupBy code (value of the first member), instances, spaces, members', async () => {
+    const { fixture, el } = renderDetail(h);
+    await flush(fixture);
+    expect(h.api['families']).toHaveBeenLastCalledWith('S1', 'M1', null);
+    const table = el.querySelector('[data-families]')!;
+    expect(
+      [...table.querySelectorAll('th[data-col]')].map((c) => c.getAttribute('data-col')),
+    ).toEqual(['width_cm']);
+    expect(table.querySelector('[data-cell="width_cm"]')?.textContent).toContain('90 cm');
+    expect(table.querySelector('[data-instances]')?.textContent).toContain('2');
+    expect(table.textContent).toContain('DO-01, DO-02');
+  });
+
+  it('Size sends size; a 400 NoDimensions shows inline with the code, not a toast', async () => {
+    h.api['families'] = vi.fn((_s: string, _m: string, g: string | null) =>
+      g === 'size'
+        ? throwError(
+            () =>
+              new HttpErrorResponse({
+                status: 400,
+                error: {
+                  title: 'sites.families.NoDimensions',
+                  errors: { 'sites.families.NoDimensions': ['none'] },
+                },
+              }),
+          )
+        : of(fam),
+    );
+    const { fixture, el } = renderDetail(h);
+    await flush(fixture);
+    (el.querySelector('[data-mode="size"] button') as HTMLButtonElement).click();
+    await flush(fixture);
+    expect(h.api['families']).toHaveBeenLastCalledWith('S1', 'M1', 'size');
+    const banner = el.querySelector('[data-family-error]')!;
+    expect(banner.textContent).toContain('sites.families.NoDimensions');
+    expect(banner.textContent).toContain('no dimensional fields');
+    expect(TestBed.inject(ToastService).show).not.toHaveBeenCalled();
+  });
+
+  it('Custom lists every schema field (hidden too) and sends the picked codes joined by ","; none picked → UnknownGroupBy banner, no call', async () => {
+    const { fixture, el } = renderDetail(h);
+    await flush(fixture);
+    (el.querySelector('[data-mode="custom"] button') as HTMLButtonElement).click();
+    await flush(fixture);
+    const pills = [...el.querySelectorAll('[data-family-fields] [data-field]')].map((p) =>
+      p.getAttribute('data-field'),
+    );
+    expect(pills).toEqual(['width_cm', 'kind', 'secret', 'finish']);
+    expect(el.querySelector('[data-family-error]')?.textContent).toContain(
+      'sites.families.UnknownGroupBy',
+    );
+    const calls = h.api['families'].mock.calls.length;
+    (el.querySelector('[data-field="width_cm"] button') as HTMLButtonElement).click();
+    (el.querySelector('[data-field="kind"] button') as HTMLButtonElement).click();
+    await flush(fixture);
+    expect(h.api['families'].mock.calls.length).toBeGreaterThan(calls);
+    expect(h.api['families']).toHaveBeenLastCalledWith('S1', 'M1', 'width_cm,kind');
+  });
+
+  it('no module with records → "Nothing captured yet"', () => {
+    h.site = detail({ recordCounts: [] });
+    const { el } = renderDetail(h);
+    expect(el.querySelector('[data-families-empty]')).toBeTruthy();
+  });
+});

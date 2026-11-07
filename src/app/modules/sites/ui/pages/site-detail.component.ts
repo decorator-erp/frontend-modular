@@ -30,13 +30,14 @@ import {
 import { SiteCaptureComponent } from '../detail/site-capture.component';
 import { SiteOverviewComponent } from '../detail/site-overview.component';
 import { SiteSpacesComponent } from '../detail/site-spaces.component';
+import { SiteFamiliesComponent } from '../detail/site-families.component';
 import {
   SiteUnitDialogComponent,
   type SiteUnitDialogData,
 } from '../detail/site-unit-dialog.component';
 
-/** The tabs built so far; the others (families, boq, documents) land with S-7..S-9. */
-const BUILT_TABS: readonly SiteTab[] = ['overview', 'capture', 'spaces'];
+/** The tabs built so far; the others (boq, documents) land with S-8..S-9. */
+const BUILT_TABS: readonly SiteTab[] = ['overview', 'capture', 'spaces', 'families'];
 
 /**
  * sites S-3 / S-4: `/sites/:siteId` — header (code, status, project link, level chip), the actions
@@ -61,6 +62,7 @@ const BUILT_TABS: readonly SiteTab[] = ['overview', 'capture', 'spaces'];
     SiteOverviewComponent,
     SiteCaptureComponent,
     SiteSpacesComponent,
+    SiteFamiliesComponent,
   ],
   template: `
     @if (store.notFound()) {
@@ -242,6 +244,9 @@ const BUILT_TABS: readonly SiteTab[] = ['overview', 'capture', 'spaces'];
           }
           @case ('spaces') {
             <app-site-spaces />
+          }
+          @case ('families') {
+            <app-site-families />
           }
           @default {
             <app-site-overview (editUnit)="editUnit()" />
