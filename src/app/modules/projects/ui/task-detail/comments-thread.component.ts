@@ -8,7 +8,6 @@ import { MarkdownService } from '@shared/markdown/markdown.service';
 import { LocaleService } from '@platform/i18n';
 import { CatalogService } from '@platform/i18n/catalog.service';
 import { PERM } from '@platform/permissions';
-import { CanDirective } from '@platform/permissions';
 import { TaskComment } from '../../model/project.model';
 import { ProjectAccessStore } from '../../stores/project-access.store';
 import { formatShortDate } from '@shared/ui/status';
@@ -45,7 +44,7 @@ export const COMMENT_PAGE_SIZE = 50;
 @Component({
   selector: 'app-comments-thread',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, CanDirective, PeraAvatarComponent, PeraButtonComponent],
+  imports: [FormsModule, PeraAvatarComponent, PeraButtonComponent],
   template: `
     <!-- Composer (top, per A-06 / design .composer) -->
     @if (canAdd()) {

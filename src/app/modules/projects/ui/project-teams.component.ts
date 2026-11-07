@@ -311,11 +311,7 @@ const NEW_TEAM_TAB = '__new__';
                     }
                   </div>
                 </div>
-                <ng-container
-                  *peraCan="
-                    teamCan('team.removeMember') || teamCan('team.role') ? manageStageTeams : []
-                  "
-                >
+                @if (teamCan('team.removeMember') || teamCan('team.role')) {
                   <button
                     type="button"
                     class="border border-border bg-bg px-2 py-1 font-mono fs-label uppercase text-text-secondary cursor-pointer hover:bg-surface-muted transition-colors"
@@ -332,7 +328,7 @@ const NEW_TEAM_TAB = '__new__';
                       Remove
                     </button>
                   }
-                </ng-container>
+                }
               </div>
             } @empty {
               <p class="m-0 px-4 py-3 fs-caption text-text-muted">

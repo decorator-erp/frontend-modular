@@ -4,7 +4,6 @@ import { ProjectSubTaskService } from '../../data/project-subtask.service';
 import { ErrorHandlerService, friendly } from '@platform/http/error-handler.service';
 import { ToastService } from '@platform/feedback/toast.service';
 import { PERM } from '@platform/permissions';
-import { CanDirective } from '@platform/permissions';
 import { ProjectSubTask } from '../../model/project.model';
 import type { ProjectAction } from '../../model/project-actions';
 import { ProjectAccessStore } from '../../stores/project-access.store';
@@ -21,7 +20,7 @@ import { SubtaskFormDialogComponent, SubtaskFormDialogData } from './subtask-for
 @Component({
   selector: 'app-subtasks-panel',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CanDirective],
+  imports: [],
   template: `
     <!-- progress -->
     <div class="flex items-center gap-2.5 px-4 py-3 border-b border-border-soft">

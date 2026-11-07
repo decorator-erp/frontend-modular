@@ -1,3 +1,4 @@
+import { ProjectAccessStore } from '../../stores/project-access.store';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -45,14 +46,15 @@ import { PaletteChip } from '../workflow-builder/builder.types';
         {{ stages().length }} stages · {{ gateCount() }} gates · {{ approvalCount() }} approvals
       </span>
       <div class="flex-1"></div>
-      <button
-        *peraCan="'stages.manage'"
-        type="button"
-        class="px-3 py-1.5 fs-label bg-accent text-on-accent border border-accent hover:bg-accent-hover"
-        (click)="addLast()"
-      >
-        + Add stage
-      </button>
+      @if (canAddStage()) {
+        <button
+          type="button"
+          class="px-3 py-1.5 fs-label bg-accent text-on-accent border border-accent hover:bg-accent-hover"
+          (click)="addLast()"
+        >
+          + Add stage
+        </button>
+      }
     </div>
     <div
       class="flex-1 grid min-h-0"
@@ -88,6 +90,12 @@ export class WorkflowBuilderComponent {
   private readonly destroyRef = inject(DestroyRef);
 
   readonly project = signal<Project | null>(null);
+  private readonly access = inject(ProjectAccessStore);
+  /** crmp review R2: adding a stage needs stages.manage AND the Manager level AND an open project. */
+  readonly canAddStage = computed(() => {
+    const id = this.project()?.id;
+    return !!id && this.access.can(id, 'stage.create');
+  });
   readonly stages = signal<ProjectStage[]>([]);
   readonly selectedId = signal<string | null>(null);
 
@@ -105,7 +113,10 @@ export class WorkflowBuilderComponent {
       this.projects
         .getById(projectId)
         .pipe(takeUntilDestroyed(this.destroyRef))
-        .subscribe((p) => this.project.set(p));
+        .subscribe((p) => {
+          this.project.set(p);
+          if (p) this.access.seed(p);
+        });
       this.reloadStages(projectId);
     }
   }
