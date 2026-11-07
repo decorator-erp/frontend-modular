@@ -702,8 +702,8 @@ export class TaskDetailComponent implements OnInit, OnDestroy {
   readonly subCount = computed(() => this.details()?.subTasks.length ?? 0);
   readonly doneSubs = computed(() => this.details()?.subTasks.filter((s) => s.isDone).length ?? 0);
   readonly gateCount = computed(() => {
-    const gates = this.details()?.gateConditions ?? [];
-    return `${gates.filter((g) => g.isSatisfied).length}/${gates.length}`;
+    const gates = this.details()?.gates;
+    return `${gates?.satisfied ?? 0}/${gates?.total ?? 0}`;
   });
   readonly assigneeName = computed(() => {
     const id = this.task()?.assignedToId;
@@ -811,7 +811,7 @@ export class TaskDetailComponent implements OnInit, OnDestroy {
   load(): void {
     this.loading.set(true);
     this.failed.set(false);
-    this.tasksApi.getDetails(this.taskId()).subscribe({
+    this.tasksApi.getDetails(this.projectId(), this.taskId()).subscribe({
       next: (details) => {
         this.details.set(details);
         this.loading.set(false);
@@ -883,7 +883,7 @@ export class TaskDetailComponent implements OnInit, OnDestroy {
       this.editingField.set(null);
       return;
     }
-    this.tasksApi.assign(t.id, assignedToId).subscribe({
+    this.tasksApi.assign(this.projectId(), t.id, assignedToId).subscribe({
       next: () => {
         this.editingField.set(null);
         this.details.update((d) =>
@@ -904,13 +904,12 @@ export class TaskDetailComponent implements OnInit, OnDestroy {
       return;
     }
     this.tasksApi
-      .update(t.id, {
+      .update(this.projectId(), t.id, {
         name: t.name,
         order: t.order,
         weight: t.weight,
         priority,
         dueDate: t.dueDate,
-        estimatedStartDate: t.estimatedStartDate,
         description: t.description,
         notes: t.notes,
       })
@@ -934,13 +933,12 @@ export class TaskDetailComponent implements OnInit, OnDestroy {
     const value = this.dateDraft || null;
     const patch = field === 'due' ? { dueDate: value } : { estimatedStartDate: value };
     this.tasksApi
-      .update(t.id, {
+      .update(this.projectId(), t.id, {
         name: t.name,
         order: t.order,
         weight: t.weight,
         priority: t.priority,
         dueDate: t.dueDate,
-        estimatedStartDate: t.estimatedStartDate,
         description: t.description,
         notes: t.notes,
         ...patch,
@@ -966,7 +964,9 @@ export class TaskDetailComponent implements OnInit, OnDestroy {
   }
 
   refresh(): void {
-    this.tasksApi.getDetails(this.taskId()).subscribe((details) => this.details.set(details));
+    this.tasksApi
+      .getDetails(this.projectId(), this.taskId())
+      .subscribe((details) => this.details.set(details));
   }
 
   /** Edit task — open the DMS Forms task dialog seeded from the current task. */
@@ -1008,7 +1008,7 @@ export class TaskDetailComponent implements OnInit, OnDestroy {
     this.saving.set(true);
     const draft = this.descriptionDraft;
     this.tasksApi
-      .update(t.id, {
+      .update(this.projectId(), t.id, {
         name: t.name,
         order: t.order,
         weight: t.weight,
@@ -1050,13 +1050,12 @@ export class TaskDetailComponent implements OnInit, OnDestroy {
     this.savingNotes.set(true);
     const draft = this.notesDraft.trim() || null;
     this.tasksApi
-      .update(t.id, {
+      .update(this.projectId(), t.id, {
         name: t.name,
         order: t.order,
         weight: t.weight,
         priority: t.priority,
         dueDate: t.dueDate,
-        estimatedStartDate: t.estimatedStartDate,
         description: t.description,
         notes: draft,
       })

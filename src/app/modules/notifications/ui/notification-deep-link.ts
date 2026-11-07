@@ -4,8 +4,6 @@ import { ApprovalService } from '@modules/approvals';
 import { CrmMeetingService } from '@modules/crm';
 import { InvoiceService } from '@modules/finance';
 import { VariationService } from '@modules/finance';
-import { ProjectStageService } from '@modules/projects';
-import { ProjectTaskService } from '@modules/projects';
 import { NotificationEntityType } from '../model/notification-enums';
 import { NotificationView } from '../model/notification.model';
 
@@ -25,8 +23,6 @@ const FALLBACK: RouteCommands = ['/notifications'];
  */
 @Injectable({ providedIn: 'root' })
 export class NotificationDeepLink {
-  private readonly tasks = inject(ProjectTaskService);
-  private readonly stages = inject(ProjectStageService);
   private readonly invoices = inject(InvoiceService);
   private readonly variations = inject(VariationService);
   private readonly approvals = inject(ApprovalService);
@@ -42,17 +38,14 @@ export class NotificationDeepLink {
         case NotificationEntityType.Project:
           return ['/projects', id]; // single id — no fetch
 
-        case NotificationEntityType.ProjectTask: {
-          // getDetails returns TaskDetails { task, subTasks, gateConditions } — projectId is on task.
-          const details = await firstValueFrom(this.tasks.getDetails(id));
-          const projectId = details.task?.projectId;
-          return projectId ? ['/projects', projectId, 'tasks', id] : FALLBACK;
-        }
-
-        case NotificationEntityType.ProjectStage: {
-          const stage = await firstValueFrom(this.stages.getDetails(id));
-          return stage.projectId ? ['/projects', stage.projectId, 'stages', id] : FALLBACK;
-        }
+        // crmp A-2 (BLOCKED): task and stage reads are nested under the project now
+        // (`/projects/{projectId}/tasks/{taskId}`), and a notification carries only the entity id
+        // (dms `Notifications.Contracts/NotificationContracts.cs:14`). The old `/project-tasks/{id}` and
+        // `/project-stages/{id}` lookups no longer exist, so these fall back until the backend sends the
+        // project id with the notification.
+        case NotificationEntityType.ProjectTask:
+        case NotificationEntityType.ProjectStage:
+          return FALLBACK;
 
         case NotificationEntityType.Invoice: {
           const invoice = await firstValueFrom(this.invoices.getById(id));

@@ -4,6 +4,7 @@ import { map } from 'rxjs/operators';
 import {
   CreateProjectTaskRequest,
   ProjectTask,
+  ProjectTaskStatus,
   TaskDetails,
   UpdateProjectTaskRequest,
 } from '../model/project.model';
@@ -15,14 +16,38 @@ import type {
 } from '@modules/finance';
 import { ApiService } from '@platform/http/api.service';
 import { ProjectService } from './project.service';
+import { toUtcDate } from '../model/utc-date';
 
 /** Tasks — `/api/project-tasks`. */
+/** Filters and the opt-in page of `GET /projects/{projectId}/tasks` (dms `TaskEndpoints.cs:23`). */
+export interface ProjectTaskQuery {
+  stageId?: string | null;
+  assigneeId?: string | null;
+  status?: ProjectTaskStatus | null;
+  pageNumber?: number;
+  pageSize?: number;
+}
+
+/**
+ * Project tasks, nested under the project (crmp A-2; gap table P-36..44, P-105, E3):
+ * `/api/projects/{projectId}/tasks` (dms `TaskEndpoints.cs:23-123`). Lifecycle transitions are POSTs.
+ * The list is unbounded unless a page is asked for (contract §1.6).
+ */
 @Injectable({ providedIn: 'root' })
 export class ProjectTaskService extends ApiService {
   private readonly projects = inject(ProjectService);
 
-  getByProject(projectId: string): Observable<ProjectTask[]> {
-    return this.get<unknown>(`/project-tasks/by-project/${projectId}`).pipe(
+  getByProject(projectId: string, query: ProjectTaskQuery = {}): Observable<ProjectTask[]> {
+    const params: Record<string, unknown> = {};
+    if (query.stageId) params['stageId'] = query.stageId;
+    if (query.assigneeId) params['assigneeId'] = query.assigneeId;
+    if (query.status) params['status'] = this.projects.taskStatusInt(query.status);
+    if (query.pageNumber) params['pageNumber'] = query.pageNumber;
+    if (query.pageSize) params['pageSize'] = query.pageSize;
+    return this.get<unknown>(
+      `/projects/${projectId}/tasks`,
+      Object.keys(params).length ? params : undefined,
+    ).pipe(
       map((r) =>
         this.unwrapArray(r)
           .map((t) => this.projects.normalizeTask(t, projectId))
@@ -31,65 +56,89 @@ export class ProjectTaskService extends ApiService {
     );
   }
 
-  getByStage(stageId: string): Observable<ProjectTask[]> {
-    return this.get<unknown>(`/project-tasks/by-stage/${stageId}`).pipe(
-      map((r) =>
-        this.unwrapArray(r)
-          .map((t) => this.projects.normalizeTask(t, ''))
-          .sort((a, b) => a.order - b.order),
-      ),
-    );
+  /** Was `GET /project-tasks/by-stage/{id}` (P-37): now `?stageId=`. */
+  getByStage(projectId: string, stageId: string): Observable<ProjectTask[]> {
+    return this.getByProject(projectId, { stageId });
   }
 
-  getDetails(taskId: string): Observable<TaskDetails> {
-    return this.get<unknown>(`/project-tasks/${taskId}/details`).pipe(
+  /**
+   * `GET …/tasks/{taskId}/details` → `{ task, subTasks, subTasksCount, commentsCount, gates }`
+   * (TaskEndpoints.cs:64; `ProjectTaskDetailsResponse`). The gates come as a summary, not a list.
+   */
+  getDetails(projectId: string, taskId: string): Observable<TaskDetails> {
+    return this.get<unknown>(`/projects/${projectId}/tasks/${taskId}/details`).pipe(
       map((r) => {
         const src = this.unwrap(r);
+        const subTasks = (this.field<unknown[]>(src, 'subTasks') ?? []).map((s) =>
+          this.projects.normalizeSubTask(s, taskId),
+        );
         return {
-          task: this.projects.normalizeTask(src, ''),
-          subTasks: (this.field<unknown[]>(src, 'subTasks') ?? []).map((s) =>
-            this.projects.normalizeSubTask(s, taskId),
-          ),
-          gateConditions: (this.field<unknown[]>(src, 'gateConditions') ?? []).map((c) =>
-            this.projects.normalizeGate(c),
-          ),
-        } as TaskDetails;
+          task: this.projects.normalizeTask(this.field(src, 'task') ?? src, projectId),
+          subTasks,
+          subTasksCount: this.field<number>(src, 'subTasksCount') ?? subTasks.length,
+          commentsCount: this.field<number>(src, 'commentsCount') ?? 0,
+          gates: this.projects.normalizeGateSummary(this.field(src, 'gates')),
+        } satisfies TaskDetails;
       }),
     );
   }
 
-  create(req: CreateProjectTaskRequest): Observable<string> {
-    const body = { ...req, priority: this.projects.priorityInt(req.priority) };
-    return this.post<unknown>('/project-tasks', body).pipe(map((r) => this.unwrap<string>(r)));
+  /** `POST /projects/{pid}/tasks` (`TaskRequest`, TaskEndpoints.cs:35,228) → `{ taskId }`. */
+  create(projectId: string, req: CreateProjectTaskRequest): Observable<string> {
+    return this.post<unknown>(`/projects/${projectId}/tasks`, this.body(req)).pipe(
+      map((r) => this.unwrapId(r, 'taskId')),
+    );
   }
 
-  update(taskId: string, req: UpdateProjectTaskRequest): Observable<unknown> {
-    const body = { ...req, priority: this.projects.priorityInt(req.priority) };
-    return this.put(`/project-tasks/${taskId}`, body);
+  /** `PUT …/tasks/{taskId}` (TaskEndpoints.cs:46). Omitted nullable text and dates are cleared. */
+  update(projectId: string, taskId: string, req: UpdateProjectTaskRequest): Observable<unknown> {
+    return this.put(`/projects/${projectId}/tasks/${taskId}`, this.body(req));
   }
 
-  remove(taskId: string): Observable<unknown> {
-    return this.delete(`/project-tasks/${taskId}`);
+  remove(projectId: string, taskId: string): Observable<unknown> {
+    return this.delete(`/projects/${projectId}/tasks/${taskId}`);
   }
 
-  assign(taskId: string, assignedToId: string): Observable<unknown> {
-    return this.put(`/project-tasks/${taskId}/assign`, { assignedToId });
+  /** `POST …/assign { employeeId }` (was `PUT … { assignedToId }`, P-42). */
+  assign(projectId: string, taskId: string, employeeId: string): Observable<unknown> {
+    return this.post(`/projects/${projectId}/tasks/${taskId}/assign`, { employeeId });
   }
 
-  start(taskId: string, assignedToId?: string): Observable<unknown> {
-    return this.put(`/project-tasks/${taskId}/start`, { assignedToId: assignedToId ?? null });
+  start(projectId: string, taskId: string): Observable<unknown> {
+    return this.post(`/projects/${projectId}/tasks/${taskId}/start`, {});
   }
 
-  complete(taskId: string): Observable<unknown> {
-    return this.put(`/project-tasks/${taskId}/complete`, {});
+  complete(projectId: string, taskId: string): Observable<unknown> {
+    return this.post(`/projects/${projectId}/tasks/${taskId}/complete`, {});
   }
 
-  // NOTE: no cancel() — backend exposes no PUT /project-tasks/{id}/cancel. The
-  // legal terminal transition is reject() (TaskLifecycleService.reject), per the
-  // Jira-style state machine (CLAUDE_CODE_PROMPT.md Step 3).
+  cancel(projectId: string, taskId: string): Observable<unknown> {
+    return this.post(`/projects/${projectId}/tasks/${taskId}/cancel`, {});
+  }
 
-  // ---- financial query drilldowns (financial-queries spec) ----------------
-  // All paths are /api/project-tasks/{id}/... (ProjectTaskFinancialEndpoints.cs).
+  /** `POST …/reject { reason }` (was `PUT … { note }`, P-105). */
+  reject(projectId: string, taskId: string, reason: string): Observable<unknown> {
+    return this.post(`/projects/${projectId}/tasks/${taskId}/reject`, { reason });
+  }
+
+  reopen(projectId: string, taskId: string): Observable<unknown> {
+    return this.post(`/projects/${projectId}/tasks/${taskId}/reopen`, {});
+  }
+
+  private body(req: CreateProjectTaskRequest | UpdateProjectTaskRequest): Record<string, unknown> {
+    const create = req as CreateProjectTaskRequest;
+    return {
+      ...('projectStageId' in req ? { projectStageId: create.projectStageId ?? null } : {}),
+      ...('assignedToId' in req ? { assignedToId: create.assignedToId ?? null } : {}),
+      name: req.name,
+      description: req.description ?? null,
+      notes: req.notes ?? null,
+      priority: this.projects.priorityInt(req.priority),
+      weight: req.weight,
+      order: req.order,
+      dueDate: toUtcDate(req.dueDate),
+    };
+  }
 
   /** Ledger movements at task scope. */
   getFinancialMovements(

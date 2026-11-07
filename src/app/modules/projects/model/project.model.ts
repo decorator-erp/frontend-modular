@@ -303,16 +303,14 @@ export interface CompleteProjectStageRequest {
   notes?: string | null;
 }
 
+/** `TaskRequest` (dms `TaskEndpoints.cs:228`); the project is in the route. */
 export interface CreateProjectTaskRequest {
-  projectId: string;
   name: string;
   order: number;
   weight: number;
   priority: TaskPriority;
   projectStageId?: string | null;
-  stageTaskId?: string | null;
   assignedToId?: string | null;
-  startDate?: string | null;
   dueDate?: string | null;
   description?: string | null;
   notes?: string | null;
@@ -323,8 +321,6 @@ export interface UpdateProjectTaskRequest {
   weight: number;
   priority: TaskPriority;
   dueDate?: string | null;
-  /** Planned start. Backend accepts it on update; only meaningful while the task is Open. */
-  estimatedStartDate?: string | null;
   description?: string | null;
   notes?: string | null;
 }
@@ -359,10 +355,14 @@ export interface UpdateProjectSubTaskRequest {
 }
 
 /** Mirrors ProjectTaskDetailsResponse — task + its subtasks + its gate conditions. */
+/** `ProjectTaskDetailsResponse` (dms `Projects.Contracts/Tasks/TaskContracts.cs:57`). */
 export interface TaskDetails {
   task: ProjectTask;
   subTasks: ProjectSubTask[];
-  gateConditions: GateCondition[];
+  subTasksCount: number;
+  commentsCount: number;
+  /** Gate counts; the list itself is `GET …/tasks/{taskId}/gates`. */
+  gates: GateSummary;
 }
 
 export interface AddProjectMemberRequest {

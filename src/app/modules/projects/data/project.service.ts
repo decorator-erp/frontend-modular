@@ -377,7 +377,7 @@ export class ProjectService extends ApiService {
     }));
   }
 
-  private normalizeGateSummary(source: unknown): GateSummary {
+  normalizeGateSummary(source: unknown): GateSummary {
     return {
       total: this.num(this.field(source, 'total')),
       pending: this.num(this.field(source, 'pending')),
@@ -475,6 +475,19 @@ export class ProjectService extends ApiService {
         { Draft: 1, InProgress: 2, OnHold: 3, Completed: 4, Cancelled: 5 } as Record<string, number>
       )[v] ?? 1
     );
+  }
+  /** `ProjectTaskStatus` (dms `Projects.Contracts/Enums.cs`) for the task list's `status` filter. */
+  taskStatusInt(v: ProjectTaskStatus): number {
+    const byName: Record<string, number> = {
+      Locked: 1,
+      Open: 2,
+      InProgress: 3,
+      Completed: 4,
+      PendingApproval: 5,
+      Rejected: 6,
+      Cancelled: 7,
+    };
+    return byName[v] ?? 2;
   }
   priorityInt(v: TaskPriority): number {
     return ({ Low: 1, Medium: 2, High: 3, Urgent: 4 } as Record<string, number>)[v] ?? 2;
