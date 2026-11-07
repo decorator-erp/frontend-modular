@@ -123,6 +123,18 @@ export class SiteDetailStore {
     return id ? (this.names()[id] ?? null) : null;
   }
 
+  /**
+   * S-5: the capture grid saved (record counts changed) or was refused. A level or closed-project
+   * refusal re-reads the project (U3); the survey is re-read either way.
+   */
+  afterCapture(code: string | null): void {
+    const projectId = this.site()?.projectId;
+    if (projectId && (code === 'sites.InsufficientLevel' || code === 'sites.ProjectClosed')) {
+      this.access.refresh(projectId);
+    }
+    this.reload();
+  }
+
   // ── writes ──────────────────────────────────────────────────────────────────
 
   /** R4: the unit data, full replace. */

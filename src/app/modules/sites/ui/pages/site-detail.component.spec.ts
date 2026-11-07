@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
 import { ActivatedRoute, Router, convertToParamMap, provideRouter } from '@angular/router';
-import { BehaviorSubject, of, throwError } from 'rxjs';
+import { BehaviorSubject, Observable, of, throwError } from 'rxjs';
 import { HttpErrorResponse } from '@angular/common/http';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ConfirmService, ModalService } from '@ds';
@@ -11,7 +11,7 @@ import { PermissionsService } from '@platform/permissions/permissions.service';
 import { SiteDefinitionService } from '../../data/site-definition.service';
 import { SiteLookupService } from '../../data/site-lookup.service';
 import { SiteService } from '../../data/site.service';
-import { detail } from '../../testing/site-fixtures';
+import { FIELDS, cell, detail, pivotRow } from '../../testing/site-fixtures';
 import type { SiteDetail } from '../../model/site.model';
 import type { SiteDecideDialogData } from '../detail/site-decide-dialog.component';
 import { SiteDetailComponent } from './site-detail.component';
@@ -25,6 +25,8 @@ interface DetailHarness {
   modalOpen: ReturnType<typeof vi.fn>;
   confirmOpen: ReturnType<typeof vi.fn>;
   query: BehaviorSubject<ReturnType<typeof convertToParamMap>>;
+  spaces: Observable<unknown>;
+  catalog: Observable<unknown>;
 }
 
 function harness(): DetailHarness {
@@ -45,6 +47,8 @@ function harness(): DetailHarness {
     modalOpen: vi.fn(() => ({ afterClosed: () => Promise.resolve(undefined) })),
     confirmOpen: vi.fn(() => Promise.resolve(true)),
     query: new BehaviorSubject(convertToParamMap({})),
+    spaces: of([{ id: 'SP1', name: 'Hall', sortOrder: 1, isActive: true }]),
+    catalog: of([]),
   };
 }
 
@@ -56,6 +60,30 @@ function renderDetail(h: DetailHarness, extra: unknown[] = []) {
     decide: vi.fn(() => of(undefined)),
     reopen: vi.fn(() => of(undefined)),
     remove: vi.fn(() => of(undefined)),
+    pivot: vi.fn(() =>
+      of({
+        siteId: 'S1',
+        moduleId: 'M1',
+        moduleCode: 'DOORS',
+        columns: FIELDS,
+        rows: [
+          pivotRow({
+            recordId: 'R1',
+            label: 'DO-01',
+            spaceName: 'Hall',
+            spaceId: 'SP1',
+            cells: {
+              width_cm: cell({ valueNumber: 90 }),
+              kind: cell({ optionId: 'O-a', optionNameEn: 'Single', optionNameAr: 'مفرد' }),
+              secret: cell({ valueText: 'TOP-SECRET' }),
+            },
+          }),
+        ],
+      }),
+    ),
+    grouped: vi.fn(() => of({ siteId: 'S1', groups: [] })),
+    bulkSave: vi.fn(() => of(undefined)),
+    deleteRecord: vi.fn(() => of(undefined)),
     ...h.api,
   };
   TestBed.configureTestingModule({
@@ -74,6 +102,7 @@ function renderDetail(h: DetailHarness, extra: unknown[] = []) {
       {
         provide: SiteDefinitionService,
         useValue: {
+          schema: () => of({ moduleId: 'M1', code: 'DOORS', fields: FIELDS }),
           modules: () =>
             of([
               {
@@ -87,7 +116,15 @@ function renderDetail(h: DetailHarness, extra: unknown[] = []) {
             ]),
         },
       },
-      { provide: SiteLookupService, useValue: { employeeName: (id: string) => of(`Name ${id}`) } },
+      {
+        provide: SiteLookupService,
+        useValue: {
+          employeeName: (id: string) => of(`Name ${id}`),
+          spaces: () => h.spaces,
+          catalogCategories: () => h.catalog,
+          allCatalogItems: () => h.catalog,
+        },
+      },
       {
         provide: ProjectAccessStore,
         useValue: { ensure: vi.fn(), refresh: vi.fn(), project: () => h.project, me: () => h.me },
@@ -337,5 +374,67 @@ describe('SiteDetailComponent — workflow (sites S-4)', () => {
     expect(h.confirmOpen.mock.calls[0][0].tone).toBe('danger');
     expect(h.api['remove']).toHaveBeenCalledWith('S1');
     expect(nav).toHaveBeenCalledWith(['/sites'], { queryParams: { projectId: 'P' } });
+  });
+});
+
+describe('SiteDetailComponent — capture grid (sites S-5)', () => {
+  let h: DetailHarness;
+  beforeEach(() => {
+    h = harness();
+    h.query.next(convertToParamMap({ tab: 'capture', m: 'M1' }));
+    h.site = detail({ recordCounts: [{ moduleId: 'M1', code: 'DOORS', recordCount: 1 }] });
+  });
+
+  it('module sub-tabs with counts; columns are the visible fields only; "N hidden fields"', () => {
+    const { el } = renderDetail(h);
+    expect(el.querySelector('[data-module-tabs]')?.textContent).toContain('Doors 1');
+    const read = el.querySelector('[data-grid="read"]')!;
+    expect([...read.querySelectorAll('[data-col]')].map((c) => c.getAttribute('data-col'))).toEqual(
+      ['width_cm', 'kind'],
+    );
+    expect(read.textContent).toContain('90 cm');
+    expect(read.textContent).toContain('Single');
+    expect(read.textContent).toContain('Hall');
+    expect(read.textContent).not.toContain('TOP-SECRET');
+    expect(el.querySelector('[data-card-sub]')?.textContent).toContain('2 hidden field(s)');
+  });
+
+  it('Edit grid only for an editor on an editable survey of an open project', () => {
+    let { el } = renderDetail(h);
+    expect(el.querySelector('[data-edit-grid]')).toBeTruthy();
+    TestBed.resetTestingModule();
+    h.site = detail({ status: 2, recordCounts: [] });
+    ({ el } = renderDetail(h));
+    expect(el.querySelector('[data-edit-grid]')).toBeNull();
+  });
+
+  it('edit view: typed editors, add/duplicate/remove, one save', async () => {
+    const { fixture, el } = renderDetail(h);
+    (el.querySelector('[data-edit-grid] button') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    const grid = el.querySelector('[data-grid="edit"]')!;
+    expect(grid.querySelectorAll('[data-row]')).toHaveLength(1);
+    expect(grid.textContent).not.toContain('TOP-SECRET');
+    (el.querySelector('[data-add-row] button') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(grid.querySelectorAll('[data-row]')).toHaveLength(2);
+    (el.querySelector('[data-save] button') as HTMLButtonElement).click();
+    await new Promise((r) => setTimeout(r));
+    fixture.detectChanges();
+    // the new row has no width (required) → pre-check blocks, inline error, nothing sent
+    expect(h.api['bulkSave']).not.toHaveBeenCalled();
+    expect(el.querySelector('[data-cell-error="width_cm"]')).toBeTruthy();
+    expect(el.querySelector('[data-grid-banner]')).toBeTruthy();
+  });
+
+  it('spaces 403 → "Whole unit" only, with the reason (A1 / BF-1); catalog 403 → picker hidden', () => {
+    h.spaces = throwError(() => new HttpErrorResponse({ status: 403 }));
+    h.catalog = throwError(() => new HttpErrorResponse({ status: 403 }));
+    const { fixture, el } = renderDetail(h);
+    (el.querySelector('[data-edit-grid] button') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(el.querySelector('[data-spaces-unavailable]')).toBeTruthy();
+    expect(el.querySelector('[data-catalog-unavailable]')).toBeTruthy();
+    expect(el.querySelector('[data-cell="catalog"]')).toBeNull();
   });
 });

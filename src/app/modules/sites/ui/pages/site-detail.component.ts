@@ -27,6 +27,7 @@ import {
   SiteDecideDialogComponent,
   type SiteDecideDialogData,
 } from '../detail/site-decide-dialog.component';
+import { SiteCaptureComponent } from '../detail/site-capture.component';
 import { SiteOverviewComponent } from '../detail/site-overview.component';
 import {
   SiteUnitDialogComponent,
@@ -34,7 +35,7 @@ import {
 } from '../detail/site-unit-dialog.component';
 
 /** The tabs built so far; the others (spaces, families, boq, documents) land with S-6..S-9. */
-const BUILT_TABS: readonly SiteTab[] = ['overview'];
+const BUILT_TABS: readonly SiteTab[] = ['overview', 'capture'];
 
 /**
  * sites S-3 / S-4: `/sites/:siteId` — header (code, status, project link, level chip), the actions
@@ -57,6 +58,7 @@ const BUILT_TABS: readonly SiteTab[] = ['overview'];
     PeraStatusBadgeComponent,
     PeraTabsComponent,
     SiteOverviewComponent,
+    SiteCaptureComponent,
   ],
   template: `
     @if (store.notFound()) {
@@ -233,6 +235,9 @@ const BUILT_TABS: readonly SiteTab[] = ['overview'];
       </header>
       <div class="px-8 py-6">
         @switch (tab()) {
+          @case ('capture') {
+            <app-site-capture [moduleId]="moduleId()" />
+          }
           @default {
             <app-site-overview (editUnit)="editUnit()" />
           }
