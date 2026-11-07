@@ -583,3 +583,40 @@ describe('SiteDetailComponent — families (sites S-7)', () => {
     expect(el.querySelector('[data-families-empty]')).toBeTruthy();
   });
 });
+
+describe('SiteDetailComponent — quantities (sites S-8)', () => {
+  let h: DetailHarness;
+  beforeEach(() => {
+    h = harness();
+    h.query.next(convertToParamMap({ tab: 'boq' }));
+  });
+  const line = {
+    moduleCode: 'DOORS',
+    kindCode: 'single',
+    nameEn: 'Single leaf',
+    nameAr: 'ضلفة واحدة',
+    occurrences: 3,
+    spaces: 2,
+    totalQty: 1234.567,
+    totalAreaSqm: 5.004,
+    totalLengthM: null,
+  };
+
+  it('lines: module chip, kind name, counts and totals ≤2 decimals; null → "—"', () => {
+    h.api['boq'] = vi.fn(() => of({ siteId: 'S1', lines: [line] }));
+    const { el } = renderDetail(h);
+    const row = el.querySelector('[data-boq-line]')!;
+    expect(row.textContent).toContain('DOORS');
+    expect(row.querySelector('[data-kind]')?.textContent).toContain('Single leaf');
+    expect(row.querySelector('[data-n="occurrences"]')?.textContent?.trim()).toBe('3');
+    expect(row.querySelector('[data-n="qty"]')?.textContent?.trim()).toBe('1,234.57');
+    expect(row.querySelector('[data-n="area"]')?.textContent?.trim()).toBe('5');
+    expect(row.querySelector('[data-n="length"]')?.textContent?.trim()).toBe('—');
+  });
+
+  it('empty → "Nothing captured yet"', () => {
+    h.api['boq'] = vi.fn(() => of({ siteId: 'S1', lines: [] }));
+    const { el } = renderDetail(h);
+    expect(el.querySelector('[data-boq-empty]')).toBeTruthy();
+  });
+});
