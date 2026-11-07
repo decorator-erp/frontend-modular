@@ -3,11 +3,14 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { map } from 'rxjs';
 import {
+  ConfirmService,
   ModalService,
   PeraAlertComponent,
   PeraBadgeComponent,
   PeraButtonComponent,
+  PeraDropdownComponent,
   PeraEmptyComponent,
+  PeraIconComponent,
   PeraSkeletonComponent,
   PeraStatusBadgeComponent,
   PeraTabsComponent,
@@ -20,6 +23,10 @@ import { formatCairoDateTime } from '@platform/i18n/intl-locale';
 import { SITE_STATUS_LABEL, SITE_STATUS_TONE, SiteStatus } from '../../model/site-enums';
 import { parseSiteTab, siteQuery, type SiteTab } from '../../model/site-url';
 import { SiteDetailStore } from '../../stores/site-detail.store';
+import {
+  SiteDecideDialogComponent,
+  type SiteDecideDialogData,
+} from '../detail/site-decide-dialog.component';
 import { SiteOverviewComponent } from '../detail/site-overview.component';
 import {
   SiteUnitDialogComponent,
@@ -43,7 +50,9 @@ const BUILT_TABS: readonly SiteTab[] = ['overview'];
     PeraAlertComponent,
     PeraBadgeComponent,
     PeraButtonComponent,
+    PeraDropdownComponent,
     PeraEmptyComponent,
+    PeraIconComponent,
     PeraSkeletonComponent,
     PeraStatusBadgeComponent,
     PeraTabsComponent,
@@ -112,6 +121,71 @@ const BUILT_TABS: readonly SiteTab[] = ['overview'];
                 {{ t('sv.editUnit') }}
               </pera-button>
             }
+            @if (caps().submit) {
+              <pera-button
+                variant="primary"
+                iconStart="check"
+                [loading]="store.busy()"
+                [disabled]="store.busy()"
+                (click)="submit()"
+                data-act="submit"
+                >{{ t('sv.submit') }}</pera-button
+              >
+            }
+            @if (caps().decide) {
+              <pera-button
+                iconStart="x"
+                [disabled]="store.busy()"
+                (click)="decide(false)"
+                data-act="reject"
+              >
+                {{ t('sv.reject') }}
+              </pera-button>
+              @if (caps().approve) {
+                <pera-button
+                  variant="primary"
+                  iconStart="check"
+                  [disabled]="store.busy()"
+                  (click)="decide(true)"
+                  data-act="approve"
+                  >{{ t('sv.approve') }}</pera-button
+                >
+              }
+            }
+            @if (caps().reopen) {
+              <pera-button
+                variant="primary"
+                [loading]="store.busy()"
+                [disabled]="store.busy()"
+                (click)="reopen()"
+                data-act="reopen"
+                >{{ t('sv.reopen') }}</pera-button
+              >
+            }
+            @if (caps().del) {
+              <pera-dropdown>
+                <button
+                  trigger
+                  type="button"
+                  class="inline-flex items-center justify-center w-8 h-8 text-text-secondary hover:bg-surface-muted cursor-pointer"
+                  [attr.aria-label]="t('sv.more')"
+                  aria-haspopup="menu"
+                  data-act="more"
+                >
+                  <pera-icon name="more-vertical" [size]="16" />
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  class="w-full text-start px-3 py-2 text-danger hover:bg-surface-muted cursor-pointer"
+                  [disabled]="store.busy()"
+                  (click)="remove()"
+                  data-act="delete"
+                >
+                  {{ t('sv.deleteSurvey') }}
+                </button>
+              </pera-dropdown>
+            }
           </div>
         </div>
         <div class="flex flex-col gap-2 mb-4" data-banners>
@@ -172,6 +246,7 @@ export class SiteDetailComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly modal = inject(ModalService);
+  private readonly confirm = inject(ConfirmService);
   private readonly catalog = inject(CatalogService);
 
   protected readonly submitted = SiteStatus.Submitted;
@@ -263,5 +338,61 @@ export class SiteDetailComponent {
       save: (_p, unit) => this.store.updateUnit(unit),
     };
     this.modal.open(SiteUnitDialogComponent, { size: 'lg', data });
+  }
+
+  protected async submit(): Promise<void> {
+    const s = this.store.site();
+    if (!s || this.store.busy()) return;
+    const ok = await this.confirm.open({
+      title: this.t('sv.submitQ', { c: s.code }),
+      body: this.t('sv.submitBody'),
+      confirmLabel: this.t('sv.submit'),
+      cancelLabel: this.t('sv.cancel'),
+    });
+    if (!ok) return;
+    const outcome = await this.store.submit();
+    if (!outcome.ok && outcome.message) this.store.actionError.set(outcome.message);
+  }
+
+  protected decide(approve: boolean): void {
+    const s = this.store.site();
+    if (!s || this.store.busy()) return;
+    const data: SiteDecideDialogData = {
+      approve,
+      code: s.code,
+      save: (note) => this.store.decide(approve, note),
+    };
+    this.modal.open(SiteDecideDialogComponent, { size: 'md', data });
+  }
+
+  protected async reopen(): Promise<void> {
+    const s = this.store.site();
+    if (!s || this.store.busy()) return;
+    const ok = await this.confirm.open({
+      title: this.t('sv.reopenQ', { c: s.code }),
+      body: this.t('sv.reopenBody'),
+      confirmLabel: this.t('sv.reopen'),
+      cancelLabel: this.t('sv.cancel'),
+    });
+    if (!ok) return;
+    const outcome = await this.store.reopen();
+    if (!outcome.ok && outcome.message) this.store.actionError.set(outcome.message);
+  }
+
+  protected async remove(): Promise<void> {
+    const s = this.store.site();
+    if (!s || this.store.busy()) return;
+    const ok = await this.confirm.open({
+      title: this.t('sv.deleteQ', { c: s.code }),
+      body: this.t('sv.deleteBody'),
+      confirmLabel: this.t('sv.deleteSurvey'),
+      cancelLabel: this.t('sv.cancel'),
+      tone: 'danger',
+    });
+    if (!ok) return;
+    const outcome = await this.store.remove();
+    if (outcome.ok)
+      void this.router.navigate(['/sites'], { queryParams: { projectId: s.projectId } });
+    else if (outcome.message) this.store.actionError.set(outcome.message);
   }
 }
