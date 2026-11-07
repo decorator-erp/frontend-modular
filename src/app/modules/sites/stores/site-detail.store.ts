@@ -1,6 +1,7 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { Observable, catchError, firstValueFrom, of } from 'rxjs';
+import { ConfirmService } from '@ds';
 import { ProjectAccessStore } from '@modules/projects';
 import { ToastService } from '@platform/feedback/toast.service';
 import { injectReloadOnConflict } from '@platform/http/concurrency';
@@ -31,6 +32,7 @@ export class SiteDetailStore {
   private readonly toast = inject(ToastService);
   private readonly catalog = inject(CatalogService);
   private readonly reloadOnConflict = injectReloadOnConflict();
+  private readonly confirm = inject(ConfirmService);
 
   readonly siteId = signal<string | null>(null);
   readonly site = signal<SiteDetail | null>(null);
@@ -47,6 +49,8 @@ export class SiteDetailStore {
   /** The last workflow refusal shown on the page (e.g. `AddressRequiredToSubmit`). */
   readonly actionError = signal<string | null>(null);
   readonly addressRequired = signal(false);
+  /** The capture grid holds unsaved edits (A3; written by `SiteCaptureStore`). */
+  readonly captureDirty = signal(false);
 
   readonly project = computed(() => {
     const s = this.site();
@@ -65,6 +69,23 @@ export class SiteDetailStore {
   });
 
   private generation = 0;
+
+  /**
+   * A3: true when nothing unsaved would be lost, or the user agreed to discard the grid's edits.
+   * Asked before a module or tab switch and by the route's `canDeactivate`.
+   */
+  async confirmDiscard(): Promise<boolean> {
+    if (!this.captureDirty()) return true;
+    const ok = await this.confirm.open({
+      title: this.catalog.t('sv.discardQ'),
+      body: this.catalog.t('sv.discardBody'),
+      confirmLabel: this.catalog.t('sv.discard'),
+      cancelLabel: this.catalog.t('sv.keepEditing'),
+      tone: 'danger',
+    });
+    if (ok) this.captureDirty.set(false);
+    return ok;
+  }
 
   load(siteId: string): void {
     if (this.siteId() !== siteId) {

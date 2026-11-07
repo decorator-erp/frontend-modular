@@ -1851,4 +1851,9 @@ export const AR: Partial<Record<CatalogKey, string>> = {
   'sv.yesPreview': 'نعم',
   // sites parity — Delete label
   'sv.delete': 'حذف',
+  // review A3: unsaved capture grid
+  'sv.discardQ': 'تجاهل التغييرات غير المحفوظة؟',
+  'sv.discardBody': 'في الجدول تعديلات لم تُحفظ بعد، وستضيع.',
+  'sv.discard': 'تجاهل',
+  'sv.keepEditing': 'متابعة التعديل',
 };

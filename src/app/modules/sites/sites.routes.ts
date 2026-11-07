@@ -1,4 +1,4 @@
-import { Routes } from '@angular/router';
+import { CanDeactivateFn, Routes } from '@angular/router';
 import { PermissionGuard } from '@platform/auth/permission.guard';
 import { SITE_PERM } from './model/site-permissions';
 
@@ -8,6 +8,10 @@ import { SITE_PERM } from './model/site-permissions';
  * `loadComponent`, so none reaches the initial bundle. The two `admin/site-definitions` routes (S-10)
  * take `sites.definitions.manage`.
  */
+/** A3: a page that may hold unsaved edits answers `canLeave()` (the survey page's capture grid). */
+const leaveGuard: CanDeactivateFn<{ canLeave?: () => boolean | Promise<boolean> }> = (c) =>
+  c.canLeave?.() ?? true;
+
 export const sitesRoutes: Routes = [
   {
     path: 'sites',
@@ -18,6 +22,7 @@ export const sitesRoutes: Routes = [
   {
     path: 'sites/:siteId',
     canActivate: [PermissionGuard],
+    canDeactivate: [leaveGuard],
     data: { permission: SITE_PERM.read, breadcrumb: 'sv.survey' },
     loadComponent: () =>
       import('./ui/pages/site-detail.component').then((m) => m.SiteDetailComponent),

@@ -1,5 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Injectable, computed, inject, signal } from '@angular/core';
+import { DestroyRef, Injectable, computed, inject, signal } from '@angular/core';
 import { Observable, catchError, firstValueFrom, forkJoin, of } from 'rxjs';
 import { ToastService } from '@platform/feedback/toast.service';
 import { injectReloadOnConflict } from '@platform/http/concurrency';
@@ -72,6 +72,8 @@ export class SiteCaptureStore {
   readonly cellErrors = signal<CellErrors>({});
   readonly banner = signal<string | null>(null);
   readonly saving = signal(false);
+  /** The draft holds a change the server has not seen (A3: switching or leaving asks first). */
+  readonly dirty = signal(false);
   /** Stored hidden values that cannot be resent (inactive option); this save clears them. */
   readonly unreadableHidden = signal(0);
 
@@ -86,6 +88,10 @@ export class SiteCaptureStore {
 
   private generation = 0;
   private lastSent: BulkSiteRecordRequest[] = [];
+
+  constructor() {
+    inject(DestroyRef).onDestroy(() => this.detail?.captureDirty.set(false));
+  }
 
   /** Select (or re-select) the grid. Discards a draft of another module. */
   open(siteId: string, projectId: string, module: SiteModule): void {
@@ -161,6 +167,7 @@ export class SiteCaptureStore {
     this.removed.set([]);
     this.cellErrors.set({});
     this.banner.set(null);
+    this.setDirty(false);
     this.ensureSpaces();
     this.ensureCatalog();
   }
@@ -171,6 +178,7 @@ export class SiteCaptureStore {
     this.cellErrors.set({});
     this.banner.set(null);
     this.unreadableHidden.set(0);
+    this.setDirty(false);
   }
 
   addRow(): void {
@@ -178,6 +186,7 @@ export class SiteCaptureStore {
     const rows = this.draft();
     if (!module || !rows) return;
     this.draft.set([...rows, blankRow(module.code, rows, this.visible())]);
+    this.setDirty(true);
   }
 
   duplicate(key: string): void {
@@ -188,6 +197,7 @@ export class SiteCaptureStore {
     if (i < 0) return;
     const copy = duplicateRow(rows[i], module.code, rows);
     this.draft.set([...rows.slice(0, i + 1), copy, ...rows.slice(i + 1)]);
+    this.setDirty(true);
   }
 
   remove(key: string): void {
@@ -197,6 +207,7 @@ export class SiteCaptureStore {
     if (!row) return;
     if (row.recordId) this.removed.update((ids) => [...ids, row.recordId!]);
     this.draft.set(rows.filter((r) => r.key !== key));
+    this.setDirty(true);
     this.clearError(`${key}:`);
   }
 
@@ -226,6 +237,7 @@ export class SiteCaptureStore {
     this.draft.set(
       rows.map((r) => (r.key === key ? { ...r, values: { ...r.values, [itemId]: value } } : r)),
     );
+    this.setDirty(true);
     this.clearError(`${key}:${itemId}`);
   }
 
@@ -362,6 +374,12 @@ export class SiteCaptureStore {
     const rows = this.draft();
     if (!rows) return;
     this.draft.set(rows.map((r) => (r.key === key ? { ...r, ...change } : r)));
+    this.setDirty(true);
+  }
+
+  private setDirty(dirty: boolean): void {
+    this.dirty.set(dirty);
+    this.detail?.captureDirty.set(dirty);
   }
 
   private clearError(prefix: string): void {

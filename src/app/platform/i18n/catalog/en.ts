@@ -1938,6 +1938,11 @@ export const EN = {
   'sv.yesPreview': 'Yes',
   // sites parity — Delete label
   'sv.delete': 'Delete',
+  // review A3: unsaved capture grid
+  'sv.discardQ': 'Discard unsaved changes?',
+  'sv.discardBody': 'The grid has edits that are not saved yet. They will be lost.',
+  'sv.discard': 'Discard',
+  'sv.keepEditing': 'Keep editing',
 } as const;
 
 /** The key set of record. Every catalog lookup is typed against this. */

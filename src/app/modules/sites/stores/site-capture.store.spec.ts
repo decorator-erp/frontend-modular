@@ -165,6 +165,21 @@ describe('SiteCaptureStore (sites S-5)', () => {
     expect(calls).toEqual(['DELETE R1', 'DELETE R2', 'POST bulk']);
   });
 
+  it('dirty only after a change; cancel and save clear it (A3)', async () => {
+    const store = make();
+    store.startEdit();
+    expect(store.dirty()).toBe(false);
+    store.setLabel(store.draft()![0].key, 'DO-07');
+    expect(store.dirty()).toBe(true);
+    store.cancel();
+    expect(store.dirty()).toBe(false);
+    store.startEdit();
+    store.remove(store.draft()![1].key);
+    expect(store.dirty()).toBe(true);
+    expect(await store.save()).toBe(true);
+    expect(store.dirty()).toBe(false);
+  });
+
   it('no request when the pre-check fails; label swap in one save passes', async () => {
     const store = make();
     store.startEdit();

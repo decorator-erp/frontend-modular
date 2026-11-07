@@ -353,8 +353,14 @@ export class SiteDetailComponent {
     return iso ? formatCairoDateTime(iso, this.catalog.locale()) : '—';
   }
 
-  protected go(tab: string): void {
+  /** A3: the route's `canDeactivate` (leaving the survey, or `/sites/A → /sites/B`). */
+  canLeave(): Promise<boolean> {
+    return this.store.confirmDiscard();
+  }
+
+  protected async go(tab: string): Promise<void> {
     const t = parseSiteTab(tab);
+    if (t === this.tab() || !(await this.store.confirmDiscard())) return;
     void this.router.navigate([], {
       relativeTo: this.route,
       queryParams: siteQuery(t, t === 'capture' ? this.moduleId() : null),

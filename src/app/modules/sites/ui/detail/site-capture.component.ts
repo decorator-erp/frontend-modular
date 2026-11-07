@@ -519,8 +519,8 @@ export class SiteCaptureComponent {
     return this.store.cellErrors()[`${row.key}:${field}`];
   }
 
-  protected selectModule(id: string): void {
-    if (id === this.store.module()?.id) return;
+  protected async selectModule(id: string): Promise<void> {
+    if (id === this.store.module()?.id || !(await this.detail.confirmDiscard())) return;
     void this.router.navigate([], {
       relativeTo: this.route,
       queryParams: siteQuery('capture', id),

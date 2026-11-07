@@ -435,6 +435,31 @@ describe('SiteDetailComponent — capture grid (sites S-5)', () => {
     expect(el.querySelector('[data-grid-banner]')).toBeTruthy();
   });
 
+  it('A3: an edited grid asks before a tab switch or leaving the route drops it; a clean one does not', async () => {
+    const { fixture, el } = renderDetail(h);
+    const page = fixture.componentInstance as unknown as {
+      go(tab: string): Promise<void>;
+      canLeave(): Promise<boolean>;
+    };
+    const nav = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    (el.querySelector('[data-edit-grid] button') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    // an opened but untouched draft loses nothing
+    expect(await page.canLeave()).toBe(true);
+    expect(h.confirmOpen).not.toHaveBeenCalled();
+    (el.querySelector('[data-add-row] button') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    h.confirmOpen.mockResolvedValueOnce(false);
+    await page.go('overview');
+    expect(h.confirmOpen).toHaveBeenCalledTimes(1);
+    expect(nav).not.toHaveBeenCalled();
+    h.confirmOpen.mockResolvedValueOnce(false);
+    expect(await page.canLeave()).toBe(false);
+    h.confirmOpen.mockResolvedValueOnce(true);
+    await page.go('overview');
+    expect(nav).toHaveBeenCalledTimes(1);
+  });
+
   it('spaces 403 → "Whole unit" only, with the reason (A1 / BF-1); catalog 403 → picker hidden', () => {
     h.spaces = throwError(() => new HttpErrorResponse({ status: 403 }));
     h.catalog = throwError(() => new HttpErrorResponse({ status: 403 }));

@@ -17,6 +17,10 @@ describe('sitesRoutes (NEW-FEATURE-1)', () => {
     }
     const cmp = (await sitesRoutes[0].loadComponent!()) as { name: string };
     expect(cmp.name).toContain('SiteListComponent');
+    // A3: leaving a survey with unsaved grid edits asks first
+    const leave = sitesRoutes[1].canDeactivate![0] as (c: unknown) => unknown;
+    expect(leave({ canLeave: () => false })).toBe(false);
+    expect(leave({})).toBe(true);
     const detail = (await sitesRoutes[1].loadComponent!()) as { name: string };
     expect(detail.name).toContain('SiteDetailComponent');
   });
