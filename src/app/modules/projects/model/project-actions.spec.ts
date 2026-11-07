@@ -127,7 +127,7 @@ describe('rules that do not depend on the level', () => {
 });
 
 describe('crmp review loop 1 (R1-F6, R1-F7)', () => {
-  it('R1-F6: comments stay open on a closed project; member writes close on an inactive one', () => {
+  it('R1-F6/R2-2: comments stay open on a closed project; only member add closes on an inactive one', () => {
     const onHold: ProjectGateInput = { myLevel: 'Editor', status: 'OnHold', isActive: true };
     expect(canProjectAction(onHold, 'comment.add', canAll)).toBe(true);
     const inactive: ProjectGateInput = {
@@ -136,6 +136,9 @@ describe('crmp review loop 1 (R1-F6, R1-F7)', () => {
       isActive: false,
     };
     expect(canProjectAction(inactive, 'member.add', canAll)).toBe(false);
+    // R2-2: only add is refused on an inactive project (ProjectMemberHandlers.cs:46).
+    expect(canProjectAction(inactive, 'member.access', canAll)).toBe(true);
+    expect(canProjectAction(inactive, 'member.remove', canAll)).toBe(true);
     const completed: ProjectGateInput = { myLevel: 'Manager', status: 'Completed', isActive: true };
     expect(canProjectAction(completed, 'member.add', canAll)).toBe(true);
   });

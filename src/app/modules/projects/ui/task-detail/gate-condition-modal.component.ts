@@ -3,7 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
 import { ToastService } from '@platform/feedback/toast.service';
 import { CatalogService } from '@platform/i18n/catalog.service';
-import { GateRemovedError } from '../../data/project.service';
+import { GateNotRecreatableError, GateRemovedError } from '../../data/project.service';
 import { catchError, of } from 'rxjs';
 import { TaskGateConditionService } from '../../data/task-gate-condition.service';
 import { StageGateConditionService } from '../../data/stage-gate-condition.service';
@@ -592,6 +592,10 @@ export class GateConditionModalComponent {
 
   private fail(err: unknown): void {
     this.busy.set(false);
+    if (err instanceof GateNotRecreatableError) {
+      this.errorMessage.set(this.catalog.t('gates.notRecreatable'));
+      return;
+    }
     if (err instanceof GateRemovedError) {
       // R1-F4: the delete went through and the re-create did not — the old gate is gone.
       const reason =

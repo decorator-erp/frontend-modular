@@ -1386,6 +1386,9 @@ export const EN = {
   // crmp review R1-F4: a gate edit is delete + re-create; the re-create can fail after the delete.
   'gates.removedNotRecreated':
     'The gate was removed, but its replacement could not be created: {reason} Add it again.',
+  // crmp review R2-1: a DocumentApproved gate read from the list cannot be re-created (no document id in the response).
+  'gates.notRecreatable':
+    "This gate can't be edited here: its document isn't known. Delete it and add a new one instead.",
 } as const;
 
 /** The key set of record. Every catalog lookup is typed against this. */

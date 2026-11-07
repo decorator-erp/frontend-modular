@@ -166,6 +166,25 @@ describe('GateConditionModalComponent', () => {
     expect(closedWith).toBe(true);
   });
 
+  it('R2-1: an edit of a DocumentApproved gate with an unknown document is handed to recreate, which refuses it', () => {
+    const c = make({
+      ...base,
+      mode: 'edit',
+      gate: gate({
+        conditionType: 'DocumentApproved',
+        approvalType: null,
+        referencedDocumentId: null,
+        label: 'Old',
+      }),
+    });
+    c.label.set('New');
+    c.save();
+    expect(recreated?.req).toMatchObject({
+      conditionType: 'DocumentApproved',
+      referencedDocumentId: null,
+    });
+  });
+
   it('R1-F4: a DocumentApproved gate keeps its document when re-created', () => {
     const c = make({
       ...base,

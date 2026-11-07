@@ -56,6 +56,24 @@ export class GateRemovedError extends Error {
   }
 }
 
+/**
+ * crmp review R2-1: a gate the frontend cannot re-create faithfully. `GateConditionResponse` carries
+ * no `referencedDocumentId` (dms `Projects.Contracts/Gates/GateContracts.cs:8-11`), so a
+ * DocumentApproved gate read from the list cannot be rebuilt: its create would answer 400
+ * `gate_conditions.InvalidReference` (`DocumentApprovedHandler.cs:26-28`) after the delete went
+ * through. `recreate` refuses such a request before deleting anything.
+ */
+export class GateNotRecreatableError extends Error {
+  constructor() {
+    super('gate cannot be re-created');
+  }
+}
+
+/** True when the create body is complete enough to rebuild the gate after its delete. */
+export function isRecreatable(req: CreateGateConditionRequest): boolean {
+  return req.conditionType !== 'DocumentApproved' || !!req.referencedDocumentId;
+}
+
 @Injectable({ providedIn: 'root' })
 export class ProjectService extends ApiService {
   getAll(page = 1, pageSize = 20): Observable<PagedResult<Project>> {

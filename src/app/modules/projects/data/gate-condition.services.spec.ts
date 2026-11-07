@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { environment } from '../../../../environments/environment';
 import { StageGateConditionService } from './stage-gate-condition.service';
 import { TaskGateConditionService } from './task-gate-condition.service';
-import { GateRemovedError } from './project.service';
+import { GateNotRecreatableError, GateRemovedError } from './project.service';
 import type { CreateGateConditionRequest } from '../model/project.model';
 
 /** crmp A-2: gates moved under the project (dms `GateEndpoints.cs:24-74`); PUT update removed. */
@@ -125,5 +125,19 @@ describe('Stage/Task gate condition services (crmp A-2)', () => {
       .expectOne(`${api}/projects/P1/stages/S1/gates`)
       .flush(null, { status: 409, statusText: 'Conflict' });
     expect(err).toBeInstanceOf(GateRemovedError);
+  });
+
+  it('R2-1: a DocumentApproved gate without its document is refused before anything is deleted', () => {
+    let err: unknown;
+    stage
+      .recreate('P1', 'S1', 'G1', {
+        ...req,
+        conditionType: 'DocumentApproved',
+        approvalType: null,
+        referencedDocumentId: null,
+      })
+      .subscribe({ error: (e) => (err = e) });
+    http.expectNone(`${api}/projects/P1/gates/G1`);
+    expect(err).toBeInstanceOf(GateNotRecreatableError);
   });
 });

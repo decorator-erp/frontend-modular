@@ -1311,4 +1311,7 @@ export const AR: Partial<Record<CatalogKey, string>> = {
   'route.projectMembers': 'الأعضاء',
   // crmp review R1-F4: a gate edit is delete + re-create; the re-create can fail after the delete.
   'gates.removedNotRecreated': 'حُذفت البوابة لكن تعذّر إنشاء بديلها: {reason} أضفها مرة أخرى.',
+  // crmp review R2-1: a DocumentApproved gate read from the list cannot be re-created (no document id in the response).
+  'gates.notRecreatable':
+    'لا يمكن تعديل هذه البوابة هنا لأن مستندها غير معروف. احذفها وأضف بوابة جديدة بدلًا منها.',
 };

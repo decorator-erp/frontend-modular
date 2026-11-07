@@ -320,8 +320,9 @@ export function canProjectAction(
   if (!rule.anyOf.some((p) => can(p))) return false;
   if (!levelAtLeast(gate.myLevel, rule.level)) return false;
   if (!OPEN_ON_CLOSED.has(action) && isProjectClosed(gate)) return false;
-  // R1-F6: member writes on an inactive project answer 404 (ProjectMemberHandlers.cs:33-49).
-  if (action.startsWith('member.') && !gate.isActive) return false;
+  // R2-2: only adding a member is refused on an inactive project (404; dms ProjectMemberHandlers.cs:46,
+  // the only ProjectIsLiveAsync caller); change-access and remove stay open.
+  if (action === 'member.add' && !gate.isActive) return false;
   return true;
 }
 

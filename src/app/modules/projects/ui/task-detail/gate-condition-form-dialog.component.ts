@@ -10,7 +10,7 @@ import { ErrorHandlerService, friendly } from '@platform/http/error-handler.serv
 import { ToastService } from '@platform/feedback/toast.service';
 import { HttpErrorResponse } from '@angular/common/http';
 import { CatalogService } from '@platform/i18n/catalog.service';
-import { GateRemovedError } from '../../data/project.service';
+import { GateNotRecreatableError, GateRemovedError } from '../../data/project.service';
 import { ApprovalType, ConditionType, GateTrigger } from '../../model/project.model';
 import { ParsedApiError } from '@platform/types';
 import { ServerErrorsDirective, firstErrorMessage } from '@shared/forms';
@@ -317,6 +317,17 @@ export class GateConditionFormDialogComponent {
         this.modalRef.close(true);
       },
       error: (err: unknown) => {
+        if (err instanceof GateNotRecreatableError) {
+          this.serverError.set({
+            status: 400,
+            generalMessage: this.catalog.t('gates.notRecreatable'),
+            fieldErrors: {},
+            code: null,
+            raw: null,
+          });
+          this.submitting.set(false);
+          return;
+        }
         if (err instanceof GateRemovedError) {
           // R1-F4: the delete went through and the re-create did not — the old gate is gone.
           const reason =

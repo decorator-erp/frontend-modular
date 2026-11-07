@@ -7,7 +7,12 @@ import {
   SatisfyGateConditionRequest,
 } from '../model/project.model';
 import { ApiService } from '@platform/http/api.service';
-import { GateRemovedError, ProjectService } from './project.service';
+import {
+  GateNotRecreatableError,
+  GateRemovedError,
+  ProjectService,
+  isRecreatable,
+} from './project.service';
 
 /**
  * Task gate conditions, nested under the project (crmp A-2; gap table P-98..102):
@@ -40,6 +45,7 @@ export class TaskGateConditionService extends ApiService {
     gateConditionId: string,
     req: CreateGateConditionRequest,
   ): Observable<string> {
+    if (!isRecreatable(req)) return throwError(() => new GateNotRecreatableError());
     return this.remove(projectId, gateConditionId).pipe(
       switchMap(() =>
         this.create(projectId, taskId, req).pipe(
