@@ -1,3 +1,4 @@
+import { ProjectAccessStore } from '../../stores/project-access.store';
 import { TestBed } from '@angular/core/testing';
 import { of } from 'rxjs';
 import {
@@ -95,6 +96,7 @@ describe('GateConditionModalComponent', () => {
         { provide: ProjectStageService, useValue: { getByProject: () => of([]) } },
         { provide: ErrorHandlerService, useValue: { parse: () => ({}) } },
         { provide: PermissionsService, useValue: { can: () => true } },
+        { provide: ProjectAccessStore, useValue: { can: () => true } },
         { provide: PeraModalRef, useValue: modalRef },
         { provide: PERA_MODAL_DATA, useValue: data },
       ],
@@ -133,15 +135,46 @@ describe('GateConditionModalComponent', () => {
     expect(created?.conditionType).toBe('ManualCheck');
   });
 
-  it('New mode + status Satisfied creates then chains a satisfy on the new gate', () => {
+  it('New mode + status Satisfied on a manual check creates then satisfies the new gate', () => {
     const c = make({ ...base, mode: 'new', gate: null });
     c.label.set('Already done');
+    c.uiType.set('review');
+    c.status.set('sat');
+    c.save();
+    expect(created?.conditionType).toBe('ManualCheck');
+    expect(satisfied).toBe('g-new');
+    expect(closedWith).toBe(true);
+  });
+
+  it('crmp P-8: a new non-manual gate is never satisfied by hand (NotManuallySatisfiable)', () => {
+    const c = make({ ...base, mode: 'new', gate: null });
+    c.label.set('Upload the drawing');
     c.uiType.set('attachment');
     c.status.set('sat');
     c.save();
     expect(created?.conditionType).toBe('Attachment');
-    expect(satisfied).toBe('g-new');
-    expect(closedWith).toBe(true);
+    expect(satisfied).toBeNull();
+  });
+
+  it('crmp P-8: Satisfy only on a pending manual check; Delete hidden when satisfied or approval-pending', () => {
+    const manual = make({
+      ...base,
+      mode: 'view',
+      gate: gate({ conditionType: 'ManualCheck', approvalType: null }),
+    });
+    expect(manual.canSatisfy()).toBe(true);
+    expect(manual.canDelete()).toBe(true);
+    const approval = make({ ...base, mode: 'view', gate: gate() });
+    expect(approval.canSatisfy()).toBe(false);
+    expect(approval.canDelete()).toBe(false);
+    const done = make({
+      ...base,
+      mode: 'view',
+      gate: gate({ conditionType: 'ManualCheck', status: 'Satisfied', isSatisfied: true }),
+    });
+    expect(done.canSatisfy()).toBe(false);
+    expect(done.canDelete()).toBe(false);
+    expect(done.canEdit()).toBe(false);
   });
 
   it('Edit mode with a new label deletes and re-creates the gate with its type and references (crmp A-2: no update route)', () => {
