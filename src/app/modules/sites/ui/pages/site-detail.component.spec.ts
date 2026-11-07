@@ -313,6 +313,13 @@ describe('SiteDetailComponent — workflow (sites S-4)', () => {
       'can still be approved',
     );
     expect(el.querySelector('[data-banner="submitted"]')).toBeTruthy();
+    // A9: a caller who cannot decide (an Editor here) is not promised a decision
+    TestBed.resetTestingModule();
+    level('Editor', 'OnHold');
+    ({ el } = renderDetail(h));
+    const banner = el.querySelector('[data-banner="closed"]')?.textContent ?? '';
+    expect(banner).toContain('Survey work is closed:');
+    expect(banner).not.toContain('can still be approved');
   });
 
   it('Submit: confirm → POST submit → reload', async () => {

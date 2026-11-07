@@ -208,9 +208,14 @@ const BUILT_TABS: readonly SiteTab[] = [
         <div class="flex flex-col gap-2 mb-4" data-banners>
           @if (caps().closed && store.project(); as p) {
             <pera-alert tone="warning" data-banner="closed">{{
-              t(s.status === submitted ? 'sv.closedBannerDecide' : 'sv.closedBanner', {
-                s: projectStatusLabel(),
-              })
+              t(
+                s.status === submitted && caps().decide
+                  ? 'sv.closedBannerDecide'
+                  : 'sv.closedBanner',
+                {
+                  s: projectStatusLabel(),
+                }
+              )
             }}</pera-alert>
           }
           @if (s.status === submitted && s.submittedAtUtc) {
