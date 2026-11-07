@@ -97,6 +97,8 @@ function spacesApiMock() {
     create: vi.fn().mockReturnValue(of('new-id')),
     update: vi.fn().mockReturnValue(of(undefined)),
     setActive: vi.fn().mockReturnValue(of(undefined)),
+    reorder: vi.fn().mockReturnValue(of(undefined)),
+    remove: vi.fn().mockReturnValue(of(undefined)),
   };
 }
 
@@ -220,7 +222,7 @@ describe('SpacesStore', () => {
       s.createSpace({ spaceTypeId: KITCHEN_TYPE.id, name: 'Bath' }, { onDone });
 
       expect(onDone).toHaveBeenCalledOnce();
-      expect(spacesApi.list).toHaveBeenCalledWith(PROJECT_ID);
+      expect(spacesApi.list).toHaveBeenCalledWith(PROJECT_ID, true);
       expect(s.savingSpace()).toBe(false);
     });
 
@@ -285,18 +287,63 @@ describe('SpacesStore', () => {
     });
   });
 
-  // 009b #N-6: no reorder, delete or provisioning route (EP/CrmSpaceEndpoints.cs:25-71).
-  it('has no reorder, delete or provisioning (009b #N-6)', () => {
-    const s = store() as unknown as Record<string, unknown>;
-    for (const name of [
-      'reorderSpace',
-      'deleteSpace',
-      'loadProvisioning',
-      'loadProvisioningSummary',
-      'provisioning',
-      'provisioningSummary',
-    ]) {
-      expect(s[name], name).toBeUndefined();
+  // crmp C-5: reorder sends the FULL order (inactive included); delete; 409s.
+  describe('reorder and delete (crmp C-5)', () => {
+    const sp = (id: string, isActive = true) => ({ ...SPACE, id, name: id, isActive });
+
+    function loaded() {
+      spacesApi.list.mockReturnValue(of([sp('a'), sp('x', false), sp('b'), sp('c')]));
+      const s = store();
+      s.setProject(PROJECT_ID);
+      s.loadSpaces();
+      return s;
     }
+
+    it('shows active spaces but keeps every id, inactive included, for the order', () => {
+      const s = loaded();
+      expect(s.spaces().map((x) => x.id)).toEqual(['a', 'b', 'c']);
+      expect(s.allSpaceIds()).toEqual(['a', 'x', 'b', 'c']);
+    });
+
+    it('moveSpace(down) swaps with the visible neighbour and sends the full list', () => {
+      const s = loaded();
+      s.moveSpace('a', 1);
+      expect(spacesApi.reorder).toHaveBeenCalledWith(PROJECT_ID, ['b', 'x', 'a', 'c']);
+    });
+
+    it('moveSpace(up) on the first space sends nothing', () => {
+      const s = loaded();
+      s.moveSpace('a', -1);
+      expect(spacesApi.reorder).not.toHaveBeenCalled();
+    });
+
+    it('409 crm.spaces.InvalidOrder reloads the list and hands the code back', () => {
+      const s = loaded();
+      spacesApi.list.mockClear();
+      spacesApi.reorder.mockReturnValue(throwError(() => domainError('crm.spaces.InvalidOrder')));
+      const onError = vi.fn();
+      s.moveSpace('b', -1, { onError });
+      expect(spacesApi.list).toHaveBeenCalledWith(PROJECT_ID, true);
+      expect(onError.mock.calls[0][0].code).toBe('crm.spaces.InvalidOrder');
+      expect(s.error()).toBeNull();
+      expect(s.savingSpace()).toBe(false);
+    });
+
+    it('deleteSpace(): 409 crm.spaces.InUse sets no page error and hands the code back', () => {
+      spacesApi.remove.mockReturnValue(throwError(() => domainError('crm.spaces.InUse')));
+      const s = loaded();
+      const onError = vi.fn();
+      s.deleteSpace('a', { onError });
+      expect(spacesApi.remove).toHaveBeenCalledWith('a');
+      expect(onError.mock.calls[0][0].code).toBe('crm.spaces.InUse');
+      expect(s.error()).toBeNull();
+    });
+
+    it('still has no provisioning (009b #N-6)', () => {
+      const s = store() as unknown as Record<string, unknown>;
+      for (const name of ['loadProvisioning', 'provisioning', 'provisioningSummary']) {
+        expect(s[name], name).toBeUndefined();
+      }
+    });
   });
 });

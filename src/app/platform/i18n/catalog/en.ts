@@ -1505,6 +1505,17 @@ export const EN = {
   'cat.deleteAria': 'Delete {name}',
   'cat.activateAria': 'Activate {name}',
   'cat.deactivateAria': 'Deactivate {name}',
+  // crmp C-5: spaces reorder and delete (contract §2.x, CrmSpaceEndpoints.cs:41,80).
+  'space.reorderFailed': 'Could not reorder the spaces.',
+  'space.deleteFailed': 'Could not delete the space.',
+  'space.moveUpAria': 'Move {name} up',
+  'space.moveDownAria': 'Move {name} down',
+  'space.renameAria': 'Rename {name}',
+  'space.deleteAria': 'Delete {name}',
+  'space.deleted': 'Space deleted',
+  'space.orderReloaded': 'The spaces changed meanwhile — the list was reloaded.',
+  'space.inUseTitle': 'Space in use',
+  'space.inUseOffer': '"{name}" is in use, so it can\'t be deleted. Deactivate it instead?',
 } as const;
 
 /** The key set of record. Every catalog lookup is typed against this. */

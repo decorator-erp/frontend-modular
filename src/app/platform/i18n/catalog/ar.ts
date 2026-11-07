@@ -1429,4 +1429,15 @@ export const AR: Partial<Record<CatalogKey, string>> = {
   'cat.deleteAria': 'حذف {name}',
   'cat.activateAria': 'تفعيل {name}',
   'cat.deactivateAria': 'إلغاء تفعيل {name}',
+  // crmp C-5: spaces reorder and delete (contract §2.x, CrmSpaceEndpoints.cs:41,80).
+  'space.reorderFailed': 'تعذّر إعادة ترتيب المساحات.',
+  'space.deleteFailed': 'تعذّر حذف المساحة.',
+  'space.moveUpAria': 'نقل {name} لأعلى',
+  'space.moveDownAria': 'نقل {name} لأسفل',
+  'space.renameAria': 'إعادة تسمية {name}',
+  'space.deleteAria': 'حذف {name}',
+  'space.deleted': 'تم حذف المساحة',
+  'space.orderReloaded': 'تغيّرت المساحات في هذه الأثناء — تمت إعادة تحميل القائمة.',
+  'space.inUseTitle': 'المساحة مستخدمة',
+  'space.inUseOffer': '"{name}" مستخدمة ولا يمكن حذفها. هل تريد إلغاء تفعيلها بدلًا من ذلك؟',
 };

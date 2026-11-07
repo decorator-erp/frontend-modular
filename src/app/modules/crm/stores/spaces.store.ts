@@ -20,8 +20,9 @@ import type { MutationHandlers } from './mutation-handlers';
 /**
  * Route-scoped state for a project's spaces page — the registry, plus the project brief so the
  * per-space brief note has something to bind. 009b #N-5: no space-item routes exist on the
- * backend, so the per-space board and completeness are gone. 009b #N-6: nor do reorder, delete
- * or the provisioning reads.
+ * backend, so the per-space board and completeness are gone. crmp C-5: reorder and delete are
+ * back (the provisioning reads are not). The list is read with inactive spaces so a reorder
+ * can send every id; `spaces` holds the active ones the page shows, `allSpaceIds` the full order.
  *
  * The brief is loaded here (core is importable from any feature) and entries are indexed
  * by `spaceId`; the *current* entry for a space is the newest one not referenced by any
@@ -31,6 +32,8 @@ import type { MutationHandlers } from './mutation-handlers';
 interface SpacesState {
   projectId: string | null;
   spaces: CrmSpace[];
+  /** crmp C-5: every space id of the project in server order, inactive included. */
+  allSpaceIds: string[];
   spaceTypes: CrmSpaceType[];
   /** The current (newest, not-superseded) brief entry per space id. */
   currentEntryBySpace: Record<string, BriefSpace>;
@@ -44,6 +47,7 @@ interface SpacesState {
 const INITIAL: SpacesState = {
   projectId: null,
   spaces: [],
+  allSpaceIds: [],
   spaceTypes: [],
   currentEntryBySpace: {},
   briefId: null,
@@ -109,8 +113,13 @@ export const SpacesStore = signalStore(
           const projectId = store.projectId();
           if (!projectId) return;
           patchState(store, { loading: true });
-          spacesApi.list(projectId).subscribe({
-            next: (spaces) => patchState(store, { spaces, loading: false }),
+          spacesApi.list(projectId, true).subscribe({
+            next: (all) =>
+              patchState(store, {
+                spaces: all.filter((s) => s.isActive),
+                allSpaceIds: all.map((s) => s.id),
+                loading: false,
+              }),
             error: () => patchState(store, { loading: false, error: 'space.loadFailed' }),
           });
         },
@@ -180,6 +189,65 @@ export const SpacesStore = signalStore(
           spacesApi.setActive(spaceId, isActive).subscribe({
             next: () => this.loadSpaces(),
             error: () => patchState(store, { error: 'space.statusFailed' }),
+          });
+        },
+
+        /**
+         * crmp C-5: move a visible space one step up (-1) or down (+1) past its visible
+         * neighbour and send the FULL order (inactive spaces keep their slots). Not optimistic:
+         * the list reloads after the server answers. 409 `crm.spaces.InvalidOrder` (the list
+         * changed meanwhile) reloads too, and hands the error to the caller.
+         */
+        moveSpace(spaceId: string, step: -1 | 1, handlers?: MutationHandlers): void {
+          const projectId = store.projectId();
+          if (!projectId || store.savingSpace()) return;
+          const visible = store.spaces().map((s) => s.id);
+          const at = visible.indexOf(spaceId);
+          const neighbour = visible[at + step];
+          if (at < 0 || !neighbour) return;
+          const order = [...store.allSpaceIds()];
+          const i = order.indexOf(spaceId);
+          const j = order.indexOf(neighbour);
+          if (i < 0 || j < 0) return;
+          [order[i], order[j]] = [order[j], order[i]];
+          patchState(store, { savingSpace: true, error: null });
+          spacesApi.reorder(projectId, order).subscribe({
+            next: () => {
+              patchState(store, { savingSpace: false });
+              this.loadSpaces();
+              handlers?.onDone?.();
+            },
+            error: (err: HttpErrorResponse) => {
+              patchState(store, { savingSpace: false });
+              const parsed = errors.parse(err);
+              if (parsed.code === 'crm.spaces.InvalidOrder') this.loadSpaces();
+              else patchState(store, { error: 'space.reorderFailed' });
+              handlers?.onError?.(parsed, 'space.reorderFailed');
+            },
+          });
+        },
+
+        /**
+         * crmp C-5: hard delete. 409 `crm.spaces.InUse` sets no page error — the caller offers
+         * deactivate instead.
+         */
+        deleteSpace(spaceId: string, handlers?: MutationHandlers): void {
+          if (store.savingSpace()) return;
+          patchState(store, { savingSpace: true, error: null });
+          spacesApi.remove(spaceId).subscribe({
+            next: () => {
+              patchState(store, { savingSpace: false });
+              this.loadSpaces();
+              handlers?.onDone?.();
+            },
+            error: (err: HttpErrorResponse) => {
+              const parsed = errors.parse(err);
+              patchState(store, {
+                savingSpace: false,
+                error: parsed.code === 'crm.spaces.InUse' ? null : 'space.deleteFailed',
+              });
+              handlers?.onError?.(parsed, 'space.deleteFailed');
+            },
           });
         },
 

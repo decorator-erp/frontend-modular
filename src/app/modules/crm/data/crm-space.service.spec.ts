@@ -3,6 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { provideHttpClient } from '@angular/common/http';
 import { describe, expect, it, beforeEach, afterEach } from 'vitest';
 import { environment } from '../../../../environments/environment';
+import { HANDLED_ERROR_STATUSES } from '@platform/http/handled-errors';
 import { CrmSpaceService } from './crm-space.service';
 import type { CrmSpace } from '../model';
 
@@ -177,11 +178,30 @@ describe('CrmSpaceService', () => {
     });
   });
 
-  // 009b #N-6: only list/create/update/active exist (EP/CrmSpaceEndpoints.cs:25-71).
-  it('has no reorder, delete or provisioning reads (009b #N-6)', () => {
-    const methods = service as unknown as Record<string, unknown>;
-    for (const name of ['reorder', 'remove', 'provisioning', 'provisioningSummary']) {
-      expect(methods[name], name).toBeUndefined();
-    }
+  // crmp C-5: CrmSpaceEndpoints.cs:41 (order) and :80 (delete); provisioning reads still absent.
+  describe('reorder and delete (crmp C-5)', () => {
+    it('reorder() PUTs the full order as { spaceIds } with the 409 InvalidOrder handled', () => {
+      service.reorder('p1', ['b', 'a', 'c']).subscribe();
+      const req = http.expectOne(url('/crm/projects/p1/spaces/order'));
+      expect(req.request.method).toBe('PUT');
+      expect(req.request.body).toEqual({ spaceIds: ['b', 'a', 'c'] });
+      expect(req.request.context.get(HANDLED_ERROR_STATUSES)).toEqual([409]);
+      req.flush(null);
+    });
+
+    it('remove() DELETEs /crm/spaces/{id} with the 409 InUse handled', () => {
+      service.remove('s1').subscribe({ error: () => undefined });
+      const req = http.expectOne(url('/crm/spaces/s1'));
+      expect(req.request.method).toBe('DELETE');
+      expect(req.request.context.get(HANDLED_ERROR_STATUSES)).toEqual([404, 409]);
+      req.flush({ errors: { 'crm.spaces.InUse': ['x'] } }, { status: 409, statusText: 'Conflict' });
+    });
+
+    it('still has no provisioning reads (009b #N-6)', () => {
+      const methods = service as unknown as Record<string, unknown>;
+      for (const name of ['provisioning', 'provisioningSummary']) {
+        expect(methods[name], name).toBeUndefined();
+      }
+    });
   });
 });
