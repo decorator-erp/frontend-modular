@@ -1,3 +1,4 @@
+import { handled } from '@platform/http/handled-errors';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
@@ -19,6 +20,12 @@ import { ProjectService } from './project.service';
 import { toUtcDate } from '../model/utc-date';
 
 /** Tasks — `/api/project-tasks`. */
+/**
+ * crmp review R-P2-F6: the task actions show their own 403/409 message (and re-read the access), so
+ * the global error toast is told to skip those statuses.
+ */
+const TRANSITION = { context: handled(403, 409) };
+
 /** Filters and the opt-in page of `GET /projects/{projectId}/tasks` (dms `TaskEndpoints.cs:23`). */
 export interface ProjectTaskQuery {
   stageId?: string | null;
@@ -96,7 +103,7 @@ export class ProjectTaskService extends ApiService {
   }
 
   remove(projectId: string, taskId: string): Observable<unknown> {
-    return this.delete(`/projects/${projectId}/tasks/${taskId}`);
+    return this.delete(`/projects/${projectId}/tasks/${taskId}`, undefined, TRANSITION);
   }
 
   /** `POST …/assign { employeeId }` (was `PUT … { assignedToId }`, P-42). */
@@ -105,24 +112,24 @@ export class ProjectTaskService extends ApiService {
   }
 
   start(projectId: string, taskId: string): Observable<unknown> {
-    return this.post(`/projects/${projectId}/tasks/${taskId}/start`, {});
+    return this.post(`/projects/${projectId}/tasks/${taskId}/start`, {}, TRANSITION);
   }
 
   complete(projectId: string, taskId: string): Observable<unknown> {
-    return this.post(`/projects/${projectId}/tasks/${taskId}/complete`, {});
+    return this.post(`/projects/${projectId}/tasks/${taskId}/complete`, {}, TRANSITION);
   }
 
   cancel(projectId: string, taskId: string): Observable<unknown> {
-    return this.post(`/projects/${projectId}/tasks/${taskId}/cancel`, {});
+    return this.post(`/projects/${projectId}/tasks/${taskId}/cancel`, {}, TRANSITION);
   }
 
   /** `POST …/reject { reason }` (was `PUT … { note }`, P-105). */
   reject(projectId: string, taskId: string, reason: string): Observable<unknown> {
-    return this.post(`/projects/${projectId}/tasks/${taskId}/reject`, { reason });
+    return this.post(`/projects/${projectId}/tasks/${taskId}/reject`, { reason }, TRANSITION);
   }
 
   reopen(projectId: string, taskId: string): Observable<unknown> {
-    return this.post(`/projects/${projectId}/tasks/${taskId}/reopen`, {});
+    return this.post(`/projects/${projectId}/tasks/${taskId}/reopen`, {}, TRANSITION);
   }
 
   private body(req: CreateProjectTaskRequest | UpdateProjectTaskRequest): Record<string, unknown> {

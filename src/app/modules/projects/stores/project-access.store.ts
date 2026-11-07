@@ -29,6 +29,7 @@ export class ProjectAccessStore {
 
   private readonly byId = new Map<string, WritableSignal<Project | null>>();
   private readonly meId = signal<string | null>(null);
+  private readonly failed = new Set<string>();
   private meRequested = false;
 
   /** The project signal for `id`, fetched once (null until it arrives, and on a failed read). */
@@ -39,9 +40,10 @@ export class ProjectAccessStore {
   /** Start loading the project (and the caller's employee id) if not loaded yet. */
   ensure(id: string): void {
     if (!id) return;
-    const isNew = !this.byId.has(id);
+    // R-P2-F9: a project that failed to load (null) is read again on the next ensure().
+    const needsFetch = !this.byId.has(id) || this.failed.has(id);
     this.slot(id);
-    if (isNew) this.fetch(id);
+    if (needsFetch) this.fetch(id);
     this.ensureMe();
   }
 
@@ -110,10 +112,14 @@ export class ProjectAccessStore {
   }
 
   private fetch(id: string): void {
+    this.failed.delete(id);
     this.projects
       .getById(id)
       .pipe(catchError(() => of(null)))
-      .subscribe((p) => this.slot(id).set(p));
+      .subscribe((p) => {
+        if (!p) this.failed.add(id);
+        this.slot(id).set(p);
+      });
   }
 
   /** `GET /api/employees/me` (contract §2.17.2 "Caller's employee id"); a 404/403 just means none. */

@@ -116,7 +116,7 @@ import { SubtaskFormDialogComponent, SubtaskFormDialogData } from './subtask-for
         <span
           class="opacity-0 group-hover:opacity-100 flex items-center gap-1.5 font-mono fs-micro text-text-muted uppercase transition-opacity"
         >
-          <ng-container *peraCan="can('subtask.update') ? manageTasks : []">
+          @if (can('subtask.update')) {
             <button type="button" class="hover:text-accent" (click)="openEdit(sub)">Edit</button>
             <span class="text-border">·</span>
             @if (!sub.isDone && can('subtask.delete')) {
@@ -124,7 +124,7 @@ import { SubtaskFormDialogComponent, SubtaskFormDialogData } from './subtask-for
                 Delete
               </button>
             }
-          </ng-container>
+          }
         </span>
       </div>
     } @empty {
@@ -133,7 +133,7 @@ import { SubtaskFormDialogComponent, SubtaskFormDialogData } from './subtask-for
       </p>
     }
     <!-- Create — opens the DMS Forms sub-task dialog (CreateProjectSubTaskRequest) -->
-    <ng-container *peraCan="can('subtask.create') ? manageTasks : []">
+    @if (can('subtask.create')) {
       <div class="px-4 py-2.5">
         <button
           type="button"
@@ -156,7 +156,7 @@ import { SubtaskFormDialogComponent, SubtaskFormDialogData } from './subtask-for
           New sub-task
         </button>
       </div>
-    </ng-container>
+    }
   `,
 })
 export class SubtasksPanelComponent implements OnInit {

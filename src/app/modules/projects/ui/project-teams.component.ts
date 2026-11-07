@@ -235,11 +235,11 @@ const NEW_TEAM_TAB = '__new__';
         description="Create a team to assign a department to a stage."
       />
       <div class="mt-3 text-center">
-        <ng-container *peraCan="teamCan('team.create') ? manageStageTeams : []">
+        @if (teamCan('team.create')) {
           <pera-button variant="primary" iconStart="plus" (click)="openNewTeam()"
             >New team</pera-button
           >
-        </ng-container>
+        }
       </div>
     } @else {
       <pera-tabs
@@ -258,7 +258,7 @@ const NEW_TEAM_TAB = '__new__';
                 Team head · {{ team.departmentName }}
               </div>
             </div>
-            <ng-container *peraCan="teamCan('team.head') ? manageStageTeams : []">
+            @if (teamCan('team.head')) {
               <button
                 type="button"
                 (click)="changeHead(team)"
@@ -266,7 +266,7 @@ const NEW_TEAM_TAB = '__new__';
               >
                 Change head
               </button>
-            </ng-container>
+            }
           </div>
           <!-- Members -->
           <div class="border border-border bg-surface">
@@ -275,7 +275,7 @@ const NEW_TEAM_TAB = '__new__';
                 <h3 class="m-0 fs-body font-semibold">Members</h3>
                 <span class="font-mono fs-label text-text-muted">{{ team.memberCount }}</span>
               </div>
-              <ng-container *peraCan="teamCan('team.addMember') ? manageStageTeams : []">
+              @if (teamCan('team.addMember')) {
                 <button
                   type="button"
                   (click)="addMember(team)"
@@ -293,7 +293,7 @@ const NEW_TEAM_TAB = '__new__';
                   </svg>
                   Add member
                 </button>
-              </ng-container>
+              }
             </div>
             @for (member of team.members; track member.id) {
               <div

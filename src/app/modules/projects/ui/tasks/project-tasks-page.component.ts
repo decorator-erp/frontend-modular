@@ -1,3 +1,5 @@
+import { ToastService } from '@platform/feedback/toast.service';
+import { ErrorHandlerService, friendly } from '@platform/http/error-handler.service';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -43,7 +45,7 @@ const STATUSES: ProjectTaskStatus[] = [
   'Cancelled',
 ];
 
-type LoadState = 'loading' | 'ready' | 'error';
+type LoadState = 'loading' | 'ready' | 'error' | 'notFound';
 
 /**
  * crmp P-3: the project's tasks, filtered by stage, assignee and status — `GET /projects/{id}/tasks
@@ -70,7 +72,7 @@ type LoadState = 'loading' | 'ready' | 'error';
       <a class="fs-label text-text-muted hover:text-accent" [routerLink]="['/projects', projectId]">
         {{ catalog.t('pm.back') }}
       </a>
-      <pera-page-header [title]="catalog.t('pt.listTitle')" [count]="tasks().length" />
+      <pera-page-header [title]="catalog.t('pt.listTitle')" />
       @if (access.project(projectId)(); as p) {
         <app-project-closed-banner [project]="p" />
       }
@@ -109,6 +111,12 @@ type LoadState = 'loading' | 'ready' | 'error';
             <pera-skeleton [height]="44" />
             <pera-skeleton [height]="44" />
           </div>
+        }
+        @case ('notFound') {
+          <pera-empty
+            [title]="catalog.t('pm.notFound')"
+            [description]="catalog.t('pm.notFoundBody')"
+          />
         }
         @case ('error') {
           <pera-alert tone="danger">
@@ -168,6 +176,8 @@ export class ProjectTasksPageComponent implements OnInit {
   private readonly directory = inject(EmployeeService);
   protected readonly access = inject(ProjectAccessStore);
   protected readonly catalog = inject(CatalogService);
+  private readonly toast = inject(ToastService);
+  private readonly errors = inject(ErrorHandlerService);
 
   readonly projectId = this.route.snapshot.paramMap.get('id') ?? '';
   readonly state = signal<LoadState>('loading');
@@ -239,8 +249,8 @@ export class ProjectTasksPageComponent implements OnInit {
         this.hasMore.set(list.length === TASK_PAGE_SIZE);
         this.state.set('ready');
       },
-      error: (_err: HttpErrorResponse) => {
-        if (gen === this.generation) this.state.set('error');
+      error: (err: HttpErrorResponse) => {
+        if (gen === this.generation) this.state.set(err.status === 404 ? 'notFound' : 'error');
       },
     });
   }
@@ -259,7 +269,10 @@ export class ProjectTasksPageComponent implements OnInit {
         this.tasks.update((all) => [...all, ...list.filter((t) => !seen.has(t.id))]);
         this.hasMore.set(list.length === TASK_PAGE_SIZE);
       },
-      error: () => this.loadingMore.set(false),
+      error: (err: HttpErrorResponse) => {
+        this.loadingMore.set(false);
+        this.toast.show({ tone: 'danger', message: friendly(this.errors.parse(err)) });
+      },
     });
   }
 

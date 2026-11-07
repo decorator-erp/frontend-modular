@@ -48,7 +48,7 @@ export const COMMENT_PAGE_SIZE = 50;
   imports: [FormsModule, CanDirective, PeraAvatarComponent, PeraButtonComponent],
   template: `
     <!-- Composer (top, per A-06 / design .composer) -->
-    <ng-container *peraCan="canAdd() ? addClaims : []">
+    @if (canAdd()) {
       <div class="flex gap-3 p-4 border-b border-border-soft">
         <pera-avatar [name]="composerName()" size="md" />
         <div class="flex-1 min-w-0 border border-border bg-surface">
@@ -74,7 +74,7 @@ export const COMMENT_PAGE_SIZE = 50;
           </div>
         </div>
       </div>
-    </ng-container>
+    }
 
     <!-- Comments (design .cmt) -->
     @for (c of comments(); track c.id) {
@@ -99,7 +99,7 @@ export const COMMENT_PAGE_SIZE = 50;
             <span
               class="ms-auto opacity-0 group-hover:opacity-100 flex items-center gap-1.5 fs-label text-text-muted uppercase transition-opacity"
             >
-              <ng-container *peraCan="canChange(c, 'comment.edit') ? readClaim : []">
+              @if (canChange(c, 'comment.edit')) {
                 <button type="button" class="hover:text-accent" (click)="startEdit(c)" data-edit>
                   Edit
                 </button>
@@ -109,7 +109,7 @@ export const COMMENT_PAGE_SIZE = 50;
                     Delete
                   </button>
                 }
-              </ng-container>
+              }
             </span>
           </div>
           @if (editingId() === c.id) {

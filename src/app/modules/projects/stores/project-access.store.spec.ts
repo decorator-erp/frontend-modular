@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { of } from 'rxjs';
+import { of, throwError } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
 import { EmployeeService } from '@modules/people';
 import { PERM, PermissionsService } from '@platform/permissions';
@@ -56,5 +56,50 @@ describe('ProjectAccessStore (crmp Part 2)', () => {
     const { store } = make('Editor');
     store.ensure('P1');
     expect(store.canExecute('P1', { assignedToId: 'E1' }, 'task.start')).toBe(true);
+  });
+
+  it('R-P2-F10: an Editor who is not the assignee and lacks stage_tasks.manage cannot start', () => {
+    const getById = vi.fn(() =>
+      of({ id: 'P1', myLevel: 'Editor', status: 'InProgress', isActive: true } as Project),
+    );
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      providers: [
+        { provide: ProjectService, useValue: { getById } },
+        { provide: EmployeeService, useValue: { getMe: () => of({ id: 'E1' }) } },
+        {
+          provide: PermissionsService,
+          useValue: { can: (p: string) => p === PERM.stageTasks.complete },
+        },
+      ],
+    });
+    const store = TestBed.inject(ProjectAccessStore);
+    store.ensure('P1');
+    expect(store.canExecute('P1', { assignedToId: 'E2' }, 'task.start')).toBe(false);
+    expect(store.canExecute('P1', { assignedToId: 'E1' }, 'task.start')).toBe(true);
+  });
+
+  it('R-P2-F9: a failed read is retried on the next ensure()', () => {
+    let fail = true;
+    const getById = vi.fn(() =>
+      fail
+        ? throwError(() => new Error('x'))
+        : of({ id: 'P1', myLevel: 'Manager', status: 'InProgress', isActive: true } as Project),
+    );
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      providers: [
+        { provide: ProjectService, useValue: { getById } },
+        { provide: EmployeeService, useValue: { getMe: () => of({ id: 'E1' }) } },
+        { provide: PermissionsService, useValue: { can: () => true } },
+      ],
+    });
+    const store = TestBed.inject(ProjectAccessStore);
+    store.ensure('P1');
+    expect(store.project('P1')()).toBeNull();
+    fail = false;
+    store.ensure('P1');
+    expect(getById).toHaveBeenCalledTimes(2);
+    expect(store.can('P1', 'stage.create')).toBe(true);
   });
 });

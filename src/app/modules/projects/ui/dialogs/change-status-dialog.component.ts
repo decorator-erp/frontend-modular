@@ -1,3 +1,4 @@
+import { injectReloadOnConflict } from '@platform/http/concurrency';
 import { HttpErrorResponse } from '@angular/common/http';
 import { ErrorHandlerService, friendly } from '@platform/http/error-handler.service';
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
@@ -102,6 +103,7 @@ export class ChangeStatusDialogComponent {
 
   readonly errorMessage = signal<string | null>(null);
   private readonly errors = inject(ErrorHandlerService);
+  private readonly reloadOnConflict = injectReloadOnConflict();
 
   submit(): void {
     this.errorMessage.set(null);
@@ -120,6 +122,8 @@ export class ChangeStatusDialogComponent {
       // the reason shows here instead of a generic toast.
       error: (err: HttpErrorResponse) => {
         this.submitting.set(false);
+        // R-P2-F7: a ConcurrentUpdate closes the dialog and the page reloads with the shared toast.
+        if (this.reloadOnConflict(err, () => this.modalRef.close(this.data.current))) return;
         this.errorMessage.set(friendly(this.errors.parse(err)));
       },
     });

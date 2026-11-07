@@ -90,4 +90,10 @@ describe('TaskStatusActionsComponent — levels (crmp P-3/P-4)', () => {
     expect(done('[data-reopen]')).toBe(true);
     expect(done('[data-cancel]')).toBe(false);
   });
+
+  it('R-P2-F4/F5: Start only on Open (Rejected reopens); Reject also on InProgress', () => {
+    expect(render('Rejected', 'Manager', ALL, 'OTHER')('[data-start]')).toBe(false);
+    TestBed.resetTestingModule();
+    expect(render('InProgress', 'Manager', ALL, 'OTHER')('[data-reject]')).toBe(true);
+  });
 });

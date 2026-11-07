@@ -89,7 +89,7 @@ export class TaskRejectModalComponent {
           Locked — satisfy gates to unlock
         </span>
       }
-      @if ((status() === 'Open' || status() === 'Rejected') && canStart()) {
+      @if (status() === 'Open' && canStart()) {
         <button
           type="button"
           (click)="start()"
@@ -121,7 +121,7 @@ export class TaskRejectModalComponent {
           Mark complete
         </button>
       }
-      @if (status() === 'PendingApproval' && can('task.reject')) {
+      @if ((status() === 'PendingApproval' || status() === 'InProgress') && can('task.reject')) {
         <button
           type="button"
           (click)="reject()"

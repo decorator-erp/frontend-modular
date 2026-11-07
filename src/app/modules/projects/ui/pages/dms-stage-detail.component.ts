@@ -209,11 +209,7 @@ type TaskFilter = 'all' | RollupStatus;
                     </span>
                   }
 
-                  <ng-container
-                    *peraCan="
-                      stageCan('stage.complete') || stageCan('stage.reject') ? canManageStages : []
-                    "
-                  >
+                  @if (stageCan('stage.complete') || stageCan('stage.reject')) {
                     @switch (s.status) {
                       @case ('Active') {
                         <button
@@ -253,10 +249,10 @@ type TaskFilter = 'all' | RollupStatus;
                         }
                       }
                     }
-                  </ng-container>
+                  }
 
                   <div class="ms-auto flex items-center gap-3">
-                    <ng-container *peraCan="stageCan('stage.update') ? canManageStages : []">
+                    @if (stageCan('stage.update')) {
                       <button type="button" [class]="BT_SEC_SM" (click)="editStage()">
                         <svg
                           width="13"
@@ -270,8 +266,8 @@ type TaskFilter = 'all' | RollupStatus;
                         </svg>
                         Edit stage
                       </button>
-                    </ng-container>
-                    <ng-container *peraCan="manageTasks">
+                    }
+                    @if (stageCan('task.create')) {
                       <button type="button" [class]="BT_GH_SM" (click)="addTask()">
                         <svg
                           width="13"
@@ -285,7 +281,7 @@ type TaskFilter = 'all' | RollupStatus;
                         </svg>
                         Add task
                       </button>
-                    </ng-container>
+                    }
                     <button type="button" [class]="BT_SEC_SM" (click)="openDocs()">
                       <svg
                         width="13"
@@ -299,7 +295,7 @@ type TaskFilter = 'all' | RollupStatus;
                       </svg>
                       Documentation
                     </button>
-                    <ng-container *peraCan="stageCan('stage.delete') ? canManageStages : []">
+                    @if (stageCan('stage.delete')) {
                       <button
                         type="button"
                         [class]="BT_SEC_SM"
@@ -318,7 +314,7 @@ type TaskFilter = 'all' | RollupStatus;
                           <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" />
                         </svg>
                       </button>
-                    </ng-container>
+                    }
                   </div>
                 </div>
               </div>
