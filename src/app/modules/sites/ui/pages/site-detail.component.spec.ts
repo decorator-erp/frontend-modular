@@ -438,3 +438,61 @@ describe('SiteDetailComponent — capture grid (sites S-5)', () => {
     expect(el.querySelector('[data-cell="catalog"]')).toBeNull();
   });
 });
+
+describe('SiteDetailComponent — by space (sites S-6)', () => {
+  let h: DetailHarness;
+  beforeEach(() => {
+    h = harness();
+    h.query.next(convertToParamMap({ tab: 'spaces' }));
+    h.site = detail({ recordCounts: [{ moduleId: 'M1', code: 'DOORS', recordCount: 2 }] });
+  });
+
+  const rec = (id: string, label: string, spaceId: string | null) => ({
+    id,
+    moduleId: 'M1',
+    label,
+    spaceId,
+    spaceName: spaceId ? 'Hall' : null,
+    catalogItemId: null,
+    sortOrder: 1,
+    note: null,
+  });
+
+  it('cards in server order (Whole unit last) with counts; rows summarise visible values and link to the capture row', () => {
+    h.api['grouped'] = vi.fn(() =>
+      of({
+        siteId: 'S1',
+        groups: [
+          { spaceId: 'SP1', spaceName: 'Hall', records: [rec('R1', 'DO-01', 'SP1')] },
+          { spaceId: null, spaceName: 'عام', records: [rec('R2', 'DO-02', null)] },
+        ],
+      }),
+    );
+    const { el } = renderDetail(h);
+    const cards = [...el.querySelectorAll('[data-space]')];
+    expect(cards.map((c) => c.getAttribute('data-space'))).toEqual(['SP1', 'whole']);
+    expect(cards[0].textContent).toContain('Hall');
+    expect(cards[1].textContent).toContain('Whole unit');
+    expect(cards[0].querySelector('[data-count]')?.textContent).toContain('1');
+    const row = el.querySelector('[data-record="R1"]') as HTMLAnchorElement;
+    expect(row.textContent).toContain('DOORS');
+    expect(row.textContent).toContain('DO-01');
+    // first four VISIBLE fields only (secret is hidden)
+    expect(row.querySelector('[data-summary]')?.textContent).toContain('width_cm: 90 cm');
+    expect(row.textContent).not.toContain('TOP-SECRET');
+    expect(row.getAttribute('href')).toContain('tab=capture');
+    expect(row.getAttribute('href')).toContain('m=M1');
+    expect(row.getAttribute('href')).toContain('r=R1');
+  });
+
+  it('empty → "Nothing captured yet"', () => {
+    const { el } = renderDetail(h);
+    expect(el.querySelector('[data-spaces-empty]')?.textContent).toContain('Nothing captured yet');
+  });
+
+  it('the capture tab highlights the record named by &r=', () => {
+    h.query.next(convertToParamMap({ tab: 'capture', m: 'M1', r: 'R1' }));
+    const { el } = renderDetail(h);
+    expect(el.querySelector('[data-record="R1"]')?.hasAttribute('data-highlight')).toBe(true);
+  });
+});

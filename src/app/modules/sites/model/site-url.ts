@@ -18,9 +18,17 @@ export function parseDefinitionTab(raw: string | null | undefined): DefinitionTa
     : 'modules';
 }
 
-/** Query params of `/sites/:siteId`: `m` only on the capture tab. */
-export function siteQuery(tab: SiteTab, moduleId?: string | null): Record<string, string> {
-  return tab === 'capture' && moduleId ? { tab, m: moduleId } : { tab };
+/**
+ * Query params of `/sites/:siteId`: `m` (module) and `r` (a record to highlight, S-6) only on the
+ * capture tab.
+ */
+export function siteQuery(
+  tab: SiteTab,
+  moduleId?: string | null,
+  recordId?: string | null,
+): Record<string, string> {
+  if (tab !== 'capture' || !moduleId) return { tab };
+  return recordId ? { tab, m: moduleId, r: recordId } : { tab, m: moduleId };
 }
 
 /** `[commands, queryParams]` for a router link to a survey tab. */
@@ -28,8 +36,9 @@ export function siteLink(
   siteId: string,
   tab: SiteTab = 'overview',
   moduleId?: string | null,
+  recordId?: string | null,
 ): [string[], Record<string, string>] {
-  return [['/sites', siteId], siteQuery(tab, moduleId)];
+  return [['/sites', siteId], siteQuery(tab, moduleId, recordId)];
 }
 
 export function definitionsQuery(tab: DefinitionTab): Record<string, string> {

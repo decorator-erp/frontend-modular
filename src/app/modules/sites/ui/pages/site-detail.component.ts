@@ -29,13 +29,14 @@ import {
 } from '../detail/site-decide-dialog.component';
 import { SiteCaptureComponent } from '../detail/site-capture.component';
 import { SiteOverviewComponent } from '../detail/site-overview.component';
+import { SiteSpacesComponent } from '../detail/site-spaces.component';
 import {
   SiteUnitDialogComponent,
   type SiteUnitDialogData,
 } from '../detail/site-unit-dialog.component';
 
-/** The tabs built so far; the others (spaces, families, boq, documents) land with S-6..S-9. */
-const BUILT_TABS: readonly SiteTab[] = ['overview', 'capture'];
+/** The tabs built so far; the others (families, boq, documents) land with S-7..S-9. */
+const BUILT_TABS: readonly SiteTab[] = ['overview', 'capture', 'spaces'];
 
 /**
  * sites S-3 / S-4: `/sites/:siteId` — header (code, status, project link, level chip), the actions
@@ -59,6 +60,7 @@ const BUILT_TABS: readonly SiteTab[] = ['overview', 'capture'];
     PeraTabsComponent,
     SiteOverviewComponent,
     SiteCaptureComponent,
+    SiteSpacesComponent,
   ],
   template: `
     @if (store.notFound()) {
@@ -236,7 +238,10 @@ const BUILT_TABS: readonly SiteTab[] = ['overview', 'capture'];
       <div class="px-8 py-6">
         @switch (tab()) {
           @case ('capture') {
-            <app-site-capture [moduleId]="moduleId()" />
+            <app-site-capture [moduleId]="moduleId()" [recordId]="recordId()" />
+          }
+          @case ('spaces') {
+            <app-site-spaces />
           }
           @default {
             <app-site-overview (editUnit)="editUnit()" />
@@ -272,6 +277,7 @@ export class SiteDetailComponent {
     return BUILT_TABS.includes(t) ? t : 'overview';
   });
   protected readonly moduleId = computed(() => this.query().get('m'));
+  protected readonly recordId = computed(() => this.query().get('r'));
 
   protected readonly tabs = computed<TabDef[]>(() => {
     const s = this.store.site();

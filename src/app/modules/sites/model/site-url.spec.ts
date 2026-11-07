@@ -20,6 +20,13 @@ describe('site-url (sites S-1)', () => {
     expect(siteQuery('capture')).toEqual({ tab: 'capture' });
   });
 
+  it('S-6: r (the record to highlight) rides with m on the capture tab only', () => {
+    expect(siteQuery('capture', 'M1', 'R9')).toEqual({ tab: 'capture', m: 'M1', r: 'R9' });
+    expect(siteQuery('capture', null, 'R9')).toEqual({ tab: 'capture' });
+    expect(siteQuery('spaces', 'M1', 'R9')).toEqual({ tab: 'spaces' });
+    expect(siteLink('S1', 'capture', 'M1', 'R9')[1]).toEqual({ tab: 'capture', m: 'M1', r: 'R9' });
+  });
+
   it.each([null, undefined, '', 'nope', 'OVERVIEW'])('falls back to overview on %j', (raw) => {
     expect(parseSiteTab(raw)).toBe('overview');
   });

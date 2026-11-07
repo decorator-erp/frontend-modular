@@ -1,6 +1,9 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  ElementRef,
+  Injector,
+  afterNextRender,
   computed,
   effect,
   inject,
@@ -25,10 +28,10 @@ import {
 } from '@ds';
 import { CatalogService } from '@platform/i18n/catalog.service';
 import type { CatalogKey } from '@platform/i18n/catalog/en';
-import { formatCairoDate } from '@platform/i18n/intl-locale';
 import { SiteItemDataType } from '../../model/site-enums';
 import type { SiteSchemaField } from '../../model/site-definition.model';
 import type { DraftRow } from '../../model/site-grid';
+import { formatCell } from '../../model/site-format';
 import { localName } from '../../model/site-normalize';
 import { siteQuery } from '../../model/site-url';
 import type { CellValue } from '../../model/site-validation';
@@ -382,7 +385,12 @@ import { SiteDetailStore } from '../../stores/site-detail.store';
                   </thead>
                   <tbody>
                     @for (r of store.rows(); track r.recordId) {
-                      <tr class="border-b border-border" [attr.data-record]="r.recordId">
+                      <tr
+                        class="border-b border-border"
+                        [class.bg-warning-soft]="r.recordId === recordId()"
+                        [attr.data-record]="r.recordId"
+                        [attr.data-highlight]="r.recordId === recordId() ? '' : null"
+                      >
                         <td class="p-2 font-semibold" dir="auto">{{ r.label }}</td>
                         <td class="p-2" dir="auto">{{ r.spaceName || t('sv.wholeUnit') }}</td>
                         @for (f of store.visible(); track f.itemId) {
@@ -410,9 +418,13 @@ export class SiteCaptureComponent {
   private readonly catalog = inject(CatalogService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
+  private readonly host = inject(ElementRef);
+  private readonly injector = inject(Injector);
 
   /** `&m=` from the URL; the first module when absent or unknown. */
   readonly moduleId = input<string | null>(null);
+  /** `&r=` from the URL (S-6 "By space" link): the record row to highlight and scroll to. */
+  readonly recordId = input<string | null>(null);
 
   protected readonly types = SiteItemDataType;
   /** Category picked per row (UI only; the row stores the item). */
@@ -465,6 +477,21 @@ export class SiteCaptureComponent {
       const module = this.selected();
       if (!site || !module) return;
       untracked(() => this.store.open(site.id, site.projectId, module));
+    });
+    // S-6: once the highlighted record's row is on screen, bring it into view.
+    effect(() => {
+      const id = this.recordId();
+      const rows = this.store.rows();
+      if (!id || !rows.some((r) => r.recordId === id)) return;
+      afterNextRender(
+        () => {
+          const row = (this.host.nativeElement as HTMLElement).querySelector(
+            `[data-record="${id}"]`,
+          );
+          row?.scrollIntoView?.({ block: 'center' });
+        },
+        { injector: this.injector },
+      );
     });
   }
 
@@ -569,25 +596,6 @@ export class SiteCaptureComponent {
   }
 
   protected format(f: SiteSchemaField, cell: SitePivotCell | null | undefined): string {
-    if (!cell) return '—';
-    const locale = this.catalog.locale();
-    switch (f.dataType) {
-      case SiteItemDataType.Number:
-        return cell.valueNumber == null
-          ? '—'
-          : `${new Intl.NumberFormat(locale === 'ar' ? 'ar-EG' : 'en-GB', { maximumFractionDigits: 4 }).format(cell.valueNumber)}${f.unit ? ' ' + f.unit : ''}`;
-      case SiteItemDataType.Bool:
-        return cell.valueBool == null ? '—' : this.t(cell.valueBool ? 'sv.yes' : 'sv.no');
-      case SiteItemDataType.Select:
-        return (
-          (locale === 'ar'
-            ? cell.optionNameAr || cell.optionNameEn
-            : cell.optionNameEn || cell.optionNameAr) ?? '—'
-        );
-      case SiteItemDataType.Date:
-        return cell.valueDate ? formatCairoDate(`${cell.valueDate}T12:00:00Z`, locale) : '—';
-      default:
-        return cell.valueText ?? '—';
-    }
+    return formatCell(f, cell, this.catalog.locale(), (v) => this.t(v ? 'sv.yes' : 'sv.no'));
   }
 }
