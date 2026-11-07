@@ -1438,6 +1438,11 @@ export const EN = {
   'plist.client': 'Client',
   'plist.scope': 'Show',
   'plist.mine': 'Only my projects',
+  // crmp P-11: stage template delete (TemplateEndpoints.cs:52).
+  'tpl.delete': 'Delete template',
+  'tpl.deleteTitle': 'Delete template',
+  'tpl.deleteBody': 'Delete "{name}"? A template a project was built from can\'t be deleted.',
+  'tpl.deleted': 'Template deleted',
 } as const;
 
 /** The key set of record. Every catalog lookup is typed against this. */

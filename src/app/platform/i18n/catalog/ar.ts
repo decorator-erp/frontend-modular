@@ -1363,4 +1363,9 @@ export const AR: Partial<Record<CatalogKey, string>> = {
   'plist.client': 'العميل',
   'plist.scope': 'العرض',
   'plist.mine': 'مشاريعي فقط',
+  // crmp P-11: stage template delete (TemplateEndpoints.cs:52).
+  'tpl.delete': 'حذف القالب',
+  'tpl.deleteTitle': 'حذف القالب',
+  'tpl.deleteBody': 'هل تريد حذف "{name}"؟ لا يمكن حذف قالب بُني منه مشروع.',
+  'tpl.deleted': 'تم حذف القالب',
 };
