@@ -22,6 +22,31 @@ const MAX_PAGE_SIZE = 200;
  * `crm.items.read` to search, `requirements.submit_own` on the client's own add
  * (`CrmPortalEndpoints.cs:70`).
  */
+/** crmp C-1: filters and the page of the client's portal items. */
+export interface PortalItemQuery {
+  projectId?: string | null;
+  periodId?: string | null;
+  status?: ApprovalState | null;
+  pageNumber: number;
+  pageSize: number;
+}
+
+/** crmp C-1: `PortalRequirementItemResponse` (the fields the portal list shows). */
+export interface PortalRequirementItem {
+  id: string;
+  projectId: string;
+  projectName: string;
+  periodId: string;
+  title: string;
+  description: string | null;
+  room: string | null;
+  approvalStatus: ApprovalState;
+  submittedByMe: boolean;
+  decisionComment: string | null;
+  decidedAtUtc: string | null;
+  createdAtUtc: string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class CrmItemService extends ApiService {
   private readonly periodsApi = inject(CrmPeriodService);
@@ -80,6 +105,50 @@ export class CrmItemService extends ApiService {
       this.toBody(request),
       { context: handled(403) }, // FINDING-5-7: the caller shows the 403's catalog message.
     ).pipe(map((r) => this.unwrapId(r, 'itemId')));
+  }
+
+  /**
+   * crmp C-1: the client's own items — `GET /api/crm/portal/requirement-items?projectId&periodId&status
+   * &pageNumber&pageSize` → `PagedResult<PortalRequirementItemResponse>` (dms CrmPortalEndpoints.cs:61,
+   * `requirements.view_own`; PortalContracts.cs:132). Newest first; a project or period that isn't the
+   * client's is 404 `crm.portal.NotFound`, handled by the caller.
+   */
+  listPortal(query: PortalItemQuery): Observable<PagedResult<PortalRequirementItem>> {
+    const params: Record<string, unknown> = {
+      pageNumber: query.pageNumber,
+      pageSize: query.pageSize,
+    };
+    if (query.projectId) params['projectId'] = query.projectId;
+    if (query.periodId) params['periodId'] = query.periodId;
+    if (query.status) params['status'] = query.status;
+    return this.get<unknown>('/crm/portal/requirement-items', params, {
+      context: handled(404),
+    }).pipe(
+      map((r) => {
+        const v = this.unwrap(r);
+        const items = this.unwrapArray(v).map((x) => ({
+          id: this.field<string>(x, 'id') ?? '',
+          projectId: this.field<string>(x, 'projectId') ?? '',
+          projectName: this.field<string>(x, 'projectName') ?? '',
+          periodId: this.field<string>(x, 'periodId') ?? '',
+          title: this.field<string>(x, 'title') ?? '',
+          description: this.field<string | null>(x, 'description') ?? null,
+          room: this.field<string | null>(x, 'room') ?? null,
+          approvalStatus: Number(this.field(x, 'approvalStatus') ?? 0) as ApprovalState,
+          submittedByMe: this.field<boolean>(x, 'submittedByMe') ?? false,
+          decisionComment: this.field<string | null>(x, 'decisionComment') ?? null,
+          decidedAtUtc: this.field<string | null>(x, 'decidedAtUtc') ?? null,
+          createdAtUtc: this.field<string>(x, 'createdAtUtc') ?? '',
+        }));
+        return {
+          items,
+          totalCount: this.field<number>(v, 'totalCount') ?? items.length,
+          page: this.field<number>(v, 'pageNumber') ?? query.pageNumber,
+          pageSize: this.field<number>(v, 'pageSize') ?? query.pageSize,
+          totalPages: this.field<number>(v, 'totalPages') ?? 1,
+        } as PagedResult<PortalRequirementItem>;
+      }),
+    );
   }
 
   /**

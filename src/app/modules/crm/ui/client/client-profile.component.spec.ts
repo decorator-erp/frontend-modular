@@ -1,3 +1,5 @@
+import { of } from 'rxjs';
+import { CrmItemService } from '../../data/crm-item.service';
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
@@ -18,7 +20,16 @@ describe('CrmClientProfileComponent — requirements tab (009b #N-3)', () => {
     loadPortal.mockClear();
     TestBed.configureTestingModule({
       imports: [CrmClientProfileComponent],
-      providers: [provideRouter([])],
+      providers: [
+        provideRouter([]),
+        {
+          provide: CrmItemService,
+          useValue: {
+            listPortal: () =>
+              of({ items: [], totalCount: 0, page: 1, pageSize: 20, totalPages: 0 }),
+          },
+        },
+      ],
     });
     TestBed.overrideComponent(CrmClientProfileComponent, {
       set: {
@@ -62,7 +73,7 @@ describe('CrmClientProfileComponent — requirements tab (009b #N-3)', () => {
     });
   });
 
-  it('renders the not-available state and loads no items', () => {
+  it('crmp C-1: the Requirements tab hosts the portal items list (no "not available" state)', () => {
     const fixture = TestBed.createComponent(CrmClientProfileComponent);
     fixture.detectChanges();
     const el = fixture.nativeElement as HTMLElement;
@@ -72,8 +83,8 @@ describe('CrmClientProfileComponent — requirements tab (009b #N-3)', () => {
     tab.click();
     fixture.detectChanges();
 
-    expect(el.textContent).toContain('Your requirements list is not available yet.');
-    expect(loadPortal).not.toHaveBeenCalled();
+    expect(el.textContent).not.toContain('Your requirements list is not available yet.');
+    expect(el.querySelector('app-crm-portal-items')).toBeTruthy();
   });
 });
 

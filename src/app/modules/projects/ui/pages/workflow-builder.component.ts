@@ -13,7 +13,6 @@ import { ActivatedRoute } from '@angular/router';
 import { Project, ProjectStage, StageKind } from '../../model/project.model';
 import { ProjectService } from '../../data/project.service';
 import { ProjectStageService } from '../../data/project-stage.service';
-import { CanDirective } from '@platform/permissions';
 import { ConfirmService } from '@ds';
 import { ErrorHandlerService, friendly } from '@platform/http/error-handler.service';
 import { ToastService } from '@platform/feedback/toast.service';

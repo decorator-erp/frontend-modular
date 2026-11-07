@@ -8,6 +8,7 @@ import {
 } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { BriefStore } from '../../stores/brief.store';
+import { PortalItemsComponent } from './portal-items.component';
 import { ClientProfileStore } from '../../stores/client-profile.store';
 import { MeetingsStore } from '../../stores/meetings.store';
 import { CatalogService } from '@platform/i18n/catalog.service';
@@ -49,6 +50,7 @@ type ProfileTab = 'overview' | 'brief' | 'requirements' | 'meetings';
   changeDetection: ChangeDetectionStrategy.OnPush,
   providers: [ClientProfileStore, BriefStore, MeetingsStore],
   imports: [
+    PortalItemsComponent,
     PeraAlertComponent,
     PeraBadgeComponent,
     PeraButtonComponent,
@@ -206,8 +208,8 @@ type ProfileTab = 'overview' | 'brief' | 'requirements' | 'meetings';
                   }
                 }
                 @case ('requirements') {
-                  <!-- 009b #N-3: no portal items read exists on the backend. -->
-                  <pera-alert tone="info">{{ catalog.t('client.reqsNotAvailable') }}</pera-alert>
+                  <!-- crmp C-1: the portal items read (contract §2.14 #105). -->
+                  <app-crm-portal-items [projects]="profile.projects()" />
                 }
                 @case ('meetings') {
                   @if (meetings.error(); as message) {

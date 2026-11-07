@@ -1443,6 +1443,22 @@ export const EN = {
   'tpl.deleteTitle': 'Delete template',
   'tpl.deleteBody': 'Delete "{name}"? A template a project was built from can\'t be deleted.',
   'tpl.deleted': 'Template deleted',
+  // crmp C-1: the client's portal items (contract §2.14 #105).
+  'pitems.project': 'Project',
+  'pitems.period': 'Period',
+  'pitems.status': 'Status',
+  'pitems.allProjects': 'All projects',
+  'pitems.anyPeriod': 'Any period',
+  'pitems.openPeriod': 'Open period',
+  'pitems.anyStatus': 'Any status',
+  'pitems.comment': 'Decision note',
+  'pitems.empty': 'No requirements yet',
+  'pitems.emptyBody': 'Requirements you or the office add will appear here.',
+  'pitems.state.1': 'Draft',
+  'pitems.state.2': 'Waiting for your decision',
+  'pitems.state.3': 'Approved',
+  'pitems.state.4': 'Changes requested',
+  'pitems.state.5': 'Recorded',
 } as const;
 
 /** The key set of record. Every catalog lookup is typed against this. */

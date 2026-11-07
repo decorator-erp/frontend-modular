@@ -10,7 +10,6 @@ import {
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { ProjectStage, ProjectTask } from '../../model/project.model';
-import { CanDirective } from '@platform/permissions';
 import { LocaleService } from '@platform/i18n';
 import { formatShortDate } from '@shared/ui/status';
 import { PeraEmptyComponent } from '@ds';
