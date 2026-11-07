@@ -4,7 +4,7 @@ import { sitesRoutes } from './sites.routes';
 
 describe('sitesRoutes (NEW-FEATURE-1)', () => {
   it('lists the survey routes, each guarded by its permission and lazy', async () => {
-    expect(sitesRoutes.map((r) => r.path)).toEqual(['sites']);
+    expect(sitesRoutes.map((r) => r.path)).toEqual(['sites', 'sites/:siteId']);
     for (const r of sitesRoutes) {
       expect(r.canActivate).toEqual([PermissionGuard]);
       expect(r.data?.['permission']).toBe('sites.read');
@@ -12,5 +12,7 @@ describe('sitesRoutes (NEW-FEATURE-1)', () => {
     }
     const cmp = (await sitesRoutes[0].loadComponent!()) as { name: string };
     expect(cmp.name).toContain('SiteListComponent');
+    const detail = (await sitesRoutes[1].loadComponent!()) as { name: string };
+    expect(detail.name).toContain('SiteDetailComponent');
   });
 });

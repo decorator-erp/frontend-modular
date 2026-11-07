@@ -15,4 +15,11 @@ export const sitesRoutes: Routes = [
     data: { permission: SITE_PERM.read, breadcrumb: 'sv.navSurveys' },
     loadComponent: () => import('./ui/pages/site-list.component').then((m) => m.SiteListComponent),
   },
+  {
+    path: 'sites/:siteId',
+    canActivate: [PermissionGuard],
+    data: { permission: SITE_PERM.read, breadcrumb: 'sv.survey' },
+    loadComponent: () =>
+      import('./ui/pages/site-detail.component').then((m) => m.SiteDetailComponent),
+  },
 ];
