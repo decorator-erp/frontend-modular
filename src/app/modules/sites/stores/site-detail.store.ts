@@ -60,7 +60,8 @@ export class SiteDetailStore {
       (p) => this.permissions.can(p),
       this.access.me(),
     );
-    return this.decisionBlocked() ? { ...caps, decide: false, approve: false } : caps;
+    // Only APPROVING one's own survey is refused; Reject stays (SiteCommandHandlers.cs:236-247).
+    return this.decisionBlocked() ? { ...caps, approve: false } : caps;
   });
 
   private generation = 0;

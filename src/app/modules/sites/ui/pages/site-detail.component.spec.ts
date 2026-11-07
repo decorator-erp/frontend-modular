@@ -348,17 +348,19 @@ describe('SiteDetailComponent — workflow (sites S-4)', () => {
     expect(outcome.ok).toBe(true);
   });
 
-  it('403 SelfApprovalNotAllowed: inline message and the decision buttons go away for the session', async () => {
+  // Corrected (review A2): the backend refuses only APPROVING one's own survey; rejecting it stays
+  // allowed (SiteCommandHandlers.cs:236-247, `if (command.Request.Approved && …)`).
+  it('403 SelfApprovalNotAllowed: inline message; Approve goes away for the session, Reject stays', async () => {
     h.site = detail({ status: 2 });
     h.api = { decide: vi.fn(() => throwError(() => problem(403, 'sites.SelfApprovalNotAllowed'))) };
     const { fixture, el } = renderDetail(h);
-    (el.querySelector('[data-act="reject"] button') as HTMLButtonElement).click();
+    (el.querySelector('[data-act="approve"] button') as HTMLButtonElement).click();
     const data = h.modalOpen.mock.calls[0][1].data as SiteDecideDialogData;
     const outcome = await data.save(null);
     expect(outcome.code).toBe('sites.SelfApprovalNotAllowed');
     expect(outcome.message).toBeTruthy();
     fixture.detectChanges();
-    expect(buttons(el)).toEqual([]);
+    expect(buttons(el)).toEqual(['reject']);
     expect(el.querySelector('[data-banner="blocked"]')).toBeTruthy();
   });
 
