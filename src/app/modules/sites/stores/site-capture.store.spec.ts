@@ -124,6 +124,47 @@ describe('SiteCaptureStore (sites S-5)', () => {
     expect(r1.recordId).toBe('R1');
   });
 
+  it('a delete that fails partway: the retry re-sends only the deletes not yet done (A1)', async () => {
+    let fail = true;
+    api['deleteRecord'].mockImplementation((_s: string, id: string) => {
+      calls.push(`DELETE ${id}`);
+      if (id === 'R2' && fail) return throwError(() => problem(409, { 'sites.SiteLocked': ['x'] }));
+      return of(undefined);
+    });
+    const store = make();
+    store.startEdit();
+    const [r1, r2] = store.draft()!;
+    store.remove(r1.key);
+    store.remove(r2.key);
+    store.addRow();
+    store.setValue(store.draft()![0].key, WIDTH.itemId, 100);
+    expect(await store.save()).toBe(false);
+    expect(calls).toEqual(['DELETE R1', 'DELETE R2']);
+    expect(store.removed()).toEqual(['R2']);
+    fail = false;
+    calls = [];
+    expect(await store.save()).toBe(true);
+    expect(calls).toEqual(['DELETE R2', 'POST bulk']);
+  });
+
+  it('a queued delete answered 404 RecordNotFound counts as already deleted (A1)', async () => {
+    api['deleteRecord'].mockImplementation((_s: string, id: string) => {
+      calls.push(`DELETE ${id}`);
+      return id === 'R1'
+        ? throwError(() => problem(404, { 'sites.RecordNotFound': ['gone'] }))
+        : of(undefined);
+    });
+    const store = make();
+    store.startEdit();
+    const [r1, r2] = store.draft()!;
+    store.remove(r1.key);
+    store.remove(r2.key);
+    store.addRow();
+    store.setValue(store.draft()![0].key, WIDTH.itemId, 100);
+    expect(await store.save()).toBe(true);
+    expect(calls).toEqual(['DELETE R1', 'DELETE R2', 'POST bulk']);
+  });
+
   it('no request when the pre-check fails; label swap in one save passes', async () => {
     const store = make();
     store.startEdit();

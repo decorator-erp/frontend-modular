@@ -1,6 +1,6 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
-import { Observable, catchError, concatMap, firstValueFrom, forkJoin, from, last, of } from 'rxjs';
+import { Observable, catchError, firstValueFrom, forkJoin, of } from 'rxjs';
 import { ToastService } from '@platform/feedback/toast.service';
 import { injectReloadOnConflict } from '@platform/http/concurrency';
 import { ErrorHandlerService, friendly } from '@platform/http/error-handler.service';
@@ -250,15 +250,14 @@ export class SiteCaptureStore {
 
     this.saving.set(true);
     const removed = this.removed();
+    this.lastSent = [];
     try {
-      if (removed.length) {
-        await firstValueFrom(
-          from(removed).pipe(
-            concatMap((id) => this.api.deleteRecord(siteId, id)),
-            last(),
-          ),
-        );
-        this.removed.set([]);
+      // One DELETE at a time; each id leaves the queue as soon as it is gone, so a retry after a
+      // partial failure re-sends only the rest. A 404 RecordNotFound means it is already deleted
+      // (R14 → LoadEditableAsync, SiteRecordWrites.cs:19-40; soft-deleted rows are filtered out).
+      for (const id of removed) {
+        await this.deleteQueued(siteId, id);
+        this.removed.update((ids) => ids.filter((x) => x !== id));
       }
       this.lastSent = bulkBody(rows, module.id, this.visible());
       await firstValueFrom(this.api.bulkSave(siteId, this.lastSent));
@@ -275,6 +274,18 @@ export class SiteCaptureStore {
       this.saving.set(false);
       this.onSaveError(err, rows);
       return false;
+    }
+  }
+
+  private async deleteQueued(siteId: string, id: string): Promise<void> {
+    try {
+      await firstValueFrom(this.api.deleteRecord(siteId, id));
+    } catch (err) {
+      const gone =
+        err instanceof HttpErrorResponse &&
+        err.status === 404 &&
+        this.errors.parse(err).code === 'sites.RecordNotFound';
+      if (!gone) throw err;
     }
   }
 
