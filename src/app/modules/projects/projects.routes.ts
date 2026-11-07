@@ -88,4 +88,12 @@ export const projectsRoutes: Routes = [
         (m) => m.ProjectMembersPageComponent,
       ),
   },
+  // crmp P-3: the project's tasks with stage, assignee and status filters.
+  {
+    path: 'projects/:id/tasks',
+    canActivate: [PermissionGuard],
+    data: { permission: PERM.stageTasks.read, breadcrumb: 'route.projectTasks' },
+    loadComponent: () =>
+      import('./ui/tasks/project-tasks-page.component').then((m) => m.ProjectTasksPageComponent),
+  },
 ];

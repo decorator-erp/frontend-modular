@@ -1,3 +1,4 @@
+import { ProjectAccessStore } from '../../stores/project-access.store';
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { of } from 'rxjs';
@@ -22,8 +23,15 @@ describe('TaskDetailComponent — planned start is read-only (crmp R1-F8)', () =
         { provide: ProjectTaskService, useValue: { getDetails: () => of(null) } },
         { provide: ProjectService, useValue: { getById: () => of(null) } },
         { provide: ProjectStageService, useValue: { getDetails: () => of(null) } },
-        { provide: EmployeeService, useValue: { listPaged: () => of({ items: [] }) } },
+        {
+          provide: EmployeeService,
+          useValue: { listPaged: () => of({ items: [] }), getMe: () => of({ id: 'E1' }) },
+        },
         { provide: PermissionsService, useValue: { can: () => true } },
+        {
+          provide: ProjectAccessStore,
+          useValue: { ensure: () => undefined, can: () => true, canExecute: () => true },
+        },
       ],
     });
     const c = TestBed.runInInjectionContext(() => new TaskDetailComponent());

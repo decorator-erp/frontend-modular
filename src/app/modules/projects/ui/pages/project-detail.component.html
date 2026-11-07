@@ -104,6 +104,9 @@
             [routerLink]="['/projects', proj.id, 'scope-of-work']"
             >{{ catalog.t('sow.title') }}</a
           >
+          <a [class]="btnClass" [routerLink]="['/projects', proj.id, 'tasks']" data-tasks-link>{{
+            catalog.t('projects.tasksLink')
+          }}</a>
           <a
             [class]="btnClass"
             [routerLink]="['/projects', proj.id, 'members']"

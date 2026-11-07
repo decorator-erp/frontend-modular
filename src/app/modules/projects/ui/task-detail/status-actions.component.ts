@@ -16,6 +16,9 @@ import { ToastService } from '@platform/feedback/toast.service';
 import { PERM } from '@platform/permissions';
 import { CanDirective } from '@platform/permissions';
 import { ProjectTask } from '../../model/project.model';
+import type { ProjectAction } from '../../model/project-actions';
+import { ProjectAccessStore } from '../../stores/project-access.store';
+import { CatalogService } from '@platform/i18n/catalog.service';
 import {
   ConfirmService,
   ModalService,
@@ -78,67 +81,93 @@ export class TaskRejectModalComponent {
 @Component({
   selector: 'app-task-status-actions',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CanDirective],
+  imports: [],
   template: `
-    <ng-container *peraCan="manageTasks">
-      <div class="flex items-center gap-1.5 flex-wrap">
-        @if (status() === 'Locked') {
-          <span
-            class="font-mono fs-label uppercase text-text-muted px-2 py-1.5 border border-border-soft bg-bg"
+    <div class="flex items-center gap-1.5 flex-wrap" data-task-actions>
+      @if (status() === 'Locked') {
+        <span
+          class="font-mono fs-label uppercase text-text-muted px-2 py-1.5 border border-border-soft bg-bg"
+        >
+          Locked — satisfy gates to unlock
+        </span>
+      }
+      @if ((status() === 'Open' || status() === 'Rejected') && canStart()) {
+        <button
+          type="button"
+          (click)="start()"
+          [disabled]="busy()"
+          class="px-2.5 py-1.5 border border-border bg-bg fs-label hover:bg-surface-muted disabled:opacity-50"
+          data-start
+        >
+          Start
+        </button>
+      }
+      @if (status() === 'InProgress' && canComplete()) {
+        <button
+          type="button"
+          (click)="complete()"
+          [disabled]="busy()"
+          class="px-2.5 py-1.5 bg-accent text-text-on-accent border border-accent fs-label hover:bg-accent-hover disabled:opacity-50 inline-flex items-center gap-1.5"
+          data-complete
+        >
+          <svg
+            width="11"
+            height="11"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.4"
           >
-            Locked — satisfy gates to unlock
-          </span>
-        }
-        @if (status() === 'Open' || status() === 'Rejected') {
-          <button
-            type="button"
-            (click)="start()"
-            [disabled]="busy()"
-            class="px-2.5 py-1.5 border border-border bg-bg fs-label hover:bg-surface-muted disabled:opacity-50"
-          >
-            Start
-          </button>
-        }
-        @if (status() === 'InProgress') {
-          <button
-            type="button"
-            (click)="complete()"
-            [disabled]="busy()"
-            class="px-2.5 py-1.5 bg-accent text-text-on-accent border border-accent fs-label hover:bg-accent-hover disabled:opacity-50 inline-flex items-center gap-1.5"
-          >
-            <svg
-              width="11"
-              height="11"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2.4"
-            >
-              <path d="M5 12l4 4L19 6" />
-            </svg>
-            Mark complete
-          </button>
-        }
-        @if (status() === 'PendingApproval') {
-          <button
-            type="button"
-            (click)="reject()"
-            [disabled]="busy()"
-            class="px-2.5 py-1.5 border border-danger bg-danger-soft text-danger fs-label hover:opacity-80 disabled:opacity-50"
-          >
-            Reject
-          </button>
-        }
+            <path d="M5 12l4 4L19 6" />
+          </svg>
+          Mark complete
+        </button>
+      }
+      @if (status() === 'PendingApproval' && can('task.reject')) {
+        <button
+          type="button"
+          (click)="reject()"
+          [disabled]="busy()"
+          class="px-2.5 py-1.5 border border-danger bg-danger-soft text-danger fs-label hover:opacity-80 disabled:opacity-50"
+          data-reject
+        >
+          Reject
+        </button>
+      }
+      @if (isLive() && can('task.cancel')) {
+        <button
+          type="button"
+          (click)="cancel()"
+          [disabled]="busy()"
+          class="px-2.5 py-1.5 border border-border bg-bg fs-label hover:bg-surface-muted disabled:opacity-50"
+          data-cancel
+        >
+          {{ catalog.t('pt.cancel') }}
+        </button>
+      }
+      @if (isClosedTask() && can('task.reopen')) {
+        <button
+          type="button"
+          (click)="reopen()"
+          [disabled]="busy()"
+          class="px-2.5 py-1.5 border border-border bg-bg fs-label hover:bg-surface-muted disabled:opacity-50"
+          data-reopen
+        >
+          {{ catalog.t('pt.reopen') }}
+        </button>
+      }
+      @if (notStarted() && can('task.delete')) {
         <button
           type="button"
           (click)="remove()"
           [disabled]="busy()"
           class="px-2.5 py-1.5 border border-border bg-bg fs-label text-danger hover:bg-danger-soft hover:border-danger disabled:opacity-50"
+          data-delete
         >
           Delete
         </button>
-      </div>
-    </ng-container>
+      }
+    </div>
   `,
 })
 export class TaskStatusActionsComponent {
@@ -152,8 +181,30 @@ export class TaskStatusActionsComponent {
   private readonly modal = inject(ModalService);
   private readonly confirm = inject(ConfirmService);
 
-  readonly manageTasks = PERM.stageTasks.manage;
+  private readonly access = inject(ProjectAccessStore);
+  protected readonly catalog = inject(CatalogService);
   readonly busy = signal(false);
+
+  /**
+   * crmp P-3/P-4: every button needs its route claim AND level AND an open project (canProjectAction).
+   * Start and complete also need the assignee, the `stage_tasks.manage` claim or the Manager level
+   * (`projects.tasks.NotAssignee`, dms TaskExecutors.cs:17-35). Delete only before the task starts
+   * (`projects.tasks.NotDeletable`).
+   */
+  can(action: ProjectAction): boolean {
+    return this.access.can(this.task().projectId, action);
+  }
+  readonly canStart = computed(() =>
+    this.access.canExecute(this.task().projectId, this.task(), 'task.start'),
+  );
+  readonly canComplete = computed(() =>
+    this.access.canExecute(this.task().projectId, this.task(), 'task.complete'),
+  );
+  readonly notStarted = computed(() => ['Open', 'Locked'].includes(this.status()));
+  readonly isLive = computed(() => !['Completed', 'Cancelled'].includes(this.status()));
+  readonly isClosedTask = computed(() =>
+    ['Completed', 'Cancelled', 'Rejected'].includes(this.status()),
+  );
 
   /** Backend exposes PendingApproval/Rejected beyond the local union — compare as string. */
   readonly status = computed(() => this.task().status as string);
@@ -169,6 +220,17 @@ export class TaskStatusActionsComponent {
   complete(): void {
     const t = this.task();
     this.run(this.tasksApi.complete(t.projectId, t.id), 'Task completed');
+  }
+
+  cancel(): void {
+    const t = this.task();
+    this.run(this.tasksApi.cancel(t.projectId, t.id), this.catalog.t('pt.cancelled'));
+  }
+
+  /** `projects.tasks.StageCompleted` (a task of a completed stage) arrives as its catalog message. */
+  reopen(): void {
+    const t = this.task();
+    this.run(this.tasksApi.reopen(t.projectId, t.id), this.catalog.t('pt.reopened'));
   }
 
   async reject(): Promise<void> {
@@ -213,9 +275,16 @@ export class TaskStatusActionsComponent {
       },
       error: (err: HttpErrorResponse) => {
         this.busy.set(false);
-        // tasks.StillLocked / CompletionBlocked / SubTasksIncomplete /
-        // MissingRequiredAttachments / ApprovalNotAuthorized etc. per api-docs/07.
-        this.toast.show({ tone: 'danger', message: friendly(this.errors.parse(err)) });
+        const parsed = this.errors.parse(err);
+        // The level or the project's state may have changed since load: re-read the access.
+        if (
+          parsed.code === 'projects.InsufficientLevel' ||
+          parsed.code === 'projects.Closed' ||
+          parsed.code === 'projects.tasks.NotAssignee'
+        ) {
+          this.access.refresh(this.task().projectId);
+        }
+        this.toast.show({ tone: 'danger', message: friendly(parsed) });
       },
     });
   }
