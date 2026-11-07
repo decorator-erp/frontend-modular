@@ -3,6 +3,7 @@ import { of } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
 import { PERM, PermissionsService } from '@platform/permissions';
 import { ProjectSubTaskService } from '../../data/project-subtask.service';
+import type { ProjectTaskStatus } from '../../model/project.model';
 import { ProjectAction, ProjectLevel, canProjectAction } from '../../model/project-actions';
 import { ProjectAccessStore } from '../../stores/project-access.store';
 import { SubtasksPanelComponent } from './subtasks-panel.component';
@@ -14,8 +15,18 @@ const subs = [
 
 /** crmp P-5: sub-task writes are Editor-level; only required ones are marked REQUIRED. */
 describe('SubtasksPanelComponent — levels (crmp P-5)', () => {
-  function render(level: ProjectLevel) {
-    const grants = new Set<string>([PERM.stageTasks.manage, PERM.stageTasks.complete]);
+  function render(
+    level: ProjectLevel,
+    opts: {
+      grants?: string[];
+      taskStatus?: ProjectTaskStatus;
+      assignedToId?: string | null;
+      me?: string | null;
+    } = {},
+  ) {
+    const grants = new Set<string>(
+      opts.grants ?? [PERM.stageTasks.manage, PERM.stageTasks.complete],
+    );
     TestBed.configureTestingModule({
       imports: [SubtasksPanelComponent],
       providers: [
@@ -32,6 +43,7 @@ describe('SubtasksPanelComponent — levels (crmp P-5)', () => {
         {
           provide: ProjectAccessStore,
           useValue: {
+            me: () => opts.me ?? null,
             can: (_id: string, a: ProjectAction) =>
               canProjectAction({ myLevel: level, status: 'InProgress', isActive: true }, a, (p) =>
                 grants.has(p),
@@ -43,6 +55,8 @@ describe('SubtasksPanelComponent — levels (crmp P-5)', () => {
     const f = TestBed.createComponent(SubtasksPanelComponent);
     f.componentRef.setInput('projectId', 'P1');
     f.componentRef.setInput('taskId', 'T1');
+    f.componentRef.setInput('taskStatus', opts.taskStatus ?? 'InProgress');
+    f.componentRef.setInput('assignedToId', opts.assignedToId ?? null);
     f.detectChanges();
     return { el: f.nativeElement as HTMLElement, c: f.componentInstance };
   }
@@ -69,4 +83,38 @@ describe('SubtasksPanelComponent — levels (crmp P-5)', () => {
     expect(el.textContent).toContain('REQUIRED');
     expect(el.querySelectorAll('[data-optional]').length).toBe(1);
   });
+
+  it('B2 (CP-2a): with only stage_tasks.complete, the toggle is for the task assignee (ProjectSubTaskHandlers.cs:48-52)', () => {
+    const other = render('Editor', {
+      grants: [PERM.stageTasks.complete],
+      assignedToId: 'E1',
+      me: 'E2',
+    });
+    expect(other.c.canManage()).toBe(false);
+    expect(other.el.querySelector('input[type=checkbox]')).toBeNull();
+    TestBed.resetTestingModule();
+    const mine = render('Editor', {
+      grants: [PERM.stageTasks.complete],
+      assignedToId: 'E1',
+      me: 'E1',
+    });
+    expect(mine.c.canManage()).toBe(true);
+  });
+
+  it("B2 (CP-2a): a stage_tasks.manage holder toggles any task's sub-tasks", () => {
+    const { c } = render('Editor', { assignedToId: 'E1', me: 'E2' });
+    expect(c.canManage()).toBe(true);
+  });
+
+  it.each(['Completed', 'Cancelled'] as const)(
+    'B2 (CP-2b): on a %s task every sub-task write is hidden (409 projects.subtasks.TaskClosed)',
+    (taskStatus) => {
+      const { el, c } = render('Manager', { taskStatus });
+      expect(c.canManage()).toBe(false);
+      expect(el.querySelector('input[type=checkbox]')).toBeNull();
+      expect(el.textContent).not.toContain('Edit');
+      expect(el.querySelector('[data-delete]')).toBeNull();
+      expect(el.textContent).not.toContain('New sub-task');
+    },
+  );
 });

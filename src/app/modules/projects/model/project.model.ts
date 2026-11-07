@@ -207,6 +207,8 @@ export interface ProjectSubTask {
   id: string;
   projectTaskId: string;
   title: string;
+  /** `ProjectSubTaskResponse.Description` (TaskContracts.cs:64); resent on edit (full replace). */
+  description?: string | null;
   order: number;
   isRequired: boolean;
   isDone: boolean;

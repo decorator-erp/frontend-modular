@@ -318,6 +318,7 @@ export class ProjectService extends ApiService {
       id: this.field<string>(source, 'id') ?? '',
       projectTaskId: this.field<string>(source, 'projectTaskId') ?? taskId,
       title: this.field<string>(source, 'title', 'name') ?? '',
+      description: this.field<string>(source, 'description') ?? null,
       order: this.num(this.field(source, 'order')),
       isRequired: this.field<boolean>(source, 'isRequired') ?? false,
       isDone: this.field<boolean>(source, 'isDone') ?? false,

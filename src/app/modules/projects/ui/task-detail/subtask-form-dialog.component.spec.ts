@@ -95,8 +95,41 @@ describe('SubtaskFormDialogComponent', () => {
     c.submit();
     expect(updated?.id).toBe('sub9');
     expect(route).toEqual({ projectId: 'p1', taskId: 't1' });
-    expect(updated?.req).toEqual({ title: 'New', order: 10, isRequired: false });
+    expect(updated?.req).toEqual({
+      title: 'New',
+      description: null,
+      order: 10,
+      isRequired: false,
+    });
     expect(created).toBeNull();
+  });
+
+  it('B2 (CP-3): edit resends the description — the PUT is a full replace (ManualSubTaskHandlers.cs:133)', () => {
+    const c = make({
+      mode: 'edit',
+      projectId: 'p1',
+      projectTaskId: 't1',
+      subtaskId: 'sub9',
+      initial: { title: 'Old', description: 'From the template', order: 10, isRequired: true },
+    });
+    c.form.patchValue({ title: 'New' });
+    c.submit();
+    expect(updated?.req).toEqual({
+      title: 'New',
+      description: 'From the template',
+      order: 10,
+      isRequired: true,
+    });
+  });
+
+  it('B2 (CP-3): the title is capped at 200 characters (ManualSubTaskHandlers.cs:19,29)', () => {
+    const c = make({ mode: 'create', projectId: 'p1', projectTaskId: 't1', nextOrder: 10 });
+    c.form.patchValue({ title: 'x'.repeat(201) });
+    c.submit();
+    expect(created).toBeNull();
+    c.form.patchValue({ title: 'x'.repeat(200) });
+    c.submit();
+    expect(created?.title.length).toBe(200);
   });
 
   it('blocks submit when the title is empty', () => {

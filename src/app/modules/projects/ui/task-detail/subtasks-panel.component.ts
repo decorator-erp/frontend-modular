@@ -3,8 +3,8 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { ProjectSubTaskService } from '../../data/project-subtask.service';
 import { ErrorHandlerService, friendly } from '@platform/http/error-handler.service';
 import { ToastService } from '@platform/feedback/toast.service';
-import { PERM } from '@platform/permissions';
-import { ProjectSubTask } from '../../model/project.model';
+import { PERM, PermissionsService } from '@platform/permissions';
+import { ProjectSubTask, ProjectTaskStatus } from '../../model/project.model';
 import type { ProjectAction } from '../../model/project-actions';
 import { ProjectAccessStore } from '../../stores/project-access.store';
 import { CatalogService } from '@platform/i18n/catalog.service';
@@ -115,10 +115,10 @@ import { SubtaskFormDialogComponent, SubtaskFormDialogData } from './subtask-for
         <span
           class="opacity-0 group-hover:opacity-100 flex items-center gap-1.5 font-mono fs-micro text-text-muted uppercase transition-opacity"
         >
-          @if (can('subtask.update')) {
+          @if (canWrite('subtask.update')) {
             <button type="button" class="hover:text-accent" (click)="openEdit(sub)">Edit</button>
             <span class="text-border">·</span>
-            @if (!sub.isDone && can('subtask.delete')) {
+            @if (!sub.isDone && canWrite('subtask.delete')) {
               <button type="button" class="hover:text-danger" (click)="remove(sub)" data-delete>
                 Delete
               </button>
@@ -132,7 +132,7 @@ import { SubtaskFormDialogComponent, SubtaskFormDialogData } from './subtask-for
       </p>
     }
     <!-- Create — opens the DMS Forms sub-task dialog (CreateProjectSubTaskRequest) -->
-    @if (can('subtask.create')) {
+    @if (canWrite('subtask.create')) {
       <div class="px-4 py-2.5">
         <button
           type="button"
@@ -161,6 +161,9 @@ import { SubtaskFormDialogComponent, SubtaskFormDialogData } from './subtask-for
 export class SubtasksPanelComponent implements OnInit {
   readonly projectId = input.required<string>();
   readonly taskId = input.required<string>();
+  /** Review B2 (CP-2): the owning task's status and assignee, for the TaskClosed and NotAssignee rules. */
+  readonly taskStatus = input<ProjectTaskStatus | null>(null);
+  readonly assignedToId = input<string | null>(null);
 
   private readonly api = inject(ProjectSubTaskService);
   private readonly errors = inject(ErrorHandlerService);
@@ -168,6 +171,7 @@ export class SubtasksPanelComponent implements OnInit {
   private readonly confirm = inject(ConfirmService);
   private readonly modal = inject(ModalService);
   private readonly access = inject(ProjectAccessStore);
+  private readonly permissions = inject(PermissionsService);
   protected readonly catalog = inject(CatalogService);
 
   readonly manageTasks = PERM.stageTasks.manage;
@@ -192,9 +196,31 @@ export class SubtasksPanelComponent implements OnInit {
     return this.access.can(this.projectId(), action);
   }
 
-  /** The leading box toggles done/reopen; interactive only when the caller may do that. */
+  /**
+   * Review B2 (CP-2b): every sub-task write is 409 `projects.subtasks.TaskClosed` on a Completed or
+   * Cancelled task (ManualSubTaskHandlers.cs:55-65, ProjectSubTaskHandlers.cs:62-65).
+   */
+  taskOpen(): boolean {
+    const s = this.taskStatus();
+    return s !== 'Completed' && s !== 'Cancelled';
+  }
+
+  /** create / update / delete: the action gate AND an open task. */
+  canWrite(action: ProjectAction): boolean {
+    return this.taskOpen() && this.can(action);
+  }
+
+  /**
+   * The leading box toggles done/reopen; interactive only when the caller may do that. Review B2
+   * (CP-2a): the backend takes it from a `stage_tasks.manage` holder or the task's assignee only
+   * (403 `projects.subtasks.NotAssignee`, ProjectSubTaskHandlers.cs:48-52, ManualSubTaskHandlers.cs:194-199).
+   */
   canManage(): boolean {
-    return this.can('subtask.complete') || this.can('subtask.reopen');
+    if (!this.taskOpen()) return false;
+    if (!(this.can('subtask.complete') || this.can('subtask.reopen'))) return false;
+    if (this.permissions.can(PERM.stageTasks.manage)) return true;
+    const me = this.access.me();
+    return !!me && me === this.assignedToId();
   }
 
   ngOnInit(): void {
@@ -248,7 +274,12 @@ export class SubtasksPanelComponent implements OnInit {
       projectId: this.projectId(),
       projectTaskId: this.taskId(),
       subtaskId: sub.id,
-      initial: { title: sub.title, order: sub.order, isRequired: sub.isRequired },
+      initial: {
+        title: sub.title,
+        description: sub.description ?? null,
+        order: sub.order,
+        isRequired: sub.isRequired,
+      },
     };
     const saved = await this.modal
       .open<boolean>(SubtaskFormDialogComponent, { size: 'md', data })

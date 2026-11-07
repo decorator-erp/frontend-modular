@@ -264,7 +264,12 @@ const PRIORITY_DOT: Record<string, string> = {
                     >{{ doneSubs() + '/' + subCount() + ' done' }}</span
                   >
                 </div>
-                <app-subtasks-panel [projectId]="projectId()" [taskId]="taskId()" />
+                <app-subtasks-panel
+                  [projectId]="projectId()"
+                  [taskId]="taskId()"
+                  [taskStatus]="t.status"
+                  [assignedToId]="t.assignedToId"
+                />
               </pera-card>
             }
 
