@@ -1339,6 +1339,9 @@ export const EN = {
   'appr.loadMore': 'Load more',
   'appr.pendingEmpty': 'Nothing is waiting for your decision.',
   'appr.decidedEmpty': 'No decisions yet.',
+  // crmp A-4: paged task and comment lists (contract §1.6, opt-in paging).
+  'projects.loadMore': 'Load more',
+  'projects.loadingMore': 'Loading…',
 } as const;
 
 /** The key set of record. Every catalog lookup is typed against this. */

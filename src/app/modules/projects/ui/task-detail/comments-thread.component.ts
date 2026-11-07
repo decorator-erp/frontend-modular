@@ -6,6 +6,7 @@ import { ErrorHandlerService, friendly } from '@platform/http/error-handler.serv
 import { ToastService } from '@platform/feedback/toast.service';
 import { MarkdownService } from '@shared/markdown/markdown.service';
 import { LocaleService } from '@platform/i18n';
+import { CatalogService } from '@platform/i18n/catalog.service';
 import { PERM } from '@platform/permissions';
 import { CanDirective } from '@platform/permissions';
 import { TaskComment } from '../../model/project.model';
@@ -37,6 +38,9 @@ interface CommentVm extends TaskComment {
  * name/role/time header, the text, and a reactions row). Parent wraps this in a
  * `<pera-card>`, so we render the card BODY only — no outer border/header.
  */
+/** crmp A-4: one page of comments; the backend's own default when paged is 200. */
+export const COMMENT_PAGE_SIZE = 50;
+
 @Component({
   selector: 'app-comments-thread',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -142,6 +146,13 @@ interface CommentVm extends TaskComment {
         No comments yet. Be the first to add context.
       </p>
     }
+    @if (hasMore()) {
+      <div class="px-4 py-2">
+        <pera-button variant="ghost" size="sm" [disabled]="loadingMore()" (click)="loadMore()">
+          {{ loadingMore() ? catalog.t('projects.loadingMore') : catalog.t('projects.loadMore') }}
+        </pera-button>
+      </div>
+    }
   `,
 })
 export class CommentsThreadComponent implements OnInit {
@@ -166,15 +177,48 @@ export class CommentsThreadComponent implements OnInit {
   readonly busy = signal(false);
   readonly editingId = signal<string | null>(null);
   readonly editDraft = signal('');
+  readonly hasMore = signal(false);
+  readonly loadingMore = signal(false);
+  protected readonly catalog = inject(CatalogService);
+  private page = 1;
 
   ngOnInit(): void {
     this.load();
   }
 
+  /**
+   * crmp A-4: comments are read a page at a time (opt-in paging, contract §1.6). A page shorter than
+   * the page size is the last one; "Load more" appends the next page.
+   */
   load(): void {
+    this.page = 1;
     this.api
-      .getByTask(this.projectId(), this.taskId())
-      .subscribe((list) => this.comments.set(list));
+      .getByTask(this.projectId(), this.taskId(), { pageNumber: 1, pageSize: COMMENT_PAGE_SIZE })
+      .subscribe((list) => {
+        this.comments.set(list);
+        this.hasMore.set(list.length === COMMENT_PAGE_SIZE);
+      });
+  }
+
+  loadMore(): void {
+    if (this.loadingMore() || !this.hasMore()) return;
+    this.loadingMore.set(true);
+    const next = this.page + 1;
+    this.api
+      .getByTask(this.projectId(), this.taskId(), { pageNumber: next, pageSize: COMMENT_PAGE_SIZE })
+      .subscribe({
+        next: (list) => {
+          this.page = next;
+          const seen = new Set(this.comments().map((c) => c.id));
+          this.comments.update((all) => [...all, ...list.filter((c) => !seen.has(c.id))]);
+          this.hasMore.set(list.length === COMMENT_PAGE_SIZE);
+          this.loadingMore.set(false);
+        },
+        error: (err: HttpErrorResponse) => {
+          this.loadingMore.set(false);
+          this.toast.show({ tone: 'danger', message: friendly(this.errors.parse(err)) });
+        },
+      });
   }
 
   submit(): void {

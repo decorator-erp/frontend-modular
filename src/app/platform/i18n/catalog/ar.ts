@@ -1266,4 +1266,7 @@ export const AR: Partial<Record<CatalogKey, string>> = {
   'appr.loadMore': 'عرض المزيد',
   'appr.pendingEmpty': 'لا يوجد ما ينتظر قرارك.',
   'appr.decidedEmpty': 'لا توجد قرارات بعد.',
+  // crmp A-4: paged task and comment lists (contract §1.6, opt-in paging).
+  'projects.loadMore': 'عرض المزيد',
+  'projects.loadingMore': 'جارٍ التحميل…',
 };
