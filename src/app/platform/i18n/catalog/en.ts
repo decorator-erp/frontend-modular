@@ -1425,6 +1425,15 @@ export const EN = {
   // crmp P-7: stage teams page (contract §2.19 #138-140).
   'pteam.title': 'Stage teams',
   'route.projectTeams': 'Teams',
+  // crmp P-9: project lifecycle (ProjectEndpoints.cs:69,77,85).
+  'plc.changeStatus': 'Change status',
+  'plc.activate': 'Activate',
+  'plc.deactivate': 'Deactivate',
+  'plc.delete': 'Delete project',
+  'plc.deleteTitle': 'Delete project',
+  'plc.deleteBody':
+    'Delete "{name}"? A project that has started or is used elsewhere can\'t be deleted; deactivate it instead.',
+  'plc.deleted': 'Project deleted',
 } as const;
 
 /** The key set of record. Every catalog lookup is typed against this. */

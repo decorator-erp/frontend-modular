@@ -668,4 +668,35 @@ describe('ProjectDetailComponent', () => {
       );
     });
   });
+
+  // crmp P-9: project lifecycle — claim AND Manager level; closed projects show the read-only banner.
+  describe('crmp P-9 — project lifecycle', () => {
+    const LIFECYCLE = [PERM.projects.changeStatus, PERM.projects.setActive, PERM.projects.delete];
+
+    it('a Manager with the claims sees change status, deactivate and delete', () => {
+      granted = new Set([...ALL, ...LIFECYCLE]);
+      const el = render().nativeElement as HTMLElement;
+      expect(el.querySelector('[data-change-status]')).toBeTruthy();
+      expect(el.querySelector('[data-toggle-active]')?.textContent).toContain('Deactivate');
+      expect(el.querySelector('[data-delete-project]')).toBeTruthy();
+    });
+
+    it.each(['Viewer', 'Editor'] as const)('%s sees no lifecycle action', (level) => {
+      granted = new Set([...ALL, ...LIFECYCLE]);
+      data = { ...data, myLevel: level, project: { ...data.project, myLevel: level } };
+      const el = render().nativeElement as HTMLElement;
+      expect(
+        el.querySelector('[data-change-status], [data-toggle-active], [data-delete-project]'),
+      ).toBeNull();
+    });
+
+    it('a Completed project shows the read-only banner and hides New stage', () => {
+      granted = new Set([...ALL, ...LIFECYCLE, PERM.stages.manage]);
+      data = { ...data, project: { ...data.project, status: 'Completed' } };
+      const el = render().nativeElement as HTMLElement;
+      expect(el.querySelector('app-project-closed-banner')).toBeTruthy(); // inert here; its own spec renders it
+      expect(el.querySelector('[data-new-stage]')).toBeNull();
+      expect(el.querySelector('[data-change-status]')).toBeTruthy();
+    });
+  });
 });

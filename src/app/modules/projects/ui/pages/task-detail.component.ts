@@ -49,6 +49,7 @@ import { TaskFormDialogComponent, TaskFormDialogData } from '../dialogs/task-for
 import { SubtasksPanelComponent } from '../task-detail/subtasks-panel.component';
 import { GateConditionsPanelComponent } from '../task-detail/gate-conditions-panel.component';
 import { CatalogService } from '@platform/i18n/catalog.service';
+import { ProjectClosedBannerComponent } from '../shared/project-closed-banner.component';
 import { ProjectAccessStore } from '../../stores/project-access.store';
 import { CommentsThreadComponent } from '../task-detail/comments-thread.component';
 import { AttachmentsPanelComponent } from '../task-detail/attachments-panel.component';
@@ -80,6 +81,7 @@ const PRIORITY_DOT: Record<string, string> = {
   selector: 'app-task-detail',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
+    ProjectClosedBannerComponent,
     FormsModule,
     RouterLink,
     NgComponentOutlet,
@@ -103,6 +105,10 @@ const PRIORITY_DOT: Record<string, string> = {
     DmsLinkedItemsComponent,
   ],
   template: `
+    <!-- crmp P-9: a closed project's work is read-only (projects.Closed); every write is hidden. -->
+    @if (access.project(projectId())(); as closedCheck) {
+      <div class="px-6 pt-4"><app-project-closed-banner [project]="closedCheck" /></div>
+    }
     @if (loading()) {
       <div class="p-6">
         <pera-skeleton [height]="120" rounded="md" />

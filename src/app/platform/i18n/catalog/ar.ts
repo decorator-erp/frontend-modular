@@ -1350,4 +1350,13 @@ export const AR: Partial<Record<CatalogKey, string>> = {
   // crmp P-7: stage teams page (contract §2.19 #138-140).
   'pteam.title': 'فرق المراحل',
   'route.projectTeams': 'الفرق',
+  // crmp P-9: project lifecycle (ProjectEndpoints.cs:69,77,85).
+  'plc.changeStatus': 'تغيير الحالة',
+  'plc.activate': 'تفعيل',
+  'plc.deactivate': 'تعطيل',
+  'plc.delete': 'حذف المشروع',
+  'plc.deleteTitle': 'حذف المشروع',
+  'plc.deleteBody':
+    'هل تريد حذف "{name}"؟ لا يمكن حذف مشروع بدأ العمل فيه أو يُستخدم في مكان آخر؛ يمكنك تعطيله بدلًا من ذلك.',
+  'plc.deleted': 'تم حذف المشروع',
 };

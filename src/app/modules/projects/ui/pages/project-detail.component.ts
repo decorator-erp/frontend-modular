@@ -17,7 +17,13 @@ import { ScopeOfWorkStatus } from '../../model/scope-of-work.model';
 import { ProjectAccessStore } from '../../stores/project-access.store';
 import { ProjectAction } from '../../model/project-actions';
 import { ProjectClosedBannerComponent } from '../shared/project-closed-banner.component';
-import { PeraAlertComponent } from '@ds';
+import { ConfirmService, PeraAlertComponent } from '@ds';
+import { ErrorHandlerService, friendly } from '@platform/http/error-handler.service';
+import { injectReloadOnConflict } from '@platform/http/concurrency';
+import {
+  ChangeStatusDialogComponent,
+  ChangeStatusDialogData,
+} from '../dialogs/change-status-dialog.component';
 import { ProjectMemberService } from '../../data/project-member.service';
 import { StageTeam, StageTeamsService } from '../../data/stage-teams.service';
 import { LocaleService } from '@platform/i18n';
@@ -441,6 +447,76 @@ export class ProjectDetailComponent implements OnInit {
         this.loadRecentDocuments(id);
       });
   }
+
+  readonly lifecycleBusy = signal(false);
+
+  /** crmp P-9: `PUT …/status`; StagesOpen / TasksOpen show inside the dialog. */
+  async changeStatus(): Promise<void> {
+    const p = this.project();
+    if (!p) return;
+    const data: ChangeStatusDialogData = {
+      projectId: p.id,
+      projectName: p.name,
+      current: p.status,
+    };
+    const changed = await this.modal
+      .open<ProjectStatus | undefined>(ChangeStatusDialogComponent, { size: 'sm', data })
+      .afterClosed();
+    if (changed) this.afterLifecycleChange(p.id);
+  }
+
+  /** crmp P-9: `PUT …/active?isActive=` — an inactive project is closed for work. */
+  toggleActive(): void {
+    const p = this.project();
+    if (!p || this.lifecycleBusy()) return;
+    this.lifecycleBusy.set(true);
+    const call = p.isActive ? this.projects.deactivate(p.id) : this.projects.activate(p.id);
+    call.subscribe({
+      next: () => {
+        this.lifecycleBusy.set(false);
+        this.afterLifecycleChange(p.id);
+      },
+      error: (err: HttpErrorResponse) => this.lifecycleFailed(p.id, err),
+    });
+  }
+
+  /** crmp P-9: `DELETE /projects/{id}`; NotDeletable shows the backend's reason. */
+  async deleteProject(): Promise<void> {
+    const p = this.project();
+    if (!p || this.lifecycleBusy()) return;
+    const ok = await this.confirmDialog.open({
+      title: this.catalog.t('plc.deleteTitle'),
+      body: this.catalog.t('plc.deleteBody', { name: p.name }),
+      confirmLabel: this.catalog.t('plc.delete'),
+      tone: 'danger',
+    });
+    if (!ok) return;
+    this.lifecycleBusy.set(true);
+    this.projects.remove(p.id).subscribe({
+      next: () => {
+        this.lifecycleBusy.set(false);
+        this.toast.show({ tone: 'success', message: this.catalog.t('plc.deleted') });
+        void this.router.navigate(['/projects']);
+      },
+      error: (err: HttpErrorResponse) => this.lifecycleFailed(p.id, err),
+    });
+  }
+
+  private afterLifecycleChange(id: string): void {
+    this.access.refresh(id);
+    this.load();
+  }
+
+  private lifecycleFailed(id: string, err: HttpErrorResponse): void {
+    this.lifecycleBusy.set(false);
+    if (this.reloadOnConflict(err, () => this.afterLifecycleChange(id))) return;
+    this.toast.show({ tone: 'danger', message: friendly(this.lifecycleErrors.parse(err)) });
+    this.access.refresh(id);
+  }
+
+  private readonly confirmDialog = inject(ConfirmService);
+  private readonly lifecycleErrors = inject(ErrorHandlerService);
+  private readonly reloadOnConflict = injectReloadOnConflict();
 
   /** crmp P-2: whether the scope of work is confirmed (manual stages need it). */
   private loadScope(id: string): void {

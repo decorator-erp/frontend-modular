@@ -22,6 +22,7 @@ import {
 } from '@platform/composition/task-workspace.token';
 import { Observable, catchError, of } from 'rxjs';
 import { ProjectStageService } from '../../data/project-stage.service';
+import { ProjectClosedBannerComponent } from '../shared/project-closed-banner.component';
 import { ProjectAccessStore } from '../../stores/project-access.store';
 import type { ProjectAction } from '../../model/project-actions';
 import { StageGateConditionService } from '../../data/stage-gate-condition.service';
@@ -104,6 +105,7 @@ type TaskFilter = 'all' | RollupStatus;
   selector: 'app-dms-stage-detail',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
+    ProjectClosedBannerComponent,
     RouterLink,
     FormsModule,
     NgComponentOutlet,
@@ -123,6 +125,10 @@ type TaskFilter = 'all' | RollupStatus;
     DmsStageTeamComponent,
   ],
   template: `
+    <!-- crmp P-9: a closed project's work is read-only (projects.Closed); every write is hidden. -->
+    @if (access.project(projectId())(); as closedCheck) {
+      <div class="px-6 pt-4"><app-project-closed-banner [project]="closedCheck" /></div>
+    }
     @if (loading()) {
       <div class="p-6">
         <pera-skeleton [height]="120" rounded="md" />

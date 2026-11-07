@@ -127,8 +127,12 @@ export class ProjectService extends ApiService {
     return this.put(`/projects/${id}`, req);
   }
 
+  /**
+   * crmp P-9: `DELETE /api/projects/{id}` (ProjectEndpoints.cs:85). 409 `projects.NotDeletable` (with its
+   * reason) and 403 `projects.InsufficientLevel` are shown by the caller, so the global toast skips them.
+   */
   remove(id: string): Observable<unknown> {
-    return this.delete(`/projects/${id}`);
+    return this.delete(`/projects/${id}`, undefined, { context: handled(403, 409) });
   }
 
   /**
@@ -137,16 +141,19 @@ export class ProjectService extends ApiService {
    * Projects.Contracts `ProjectStatus` (Draft=1 … Cancelled=5).
    */
   setStatus(id: string, status: ProjectStatus): Observable<unknown> {
-    return this.put(`/projects/${id}/status?status=${this.statusInt(status)}`, null);
+    // crmp P-9: 409 StagesOpen / TasksOpen / InvalidStatusTransition / ConcurrentUpdate are shown inline.
+    return this.put(`/projects/${id}/status?status=${this.statusInt(status)}`, null, {
+      context: handled(403, 409),
+    });
   }
 
   /** `PUT /api/projects/{id}/active?isActive=true` → 204 (ProjectEndpoints.cs:67-68). */
   activate(id: string): Observable<unknown> {
-    return this.put(`/projects/${id}/active?isActive=true`, null);
+    return this.put(`/projects/${id}/active?isActive=true`, null, { context: handled(403, 409) });
   }
   /** `PUT /api/projects/{id}/active?isActive=false` → 204 (ProjectEndpoints.cs:67-68). */
   deactivate(id: string): Observable<unknown> {
-    return this.put(`/projects/${id}/active?isActive=false`, null);
+    return this.put(`/projects/${id}/active?isActive=false`, null, { context: handled(403, 409) });
   }
 
   // ---- financial query drilldowns (financial-queries spec) ----------------

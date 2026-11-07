@@ -30,7 +30,12 @@ describe('TaskDetailComponent — planned start is read-only (crmp R1-F8)', () =
         { provide: PermissionsService, useValue: { can: () => true } },
         {
           provide: ProjectAccessStore,
-          useValue: { ensure: () => undefined, can: () => true, canExecute: () => true },
+          useValue: {
+            ensure: () => undefined,
+            can: () => true,
+            canExecute: () => true,
+            project: () => () => null,
+          },
         },
       ],
     });

@@ -49,7 +49,40 @@
         [kpis]="headerKpis()"
       >
         <div headerActions class="flex items-center gap-2 shrink-0">
-          <button type="button" [class]="btnClass" *peraCan="perm.update" (click)="editProject()">
+          <!-- crmp P-9: project lifecycle — claim AND Manager level (project housekeeping stays open when closed). -->
+          @if (can('project.status')) {
+            <button type="button" [class]="btnClass" (click)="changeStatus()" data-change-status>
+              {{ catalog.t('plc.changeStatus') }}
+            </button>
+          }
+          @if (can('project.active')) {
+            <button
+              type="button"
+              [class]="btnClass"
+              [disabled]="lifecycleBusy()"
+              (click)="toggleActive()"
+              data-toggle-active
+            >
+              {{ proj.isActive ? catalog.t('plc.deactivate') : catalog.t('plc.activate') }}
+            </button>
+          }
+          @if (can('project.delete')) {
+            <button
+              type="button"
+              [class]="btnClass"
+              [disabled]="lifecycleBusy()"
+              (click)="deleteProject()"
+              data-delete-project
+            >
+              {{ catalog.t('plc.delete') }}
+            </button>
+          }
+          <button
+            type="button"
+            [class]="btnClass"
+            *peraCan="can('project.update') ? perm.update : []"
+            (click)="editProject()"
+          >
             <svg
               width="13"
               height="13"
@@ -129,7 +162,7 @@
               New stage
             </button>
           }
-          <ng-container *peraCan="perm.newTask">
+          <ng-container *peraCan="can('task.create') ? perm.newTask : []">
             @if (newTaskStage()) {
               <button type="button" [class]="btnPrimaryClass" (click)="newTask()">
                 <svg

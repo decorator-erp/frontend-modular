@@ -78,6 +78,7 @@ describe('DmsStageDetailComponent', () => {
         provide: ProjectAccessStore,
         useValue: {
           ensure: () => undefined,
+          project: () => () => null,
           can: (_id: string, action: ProjectAction) =>
             canProjectAction(
               { myLevel: level, status: 'InProgress', isActive: true },
