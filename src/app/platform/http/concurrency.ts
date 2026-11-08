@@ -25,7 +25,7 @@ export const CONCURRENCY_CONFLICT_CODES: ReadonlySet<string> = new Set([
   'projects.members.ConcurrentUpdate',
   'crm.storefront.ConcurrentUpdate',
   'sites.ConcurrencyConflict',
-  // crmp P2-B: two saves of one project's portal switches at once (Crm.Domain Errors.cs:534).
+  // crmp P2-B: two saves of one project's portal switches at once (Crm.Domain Errors.cs:542).
   'crm.portal.SettingsChanged',
 ]);
 

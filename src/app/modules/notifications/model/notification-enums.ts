@@ -91,7 +91,7 @@ export enum NotificationType {
   SiteApproved = 530,
   SiteRejected = 531,
 
-  // ── CRM client portal: 540–541 (crmp P2-B; dms Notifications.Contracts/Enums.cs:87-88). Entity: the project ──
+  // ── CRM client portal: 540–541 (crmp P2-B; dms Notifications.Contracts/Enums.cs:91-92). Entity: the project ──
   CrmPortalItemShared = 540,
   CrmPortalUpdatePosted = 541,
 }

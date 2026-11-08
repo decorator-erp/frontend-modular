@@ -125,22 +125,22 @@ const BACKEND_CODES = [
   'crm.portal.InvalidStatus', // Crm/Crm.Domain/Errors/Errors.cs:434
   'crm.portal.NotAClient', // Crm/Crm.Domain/Errors/Errors.cs:426
   'crm.portal.NotFound', // Crm/Crm.Domain/Errors/Errors.cs:423
-  // crmp P2-B: the portal visibility codes (dms branch local/portal-wip, Crm/Crm.Domain/Errors/Errors.cs).
-  'crm.portal.AlreadyPublished', // Crm/Crm.Domain/Errors/Errors.cs:537
-  'crm.portal.AlreadyShared', // Crm/Crm.Domain/Errors/Errors.cs:518
-  'crm.portal.BodyTooLong', // Crm/Crm.Domain/Errors/Errors.cs:527
-  'crm.portal.InvalidAttachment', // Crm/Crm.Domain/Errors/Errors.cs:545
-  'crm.portal.InvalidItem', // Crm/Crm.Domain/Errors/Errors.cs:509
-  'crm.portal.InvalidOrder', // Crm/Crm.Domain/Errors/Errors.cs:541
-  'crm.portal.ItemNotFound', // Crm/Crm.Domain/Errors/Errors.cs:507
-  'crm.portal.NotAPhoto', // Crm/Crm.Domain/Errors/Errors.cs:515
-  'crm.portal.NotAnImage', // Crm/Crm.Domain/Errors/Errors.cs:512
-  'crm.portal.NoteTooLong', // Crm/Crm.Domain/Errors/Errors.cs:524
-  'crm.portal.SettingsChanged', // Crm/Crm.Domain/Errors/Errors.cs:534
-  'crm.portal.ShareNotFound', // Crm/Crm.Domain/Errors/Errors.cs:501
-  'crm.portal.TitleTooLong', // Crm/Crm.Domain/Errors/Errors.cs:521
-  'crm.portal.UpdateNotFound', // Crm/Crm.Domain/Errors/Errors.cs:503
-  'crm.portal.UpdateTitleRequired', // Crm/Crm.Domain/Errors/Errors.cs:530
+  // crmp P2-B: the portal visibility codes (dms claude/nifty-curie-4a6t67 @ 6d6c8b2, Crm/Crm.Domain/Errors/Errors.cs).
+  'crm.portal.AlreadyPublished', // Crm/Crm.Domain/Errors/Errors.cs:545
+  'crm.portal.AlreadyShared', // Crm/Crm.Domain/Errors/Errors.cs:526
+  'crm.portal.BodyTooLong', // Crm/Crm.Domain/Errors/Errors.cs:535
+  'crm.portal.InvalidAttachment', // Crm/Crm.Domain/Errors/Errors.cs:553
+  'crm.portal.InvalidItem', // Crm/Crm.Domain/Errors/Errors.cs:517
+  'crm.portal.InvalidOrder', // Crm/Crm.Domain/Errors/Errors.cs:549
+  'crm.portal.ItemNotFound', // Crm/Crm.Domain/Errors/Errors.cs:515
+  'crm.portal.NotAPhoto', // Crm/Crm.Domain/Errors/Errors.cs:523
+  'crm.portal.NotAnImage', // Crm/Crm.Domain/Errors/Errors.cs:520
+  'crm.portal.NoteTooLong', // Crm/Crm.Domain/Errors/Errors.cs:532
+  'crm.portal.SettingsChanged', // Crm/Crm.Domain/Errors/Errors.cs:542
+  'crm.portal.ShareNotFound', // Crm/Crm.Domain/Errors/Errors.cs:509
+  'crm.portal.TitleTooLong', // Crm/Crm.Domain/Errors/Errors.cs:529
+  'crm.portal.UpdateNotFound', // Crm/Crm.Domain/Errors/Errors.cs:511
+  'crm.portal.UpdateTitleRequired', // Crm/Crm.Domain/Errors/Errors.cs:538
   'crm.projects.Inactive', // Crm/Crm.Domain/Errors/Errors.cs:442
   'crm.space_types.CodeRequired', // Crm/Crm.Domain/Errors/Errors.cs:187
   'crm.space_types.DuplicateCode', // Crm/Crm.Domain/Errors/Errors.cs:194

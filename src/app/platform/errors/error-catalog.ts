@@ -513,7 +513,7 @@ export const ERROR_MESSAGES: Record<string, string> = {
   'crm.gates.UnsupportedOwner': 'This gate condition can only be set on a stage.',
   'crm.portal.InvalidDecision': 'Choose Approve or Request changes.',
   'crm.portal.InvalidStatus': "The status filter must be 'pending' or 'decided'.",
-  // crmp P2-B: client portal visibility (dms Crm.Domain/Errors/Errors.cs:501-545).
+  // crmp P2-B: client portal visibility (dms Crm.Domain/Errors/Errors.cs:509-553).
   'crm.portal.ShareNotFound': 'This item is no longer shared with the client.',
   'crm.portal.UpdateNotFound': 'This client update was not found.',
   'crm.portal.ItemNotFound': 'The item to share was not found on this project.',

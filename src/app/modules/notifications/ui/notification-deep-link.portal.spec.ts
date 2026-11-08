@@ -9,7 +9,7 @@ import { NotificationEntityType, NotificationType } from '../model/notification-
 import type { NotificationView } from '../model/notification.model';
 import { NotificationDeepLink } from './notification-deep-link';
 
-/** crmp P2-B: the client portal notifications (dms `Notifications.Contracts/Enums.cs:87-88`). */
+/** crmp P2-B: the client portal notifications (dms `Notifications.Contracts/Enums.cs:91-92`). */
 describe('NotificationDeepLink — client portal notifications (crmp P2-B)', () => {
   function setup(isClient: boolean) {
     TestBed.configureTestingModule({
