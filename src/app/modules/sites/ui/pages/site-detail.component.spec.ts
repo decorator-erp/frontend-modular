@@ -464,8 +464,14 @@ describe('SiteDetailComponent — capture grid (sites S-5)', () => {
     const rows = [...el.querySelectorAll('[data-grid="edit"] [data-row]')];
     const controls = [...rows[0].querySelectorAll('input, button[aria-haspopup="listbox"]')];
     expect(controls.length).toBeGreaterThanOrEqual(6);
-    for (const c of controls) expect(c.getAttribute('aria-label')).toMatch(/ – DO-01$/);
+    // inputs announce their value themselves; a select trigger carries it in its name (V-1)
+    for (const c of controls)
+      expect(c.getAttribute('aria-label')).toMatch(
+        c.tagName === 'INPUT' ? / – DO-01$/ : / – DO-01: .+$/,
+      );
     const names = controls.map((c) => c.getAttribute('aria-label'));
+    expect(names).toContain('Space – DO-01: Whole unit'); // the selected value
+    expect(names).toContain('Category – DO-01: Category'); // nothing picked → the placeholder
     expect(names).toContain('Label – DO-01');
     expect(names).toContain('width_cm (cm) – DO-01');
     expect(names).toContain('Note – DO-01');

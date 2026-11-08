@@ -198,5 +198,8 @@ describe('ProjectMembersPageComponent (crmp P-1)', () => {
     const { el } = setup();
     const trigger = el.querySelector('[data-member-row] pera-select button');
     expect(trigger?.getAttribute('aria-label')).toContain('Sara');
+    // V-1: the current level is still announced
+    expect(trigger?.getAttribute('aria-label')).toMatch(/: \S/);
+    expect(trigger?.getAttribute('aria-label')).toContain(trigger?.textContent?.trim() ?? '§');
   });
 });
