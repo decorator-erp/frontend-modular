@@ -658,7 +658,7 @@ export class DmsStageDetailComponent implements OnInit, OnDestroy {
    * (`canProjectAction`, contract §2.17.2), read through the shared ProjectAccessStore.
    */
   stageCan(action: ProjectAction): boolean {
-    return this.access.can(this.projectId(), action);
+    return this.access.can(this.projectId(), action, this.stageId());
   }
 
   readonly canEditStage = computed(() => this.stageCan('stage.update'));

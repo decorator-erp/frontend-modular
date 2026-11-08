@@ -164,6 +164,8 @@ export const COMMENT_PAGE_SIZE = 50;
 export class CommentsThreadComponent implements OnInit {
   readonly projectId = input.required<string>();
   readonly taskId = input.required<string>();
+  /** crmp P1-B: the task's stage, for a stage-limited grant. */
+  readonly stageId = input<string | null>(null);
 
   private readonly api = inject(TaskCommentService);
   private readonly errors = inject(ErrorHandlerService);
@@ -180,7 +182,7 @@ export class CommentsThreadComponent implements OnInit {
 
   /** Add: Editor level and either claim (contract §2.17.2). */
   canAdd(): boolean {
-    return this.access.can(this.projectId(), 'comment.add');
+    return this.access.can(this.projectId(), 'comment.add', this.stageId());
   }
 
   /**
@@ -188,7 +190,7 @@ export class CommentsThreadComponent implements OnInit {
    * Manager level (`projects.comments.NotAuthor`, dms TaskCommentHandlers.cs:87-107).
    */
   canChange(c: TaskComment, action: 'comment.edit' | 'comment.delete'): boolean {
-    return this.access.canComment(this.projectId(), c, action);
+    return this.access.canComment(this.projectId(), c, action, this.stageId());
   }
   readonly shortDate = formatShortDate;
 
