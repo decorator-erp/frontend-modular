@@ -22,7 +22,6 @@ import { ErrorHandlerService, friendly } from '@platform/http/error-handler.serv
 import { ToastService } from '@platform/feedback/toast.service';
 import { PERM } from '@platform/permissions';
 import { CatalogService } from '@platform/i18n/catalog.service';
-import { CanDirective } from '@platform/permissions';
 import {
   ConfirmService,
   ModalService,
@@ -221,7 +220,6 @@ const NEW_TEAM_TAB = '__new__';
   selector: 'app-project-teams',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    CanDirective,
     PeraAvatarComponent,
     PeraEmptyComponent,
     PeraSkeletonComponent,
