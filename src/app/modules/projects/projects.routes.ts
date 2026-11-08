@@ -20,6 +20,16 @@ export const projectsRoutes: Routes = [
       import('./ui/pages/project-create.component').then((m) => m.ProjectCreateComponent),
     data: { breadcrumb: 'route.newProject' },
   },
+  // crmp P1-B: the caller's own temporary access ("Shared with me"). Signed-in only, like the backend
+  // route (GET /api/me/access-grants needs no permission). Before projects/:id, which would match it.
+  {
+    path: 'projects/shared-with-me',
+    loadComponent: () =>
+      import('./ui/shared-with-me/shared-with-me-page.component').then(
+        (m) => m.SharedWithMePageComponent,
+      ),
+    data: { breadcrumb: 'route.sharedWithMe' },
+  },
   {
     path: 'projects/:id',
     loadComponent: () =>

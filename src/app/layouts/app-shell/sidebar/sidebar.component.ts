@@ -18,6 +18,7 @@ import {
   PeraKbdComponent,
   PeraTooltipDirective,
 } from '@ds';
+import { MyAccessGrantsStore } from '@modules/projects';
 import { NAV_SECTIONS, NavItem } from '../nav-config';
 
 @Component({
@@ -39,6 +40,7 @@ export class SidebarComponent {
   private readonly auth = inject(AuthStore);
   private readonly router = inject(Router);
   private readonly permissions = inject(PermissionsService);
+  private readonly myGrants = inject(MyAccessGrantsStore);
   readonly palette = inject(CommandPaletteService);
 
   /**
@@ -58,7 +60,13 @@ export class SidebarComponent {
   readonly userName = computed(() => this.auth.user()?.userName ?? '');
   readonly userEmail = computed(() => this.auth.user()?.email ?? '');
 
+  constructor() {
+    // crmp P1-B: "Shared with me" shows only when the caller has grants (one read per user).
+    this.myGrants.ensure();
+  }
+
   canAccess(item: NavItem): boolean {
+    if (item.when === 'accessGrants' && !this.myGrants.hasAny()) return false;
     return !item.capability || this.permissions.can(item.capability);
   }
 

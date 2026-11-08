@@ -2040,6 +2040,18 @@ export const EN = {
   'gd.err.start': 'Choose the start date and time.',
   'gd.err.end': 'Choose an end later than the start and than now.',
   'gd.err.reason': 'Give a reason (at most {max} characters).',
+  // crmp P1-B: Shared with me — the caller's own temporary access
+  'route.sharedWithMe': 'Shared with me',
+  'swm.title': 'Shared with me',
+  'swm.subtitle': 'Projects you have temporary access to.',
+  'swm.empty': 'Nothing is shared with you',
+  'swm.emptyBody': 'When someone gives you temporary access to a project, it appears here.',
+  'swm.loadFailed': 'Could not load what is shared with you.',
+  'swm.retry': 'Retry',
+  'swm.expires': 'Expires {rel}',
+  'swm.starts': 'Starts {rel}',
+  'swm.noEnd': 'No end',
+  'swm.someStages': 'Specific stages ({n})',
 } as const;
 
 /** The key set of record. Every catalog lookup is typed against this. */

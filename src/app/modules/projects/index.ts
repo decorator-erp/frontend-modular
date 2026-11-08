@@ -26,6 +26,9 @@ export type { ProjectDocument } from './data/documents.service';
 // crmp C-7: crm artifact unlink compares the link's author with the caller's employee id (`me()`).
 export { ProjectAccessStore } from './stores/project-access.store';
 
+// layouts (sidebar): the "Shared with me" nav entry shows only when the caller has grants (crmp P1-B).
+export { MyAccessGrantsStore } from './stores/my-access-grants.store';
+
 // sites (NEW-FEATURE-1): survey capabilities compare the caller's project level and the project's
 // liveness (site-capabilities.ts, the list's create gate).
 export { isProjectClosed, levelAtLeast, toProjectLevel } from './model/project-actions';

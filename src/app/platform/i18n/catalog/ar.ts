@@ -1952,4 +1952,16 @@ export const AR: Partial<Record<CatalogKey, string>> = {
   'gd.err.start': 'اختر تاريخ ووقت البداية.',
   'gd.err.end': 'اختر نهاية بعد البداية وبعد الوقت الحالي.',
   'gd.err.reason': 'اكتب السبب ({max} حرفًا على الأكثر).',
+  // crmp P1-B: Shared with me — the caller's own temporary access
+  'route.sharedWithMe': 'مُشارك معي',
+  'swm.title': 'مُشارك معي',
+  'swm.subtitle': 'مشاريع لديك وصول مؤقت إليها.',
+  'swm.empty': 'لا شيء مُشارك معك',
+  'swm.emptyBody': 'عندما يمنحك أحد وصولًا مؤقتًا إلى مشروع، يظهر هنا.',
+  'swm.loadFailed': 'تعذّر تحميل ما شورك معك.',
+  'swm.retry': 'إعادة المحاولة',
+  'swm.expires': 'ينتهي {rel}',
+  'swm.starts': 'يبدأ {rel}',
+  'swm.noEnd': 'بلا نهاية',
+  'swm.someStages': 'مراحل محددة ({n})',
 };

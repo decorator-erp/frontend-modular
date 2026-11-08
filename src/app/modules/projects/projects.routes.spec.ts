@@ -23,6 +23,7 @@ describe('projectsRoutes', () => {
     expect(projectsRoutes.map((r) => r.path)).toEqual([
       'projects',
       'projects/new',
+      'projects/shared-with-me',
       'projects/:id',
       'projects/:projectId/stages/:stageId',
       'projects/:id/tasks/:taskId',
@@ -74,7 +75,7 @@ describe('projectsRoutes', () => {
     const crumbs = projectsRoutes
       .map((r) => r.data?.['breadcrumb'] as string | undefined)
       .filter((c): c is string => !!c);
-    expect(crumbs.length).toBe(12); // 8 + crmp P-1 members, P-3 tasks, P-7 teams, P1-B access
+    expect(crumbs.length).toBe(13); // 8 + crmp P-1 members, P-3 tasks, P-7 teams, P1-B access, shared
     for (const crumb of crumbs) {
       expect(isCatalogKey(crumb)).toBe(true);
       if (!isCatalogKey(crumb)) continue;
@@ -98,6 +99,16 @@ describe('projectsRoutes', () => {
     expect(r.data).toEqual({ permission: PERM.scope.read, breadcrumb: 'route.scopeOfWork' });
     expect(PERM.scope.read).toBe('scope.read');
     expect(await r.loadComponent!()).toBe(ScopeOfWorkPageComponent);
+  });
+
+  it('crmp P1-B: shared-with-me is guardless, lazy and before projects/:id', async () => {
+    const paths = projectsRoutes.map((r) => r.path);
+    expect(paths.indexOf('projects/shared-with-me')).toBeLessThan(paths.indexOf('projects/:id'));
+    const r = route('projects/shared-with-me')!;
+    expect(r.canActivate).toBeUndefined();
+    expect(r.data).toEqual({ breadcrumb: 'route.sharedWithMe' });
+    const cmp = (await r.loadComponent!()) as { name: string };
+    expect(cmp.name).toContain('SharedWithMePageComponent');
   });
 
   it('crmp P1-B: the access page is lazy, guarded on project.read and loads ProjectAccessPageComponent', async () => {

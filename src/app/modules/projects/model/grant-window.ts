@@ -1,8 +1,9 @@
-import { toUtcDate } from './utc-date';
+import { cairoLocalToUtcIso, utcIsoToCairoLocalInput } from '@platform/i18n/intl-locale';
 
 /**
  * crmp P1-B: a grant's window. Presets run from the start (now, or the chosen start); a custom
- * date-time is the browser's local `datetime-local` value, sent as UTC `Z` (`toUtcDate`).
+ * date-time is a `datetime-local` value read as Cairo wall-clock time (the app's rule, FR-034) and
+ * sent as UTC `Z`.
  */
 export type DurationPreset = 'day' | 'week' | 'month' | 'custom' | 'none';
 export type StartChoice = 'now' | 'custom';
@@ -25,17 +26,16 @@ export function presetEnd(preset: DurationPreset, base: Date): Date | null {
   }
 }
 
-/** `yyyy-MM-ddTHH:mm` (browser local) → UTC `Z`; empty or invalid → null. */
+/** `yyyy-MM-ddTHH:mm` (Cairo wall clock) → UTC `Z`; empty or invalid → null. */
 export function localInputToUtc(value: string | null | undefined): string | null {
-  if (!value || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(value)) return null;
-  return toUtcDate(value);
+  const m = value?.match(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/);
+  if (!m) return null;
+  const iso = cairoLocalToUtcIso(m[0]);
+  return Number.isNaN(Date.parse(iso)) ? null : iso;
 }
 
-/** A UTC instant → the `datetime-local` value in the browser's zone (`yyyy-MM-ddTHH:mm`). */
+/** A UTC instant → the `datetime-local` value in Cairo wall-clock time (`yyyy-MM-ddTHH:mm`). */
 export function utcToLocalInput(iso: string | null | undefined): string {
-  if (!iso) return '';
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '';
-  const p = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+  if (!iso || Number.isNaN(Date.parse(iso))) return '';
+  return utcIsoToCairoLocalInput(iso);
 }

@@ -3,6 +3,11 @@ export interface NavItem {
   icon: string;
   route: string;
   capability?: string;
+  /**
+   * crmp P1-B: shown only when the condition holds — `accessGrants`: the caller has an Active or
+   * Upcoming project access grant (`GET /api/me/access-grants` returns rows).
+   */
+  when?: 'accessGrants';
 }
 
 export interface NavSection {
@@ -16,6 +21,13 @@ export const NAV_SECTIONS: NavSection[] = [
     items: [
       { label: 'Dashboard', icon: 'home', route: '/dashboard' },
       { label: 'Projects', icon: 'briefcase', route: '/projects' },
+      // crmp P1-B: the caller's temporary project access; only when there is some.
+      {
+        label: 'Shared with me',
+        icon: 'users',
+        route: '/projects/shared-with-me',
+        when: 'accessGrants',
+      },
       { label: 'Leads', icon: 'users', route: '/crm/leads', capability: 'crm.leads.read' },
       // sites (NEW-FEATURE-1, spec §6 edit 3): the icon set has no 'ruler' — 'folder' instead.
       { label: 'Site surveys', icon: 'folder', route: '/sites', capability: 'sites.read' },
