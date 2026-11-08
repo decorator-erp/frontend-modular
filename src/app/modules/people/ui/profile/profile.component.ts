@@ -45,10 +45,13 @@ import {
 } from '@ds';
 import { ContractTypeLabel, coerceEnum, ContractType } from '../../model/contract.enums';
 
+import { ChangePasswordCardComponent } from './change-password-card.component';
+
 @Component({
   selector: 'app-profile',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
+    ChangePasswordCardComponent,
     PeraAvatarComponent,
     PeraBadgeComponent,
     PeraButtonComponent,

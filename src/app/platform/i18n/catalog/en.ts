@@ -2437,6 +2437,31 @@ export const EN = {
   'cat.descriptionL': 'Description',
   'cat.imageL': 'Image',
   'cat.noDescription': 'No description',
+  // sync F5: change password on the profile page
+  'pwd.title': 'Change password',
+  'pwd.intro':
+    'After the change you are signed out everywhere and sign in again with the new password.',
+  'pwd.current': 'Current password',
+  'pwd.new': 'New password',
+  'pwd.confirm': 'Confirm new password',
+  'pwd.rules':
+    'At least 8 characters, with an uppercase letter, a lowercase letter, a number and a symbol.',
+  'pwd.submit': 'Change password',
+  'pwd.saving': 'Changing…',
+  'pwd.done': 'Password changed. Sign in again with the new password.',
+  'pwd.need.minLength': '8 or more characters',
+  'pwd.need.lowercase': 'a lowercase letter',
+  'pwd.need.uppercase': 'an uppercase letter',
+  'pwd.need.digit': 'a number',
+  'pwd.need.symbol': 'a symbol',
+  'pwd.err.needs': 'The new password needs {list}.',
+  'pwd.err.currentRequired': 'Enter your current password.',
+  'pwd.err.mismatch': "The passwords don't match.",
+  'pwd.err.same': 'Choose a password different from the current one.',
+  'pwd.err.incorrect': 'The current password is incorrect.',
+  'pwd.err.policy': "The new password doesn't meet the password rules.",
+  'pwd.err.rateLimited': 'Too many attempts. Wait a minute and try again.',
+  'pwd.err.generic': 'Could not change the password. Try again.',
 } as const;
 
 /** The key set of record. Every catalog lookup is typed against this. */
