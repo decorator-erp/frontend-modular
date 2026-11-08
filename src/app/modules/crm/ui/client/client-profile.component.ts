@@ -31,6 +31,9 @@ import {
 import { MEETING_STATUS_CHIP, MEETING_TYPE_KEYS } from '../scheduler/meeting-labels';
 import { CrmIdentityCardComponent } from './identity-card.component';
 import { CrmSelectionsViewComponent } from '../spaces/selections-view.component';
+import { PortalOverviewStore, type PortalClientTab } from '../../stores/portal-overview.store';
+import { CrmPortalProgressComponent } from './portal/portal-progress.component';
+import { CrmPortalSectionTabComponent } from './portal/portal-section-tab.component';
 
 const PROJECT_STATUS_KEYS: Readonly<Record<string, CatalogKey>> = {
   Draft: 'projects.status.Draft',
@@ -40,7 +43,11 @@ const PROJECT_STATUS_KEYS: Readonly<Record<string, CatalogKey>> = {
   Cancelled: 'projects.status.Cancelled',
 };
 
-type ProfileTab = 'overview' | 'brief' | 'requirements' | 'meetings';
+type BaseTab = 'overview' | 'brief' | 'requirements' | 'meetings';
+/** crmp P2-B: the portal section tabs join the four base tabs when their section is on. */
+type ProfileTab = BaseTab | PortalClientTab;
+const BASE_TABS: BaseTab[] = ['overview', 'brief', 'requirements', 'meetings'];
+const PORTAL_TABS: PortalClientTab[] = ['progress', 'files', 'gallery', 'tasks', 'updates'];
 
 /**
  * The client profile (T109–T112, FR-028) — identity card, organized contacts (the
@@ -55,7 +62,7 @@ type ProfileTab = 'overview' | 'brief' | 'requirements' | 'meetings';
 @Component({
   selector: 'app-crm-client-profile',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  providers: [ClientProfileStore, BriefStore, MeetingsStore],
+  providers: [ClientProfileStore, BriefStore, MeetingsStore, PortalOverviewStore],
   imports: [
     PortalItemsComponent,
     PeraAlertComponent,
@@ -69,6 +76,8 @@ type ProfileTab = 'overview' | 'brief' | 'requirements' | 'meetings';
     CrmIdentityCardComponent,
     CanDirective,
     CrmSelectionsViewComponent,
+    CrmPortalProgressComponent,
+    CrmPortalSectionTabComponent,
   ],
   host: { class: 'flex flex-col gap-4' },
   template: `
@@ -150,24 +159,26 @@ type ProfileTab = 'overview' | 'brief' | 'requirements' | 'meetings';
         @if (selectedProject(); as project) {
           <pera-card>
             <div class="flex flex-col gap-3 p-1">
-              <div class="flex gap-2 border-b border-border">
-                @for (tab of tabs; track tab) {
+              <div class="flex flex-wrap gap-2 border-b border-border">
+                @for (tab of tabs(); track tab) {
                   <button
                     type="button"
+                    [attr.aria-current]="activeTab() === tab ? 'true' : null"
+                    [attr.data-tab]="tab"
                     (click)="selectedTab.set(tab)"
                     class="px-2 py-2 fs-body-sm cursor-pointer border-b-2 -mb-px
                            outline-none focus-visible:outline-2 focus-visible:outline-accent"
-                    [class.border-accent]="selectedTab() === tab"
-                    [class.text-text-primary]="selectedTab() === tab"
-                    [class.border-transparent]="selectedTab() !== tab"
-                    [class.text-text-secondary]="selectedTab() !== tab"
+                    [class.border-accent]="activeTab() === tab"
+                    [class.text-text-primary]="activeTab() === tab"
+                    [class.border-transparent]="activeTab() !== tab"
+                    [class.text-text-secondary]="activeTab() !== tab"
                   >
                     {{ catalog.t(tabLabel(tab)) }}
                   </button>
                 }
               </div>
 
-              @switch (selectedTab()) {
+              @switch (activeTab()) {
                 @case ('overview') {
                   <dl class="flex flex-col gap-2 fs-body-sm m-0">
                     <div class="flex items-center justify-between gap-3">
@@ -270,6 +281,26 @@ type ProfileTab = 'overview' | 'brief' | 'requirements' | 'meetings';
                     <pera-empty [title]="catalog.t('client.tabMeetings')" />
                   }
                 }
+                <!-- crmp P2-B: the portal sections the office switched on (GET …/overview). -->
+                @case ('progress') {
+                  @if (portal.loading()) {
+                    <pera-spinner />
+                  } @else {
+                    <app-crm-portal-progress [progress]="portal.overview()?.progress ?? null" />
+                  }
+                }
+                @case ('files') {
+                  <app-crm-portal-section-tab [projectId]="project.id" section="files" />
+                }
+                @case ('gallery') {
+                  <app-crm-portal-section-tab [projectId]="project.id" section="gallery" />
+                }
+                @case ('tasks') {
+                  <app-crm-portal-section-tab [projectId]="project.id" section="tasks" />
+                }
+                @case ('updates') {
+                  <app-crm-portal-section-tab [projectId]="project.id" section="updates" />
+                }
               }
             </div>
           </pera-card>
@@ -289,9 +320,16 @@ export class CrmClientProfileComponent {
   protected readonly MEETING_STATUS_CHIP = MEETING_STATUS_CHIP;
   protected readonly PERM = PERM;
 
-  protected readonly tabs: ProfileTab[] = ['overview', 'brief', 'requirements', 'meetings'];
+  protected readonly portal = inject(PortalOverviewStore);
+  /** The four base tabs, then the portal section tabs that are on for the selected project. */
+  protected readonly tabs = computed<ProfileTab[]>(() => [...BASE_TABS, ...this.portal.tabs()]);
   protected readonly selectedProjectId = signal<string | null>(null);
   protected readonly selectedTab = signal<ProfileTab>('overview');
+  /** A section tab that is off (or not loaded yet) falls back to the overview. */
+  protected readonly activeTab = computed<ProfileTab>(() => {
+    const tab = this.selectedTab();
+    return this.tabs().includes(tab) ? tab : 'overview';
+  });
 
   protected readonly selectedProject = computed<ClientProfileProject | null>(() => {
     const id = this.selectedProjectId();
@@ -319,7 +357,7 @@ export class CrmClientProfileComponent {
     // crm-prod B1-fe: the approvals inbox's "View" link lands here as `?projectId&tab`.
     const query = this.route.snapshot.queryParamMap;
     const tab = query.get('tab') as ProfileTab | null;
-    if (tab && this.tabs.includes(tab)) this.selectedTab.set(tab);
+    if (tab && [...BASE_TABS, ...PORTAL_TABS].includes(tab)) this.selectedTab.set(tab);
     const requestedProjectId = query.get('projectId');
 
     // Default to the single project, or the first card, once the profile lands — or to the
@@ -339,6 +377,7 @@ export class CrmClientProfileComponent {
       loadedFor = id;
       this.brief.loadAsClient(id);
       this.meetings.loadPortal(id);
+      this.portal.load(id);
     });
   }
 
@@ -352,6 +391,8 @@ export class CrmClientProfileComponent {
         return 'client.tabReqs';
       case 'meetings':
         return 'client.tabMeetings';
+      default:
+        return `cportal.tab.${tab}`;
     }
   }
 
