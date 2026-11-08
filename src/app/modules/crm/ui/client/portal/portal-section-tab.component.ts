@@ -1,5 +1,13 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { ChangeDetectionStrategy, Component, effect, inject, input, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  effect,
+  inject,
+  input,
+  signal,
+  untracked,
+} from '@angular/core';
 import type { Observable } from 'rxjs';
 import { CatalogService } from '@platform/i18n/catalog.service';
 import type { CatalogKey } from '@platform/i18n/catalog/en';
@@ -105,7 +113,7 @@ export class CrmPortalSectionTabComponent {
     effect(() => {
       this.projectId();
       this.section();
-      this.load();
+      untracked(() => this.load());
     });
   }
 

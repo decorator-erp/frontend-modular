@@ -183,6 +183,11 @@ export class ProjectDetailComponent implements OnInit {
     scope: PERM.scope.read,
   };
 
+  /** crmp P2-B: mirrors the CRM Client portal route's read gate (manage OR clients.read). */
+  protected readonly canClientPortal = computed(() =>
+    this.perms.can([PERM.crm.portalVisibility.manage, PERM.clients.read]),
+  );
+
   readonly loading = signal(true);
   /** Why the primary load failed: `notFound` on a 404, `error` on anything else. */
   readonly loadError = signal<'notFound' | 'error' | null>(null);

@@ -7,7 +7,7 @@ import {
   signal,
 } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { CanDirective, PERM } from '@platform/permissions';
+import { CanDirective, PERM, PermissionsService } from '@platform/permissions';
 import { CrmItemService } from '../../data/crm-item.service';
 import { ProjectService } from '@modules/projects';
 import { CatalogService } from '@platform/i18n/catalog.service';
@@ -121,6 +121,12 @@ import { CrmPeriodCardComponent } from './period-card.component';
             (click)="openDesignProfile()"
             >{{ catalog.t('nav.dProfile') }}</pera-button
           >
+          <!-- crmp P2-B: what the client sees (reads: crm.portal.manage or clients.read). -->
+          @if (canPortal()) {
+            <pera-button variant="secondary" data-testid="open-portal" (click)="openPortal()">{{
+              catalog.t('pportal.title')
+            }}</pera-button>
+          }
         </div>
       </pera-page-header>
     } @else {
@@ -163,6 +169,11 @@ export class CrmDashboardComponent implements OnInit {
   protected readonly catalog = inject(CatalogService);
   protected readonly store = inject(PeriodStore);
   protected readonly meetings = inject(MeetingsStore);
+  private readonly permissions = inject(PermissionsService);
+  /** crmp P2-B: the Client portal tab's read gate (crm.routes.ts PORTAL_READ_PERMISSIONS). */
+  protected readonly canPortal = computed(() =>
+    this.permissions.can([PERM.crm.portalVisibility.manage, PERM.clients.read]),
+  );
   protected readonly PERM = PERM;
 
   protected readonly projectId = signal('');
@@ -265,6 +276,10 @@ export class CrmDashboardComponent implements OnInit {
 
   protected openProvisioning(): void {
     void this.router.navigate(['/crm/projects', this.projectId(), 'spaces', 'provisioning']);
+  }
+
+  protected openPortal(): void {
+    void this.router.navigate(['/crm/projects', this.projectId(), 'portal']);
   }
 
   protected openDesignProfile(): void {

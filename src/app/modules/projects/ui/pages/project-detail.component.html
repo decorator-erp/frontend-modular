@@ -128,6 +128,12 @@
             </svg>
             {{ catalog.t('nav.reqGathering') }}
           </button>
+          <!-- crmp P2-B: the CRM Client portal tab (a URL only; projects never imports crm). -->
+          @if (canClientPortal()) {
+            <a [class]="btnClass" [routerLink]="['/crm/projects', proj.id, 'portal']">{{
+              catalog.t('pportal.title')
+            }}</a>
+          }
           <a
             *peraCan="isStage() ? perm.scope : []"
             [class]="btnClass"
