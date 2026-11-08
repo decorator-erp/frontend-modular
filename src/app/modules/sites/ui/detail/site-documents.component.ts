@@ -6,7 +6,9 @@ import {
   inject,
   signal,
   untracked,
+  type Type,
 } from '@angular/core';
+import { NgComponentOutlet } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import {
@@ -28,6 +30,8 @@ import { CatalogService } from '@platform/i18n/catalog.service';
 import type { CatalogKey } from '@platform/i18n/catalog/en';
 import { formatCairoDate } from '@platform/i18n/intl-locale';
 import { PermissionsService } from '@platform/permissions/permissions.service';
+import { PERM } from '@platform/permissions/permissions.constants';
+import { crmPortalShareAction, PORTAL_SHARE_KIND } from '@modules/crm';
 import { SiteLookupService, type SiteProjectDocument } from '../../data/site-lookup.service';
 import { SiteService } from '../../data/site.service';
 import { SITE_DOCUMENT_KIND_LABEL, SiteDocumentKind } from '../../model/site-enums';
@@ -59,6 +63,7 @@ interface KindGroup {
   selector: 'app-site-documents',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
+    NgComponentOutlet,
     PeraAlertComponent,
     PeraBadgeComponent,
     PeraButtonComponent,
@@ -186,6 +191,22 @@ interface KindGroup {
                             data-subject
                             >{{ subject(d) }}</pera-badge
                           >
+                          <!-- crmp P2-B: a photo can be shared with the client (CRM's lazy action). -->
+                          @if (shareAction(); as action) {
+                            @if (d.kind === SiteDocumentKind.Photo) {
+                              <ng-container
+                                *ngComponentOutlet="
+                                  action;
+                                  inputs: {
+                                    projectId: projectId(),
+                                    kind: PORTAL_SHARE_KIND.SitePhoto,
+                                    itemId: d.id,
+                                    itemName: fileName(d),
+                                  }
+                                "
+                              />
+                            }
+                          }
                         </div>
                         <div class="fs-label text-text-muted">
                           {{ name(d.addedById) }} · {{ date(d.createdAtUtc) }}
@@ -228,6 +249,14 @@ export class SiteDocumentsComponent {
   private loadedFor: string | null = null;
 
   protected readonly edit = computed(() => this.detail.caps().edit);
+  protected readonly SiteDocumentKind = SiteDocumentKind;
+  protected readonly PORTAL_SHARE_KIND = PORTAL_SHARE_KIND;
+  protected readonly projectId = computed(() => this.detail.site()?.projectId ?? '');
+  /**
+   * crmp P2-B: CRM's "Share with client" action, loaded lazily only for a caller who can read the
+   * project's portal shares (`crm.portal.manage` or `clients.read`); null renders nothing.
+   */
+  protected readonly shareAction = signal<Type<unknown> | null>(null);
   protected readonly uploadBlocked = computed(
     () => !this.permissions.can(SITE_PERM.documentsUpload) || this.uploadForbidden(),
   );
@@ -244,6 +273,9 @@ export class SiteDocumentsComponent {
   });
 
   constructor() {
+    if (this.permissions.can([PERM.crm.portalVisibility.manage, PERM.clients.read])) {
+      void crmPortalShareAction().then((cmp) => this.shareAction.set(cmp));
+    }
     effect(() => {
       const site = this.detail.site();
       if (!site || site.id === this.loadedFor) return;

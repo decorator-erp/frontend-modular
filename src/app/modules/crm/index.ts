@@ -16,3 +16,7 @@ export { crmPages } from './crm-pages';
 // notification-deep-link.spec.ts, whose verbatim beforeEach provides a mock for it.
 export { CrmMeetingService } from './data/crm-meeting.service';
 export { CrmBriefService } from './data/crm-brief.service';
+
+// sites (crmp P2-B: the "Share with client" action and "Shared" badge on a survey's photo cards).
+// A lazy loader plus the kind ints, so nothing from crm's UI enters the sites or initial bundle.
+export { crmPortalShareAction, PORTAL_SHARE_KIND } from './composition/portal-share-action';

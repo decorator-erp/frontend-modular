@@ -9,7 +9,12 @@ export type SharesLoadState = 'idle' | 'loading' | 'ready' | 'error' | 'notFound
 interface ProjectShares {
   state: SharesLoadState;
   shares: PortalShare[];
+  /** `Date.now()` of the last completed read. */
+  loadedAt: number;
 }
+
+/** A read older than this is repeated by `ensure` (another office user may have shared since). */
+const STALE_MS = 30_000;
 
 /**
  * crmp P2-B: the active portal shares of a project, read once per page (`GET …/portal/shares`) and
@@ -42,11 +47,17 @@ export class PortalSharesStore {
     return this.shares(projectId).find((s) => s.itemKind === kind && s.itemId === itemId) ?? null;
   }
 
-  /** Load the project's shares unless already loaded (or loading); `force` re-reads. */
+  /**
+   * Load the project's shares unless a fresh read is held (or one is in flight); `force` re-reads.
+   * Rows of one page all call it, so the page reads the list once.
+   */
   ensure(projectId: string, force = false): void {
     if (!projectId || !this.canRead()) return;
-    const current = this.state(projectId);
-    if (!force && current !== 'idle' && current !== 'error') return;
+    const entry = this.byProject().get(projectId);
+    const state = entry?.state ?? 'idle';
+    if (!force && state === 'loading') return;
+    if (!force && state === 'ready' && Date.now() - (entry?.loadedAt ?? 0) < STALE_MS) return;
+    if (!force && (state === 'notFound' || state === 'forbidden')) return;
     this.refresh(projectId);
   }
 
@@ -58,7 +69,7 @@ export class PortalSharesStore {
     this.api.getShares(projectId).subscribe({
       next: (shares) => {
         if (this.generations.get(projectId) !== gen) return;
-        this.patch(projectId, { state: 'ready', shares });
+        this.patch(projectId, { state: 'ready', shares, loadedAt: Date.now() });
       },
       error: (err: unknown) => {
         if (this.generations.get(projectId) !== gen) return;
@@ -77,7 +88,11 @@ export class PortalSharesStore {
 
   private patch(projectId: string, change: Partial<ProjectShares>): void {
     this.byProject.update((m) => {
-      const prev = m.get(projectId) ?? { state: 'idle' as SharesLoadState, shares: [] };
+      const prev = m.get(projectId) ?? {
+        state: 'idle' as SharesLoadState,
+        shares: [],
+        loadedAt: 0,
+      };
       return new Map(m).set(projectId, { ...prev, ...change });
     });
   }
