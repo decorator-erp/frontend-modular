@@ -27,7 +27,9 @@ export type { ProjectDocument } from './data/documents.service';
 export { ProjectAccessStore } from './stores/project-access.store';
 
 // layouts (sidebar): the "Shared with me" nav entry shows only when the caller has grants (crmp P1-B).
-export { MyAccessGrantsStore } from './stores/my-access-grants.store';
+// A loader, not the class: the store and its service stay out of the initial bundle.
+export const loadMyAccessGrantsStore = () =>
+  import('./stores/my-access-grants.store').then((m) => m.MyAccessGrantsStore);
 
 // sites (NEW-FEATURE-1): survey capabilities compare the caller's project level and the project's
 // liveness (site-capabilities.ts, the list's create gate).

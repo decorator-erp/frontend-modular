@@ -2,12 +2,12 @@ import { describe, expect, it } from 'vitest';
 import { PERM } from '@platform/permissions';
 import {
   PROJECT_ACTIONS,
-  PROJECT_ACTION_AREA,
   ProjectAction,
   ProjectGateInput,
   canChangeComment,
   canExecuteTask,
   canProjectAction,
+  projectActionArea,
 } from './project-actions';
 import type { AccessArea, ProjectAccess } from './access-grant.model';
 import { GRANT_AREA_PERMISSIONS, claimCheck, grantCovers } from './project-access';
@@ -50,12 +50,16 @@ describe('canProjectAction — grant-sourced access (crmp P1-B)', () => {
   it('maps every action to an area', () => {
     for (const action of Object.keys(PROJECT_ACTIONS) as ProjectAction[]) {
       expect(['Overview', 'StagesAndTasks', 'Documents', 'Sites', 'Crm', 'Team']).toContain(
-        PROJECT_ACTION_AREA[action],
+        projectActionArea(action),
       );
     }
-    expect(PROJECT_ACTION_AREA['task.complete']).toBe('StagesAndTasks');
-    expect(PROJECT_ACTION_AREA['member.add']).toBe('Team');
-    expect(PROJECT_ACTION_AREA['project.update']).toBe('Overview');
+    expect(projectActionArea('task.complete')).toBe('StagesAndTasks');
+    expect(projectActionArea('member.add')).toBe('Team');
+    expect(projectActionArea('project.update')).toBe('Overview');
+    expect(projectActionArea('scope.confirm')).toBe('Overview');
+    expect(projectActionArea('team.head')).toBe('Team');
+    expect(projectActionArea('stageGate.satisfy')).toBe('StagesAndTasks');
+    expect(projectActionArea('comment.edit')).toBe('StagesAndTasks');
   });
 
   it('a grant never writes to the project, scope, members, teams or stage structure — even Manager on every area with every claim', () => {

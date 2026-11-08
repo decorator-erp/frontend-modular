@@ -151,15 +151,15 @@ export function grantLevel(raw: unknown): ProjectLevel {
   return 'Viewer';
 }
 
-function rec(source: unknown): Record<string, unknown> {
+export function rec(source: unknown): Record<string, unknown> {
   return source && typeof source === 'object' ? (source as Record<string, unknown>) : {};
 }
 
-function ids(raw: unknown): string[] {
+export function ids(raw: unknown): string[] {
   return Array.isArray(raw) ? raw.filter((x): x is string => typeof x === 'string') : [];
 }
 
-function str(raw: unknown): string | null {
+export function str(raw: unknown): string | null {
   return typeof raw === 'string' && raw !== '' ? raw : null;
 }
 
@@ -178,52 +178,5 @@ export function toProjectAccess(raw: unknown): ProjectAccess | null {
     areas: flagsToAreas(r['areas']),
     stageIds: ids(r['stageIds']),
     expiresAtUtc: str(r['expiresAtUtc']),
-  };
-}
-
-function status(raw: unknown): GrantStatus {
-  if (typeof raw === 'number') return GRANT_STATUS_BY_INT[raw] ?? 'Expired';
-  if (typeof raw === 'string' && /^\d+$/.test(raw))
-    return GRANT_STATUS_BY_INT[Number(raw)] ?? 'Expired';
-  if (raw === 'Upcoming' || raw === 'Active' || raw === 'Expired' || raw === 'Revoked') return raw;
-  return 'Expired';
-}
-
-export function toProjectAccessGrant(source: unknown): ProjectAccessGrant {
-  const r = rec(source);
-  return {
-    id: str(r['id']) ?? '',
-    projectId: str(r['projectId']) ?? '',
-    employeeId: str(r['employeeId']) ?? '',
-    employeeName: str(r['employeeName']),
-    level: grantLevel(r['level']),
-    areas: flagsToAreas(r['areas']),
-    stageIds: ids(r['stageIds']),
-    startsAtUtc: str(r['startsAtUtc']) ?? '',
-    expiresAtUtc: str(r['expiresAtUtc']),
-    reason: str(r['reason']) ?? '',
-    grantedById: str(r['grantedById']) ?? '',
-    grantedAtUtc: str(r['grantedAtUtc']) ?? '',
-    revokedAtUtc: str(r['revokedAtUtc']),
-    revokedById: str(r['revokedById']),
-    revokeReason: str(r['revokeReason']),
-    status: status(r['status']),
-  };
-}
-
-export function toMyAccessGrant(source: unknown): MyAccessGrant {
-  const r = rec(source);
-  return {
-    grantId: str(r['grantId']) ?? '',
-    projectId: str(r['projectId']) ?? '',
-    projectCode: str(r['projectCode']) ?? '',
-    projectName: str(r['projectName']) ?? '',
-    level: grantLevel(r['level']),
-    areas: flagsToAreas(r['areas']),
-    stageIds: ids(r['stageIds']),
-    startsAtUtc: str(r['startsAtUtc']) ?? '',
-    expiresAtUtc: str(r['expiresAtUtc']),
-    reason: str(r['reason']) ?? '',
-    status: status(r['status']),
   };
 }

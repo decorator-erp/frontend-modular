@@ -262,79 +262,31 @@ export const PROJECT_ACTIONS = {
 export type ProjectAction = keyof typeof PROJECT_ACTIONS;
 
 /**
- * crmp P1-B: the grant area each action belongs to (dms scope decorators: `ProjectScopeDecorator`
- * passes Stages & tasks). Project housekeeping and scope are Overview, members and teams are Team —
- * both read-only for a grant at every level.
+ * crmp P1-B: the grant area an action belongs to (dms scope decorators: `ProjectScopeDecorator` passes
+ * Stages & tasks). Project housekeeping and scope are Overview, members and teams are Team — both
+ * read-only for a grant at every level. Derived from the action's prefix (kept small: this module is
+ * in the initial bundle).
  */
-export const PROJECT_ACTION_AREA: Readonly<Record<ProjectAction, AccessArea>> = {
-  'project.update': 'Overview',
-  'project.delete': 'Overview',
-  'project.status': 'Overview',
-  'project.active': 'Overview',
-  'member.add': 'Team',
-  'member.access': 'Team',
-  'member.remove': 'Team',
-  'scope.manage': 'Overview',
-  'scope.confirm': 'Overview',
-  'stage.create': 'StagesAndTasks',
-  'stage.update': 'StagesAndTasks',
-  'stage.delete': 'StagesAndTasks',
-  'stage.complete': 'StagesAndTasks',
-  'stage.reject': 'StagesAndTasks',
-  'stageGate.create': 'StagesAndTasks',
-  'taskGate.create': 'StagesAndTasks',
-  'stageGate.delete': 'StagesAndTasks',
-  'taskGate.delete': 'StagesAndTasks',
-  'stageGate.satisfy': 'StagesAndTasks',
-  'taskGate.satisfy': 'StagesAndTasks',
-  'task.create': 'StagesAndTasks',
-  'task.update': 'StagesAndTasks',
-  'task.delete': 'StagesAndTasks',
-  'task.assign': 'StagesAndTasks',
-  'task.start': 'StagesAndTasks',
-  'task.complete': 'StagesAndTasks',
-  'task.reject': 'StagesAndTasks',
-  'task.cancel': 'StagesAndTasks',
-  'task.reopen': 'StagesAndTasks',
-  'subtask.create': 'StagesAndTasks',
-  'subtask.update': 'StagesAndTasks',
-  'subtask.delete': 'StagesAndTasks',
-  'subtask.reopen': 'StagesAndTasks',
-  'subtask.complete': 'StagesAndTasks',
-  'comment.add': 'StagesAndTasks',
-  'comment.edit': 'StagesAndTasks',
-  'comment.delete': 'StagesAndTasks',
-  'team.create': 'Team',
-  'team.addMember': 'Team',
-  'team.removeMember': 'Team',
-  'team.role': 'Team',
-  'team.head': 'Team',
-};
+export function projectActionArea(action: ProjectAction): AccessArea {
+  const kind = action.slice(0, action.indexOf('.'));
+  if (kind === 'project' || kind === 'scope') return 'Overview';
+  if (kind === 'member' || kind === 'team') return 'Team';
+  return 'StagesAndTasks';
+}
 
 /**
  * crmp P1-B: a grant never writes to the project itself, its scope, members, teams or stage structure
- * (dms GrantAreaPermissions.cs:16-22 — the codes are never implied). Listed so the rule does not hang
- * on the implied table alone.
+ * (dms GrantAreaPermissions.cs:16-22 — the codes are never implied): every Overview and Team action,
+ * and stage create/update/delete. Checked here so the rule does not hang on the implied table alone.
  */
-const NEVER_FOR_GRANT: ReadonlySet<ProjectAction> = new Set<ProjectAction>([
-  'project.update',
-  'project.delete',
-  'project.status',
-  'project.active',
-  'member.add',
-  'member.access',
-  'member.remove',
-  'scope.manage',
-  'scope.confirm',
-  'stage.create',
-  'stage.update',
-  'stage.delete',
-  'team.create',
-  'team.addMember',
-  'team.removeMember',
-  'team.role',
-  'team.head',
-]);
+function neverForGrant(action: ProjectAction): boolean {
+  return (
+    projectActionArea(action) !== 'StagesAndTasks' ||
+    action === 'stage.create' ||
+    action === 'stage.update' ||
+    action === 'stage.delete'
+  );
+}
 
 /** What `canProjectAction` needs to know about the project. */
 export interface ProjectGateInput {
@@ -411,8 +363,8 @@ export function canProjectAction(
 ): boolean {
   if (!project) return false;
   const gate = toGate(project);
-  if (isGrantAccess(gate.myAccess) && NEVER_FOR_GRANT.has(action)) return false;
-  const claim = claimCheck(gate.myAccess, PROJECT_ACTION_AREA[action], can, stageId);
+  if (isGrantAccess(gate.myAccess) && neverForGrant(action)) return false;
+  const claim = claimCheck(gate.myAccess, projectActionArea(action), can, stageId);
   const level = isGrantAccess(gate.myAccess) ? gate.myAccess.level : gate.myLevel;
   const rule: ActionRule = PROJECT_ACTIONS[action];
   if (!rule.anyOf.some((p) => claim(p))) return false;

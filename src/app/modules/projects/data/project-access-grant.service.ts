@@ -9,10 +9,64 @@ import {
   MyAccessGrant,
   ProjectAccessGrant,
   UpdateAccessGrantRequest,
+  GRANT_STATUS_BY_INT,
+  GrantStatus,
   areasToFlags,
-  toMyAccessGrant,
-  toProjectAccessGrant,
+  flagsToAreas,
+  grantLevel,
+  ids,
+  rec,
+  str,
 } from '../model/access-grant.model';
+
+// The list/mine read maps live with the service (a lazy chunk); `toProjectAccess`, which every
+// project read needs, stays in the model.
+function status(raw: unknown): GrantStatus {
+  if (typeof raw === 'number') return GRANT_STATUS_BY_INT[raw] ?? 'Expired';
+  if (typeof raw === 'string' && /^\d+$/.test(raw))
+    return GRANT_STATUS_BY_INT[Number(raw)] ?? 'Expired';
+  if (raw === 'Upcoming' || raw === 'Active' || raw === 'Expired' || raw === 'Revoked') return raw;
+  return 'Expired';
+}
+
+function toProjectAccessGrant(source: unknown): ProjectAccessGrant {
+  const r = rec(source);
+  return {
+    id: str(r['id']) ?? '',
+    projectId: str(r['projectId']) ?? '',
+    employeeId: str(r['employeeId']) ?? '',
+    employeeName: str(r['employeeName']),
+    level: grantLevel(r['level']),
+    areas: flagsToAreas(r['areas']),
+    stageIds: ids(r['stageIds']),
+    startsAtUtc: str(r['startsAtUtc']) ?? '',
+    expiresAtUtc: str(r['expiresAtUtc']),
+    reason: str(r['reason']) ?? '',
+    grantedById: str(r['grantedById']) ?? '',
+    grantedAtUtc: str(r['grantedAtUtc']) ?? '',
+    revokedAtUtc: str(r['revokedAtUtc']),
+    revokedById: str(r['revokedById']),
+    revokeReason: str(r['revokeReason']),
+    status: status(r['status']),
+  };
+}
+
+function toMyAccessGrant(source: unknown): MyAccessGrant {
+  const r = rec(source);
+  return {
+    grantId: str(r['grantId']) ?? '',
+    projectId: str(r['projectId']) ?? '',
+    projectCode: str(r['projectCode']) ?? '',
+    projectName: str(r['projectName']) ?? '',
+    level: grantLevel(r['level']),
+    areas: flagsToAreas(r['areas']),
+    stageIds: ids(r['stageIds']),
+    startsAtUtc: str(r['startsAtUtc']) ?? '',
+    expiresAtUtc: str(r['expiresAtUtc']),
+    reason: str(r['reason']) ?? '',
+    status: status(r['status']),
+  };
+}
 
 /**
  * crmp P1-B: project access grants — `/api/projects/{projectId}/access-grants` and

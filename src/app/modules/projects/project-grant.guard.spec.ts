@@ -21,7 +21,7 @@ import { ProjectGrantGuard } from './project-grant.guard';
  * own grants). The backend still scopes every request.
  */
 describe('ProjectGrantGuard (crmp P1-B)', () => {
-  function run(
+  async function run(
     data: Record<string, unknown>,
     params: Record<string, string>,
     opts: {
@@ -57,9 +57,7 @@ describe('ProjectGrantGuard (crmp P1-B)', () => {
     const router = TestBed.inject(Router);
     const settle = async (v: unknown): Promise<boolean | string> =>
       v instanceof UrlTree ? router.serializeUrl(v) : (v as boolean);
-    return isObservable(out)
-      ? firstValueFrom(out as Observable<unknown>).then(settle)
-      : settle(out);
+    return settle(await (isObservable(out) ? firstValueFrom(out as Observable<unknown>) : out));
   }
 
   const grant = (
