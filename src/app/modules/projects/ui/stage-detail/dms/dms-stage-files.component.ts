@@ -11,6 +11,8 @@ import { TaskAttachmentService } from '../../../data/task-attachment.service';
 import { TaskAttachment } from '../../../model/project.model';
 import { PermissionsService } from '@platform/permissions';
 import { PERM } from '@platform/permissions';
+import { ProjectAccessStore } from '../../../stores/project-access.store';
+import { claimCheck } from '../../../model/project-access';
 import { ModalService } from '@ds';
 import { AttTile } from '../../task-detail/attachments-panel.component';
 import { bt, PNL, PNL_H, PNL_H_C, PNL_H_T } from './dms-stage-chrome';
@@ -145,7 +147,16 @@ export class DmsStageFilesComponent implements OnInit {
   private readonly modal = inject(ModalService);
   private readonly perms = inject(PermissionsService);
 
-  readonly canManage = computed(() => this.perms.can(PERM.stageTasks.manage));
+  private readonly access = inject(ProjectAccessStore);
+  /** crmp P1-B: a grantee's `stage_tasks.manage` comes from the grant, for this stage. */
+  readonly canManage = computed(() =>
+    claimCheck(
+      this.access.project(this.projectId())()?.myAccess,
+      'StagesAndTasks',
+      (p) => this.perms.can(p),
+      this.stageId(),
+    )(PERM.stageTasks.manage),
+  );
   private readonly attachments = signal<TaskAttachment[]>([]);
 
   private readonly allTiles = computed<AttTile[]>(() =>

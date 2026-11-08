@@ -31,6 +31,11 @@ export { ProjectAccessStore } from './stores/project-access.store';
 export { isProjectClosed, levelAtLeast, toProjectLevel } from './model/project-actions';
 export type { ProjectLevel } from './model/project-actions';
 
+// sites (crmp P1-B): survey capabilities, the list's project filter and the survey documents read a
+// grantee's claims from the grant (the token does not carry them).
+export { claimCheck, grantCovers } from './model/project-access';
+export type { AccessArea, ProjectAccess } from './model/access-grant.model';
+
 // Future: dashboard (010).
 export { StageGateConditionService } from './data/stage-gate-condition.service';
 export { TaskGateConditionService } from './data/task-gate-condition.service';

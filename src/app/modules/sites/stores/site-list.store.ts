@@ -1,7 +1,7 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { catchError, forkJoin, map, of, switchMap } from 'rxjs';
-import { ProjectService, type Project } from '@modules/projects';
+import { ProjectService, grantCovers, type Project } from '@modules/projects';
 import { ErrorHandlerService, friendly } from '@platform/http/error-handler.service';
 import { CatalogService } from '@platform/i18n/catalog.service';
 import { PermissionsService } from '@platform/permissions/permissions.service';
@@ -82,8 +82,9 @@ export class SiteListStore {
       )
       .subscribe({
         next: (all) => {
-          // Every row the caller can list carries a level (GET /api/projects is scoped).
-          const projects = all.filter((p) => !!p.myLevel);
+          // Every row the caller can list carries a level (GET /api/projects is scoped). crmp P1-B: the
+          // list also holds projects reached only through a grant; keep those whose grant covers Sites.
+          const projects = all.filter((p) => !!p.myLevel && grantCovers(p.myAccess, 'Sites'));
           this.projects.set(projects);
           this.projectsLoading.set(false);
           const asked = projects.find((p) => p.id === initial);

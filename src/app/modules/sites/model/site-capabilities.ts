@@ -1,9 +1,25 @@
-import { isProjectClosed, levelAtLeast, type Project } from '@modules/projects';
+import { claimCheck, isProjectClosed, levelAtLeast, type Project } from '@modules/projects';
 import { SiteStatus } from './site-enums';
 import { SITE_PERM } from './site-permissions';
 
 /** What the capabilities need to know about the survey's project (`ProjectAccessStore.project(id)()`). */
-export type SiteProjectGate = Pick<Project, 'myLevel' | 'status' | 'isActive'>;
+export type SiteProjectGate = Pick<Project, 'myLevel' | 'status' | 'isActive' | 'myAccess'>;
+
+/**
+ * crmp P1-B: the level and the claim check for the Sites area. A grantee's claims come from the
+ * grant's implied table and its level from the grant; a grant without Sites, or limited to stages,
+ * opens nothing (dms ProjectAccessContext.Covers). Members keep the token check.
+ */
+function sitesGate(
+  project: SiteProjectGate,
+  can: (perm: string) => boolean,
+): { can: (perm: string) => boolean; level: Project['myLevel'] } {
+  const grant = project.myAccess?.source === 'Grant' ? project.myAccess : null;
+  return {
+    can: claimCheck(project.myAccess, 'Sites', can),
+    level: grant?.level ?? project.myLevel,
+  };
+}
 
 export interface SiteCaps {
   /** The project is inactive, OnHold, Completed or Cancelled (U4). */
@@ -51,15 +67,18 @@ export function siteCaps(
   me: string | null,
 ): SiteCaps {
   if (!site || !project) return NONE;
+  const token = can;
+  const gate = sitesGate(project, token);
+  can = gate.can;
   const closed = isProjectClosed(project);
-  const editor = levelAtLeast(project.myLevel, 'Editor');
-  const manager = levelAtLeast(project.myLevel, 'Manager');
+  const editor = levelAtLeast(gate.level, 'Editor');
+  const manager = levelAtLeast(gate.level, 'Manager');
   const editable = site.status === SiteStatus.Draft || site.status === SiteStatus.Rejected;
   const decide = can(SITE_PERM.approve) && manager && site.status === SiteStatus.Submitted;
   const self =
     !!me &&
     (site.createdById === me || site.submittedById === me) &&
-    !can(SITE_PERM.projectReadAll);
+    !token(SITE_PERM.projectReadAll);
   return {
     closed,
     edit: can(SITE_PERM.update) && editor && editable && !closed,
@@ -78,7 +97,8 @@ export function canCreateSurvey(
   can: (perm: string) => boolean,
 ): boolean {
   if (!project) return false;
+  const gate = sitesGate(project, can);
   return (
-    can(SITE_PERM.create) && levelAtLeast(project.myLevel, 'Editor') && !isProjectClosed(project)
+    gate.can(SITE_PERM.create) && levelAtLeast(gate.level, 'Editor') && !isProjectClosed(project)
   );
 }
