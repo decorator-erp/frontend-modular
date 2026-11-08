@@ -1,5 +1,7 @@
 import { PERM } from '@platform/permissions';
 import type { Project, ProjectDetails, ProjectStatus } from './project.model';
+import type { AccessArea, ProjectAccess } from './access-grant.model';
+import { claimCheck, isGrantAccess } from './project-access';
 
 /**
  * crmp A-3: the caller's project level and the level each project action needs.
@@ -259,11 +261,40 @@ export const PROJECT_ACTIONS = {
 
 export type ProjectAction = keyof typeof PROJECT_ACTIONS;
 
+/**
+ * crmp P1-B: the grant area an action belongs to (dms scope decorators: `ProjectScopeDecorator` passes
+ * Stages & tasks). Project housekeeping and scope are Overview, members and teams are Team — both
+ * read-only for a grant at every level. Derived from the action's prefix (kept small: this module is
+ * in the initial bundle).
+ */
+export function projectActionArea(action: ProjectAction): AccessArea {
+  const kind = action.slice(0, action.indexOf('.'));
+  if (kind === 'project' || kind === 'scope') return 'Overview';
+  if (kind === 'member' || kind === 'team') return 'Team';
+  return 'StagesAndTasks';
+}
+
+/**
+ * crmp P1-B: a grant never writes to the project itself, its scope, members, teams or stage structure
+ * (dms GrantAreaPermissions.cs:16-22 — the codes are never implied): every Overview and Team action,
+ * and stage create/update/delete. Checked here so the rule does not hang on the implied table alone.
+ */
+function neverForGrant(action: ProjectAction): boolean {
+  return (
+    projectActionArea(action) !== 'StagesAndTasks' ||
+    action === 'stage.create' ||
+    action === 'stage.update' ||
+    action === 'stage.delete'
+  );
+}
+
 /** What `canProjectAction` needs to know about the project. */
 export interface ProjectGateInput {
   myLevel: ProjectLevel;
   status: ProjectStatus;
   isActive: boolean;
+  /** crmp P1-B: how the caller reaches the project; null/absent keeps the member behaviour. */
+  myAccess?: ProjectAccess | null;
 }
 
 const CLOSED_STATUSES: readonly ProjectStatus[] = ['OnHold', 'Completed', 'Cancelled'];
@@ -299,28 +330,45 @@ export function projectGate(source: Project | ProjectDetails): ProjectGateInput 
       myLevel: source.myLevel,
       status: source.project.status,
       isActive: source.project.isActive,
+      myAccess: source.myAccess ?? source.project.myAccess ?? null,
     };
   }
-  return { myLevel: source.myLevel, status: source.status, isActive: source.isActive };
+  return {
+    myLevel: source.myLevel,
+    status: source.status,
+    isActive: source.isActive,
+    myAccess: source.myAccess ?? null,
+  };
+}
+
+function toGate(project: Project | ProjectDetails | ProjectGateInput): ProjectGateInput {
+  return 'project' in project ? projectGate(project) : (project as ProjectGateInput);
 }
 
 /**
  * The one shared gate for every project action button: the route claim (any of), the caller's level,
  * and — for work writes — an open project. `can` is `PermissionsService.can`.
+ *
+ * crmp P1-B: when the caller reaches the project only through a grant (`myAccess.source === 'Grant'`),
+ * the action must be in a granted area (and, for stage and task actions, `stageId` among the grant's
+ * stages unless it is whole-project), the level is the grant's, and the claim is read from the grant's
+ * implied table — the token does not carry those codes. Project, scope, member and team writes are
+ * never allowed to a grant.
  */
 export function canProjectAction(
   project: Project | ProjectDetails | ProjectGateInput | null | undefined,
   action: ProjectAction,
   can: (permission: string) => boolean,
+  stageId?: string | null,
 ): boolean {
   if (!project) return false;
-  const gate =
-    'myLevel' in project && 'status' in project && 'isActive' in project
-      ? (project as ProjectGateInput)
-      : projectGate(project as Project | ProjectDetails);
+  const gate = toGate(project);
+  if (isGrantAccess(gate.myAccess) && neverForGrant(action)) return false;
+  const claim = claimCheck(gate.myAccess, projectActionArea(action), can, stageId);
+  const level = isGrantAccess(gate.myAccess) ? gate.myAccess.level : gate.myLevel;
   const rule: ActionRule = PROJECT_ACTIONS[action];
-  if (!rule.anyOf.some((p) => can(p))) return false;
-  if (!levelAtLeast(gate.myLevel, rule.level)) return false;
+  if (!rule.anyOf.some((p) => claim(p))) return false;
+  if (!levelAtLeast(level, rule.level)) return false;
   if (!OPEN_ON_CLOSED.has(action) && isProjectClosed(gate)) return false;
   // R2-2: only adding a member is refused on an inactive project (404; dms ProjectMemberHandlers.cs:46,
   // the only ProjectIsLiveAsync caller); change-access and remove stay open.
@@ -339,12 +387,15 @@ export function canExecuteTask(
   me: string | null,
   can: (permission: string) => boolean,
   action: 'task.start' | 'task.complete',
+  stageId?: string | null,
 ): boolean {
-  if (!canProjectAction(project, action, can)) return false;
+  if (!canProjectAction(project, action, can, stageId)) return false;
+  const claim = claimCheck(project.myAccess, 'StagesAndTasks', can, stageId);
+  const level = isGrantAccess(project.myAccess) ? project.myAccess.level : project.myLevel;
   return (
     (!!me && task.assignedToId === me) ||
-    can(PERM.stageTasks.manage) ||
-    levelAtLeast(project.myLevel, 'Manager')
+    claim(PERM.stageTasks.manage) ||
+    levelAtLeast(level, 'Manager')
   );
 }
 
@@ -358,7 +409,9 @@ export function canChangeComment(
   me: string | null,
   can: (permission: string) => boolean,
   action: 'comment.edit' | 'comment.delete',
+  stageId?: string | null,
 ): boolean {
-  if (!canProjectAction(project, action, can)) return false;
-  return (!!me && comment.employeeId === me) || can(PERM.stageTasks.manage);
+  if (!canProjectAction(project, action, can, stageId)) return false;
+  const claim = claimCheck(project.myAccess, 'StagesAndTasks', can, stageId);
+  return (!!me && comment.employeeId === me) || claim(PERM.stageTasks.manage);
 }

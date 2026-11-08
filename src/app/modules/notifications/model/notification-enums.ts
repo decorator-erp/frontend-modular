@@ -67,6 +67,9 @@ export enum NotificationType {
   // (151–162 reserved; mirror members on demand)
 
   // ── Docs / project: 180–183 (reserved; mirror members on demand) ──
+  // ── Project access grants: 184–185 (crmp P1-B; dms Notifications.Contracts/Enums.cs:59-61). Entity: the project ──
+  ProjectAccessGranted = 184,
+  ProjectAccessRevoked = 185,
   // ── Auth: 200–203 (reserved; mirror members on demand) ──
 
   // ── CRM: 500–529. Meetings 500–514; requirement periods 515–529 ──
@@ -90,4 +93,8 @@ export enum NotificationType {
   // ── Sites: 530–531 (crmp A-4; dms Notifications.Contracts/Enums.cs:83-84) ──
   SiteApproved = 530,
   SiteRejected = 531,
+
+  // ── CRM client portal: 540–541 (crmp P2-B; dms Notifications.Contracts/Enums.cs:91-92). Entity: the project ──
+  CrmPortalItemShared = 540,
+  CrmPortalUpdatePosted = 541,
 }

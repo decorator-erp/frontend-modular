@@ -1,5 +1,6 @@
 import { crmPages } from './crm-pages';
-import { crmRoutes } from './crm.routes';
+import { crmRoutes, portalReadGuard } from './crm.routes';
+import { CrmPortalPageComponent } from './ui/portal/portal-page.component';
 import { IntakePageComponent } from './ui/public/intake-page.component';
 import { CrmClientProfileComponent } from './ui/client/client-profile.component';
 import { CrmClientSchedulePageComponent } from './ui/client/client-schedule-page.component';
@@ -10,10 +11,19 @@ import { ApprovalsListComponent } from './ui/office-approvals/approvals-list.com
 import { CrmDesignProfileComponent } from './ui/designer/design-profile.component';
 
 describe('crmPages — the lazy loaders app.routes.ts routes through', () => {
-  it('resolves the routes loader to crmRoutes and its 10 children', async () => {
+  // crmp P2-B: +1 projects/:projectId/portal (the Client portal tab).
+  it('resolves the routes loader to crmRoutes and its 11 children', async () => {
     const routes = await crmPages.routes();
     expect(routes).toBe(crmRoutes);
-    expect(routes).toHaveLength(10);
+    expect(routes).toHaveLength(11);
+  });
+
+  it('crmp P2-B: the Client portal tab reads with crm.portal.manage OR clients.read', async () => {
+    const route = crmRoutes.find((r) => r.path === 'projects/:projectId/portal');
+    expect(route?.canActivate).toEqual([portalReadGuard]);
+    expect(route?.data?.['permissions']).toEqual(['crm.portal.manage', 'clients.read']);
+    const page = await (route?.loadComponent as () => Promise<unknown>)();
+    expect(page).toBe(CrmPortalPageComponent);
   });
 
   // 009b #N-5: no space-item routes exist on the backend, so the storefront route is gone.

@@ -15,6 +15,8 @@ import { ToastService } from '@platform/feedback/toast.service';
 import { TaskAttachment } from '../../model/project.model';
 import { PermissionsService } from '@platform/permissions';
 import { PERM } from '@platform/permissions';
+import { ProjectAccessStore } from '../../stores/project-access.store';
+import { claimCheck } from '../../model/project-access';
 import { ModalService } from '@ds';
 import {
   DocumentationModalComponent,
@@ -318,7 +320,16 @@ export class AttachmentsPanelComponent implements OnInit {
   private readonly modal = inject(ModalService);
   private readonly perms = inject(PermissionsService);
 
-  readonly canManage = computed(() => this.perms.can(PERM.stageTasks.manage));
+  private readonly access = inject(ProjectAccessStore);
+  /**
+   * crmp P1-B: a grantee's `stage_tasks.manage` comes from the grant. The panel has no stage id, so
+   * a stage-limited grant manages nothing here (conservative; the backend decides).
+   */
+  readonly canManage = computed(() =>
+    claimCheck(this.access.project(this.projectId())()?.myAccess, 'StagesAndTasks', (p) =>
+      this.perms.can(p),
+    )(PERM.stageTasks.manage),
+  );
 
   readonly FOLDERS = FOLDERS;
   readonly attachments = signal<TaskAttachment[]>([]);

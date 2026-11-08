@@ -207,6 +207,8 @@ export const ERROR_MESSAGES: Record<string, string> = {
 
   // From api-docs/09-documents-attachments-comments.md — project documents
   'project_documents.NotFound': 'Document not found.',
+  'project_documents.InsufficientLevel':
+    'Your access level on this project does not allow this action.',
   'project_documents.ProjectNotFound': 'The project for this document was not found.',
   'project_documents.FolderNotFound': 'The target folder was not found.',
   'project_documents.EmptyFile': 'The selected file is empty.',
@@ -474,6 +476,8 @@ export const ERROR_MESSAGES: Record<string, string> = {
   // crm-prod M1-fe: L-4's 409, a document links to a subject once (`Errors.cs:335`).
   'crm.artifacts.AlreadyLinked': 'This document is already linked to this item.',
   'crm.projects.Inactive': 'This project is inactive and takes no new CRM work.',
+  // crmp P1-B: a grantee below Editor writing CRM (Crm.Domain/Errors/Errors.cs:503).
+  'crm.project.InsufficientLevel': "Your access to this project's CRM is read-only.",
   'approvals.ApprovalIdInUse': 'This approval belongs to a different subject.',
   'approvals.Unauthenticated': 'We could not identify you. Please sign in again.',
 
@@ -511,6 +515,24 @@ export const ERROR_MESSAGES: Record<string, string> = {
   'crm.gates.UnsupportedOwner': 'This gate condition can only be set on a stage.',
   'crm.portal.InvalidDecision': 'Choose Approve or Request changes.',
   'crm.portal.InvalidStatus': "The status filter must be 'pending' or 'decided'.",
+  // crmp P2-B: client portal visibility (dms Crm.Domain/Errors/Errors.cs:509-553).
+  'crm.portal.ShareNotFound': 'This item is no longer shared with the client.',
+  'crm.portal.UpdateNotFound': 'This client update was not found.',
+  'crm.portal.ItemNotFound': 'The item to share was not found on this project.',
+  'crm.portal.InvalidItem': 'This item cannot be shared with the client.',
+  'crm.portal.NotAnImage': 'Only an image file can be shared as an image.',
+  'crm.portal.NotAPhoto': 'Only a site photo can be shared as a site photo.',
+  'crm.portal.AlreadyShared': 'This item is already shared with the client.',
+  'crm.portal.TitleTooLong': 'The title must be 200 characters or fewer.',
+  'crm.portal.NoteTooLong': 'The note must be 2000 characters or fewer.',
+  'crm.portal.BodyTooLong': 'The update text must be 10000 characters or fewer.',
+  'crm.portal.UpdateTitleRequired': 'An update needs a title.',
+  'crm.portal.SettingsChanged':
+    'The portal settings were changed at the same time. Reload and try again.',
+  'crm.portal.AlreadyPublished': 'This update is already published.',
+  'crm.portal.InvalidOrder': 'The list changed while you were reordering it. Reload and try again.',
+  'crm.portal.InvalidAttachment':
+    'An update can attach only documents, images or site photos shared with the client.',
   'approvals.CommentTooLong': 'The comment must be 2000 characters or fewer.',
   // crmp A-1: Projects (§5.5/§5.6), CRM crm-complete, gates, templates and Sites codes. Backend file:line in
   // error-catalog-backend-codes.spec.ts.
@@ -552,6 +574,24 @@ export const ERROR_MESSAGES: Record<string, string> = {
     'Every stage must be completed or rejected before the project can be completed.',
   'projects.TasksOpen':
     'Every task must be completed or cancelled before the project can be completed.',
+  // crmp P1-B: project access grants (dms Projects.Domain/Errors/Errors.cs:356-397).
+  'projects.access_grants.AboveOwnLevel': 'You cannot grant a level above your own.',
+  'projects.access_grants.AlreadyGranted':
+    'This employee already has a current or upcoming grant on the project. Edit that one instead.',
+  'projects.access_grants.AlreadyMember':
+    'This employee is already on the project, so a grant adds nothing.',
+  'projects.access_grants.AlreadyRevoked': 'This grant is already revoked.',
+  'projects.access_grants.ConcurrentUpdate':
+    'The grant was changed by someone else. Reload and try again.',
+  'projects.access_grants.EmployeeNotFound': 'The employee was not found or is not active.',
+  'projects.access_grants.InvalidWindow': 'The end must be later than the start and than now.',
+  'projects.access_grants.NoAreas': 'Choose at least one area.',
+  'projects.access_grants.NotAllowed': 'You may not manage access grants on this project.',
+  'projects.access_grants.NotEditable':
+    'A revoked or expired grant cannot change; create a new one.',
+  'projects.access_grants.NotFound': 'Project access grant was not found.',
+  'projects.access_grants.SelfGrant': 'You cannot grant access to yourself.',
+  'projects.access_grants.StageNotInProject': 'Every stage must belong to the project.',
   'projects.comments.NotAuthor': "Only the comment's author or a task manager can change it.",
   'projects.comments.NotFound': 'Comment was not found.',
   'projects.members.AlreadyMember': 'This employee is already a member of the project.',
@@ -645,6 +685,8 @@ export const ERROR_MESSAGES: Record<string, string> = {
  */
 export const ERROR_MESSAGES_AR: Record<string, string> = {
   // CRM-API-CONTRACT §5.1/§5.3
+  // crmp P1-B: a grantee below Editor writing CRM.
+  'crm.project.InsufficientLevel': 'وصولك إلى إدارة العملاء في هذا المشروع للقراءة فقط.',
   'crm.access.Unauthenticated': 'تعذّر التعرّف عليك. يرجى تسجيل الدخول مرة أخرى.',
   'crm.access.NoStanding': 'ليس لحسابك وصول فعّال إلى هذا القسم.',
   'crm.access.NotAnEmployee': 'هذا الإجراء متاح للموظفين فقط.',
@@ -803,6 +845,23 @@ export const ERROR_MESSAGES_AR: Record<string, string> = {
   'crm.meetings.InvalidProposer': 'يجب تحديد مقترِح واحد بالضبط.',
   'crm.portal.InvalidDecision': 'اختر الاعتماد أو طلب تعديلات.',
   'crm.portal.InvalidStatus': 'يجب أن يكون مرشّح الحالة: بانتظار القرار أو تم البتّ.',
+  // crmp P2-B: the Arabic twins of the portal visibility codes.
+  'crm.portal.ShareNotFound': 'لم يعد هذا العنصر مشاركًا مع العميل.',
+  'crm.portal.UpdateNotFound': 'لم يُعثر على هذا التحديث المرسل إلى العميل.',
+  'crm.portal.ItemNotFound': 'لم يُعثر على العنصر المراد مشاركته في هذا المشروع.',
+  'crm.portal.InvalidItem': 'لا يمكن مشاركة هذا العنصر مع العميل.',
+  'crm.portal.NotAnImage': 'لا يُشارك كصورة إلا ملف صورة.',
+  'crm.portal.NotAPhoto': 'لا تُشارك كصورة موقع إلا صورة من المعاينة.',
+  'crm.portal.AlreadyShared': 'هذا العنصر مشارك مع العميل بالفعل.',
+  'crm.portal.TitleTooLong': 'يجب ألا يتجاوز العنوان 200 حرف.',
+  'crm.portal.NoteTooLong': 'يجب ألا تتجاوز الملاحظة 2000 حرف.',
+  'crm.portal.BodyTooLong': 'يجب ألا يتجاوز نص التحديث 10000 حرف.',
+  'crm.portal.UpdateTitleRequired': 'يحتاج التحديث إلى عنوان.',
+  'crm.portal.SettingsChanged': 'تغيّرت إعدادات البوابة في الوقت نفسه. أعد التحميل وحاول مجددًا.',
+  'crm.portal.AlreadyPublished': 'هذا التحديث منشور بالفعل.',
+  'crm.portal.InvalidOrder': 'تغيّرت القائمة أثناء إعادة ترتيبها. أعد التحميل وحاول مجددًا.',
+  'crm.portal.InvalidAttachment':
+    'لا يُرفق بالتحديث إلا مستندات أو صور أو صور مواقع مشاركة مع العميل.',
   'approvals.AlreadyDecided': 'تم البتّ في هذا الاعتماد بالفعل.',
   'approvals.NotFound': 'الاعتماد غير موجود.',
   'approvals.CommentTooLong': 'يجب ألا يتجاوز التعليق 2000 حرف.',
@@ -845,6 +904,21 @@ export const ERROR_MESSAGES_AR: Record<string, string> = {
   'projects.NotDeletable': 'بدأ العمل في هذا المشروع أو هو مرتبط بسجلات أخرى، فلا يمكن حذفه.',
   'projects.StagesOpen': 'يجب إكمال كل المراحل أو رفضها قبل إكمال المشروع.',
   'projects.TasksOpen': 'يجب إكمال كل المهام أو إلغاؤها قبل إكمال المشروع.',
+  // crmp P1-B: project access grants (dms Projects.Domain/Errors/Errors.cs:356-397).
+  'projects.access_grants.AboveOwnLevel': 'لا يمكنك منح مستوى أعلى من مستواك.',
+  'projects.access_grants.AlreadyGranted':
+    'لدى هذا الموظف وصول حالي أو قادم إلى هذا المشروع. عدّل ذلك الوصول بدلًا من ذلك.',
+  'projects.access_grants.AlreadyMember': 'هذا الموظف ضمن المشروع بالفعل، فلا يضيف الوصول شيئًا.',
+  'projects.access_grants.AlreadyRevoked': 'أُلغي هذا الوصول بالفعل.',
+  'projects.access_grants.ConcurrentUpdate': 'غيّر شخص آخر هذا الوصول. أعد التحميل وحاول مرة أخرى.',
+  'projects.access_grants.EmployeeNotFound': 'الموظف غير موجود أو غير نشط.',
+  'projects.access_grants.InvalidWindow': 'يجب أن تكون النهاية بعد البداية وبعد الوقت الحالي.',
+  'projects.access_grants.NoAreas': 'اختر مجالًا واحدًا على الأقل.',
+  'projects.access_grants.NotAllowed': 'لا يحق لك إدارة صلاحيات الوصول إلى هذا المشروع.',
+  'projects.access_grants.NotEditable': 'لا يمكن تعديل وصول ملغى أو منتهٍ؛ أنشئ وصولًا جديدًا.',
+  'projects.access_grants.NotFound': 'وصول المشروع غير موجود.',
+  'projects.access_grants.SelfGrant': 'لا يمكنك منح الوصول لنفسك.',
+  'projects.access_grants.StageNotInProject': 'يجب أن تتبع كل المراحل هذا المشروع.',
   'projects.comments.NotAuthor': 'لا يعدّل التعليق إلا كاتبه أو مدير المهام.',
   'projects.comments.NotFound': 'التعليق غير موجود.',
   'projects.members.AlreadyMember': 'هذا الموظف عضو في المشروع بالفعل.',
@@ -874,6 +948,7 @@ export const ERROR_MESSAGES_AR: Record<string, string> = {
   'sites.DocumentAlreadyLinked': 'هذا المستند مرفق هنا بالفعل.',
   'sites.DocumentNotFound': 'مرفق المعاينة غير موجود.',
   'sites.InsufficientLevel': 'مستوى صلاحيتك على هذا المشروع لا يسمح بهذا الإجراء.',
+  'project_documents.InsufficientLevel': 'مستوى صلاحيتك على هذا المشروع لا يسمح بهذا الإجراء.',
   'sites.InvalidData': 'بيانات المعاينة غير صحيحة.',
   'sites.InvalidDocumentSubject': 'يجب أن يتبع المرفق المعاينة كلها أو سجلًا واحدًا فقط.',
   'sites.InvalidTransition': 'لا يُسمح بهذا التغيير من حالة المعاينة الحالية.',

@@ -1,6 +1,7 @@
-import { Routes } from '@angular/router';
+import { inject } from '@angular/core';
+import { CanActivateFn, Router, Routes } from '@angular/router';
 import { PermissionGuard } from '@platform/auth/permission.guard';
-import { PERM } from '@platform/permissions';
+import { PERM, PermissionsService } from '@platform/permissions';
 import { ItemsStore } from './stores/items.store';
 import { LeadDetailStore } from './stores/lead-detail.store';
 import { PeriodStore } from './stores/period.store';
@@ -14,6 +15,20 @@ import { SpacesStore } from './stores/spaces.store';
  * refactor; each child now carries its own granular read guard so a caller holding
  * only one sub-permission still reaches the screens it is entitled to.
  */
+/**
+ * crmp P2-B: the Client portal tab reads with `crm.portal.manage` OR `clients.read` (dms
+ * CrmPortalVisibilityEndpoints.cs:43, RequireAnyPermission), which the single-permission
+ * `PermissionGuard` cannot express.
+ */
+export const PORTAL_READ_PERMISSIONS: readonly string[] = [
+  PERM.crm.portalVisibility.manage,
+  PERM.clients.read,
+];
+
+export const portalReadGuard: CanActivateFn = () =>
+  inject(PermissionsService).can([...PORTAL_READ_PERMISSIONS]) ||
+  inject(Router).createUrlTree(['/403']);
+
 export const crmRoutes: Routes = [
   {
     path: 'leads',
@@ -91,5 +106,12 @@ export const crmRoutes: Routes = [
     providers: [SpacesStore],
     loadComponent: () =>
       import('./ui/spaces/spaces-page.component').then((m) => m.CrmSpacesPageComponent),
+  },
+  {
+    path: 'projects/:projectId/portal',
+    canActivate: [portalReadGuard],
+    data: { permissions: PORTAL_READ_PERMISSIONS, breadcrumb: 'pportal.title' },
+    loadComponent: () =>
+      import('./ui/portal/portal-page.component').then((m) => m.CrmPortalPageComponent),
   },
 ];

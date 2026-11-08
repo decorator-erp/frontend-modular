@@ -18,6 +18,8 @@ import { ErrorHandlerService, friendly } from '@platform/http/error-handler.serv
 import { ToastService } from '@platform/feedback/toast.service';
 import { PermissionsService } from '@platform/permissions';
 import { PERM } from '@platform/permissions';
+import { ProjectAccessStore } from '../../stores/project-access.store';
+import { claimCheck } from '../../model/project-access';
 import {
   AttachmentFolder,
   AttachmentItem,
@@ -68,7 +70,17 @@ export class DocumentsTabComponent implements OnInit {
   private readonly drawer = inject(DrawerService);
   private readonly perms = inject(PermissionsService);
 
-  readonly canManage = computed(() => this.perms.can(PERM.documents.upload));
+  private readonly access = inject(ProjectAccessStore);
+
+  /**
+   * crmp P1-B: project documents are the Documents area at project level; a grantee's
+   * `documents.upload` comes from the grant (a stage-limited grant has none here). Members: the token.
+   */
+  readonly canManage = computed(() =>
+    claimCheck(this.access.project(this.projectId())()?.myAccess, 'Documents', (p) =>
+      this.perms.can(p),
+    )(PERM.documents.upload),
+  );
 
   readonly rootFolders = signal<DocumentFolder[]>([]);
   readonly documents = signal<ProjectDocument[]>([]);

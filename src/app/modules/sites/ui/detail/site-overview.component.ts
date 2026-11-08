@@ -111,7 +111,13 @@ interface Row {
                 ></span>
                 @if (s.submittedAtUtc) {
                   <div>
-                    <div class="font-medium">{{ t('sv.trail.submittedAt') }}</div>
+                    <div class="font-medium">
+                      {{
+                        s.submittedById
+                          ? t('sv.trail.submitted', { n: nameOf(s.submittedById) })
+                          : t('sv.trail.submittedAt')
+                      }}
+                    </div>
                     <div class="fs-label text-text-muted">{{ dateTime(s.submittedAtUtc) }}</div>
                   </div>
                 } @else {

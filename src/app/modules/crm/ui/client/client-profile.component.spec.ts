@@ -9,6 +9,15 @@ import { BriefStore } from '../../stores/brief.store';
 import { ClientProfileStore } from '../../stores/client-profile.store';
 import { ItemsStore } from '../../stores/items.store';
 import { MeetingsStore } from '../../stores/meetings.store';
+import { PortalOverviewStore } from '../../stores/portal-overview.store';
+
+// crmp P2-B: no portal section is on, so only the four base tabs show.
+const PORTAL_OFF = {
+  load: vi.fn(),
+  loading: signal(false),
+  overview: signal(null),
+  tabs: signal([]),
+};
 import { CrmClientProfileComponent } from './client-profile.component';
 
 // 009b #N-3: no portal items read exists (EP/CrmPortalEndpoints.cs:36-153), so the profile's
@@ -69,6 +78,7 @@ describe('CrmClientProfileComponent — requirements tab (009b #N-3)', () => {
           },
           { provide: ItemsStore, useValue: { loadPortal, items: signal([]) } },
           { provide: MeetingsStore, useValue: { loadPortal: vi.fn(), agenda: signal([]) } },
+          { provide: PortalOverviewStore, useValue: PORTAL_OFF },
         ],
       },
     });
@@ -152,6 +162,7 @@ describe('CrmClientProfileComponent — ?projectId&tab deep link (crm-prod B1-fe
             },
           },
           { provide: MeetingsStore, useValue: { loadPortal: vi.fn(), agenda: signal([]) } },
+          { provide: PortalOverviewStore, useValue: PORTAL_OFF },
         ],
       },
     });
@@ -200,6 +211,7 @@ describe('CrmClientProfileComponent — error states (crmp C-2)', () => {
           },
           { provide: BriefStore, useValue: { loadAsClient: vi.fn() } },
           { provide: MeetingsStore, useValue: { loadPortal: vi.fn() } },
+          { provide: PortalOverviewStore, useValue: PORTAL_OFF },
         ],
       },
     });

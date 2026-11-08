@@ -37,6 +37,19 @@ describe('PERM catalog', () => {
     });
   });
 
+  it('has the client portal visibility codes (crmp P2-B, CrmPermissions.PortalVisibility)', () => {
+    expect(PERM.crm.portalVisibility).toEqual({
+      manage: 'crm.portal.manage',
+      filesViewOwn: 'crm.portal.files.view_own',
+      progressViewOwn: 'crm.portal.progress.view_own',
+    });
+  });
+
+  it('has project.manage_access, listed in the matrix (crmp P1-B, ProjectsPermissions.cs:35)', () => {
+    expect(PERM.projects.manageAccess).toBe('project.manage_access');
+    expect(ALL_PERMISSIONS.some((p) => p.key === 'project.manage_access')).toBe(true);
+  });
+
   it('exposes the UI-only DMS task-detail gate in its live claim spelling', () => {
     expect(PERM.dms.taskDetail.view).toBe('dms.task_detail.view');
   });

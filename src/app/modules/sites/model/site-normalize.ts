@@ -117,6 +117,7 @@ export function normalizeDetail(o: unknown): SiteDetail {
     status: toEnumInt(SiteStatus, readField(o, 'status')) ?? SiteStatus.Draft,
     createdById: str(o, 'createdById'),
     submittedAtUtc: strN(o, 'submittedAtUtc'),
+    submittedById: strN(o, 'submittedById'),
     decidedAtUtc: strN(o, 'decidedAtUtc'),
     decidedById: strN(o, 'decidedById'),
     decisionNote: strN(o, 'decisionNote'),

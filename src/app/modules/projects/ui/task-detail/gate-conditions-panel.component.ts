@@ -138,6 +138,8 @@ export class GateConditionsPanelComponent implements OnInit {
   readonly ownerId = input.required<string>();
   readonly ownerName = input<string>('');
   readonly projectId = input.required<string>();
+  /** crmp P1-B: a task gate's stage, for a stage-limited grant. */
+  readonly stageId = input<string | null>(null);
   /** Fires after any gate mutation so the host can refetch the owner (§9.2). */
   readonly changed = output<void>();
 
@@ -203,6 +205,7 @@ export class GateConditionsPanelComponent implements OnInit {
       ownerName: this.ownerName(),
       projectId: this.projectId(),
       managePermission: this.managePermission(),
+      stageId: this.stageId(),
     };
     const result = await this.modal
       .open<boolean | 'edit'>(GateConditionModalComponent, { size: 'md', data })

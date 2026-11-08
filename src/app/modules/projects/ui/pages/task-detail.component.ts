@@ -269,6 +269,7 @@ const PRIORITY_DOT: Record<string, string> = {
                   [taskId]="taskId()"
                   [taskStatus]="t.status"
                   [assignedToId]="t.assignedToId"
+                  [stageId]="t.projectStageId"
                 />
               </pera-card>
             }
@@ -313,7 +314,11 @@ const PRIORITY_DOT: Record<string, string> = {
               </div>
               @switch (activityView()) {
                 @case ('comments') {
-                  <app-comments-thread [projectId]="projectId()" [taskId]="taskId()" />
+                  <app-comments-thread
+                    [projectId]="projectId()"
+                    [taskId]="taskId()"
+                    [stageId]="t.projectStageId"
+                  />
                 }
                 @case ('history') {
                   <app-activity-feed entityName="Task" [entityId]="taskId()" [take]="100" />
@@ -595,6 +600,7 @@ const PRIORITY_DOT: Record<string, string> = {
                 [ownerId]="taskId()"
                 [ownerName]="t.name"
                 [projectId]="projectId()"
+                [stageId]="t.projectStageId"
                 (changed)="refresh()"
               />
             </pera-card>
@@ -689,9 +695,15 @@ export class TaskDetailComponent implements OnInit, OnDestroy {
    * crmp P-3: task edits need `stage_tasks.manage` AND the Manager level AND an open project; assigning
    * needs `stage_tasks.assign` at Manager (contract §2.17.2). Read through the shared ProjectAccessStore.
    */
-  readonly canManageTasks = computed(() => this.access.can(this.projectId(), 'task.update'));
-  readonly canAssign = computed(() => this.access.can(this.projectId(), 'task.assign'));
-  readonly canAddGate = computed(() => this.access.can(this.projectId(), 'taskGate.create'));
+  readonly canManageTasks = computed(() =>
+    this.access.can(this.projectId(), 'task.update', this.task()?.projectStageId),
+  );
+  readonly canAssign = computed(() =>
+    this.access.can(this.projectId(), 'task.assign', this.task()?.projectStageId),
+  );
+  readonly canAddGate = computed(() =>
+    this.access.can(this.projectId(), 'taskGate.create', this.task()?.projectStageId),
+  );
   /** Planned start is editable whenever the caller can manage tasks (backend accepts it on update). */
   /**
    * crmp review R1-F8: the planned start is read-only. The task PUT (`TaskRequest`, dms

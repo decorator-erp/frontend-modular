@@ -313,6 +313,12 @@ describe('SiteDetailComponent — workflow (sites S-4)', () => {
       'can still be approved',
     );
     expect(el.querySelector('[data-banner="submitted"]')).toBeTruthy();
+    // BF-2: with submittedById the banner names the submitter; without it, it keeps the time-only text
+    TestBed.resetTestingModule();
+    h.site = detail({ status: 2, submittedAtUtc: '2026-11-03T10:00:00Z', submittedById: 'E-sub' });
+    ({ el } = renderDetail(h));
+    expect(el.querySelector('[data-banner="submitted"]')?.textContent).toContain('Name E-sub');
+    h.site = detail({ status: 2, submittedAtUtc: '2026-11-03T10:00:00Z' });
     // A9: a caller who cannot decide (an Editor here) is not promised a decision
     TestBed.resetTestingModule();
     level('Editor', 'OnHold');

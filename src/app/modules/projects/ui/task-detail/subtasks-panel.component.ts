@@ -3,7 +3,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { ProjectSubTaskService } from '../../data/project-subtask.service';
 import { ErrorHandlerService, friendly } from '@platform/http/error-handler.service';
 import { ToastService } from '@platform/feedback/toast.service';
-import { PERM, PermissionsService } from '@platform/permissions';
+import { PERM } from '@platform/permissions';
 import { ProjectSubTask, ProjectTaskStatus } from '../../model/project.model';
 import type { ProjectAction } from '../../model/project-actions';
 import { ProjectAccessStore } from '../../stores/project-access.store';
@@ -164,6 +164,8 @@ export class SubtasksPanelComponent implements OnInit {
   /** Review B2 (CP-2): the owning task's status and assignee, for the TaskClosed and NotAssignee rules. */
   readonly taskStatus = input<ProjectTaskStatus | null>(null);
   readonly assignedToId = input<string | null>(null);
+  /** crmp P1-B: the task's stage, for a stage-limited grant. */
+  readonly stageId = input<string | null>(null);
 
   private readonly api = inject(ProjectSubTaskService);
   private readonly errors = inject(ErrorHandlerService);
@@ -171,7 +173,6 @@ export class SubtasksPanelComponent implements OnInit {
   private readonly confirm = inject(ConfirmService);
   private readonly modal = inject(ModalService);
   private readonly access = inject(ProjectAccessStore);
-  private readonly permissions = inject(PermissionsService);
   protected readonly catalog = inject(CatalogService);
 
   readonly manageTasks = PERM.stageTasks.manage;
@@ -193,7 +194,7 @@ export class SubtasksPanelComponent implements OnInit {
    * (create/update/delete: stage_tasks.manage; complete/reopen: manage or complete) AND an open project.
    */
   can(action: ProjectAction): boolean {
-    return this.access.can(this.projectId(), action);
+    return this.access.can(this.projectId(), action, this.stageId());
   }
 
   /**
@@ -218,7 +219,11 @@ export class SubtasksPanelComponent implements OnInit {
   canManage(): boolean {
     if (!this.taskOpen()) return false;
     if (!(this.can('subtask.complete') || this.can('subtask.reopen'))) return false;
-    if (this.permissions.can(PERM.stageTasks.manage)) return true;
+    // crmp P1-B: a grantee's stage_tasks.manage comes from the grant, not the token.
+    if (
+      this.access.claim(this.projectId(), 'StagesAndTasks', PERM.stageTasks.manage, this.stageId())
+    )
+      return true;
     const me = this.access.me();
     return !!me && me === this.assignedToId();
   }

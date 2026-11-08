@@ -100,6 +100,8 @@ export const PERM = {
     delete: 'project.delete',
     /** crmp P-1: add/remove members and change their level (dms `ProjectsPermissions.cs:30`). */
     manageMembers: 'project.manage_members',
+    /** crmp P1-B: grant, edit and revoke project access grants (dms `ProjectsPermissions.cs:35`). */
+    manageAccess: 'project.manage_access',
   },
   stages: {
     read: 'stages.read',
@@ -243,6 +245,17 @@ export const PERM = {
       viewOwn: 'crm.approvals.view_own',
       decideOwn: 'crm.approvals.decide_own',
     },
+    /**
+     * crmp P2-B: client portal visibility (dms `CrmPermissions.PortalVisibility`, CrmPermissions.cs:165).
+     * `manage` is the office's (settings, shares, updates); office reads also accept `clients.read`.
+     */
+    portalVisibility: {
+      manage: 'crm.portal.manage',
+      // Client portal (self-scoped): files, gallery and the file stream.
+      filesViewOwn: 'crm.portal.files.view_own',
+      // Client portal (self-scoped): overview, tasks and updates.
+      progressViewOwn: 'crm.portal.progress.view_own',
+    },
   },
   /** Client portal (self-scoped) requirement-item authoring/reading. */
   requirements: {
@@ -335,6 +348,11 @@ export const ALL_PERMISSIONS: { group: string; key: string; displayName: string 
   { group: 'Projects', key: PERM.projects.changeStatus, displayName: 'Change Project Status' },
   { group: 'Projects', key: PERM.projects.delete, displayName: 'Delete Projects' },
   { group: 'Projects', key: PERM.projects.manageMembers, displayName: 'Manage Project Members' },
+  {
+    group: 'Projects',
+    key: PERM.projects.manageAccess,
+    displayName: 'Manage Project Access Grants',
+  },
   { group: 'Stages', key: PERM.stages.read, displayName: 'Read Stages' },
   { group: 'Stages', key: PERM.stages.manage, displayName: 'Manage Stages' },
   { group: 'Stages', key: PERM.stages.complete, displayName: 'Complete Stage' },
@@ -392,6 +410,17 @@ export const ALL_PERMISSIONS: { group: string; key: string; displayName: string 
   // CRM. A key present in PERM but absent here silently fails to appear in the Roles
   // matrix — both lists are required.
   { group: 'CRM', key: PERM.crm.portal, displayName: 'Client Portal' },
+  { group: 'CRM', key: PERM.crm.portalVisibility.manage, displayName: 'Manage Client Portal' },
+  {
+    group: 'CRM',
+    key: PERM.crm.portalVisibility.filesViewOwn,
+    displayName: 'View Own Portal Files',
+  },
+  {
+    group: 'CRM',
+    key: PERM.crm.portalVisibility.progressViewOwn,
+    displayName: 'View Own Portal Progress',
+  },
   { group: 'CRM · Leads', key: PERM.crm.leads.read, displayName: 'Read Leads' },
   { group: 'CRM · Leads', key: PERM.crm.leads.create, displayName: 'Create Leads' },
   { group: 'CRM · Leads', key: PERM.crm.leads.update, displayName: 'Update Leads' },

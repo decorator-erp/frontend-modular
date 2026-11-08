@@ -231,7 +231,9 @@ export class StageGatesModalComponent {
 
   private readonly access = inject(ProjectAccessStore);
   /** crmp P-8: adding a stage gate needs stages.manage_gates AND the Manager level (GateEndpoints.cs:32). */
-  readonly canManage = computed(() => this.access.can(this.data.projectId, 'stageGate.create'));
+  readonly canManage = computed(() =>
+    this.access.can(this.data.projectId, 'stageGate.create', this.data.stageId),
+  );
   readonly satisfied = computed(
     () => (this.data.blocked ? 0 : 1) + this.gates().filter((g) => g.isSatisfied).length,
   );

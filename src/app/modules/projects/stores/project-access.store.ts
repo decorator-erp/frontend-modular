@@ -14,6 +14,8 @@ import { handled } from '@platform/http/handled-errors';
 import { PermissionsService } from '@platform/permissions';
 import { ProjectService } from '../data/project.service';
 import type { Project } from '../model/project.model';
+import type { AccessArea, ProjectAccess } from '../model/access-grant.model';
+import { claimCheck, grantCovers, isGrantAccess } from '../model/project-access';
 import {
   ProjectAction,
   canChangeComment,
@@ -85,8 +87,42 @@ export class ProjectAccessStore {
     return this.meId();
   }
 
-  can(id: string, action: ProjectAction): boolean {
-    return canProjectAction(this.byId.get(id)?.() ?? null, action, (p) => this.permissions.can(p));
+  /**
+   * crmp P1-B: `stageId` is the stage the action is on. A stage-limited grant allows a stage or task
+   * action only with one of its stages; members and read_all ignore it.
+   */
+  can(id: string, action: ProjectAction, stageId?: string | null): boolean {
+    return canProjectAction(
+      this.byId.get(id)?.() ?? null,
+      action,
+      (p) => this.permissions.can(p),
+      stageId,
+    );
+  }
+
+  /** crmp P1-B: the grant the caller reaches the project through; null for members, read_all, unloaded. */
+  grant(id: string): ProjectAccess | null {
+    const access = this.byId.get(id)?.()?.myAccess;
+    return isGrantAccess(access) ? access : null;
+  }
+
+  /**
+   * crmp P1-B: does the caller's access cover `area` (at `stageId`)? Always for members and read_all;
+   * for a grant, per dms `ProjectAccessContext.Covers`. False until the project is loaded.
+   */
+  covers(id: string, area: AccessArea, stageId?: string | null): boolean {
+    const p = this.byId.get(id)?.();
+    return !!p && grantCovers(p.myAccess, area, stageId);
+  }
+
+  /**
+   * crmp P1-B: a route code for `area` — the token for members and read_all, the grant's implied table
+   * for a grantee (whose token does not carry it).
+   */
+  claim(id: string, area: AccessArea, permission: string, stageId?: string | null): boolean {
+    const p = this.byId.get(id)?.();
+    if (!p) return false;
+    return claimCheck(p.myAccess, area, (x) => this.permissions.can(x), stageId)(permission);
   }
 
   closed(id: string): boolean {
@@ -98,6 +134,7 @@ export class ProjectAccessStore {
     id: string,
     task: { assignedToId: string | null },
     action: 'task.start' | 'task.complete',
+    stageId?: string | null,
   ): boolean {
     const p = this.byId.get(id)?.();
     if (!p) return false;
@@ -107,6 +144,7 @@ export class ProjectAccessStore {
       this.meId(),
       (x) => this.permissions.can(x),
       action,
+      stageId,
     );
   }
 
@@ -114,6 +152,7 @@ export class ProjectAccessStore {
     id: string,
     comment: { employeeId: string },
     action: 'comment.edit' | 'comment.delete',
+    stageId?: string | null,
   ): boolean {
     const p = this.byId.get(id)?.();
     if (!p) return false;
@@ -123,6 +162,7 @@ export class ProjectAccessStore {
       this.meId(),
       (x) => this.permissions.can(x),
       action,
+      stageId,
     );
   }
 

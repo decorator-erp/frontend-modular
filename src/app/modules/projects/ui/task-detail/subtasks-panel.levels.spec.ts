@@ -44,6 +44,7 @@ describe('SubtasksPanelComponent — levels (crmp P-5)', () => {
           provide: ProjectAccessStore,
           useValue: {
             me: () => opts.me ?? null,
+            claim: (_id: string, _area: string, p: string) => grants.has(p),
             can: (_id: string, a: ProjectAction) =>
               canProjectAction({ myLevel: level, status: 'InProgress', isActive: true }, a, (p) =>
                 grants.has(p),

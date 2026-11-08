@@ -125,6 +125,24 @@ const BACKEND_CODES = [
   'crm.portal.InvalidStatus', // Crm/Crm.Domain/Errors/Errors.cs:434
   'crm.portal.NotAClient', // Crm/Crm.Domain/Errors/Errors.cs:426
   'crm.portal.NotFound', // Crm/Crm.Domain/Errors/Errors.cs:423
+  // crmp P2-B: the portal visibility codes (dms claude/nifty-curie-4a6t67 @ 6d6c8b2, Crm/Crm.Domain/Errors/Errors.cs).
+  'crm.portal.AlreadyPublished', // Crm/Crm.Domain/Errors/Errors.cs:545
+  'crm.portal.AlreadyShared', // Crm/Crm.Domain/Errors/Errors.cs:526
+  'crm.portal.BodyTooLong', // Crm/Crm.Domain/Errors/Errors.cs:535
+  'crm.portal.InvalidAttachment', // Crm/Crm.Domain/Errors/Errors.cs:553
+  'crm.portal.InvalidItem', // Crm/Crm.Domain/Errors/Errors.cs:517
+  'crm.portal.InvalidOrder', // Crm/Crm.Domain/Errors/Errors.cs:549
+  'crm.portal.ItemNotFound', // Crm/Crm.Domain/Errors/Errors.cs:515
+  'crm.portal.NotAPhoto', // Crm/Crm.Domain/Errors/Errors.cs:523
+  'crm.portal.NotAnImage', // Crm/Crm.Domain/Errors/Errors.cs:520
+  'crm.portal.NoteTooLong', // Crm/Crm.Domain/Errors/Errors.cs:532
+  'crm.portal.SettingsChanged', // Crm/Crm.Domain/Errors/Errors.cs:542
+  'crm.portal.ShareNotFound', // Crm/Crm.Domain/Errors/Errors.cs:509
+  'crm.portal.TitleTooLong', // Crm/Crm.Domain/Errors/Errors.cs:529
+  'crm.portal.UpdateNotFound', // Crm/Crm.Domain/Errors/Errors.cs:511
+  'crm.portal.UpdateTitleRequired', // Crm/Crm.Domain/Errors/Errors.cs:538
+  // crmp P1-B: a grantee below Editor writing CRM (CrmProjectAccessErrors).
+  'crm.project.InsufficientLevel', // Crm/Crm.Domain/Errors/Errors.cs:503
   'crm.projects.Inactive', // Crm/Crm.Domain/Errors/Errors.cs:442
   'crm.space_types.CodeRequired', // Crm/Crm.Domain/Errors/Errors.cs:187
   'crm.space_types.DuplicateCode', // Crm/Crm.Domain/Errors/Errors.cs:194
@@ -206,6 +224,20 @@ const CRMP_CODES = [
   'projects.NotDeletable', // Projects/Projects.Domain/Errors/Errors.cs:57
   'projects.StagesOpen', // Projects/Projects.Domain/Errors/Errors.cs:47
   'projects.TasksOpen', // Projects/Projects.Domain/Errors/Errors.cs:52
+  // crmp P1-B: project access grants (ProjectAccessGrantErrors).
+  'projects.access_grants.AboveOwnLevel', // Projects/Projects.Domain/Errors/Errors.cs:367
+  'projects.access_grants.AlreadyGranted', // Projects/Projects.Domain/Errors/Errors.cs:388
+  'projects.access_grants.AlreadyMember', // Projects/Projects.Domain/Errors/Errors.cs:384
+  'projects.access_grants.AlreadyRevoked', // Projects/Projects.Domain/Errors/Errors.cs:394
+  'projects.access_grants.ConcurrentUpdate', // Projects/Projects.Domain/Errors/Errors.cs:397
+  'projects.access_grants.EmployeeNotFound', // Projects/Projects.Domain/Errors/Errors.cs:359
+  'projects.access_grants.InvalidWindow', // Projects/Projects.Domain/Errors/Errors.cs:376
+  'projects.access_grants.NoAreas', // Projects/Projects.Domain/Errors/Errors.cs:379
+  'projects.access_grants.NotAllowed', // Projects/Projects.Domain/Errors/Errors.cs:363
+  'projects.access_grants.NotEditable', // Projects/Projects.Domain/Errors/Errors.cs:391
+  'projects.access_grants.NotFound', // Projects/Projects.Domain/Errors/Errors.cs:356
+  'projects.access_grants.SelfGrant', // Projects/Projects.Domain/Errors/Errors.cs:370
+  'projects.access_grants.StageNotInProject', // Projects/Projects.Domain/Errors/Errors.cs:373
   'projects.comments.NotAuthor', // Projects/Projects.Domain/Errors/Errors.cs:184
   'projects.comments.NotFound', // Projects/Projects.Domain/Errors/Errors.cs:181
   'projects.members.AlreadyMember', // Projects/Projects.Domain/Errors/Errors.cs:150
