@@ -81,10 +81,13 @@ export class EmployeeDetailComponent implements OnInit {
   readonly projects = signal<EmployeeProjectRef[]>([]);
   readonly tasks = signal<EmployeeTaskRef[]>([]);
 
-  /** These three have no backend — see the `TODO(backend-gap)` markers on the directory service. */
-  readonly overviewUnavailable = signal(false);
-  readonly projectsUnavailable = signal(false);
-  readonly tasksUnavailable = signal(false);
+  /**
+   * These three have no backend — see the `TODO(backend-gap)` markers on the directory service.
+   * Sync W1-13: they start (and stay) unavailable; nothing requests a known 404.
+   */
+  readonly overviewUnavailable = signal(true);
+  readonly projectsUnavailable = signal(true);
+  readonly tasksUnavailable = signal(true);
 
   /** departmentId → name: the employee wire carries no `departmentName`. */
   private readonly departmentNames = signal<Map<string, string>>(new Map());
@@ -123,8 +126,7 @@ export class EmployeeDetailComponent implements OnInit {
 
   /**
    * Only `getFull` is a live route. `getOverview`, `getProjects` and `getTasks` have no backend at
-   * all, so they are fetched SEPARATELY with their own failure state — a `forkJoin` would let any
-   * one of those guaranteed 404s take down the whole detail page, which is what used to happen.
+   * all, so they are not requested (sync W1-13): the page shows their unavailable state.
    */
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id')!;
@@ -140,29 +142,9 @@ export class EmployeeDetailComponent implements OnInit {
       },
     });
 
-    this.employeesApi.getOverview(id).subscribe({
-      next: (overview) => {
-        this.overview.set(overview);
-        this.overviewUnavailable.set(false);
-      },
-      error: () => this.overviewUnavailable.set(true),
-    });
-
-    this.employeesApi.getProjects(id).subscribe({
-      next: (list) => {
-        this.projects.set(list);
-        this.projectsUnavailable.set(false);
-      },
-      error: () => this.projectsUnavailable.set(true),
-    });
-
-    this.employeesApi.getTasks(id).subscribe({
-      next: (list) => {
-        this.tasks.set(list);
-        this.tasksUnavailable.set(false);
-      },
-      error: () => this.tasksUnavailable.set(true),
-    });
+    // TODO(backend-gap): no GET /api/employees/{id}/overview|projects|tasks in dms-modular. They are
+    // not requested (sync W1-13) — the unavailable state shows directly. Restore the three reads
+    // (each with its own failure state) once the routes exist.
 
     this.lookups
       .departments()

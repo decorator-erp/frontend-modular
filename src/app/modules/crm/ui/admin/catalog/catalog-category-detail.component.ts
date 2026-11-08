@@ -599,14 +599,15 @@ export class CrmCatalogCategoryDetailComponent {
       this.form.reset({
         nameEn: c.nameEn,
         nameAr: c.nameAr,
-        // 009b #34: the tree carries no description or image — the fields start empty.
-        descriptionEn: '',
-        descriptionAr: '',
-        imageUri: '',
+        // Sync S9: the category response carries its description and image (009b #34 is closed);
+        // an older response without them still starts empty.
+        descriptionEn: c.descriptionEn ?? '',
+        descriptionAr: c.descriptionAr ?? '',
+        imageUri: c.imageUri ?? '',
         selectionMode: String(c.selectionMode),
         isRequired: c.isRequired,
       });
-      this.imagePreview.set('');
+      this.imagePreview.set(c.imageUri ?? '');
     });
 
     this.form.controls.imageUri.valueChanges.subscribe((v) => this.imagePreview.set(v ?? ''));

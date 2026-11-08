@@ -2,16 +2,11 @@
 // 116–203, byte-for-byte, plus its `export * from './employee.model'` line. The client slice
 // (87–114) belongs to 005; the auth DTOs (1–23) were ported to `platform/auth` at 002.
 
-// TODO(backend-gap): there is no `/api/users` group in dms-modular — not for listing, reading,
-// creating, updating, activating, deactivating or deleting a user, and none is planned. User
-// records are created through POST /api/employees and POST /api/clients; user operations exist
-// only as in-process module contracts (IUserDirectory, IUserAdministration, IUserProvisioning)
-// with no HTTP surface. `users.read` is in the permission catalog and gates nothing.
-// The UserListResponse / DetailedUserResponse / AddUserRequest / UpdateUserRequest shapes that
-// used to sit here, and the UserService that consumed them, are deleted rather than left as
-// plausible-looking dead code. There is also no way to ENUMERATE users: every /permissions/users
-// and /roles/users route requires a userId you must already hold, which in practice means one
-// taken from an employee or client record.
+// Sync W2-11: `/api/users` exists now (dms Identity UserEndpoints.cs — `GET /api/users`, paged
+// `PagedResult<UserListItem>`, read by `UserService`), and `GET /api/roles/{roleId}/users` lists a
+// role's members (`RoleService.users()`). User records are still created through POST
+// /api/employees and POST /api/clients. The old UserListResponse / DetailedUserResponse /
+// AddUserRequest / UpdateUserRequest shapes that used to sit here stay deleted.
 
 /** `EmployeeProfile` — one row of `GET /api/employees`. */
 export interface EmployeeListResponse {

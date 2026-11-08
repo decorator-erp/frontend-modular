@@ -182,39 +182,19 @@ export class ProfileComponent implements OnInit {
     window.location.reload();
   }
 
+  /**
+   * TODO(backend-gap): no GET /api/employees/me/projects|tasks in dms-modular. Sync W1-13: the tabs
+   * show their unavailable state directly instead of requesting a known 404.
+   */
   setTab(id: string): void {
     this.activeTab.set(id);
-    if (id === 'projects' && this.projects() === null && !this.projectsLoading()) {
-      this.projectsLoading.set(true);
-      this.employees.getMineProjects().subscribe({
-        next: (list) => {
-          this.projects.set(list);
-          this.projectsUnavailable.set(false);
-          this.projectsLoading.set(false);
-        },
-        // Was `set([])`, which rendered "No projects yet" — a confident claim about work the app
-        // cannot actually see. The route does not exist; say that instead.
-        error: () => {
-          this.projects.set([]);
-          this.projectsUnavailable.set(true);
-          this.projectsLoading.set(false);
-        },
-      });
+    if (id === 'projects' && this.projects() === null) {
+      this.projects.set([]);
+      this.projectsUnavailable.set(true);
     }
-    if (id === 'tasks' && this.tasks() === null && !this.tasksLoading()) {
-      this.tasksLoading.set(true);
-      this.employees.getMineTasks().subscribe({
-        next: (list) => {
-          this.tasks.set(list);
-          this.tasksUnavailable.set(false);
-          this.tasksLoading.set(false);
-        },
-        error: () => {
-          this.tasks.set([]);
-          this.tasksUnavailable.set(true);
-          this.tasksLoading.set(false);
-        },
-      });
+    if (id === 'tasks' && this.tasks() === null) {
+      this.tasks.set([]);
+      this.tasksUnavailable.set(true);
     }
   }
 

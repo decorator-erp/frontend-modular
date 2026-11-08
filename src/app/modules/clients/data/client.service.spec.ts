@@ -142,7 +142,6 @@ describe('ClientService (crm-prod M8)', () => {
         firstName: 'Hana',
         lastName: 'Saleh',
         email: 'hana@example.com',
-        userName: 'hana',
         password: 'not-a-real-secret',
         phone: '0100000000',
         address: 'New Cairo',

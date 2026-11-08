@@ -367,6 +367,10 @@ export class CrmCatalogService extends ApiService {
       depth: this.field<number>(source, 'depth') ?? 0,
       selectionMode: this.field<number>(source, 'selectionMode') ?? CatalogSelectionMode.None,
       isRequired: this.field<boolean>(source, 'isRequired') ?? false,
+      // Sync S9: the category response now carries its description and image (null when unset).
+      descriptionEn: this.field<string | null>(source, 'descriptionEn') ?? null,
+      descriptionAr: this.field<string | null>(source, 'descriptionAr') ?? null,
+      imageUri: this.field<string | null>(source, 'imageUri') ?? null,
       sortOrder: this.field<number>(source, 'sortOrder') ?? 0,
       isActive: this.field<boolean>(source, 'isActive') ?? true,
       trackKey: this.trackKeyFor(source, 'CatalogCategory.id', 'id'),

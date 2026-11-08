@@ -20,11 +20,11 @@ export interface ClientResponse {
   maritalStatus?: string | null;
   representativeName?: string | null;
 }
+/** Sync W2-8: no `userName` — `CreateClientCommand` has none (ClientContracts.cs:36-43). */
 export interface CreateClientRequest {
   firstName: string;
   lastName: string;
   email: string;
-  userName: string;
   password: string;
   phone: string;
   address: string;
