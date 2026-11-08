@@ -9,11 +9,11 @@ import {
   ProjectStageService,
   ProjectTaskService,
 } from '@modules/projects';
-import { SiteService } from '@modules/sites';
 import { AuthStore } from '@platform/auth/auth.store';
 import { ToastService } from '@platform/feedback/toast.service';
 import { ConfirmService, ModalService, PERA_MODAL_DATA, PeraModalRef } from '@ds';
 import { CrmPortalVisibilityService } from '../../data/crm-portal-visibility.service';
+import { CrmSitePhotoService } from '../../data/crm-site-photo.service';
 import { PortalShareKind, type PortalPreview, type PortalShare } from '../../model/portal.model';
 import { PortalSharesStore } from '../../stores/portal-shares.store';
 import { CrmPortalPageComponent } from './portal-page.component';
@@ -353,7 +353,7 @@ describe('CrmPortalSharePickerComponent — add to client portal (crmp P2-B)', (
   let documents: { getByProject: ReturnType<typeof vi.fn> };
   let stages: { getByProject: ReturnType<typeof vi.fn> };
   let tasks: { getByProject: ReturnType<typeof vi.fn> };
-  let sites: { list: ReturnType<typeof vi.fn>; documents: ReturnType<typeof vi.fn> };
+  let sites: { listSites: ReturnType<typeof vi.fn>; documents: ReturnType<typeof vi.fn> };
 
   function render() {
     documents = {
@@ -367,7 +367,7 @@ describe('CrmPortalSharePickerComponent — add to client portal (crmp P2-B)', (
     stages = { getByProject: vi.fn(() => of([{ id: 'ST1', name: 'Design' }])) };
     tasks = { getByProject: vi.fn(() => of([{ id: 'T1', name: 'Paint' }])) };
     sites = {
-      list: vi.fn(() => of({ items: [{ id: 'SV1', code: 'SV-001' }] })),
+      listSites: vi.fn(() => of([{ id: 'SV1', code: 'SV-001' }])),
       documents: vi.fn(() =>
         of([
           { id: 'L1', documentId: 'D2', kind: 3 },
@@ -380,7 +380,7 @@ describe('CrmPortalSharePickerComponent — add to client portal (crmp P2-B)', (
       { provide: ProjectDocumentsService, useValue: documents },
       { provide: ProjectStageService, useValue: stages },
       { provide: ProjectTaskService, useValue: tasks },
-      { provide: SiteService, useValue: sites },
+      { provide: CrmSitePhotoService, useValue: sites },
     ]);
     const fixture = TestBed.createComponent(CrmPortalSharePickerComponent);
     fixture.detectChanges();
@@ -418,7 +418,7 @@ describe('CrmPortalSharePickerComponent — add to client portal (crmp P2-B)', (
   it('Site photo lists the surveys, then the Photo links named by their documents', () => {
     const { cmp } = render();
     cmp.form.controls.kind.setValue(PortalShareKind.SitePhoto);
-    expect(sites.list).toHaveBeenCalledWith({ projectId: 'P1', pageIndex: 1, pageSize: 100 });
+    expect(sites.listSites).toHaveBeenCalledWith('P1');
     expect(cmp.siteOptions()).toEqual([{ value: 'SV1', label: 'SV-001' }]);
     cmp.form.controls.siteId.setValue('SV1');
     expect(sites.documents).toHaveBeenCalledWith('SV1');

@@ -9,7 +9,6 @@ import {
   ProjectStageService,
   ProjectTaskService,
 } from '@modules/projects';
-import { SiteDocumentKind, SiteService } from '@modules/sites';
 import { ToastService } from '@platform/feedback/toast.service';
 import { ErrorHandlerService, friendly } from '@platform/http/error-handler.service';
 import { CatalogService } from '@platform/i18n/catalog.service';
@@ -28,6 +27,7 @@ import {
   type SelectOption,
 } from '@ds';
 import { CrmPortalVisibilityService } from '../../data/crm-portal-visibility.service';
+import { CrmSitePhotoService, SITE_PHOTO_KIND } from '../../data/crm-site-photo.service';
 import { PORTAL_SHARE_KINDS, PortalShareKind, followsLatest } from '../../model/portal.model';
 import { PortalSharesStore } from '../../stores/portal-shares.store';
 import { PORTAL_NOTE_MAX, PORTAL_TITLE_MAX } from './portal-share-dialog.component';
@@ -52,9 +52,9 @@ const SITES_READ = 'sites.read';
  * crmp P2-B: "Add to client portal". Choose a kind, then an item of the project:
  * - Document / Image: the project's documents (Image: `image/*` only) through `ProjectDocumentsService`;
  * - Stage / Task: `ProjectStageService` / `ProjectTaskService`;
- * - Site photo: a survey (`SiteService.list`), then its Photo links (`SiteService.documents`), named by
- *   the project document each link points at.
- * All through the module barrels. Items already shared are listed but disabled. Optional client title,
+ * - Site photo: a survey, then its Photo links (`CrmSitePhotoService`, DEVIATION-45), named by the
+ *   project document each link points at.
+ * Projects data comes through the projects barrel. Items already shared are listed but disabled. Optional client title,
  * note and "Notify the client"; documents and images also "Follow the latest version".
  */
 @Component({
@@ -159,7 +159,7 @@ export class CrmPortalSharePickerComponent {
   private readonly documents = inject(ProjectDocumentsService);
   private readonly stages = inject(ProjectStageService);
   private readonly tasks = inject(ProjectTaskService);
-  private readonly sites = inject(SiteService);
+  private readonly sites = inject(CrmSitePhotoService);
   private readonly shares = inject(PortalSharesStore);
   private readonly permissions = inject(PermissionsService);
   private readonly errors = inject(ErrorHandlerService);
@@ -300,7 +300,7 @@ export class CrmPortalSharePickerComponent {
     return forkJoin([this.sites.documents(siteId), names]).pipe(
       map(([links, byId]) =>
         links
-          .filter((l) => l.kind === SiteDocumentKind.Photo)
+          .filter((l) => l.kind === SITE_PHOTO_KIND)
           .map((l, i) => ({
             id: l.id,
             label: byId.get(l.documentId) ?? this.catalog.t('pportal.photoN', { n: i + 1 }),
@@ -316,10 +316,10 @@ export class CrmPortalSharePickerComponent {
     }
     const gen = ++this.generation;
     this.itemsState.set('loading');
-    this.sites.list({ projectId: this.data.projectId, pageIndex: 1, pageSize: 100 }).subscribe({
-      next: (page) => {
+    this.sites.listSites(this.data.projectId).subscribe({
+      next: (sites) => {
         if (gen !== this.generation) return;
-        this.siteOptions.set(page.items.map((s) => ({ value: s.id, label: s.code })));
+        this.siteOptions.set(sites.map((s) => ({ value: s.id, label: s.code })));
         this.itemsState.set('idle');
       },
       error: (err: unknown) => this.fail(gen, err),
