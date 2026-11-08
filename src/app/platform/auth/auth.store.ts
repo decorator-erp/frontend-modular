@@ -237,9 +237,22 @@ export const AuthStore = signalStore(
         patchState(store, { polling: null });
       },
 
-      async logout(): Promise<void> {
+      /**
+       * Sync W1-12: a user's logout first calls `POST /auth/logout` (authenticated, no body — dms
+       * AuthEndpoints.cs:74; it ends the caller's sessions server-side), then the existing
+       * `/auth/revoke` drops this refresh token. Neither call can block the logout: any error is
+       * swallowed and the local session is cleared. `endServerSession: false` is the interceptor's
+       * forced bounce (the session is already dead; a logout there would 401 and could end the
+       * user's other live sessions), which keeps the revoke-only teardown.
+       */
+      async logout(opts: { endServerSession?: boolean } = {}): Promise<void> {
         const token = tokenService.getToken();
         const refreshToken = tokenService.getRefreshToken();
+        if (token && opts.endServerSession !== false) {
+          await firstValueFrom(http.post(`${environment.apiUrl}/auth/logout`, {})).catch(
+            () => undefined,
+          );
+        }
         if (token && refreshToken) {
           await firstValueFrom(
             http.post(`${environment.apiUrl}/auth/revoke`, { token, refreshToken }),
