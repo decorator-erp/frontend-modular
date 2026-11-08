@@ -7,6 +7,7 @@ import {
   UpdateProjectSubTaskRequest,
 } from '../model/project.model';
 import { ApiService } from '@platform/http/api.service';
+import { handled } from '@platform/http/handled-errors';
 import { ProjectService } from './project.service';
 
 /**
@@ -31,9 +32,9 @@ export class ProjectSubTaskService extends ApiService {
 
   /** `POST …/sub-tasks { title, description?, order?, isRequired? }` → 200 `{ subTaskId }`. */
   create(projectId: string, taskId: string, req: CreateProjectSubTaskRequest): Observable<string> {
-    return this.post<unknown>(`/projects/${projectId}/tasks/${taskId}/sub-tasks`, req).pipe(
-      map((r) => this.unwrapId(r, 'subTaskId')),
-    );
+    return this.post<unknown>(`/projects/${projectId}/tasks/${taskId}/sub-tasks`, req, {
+      context: handled(403, 409),
+    }).pipe(map((r) => this.unwrapId(r, 'subTaskId')));
   }
 
   update(
@@ -42,20 +43,32 @@ export class ProjectSubTaskService extends ApiService {
     subTaskId: string,
     req: UpdateProjectSubTaskRequest,
   ): Observable<unknown> {
-    return this.put(`/projects/${projectId}/tasks/${taskId}/sub-tasks/${subTaskId}`, req);
+    return this.put(`/projects/${projectId}/tasks/${taskId}/sub-tasks/${subTaskId}`, req, {
+      context: handled(403, 409),
+    });
   }
 
   remove(projectId: string, taskId: string, subTaskId: string): Observable<unknown> {
-    return this.delete(`/projects/${projectId}/tasks/${taskId}/sub-tasks/${subTaskId}`);
+    return this.delete(`/projects/${projectId}/tasks/${taskId}/sub-tasks/${subTaskId}`, undefined, {
+      context: handled(403, 409),
+    });
   }
 
   /** Was `PUT /project-subtasks/{id}/done` (P-34). */
   markDone(projectId: string, subTaskId: string): Observable<unknown> {
-    return this.post(`/projects/${projectId}/tasks/sub-tasks/${subTaskId}/complete`, {});
+    return this.post(
+      `/projects/${projectId}/tasks/sub-tasks/${subTaskId}/complete`,
+      {},
+      { context: handled(403, 409) },
+    );
   }
 
   /** Was a PUT (P-35); now a POST. */
   reopen(projectId: string, taskId: string, subTaskId: string): Observable<unknown> {
-    return this.post(`/projects/${projectId}/tasks/${taskId}/sub-tasks/${subTaskId}/reopen`, {});
+    return this.post(
+      `/projects/${projectId}/tasks/${taskId}/sub-tasks/${subTaskId}/reopen`,
+      {},
+      { context: handled(403, 409) },
+    );
   }
 }

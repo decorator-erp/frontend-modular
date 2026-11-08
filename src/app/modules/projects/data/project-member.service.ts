@@ -7,6 +7,7 @@ import {
   ProjectMember,
 } from '../model/project.model';
 import { ApiService } from '@platform/http/api.service';
+import { handled } from '@platform/http/handled-errors';
 import { ProjectService } from './project.service';
 
 /**
@@ -26,10 +27,14 @@ export class ProjectMemberService extends ApiService {
 
   /** `POST …/members { employeeId, access }` → 200 `{ memberId }` (ProjectMemberEndpoints.cs:32). */
   add(req: AddProjectMemberRequest): Observable<string> {
-    return this.post<unknown>(`/projects/${req.projectId}/members`, {
-      employeeId: req.employeeId,
-      access: this.projects.accessInt(req.access),
-    }).pipe(map((r) => this.unwrapId(r, 'memberId')));
+    return this.post<unknown>(
+      `/projects/${req.projectId}/members`,
+      {
+        employeeId: req.employeeId,
+        access: this.projects.accessInt(req.access),
+      },
+      { context: handled(403, 409) },
+    ).pipe(map((r) => this.unwrapId(r, 'memberId')));
   }
 
   /** `PUT …/members/{memberId}/access { access }` (ProjectMemberEndpoints.cs:41). */
@@ -38,13 +43,17 @@ export class ProjectMemberService extends ApiService {
     memberId: string,
     req: ChangeProjectMemberAccessRequest,
   ): Observable<unknown> {
-    return this.put(`/projects/${projectId}/members/${memberId}/access`, {
-      access: this.projects.accessInt(req.access),
-    });
+    return this.put(
+      `/projects/${projectId}/members/${memberId}/access`,
+      { access: this.projects.accessInt(req.access) },
+      { context: handled(403, 409) },
+    );
   }
 
   /** `DELETE …/members/{memberId}` (ProjectMemberEndpoints.cs:50). */
   remove(projectId: string, memberId: string): Observable<unknown> {
-    return this.delete(`/projects/${projectId}/members/${memberId}`);
+    return this.delete(`/projects/${projectId}/members/${memberId}`, undefined, {
+      context: handled(403, 409),
+    });
   }
 }

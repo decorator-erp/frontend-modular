@@ -3,6 +3,7 @@ import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { TaskComment } from '../model/project.model';
 import { ApiService } from '@platform/http/api.service';
+import { handled } from '@platform/http/handled-errors';
 
 /** Optional page of a task's comments (contract §1.6: opt-in; the body stays a plain array). */
 export interface TaskCommentPage {
@@ -27,9 +28,11 @@ export class TaskCommentService extends ApiService {
 
   /** `POST …/comments { content }` → 200 `{ commentId }`. */
   create(projectId: string, taskId: string, content: string): Observable<string> {
-    return this.post<unknown>(`/projects/${projectId}/tasks/${taskId}/comments`, { content }).pipe(
-      map((r) => this.unwrapId(r, 'commentId')),
-    );
+    return this.post<unknown>(
+      `/projects/${projectId}/tasks/${taskId}/comments`,
+      { content },
+      { context: handled(403, 409) },
+    ).pipe(map((r) => this.unwrapId(r, 'commentId')));
   }
 
   update(
@@ -38,11 +41,17 @@ export class TaskCommentService extends ApiService {
     commentId: string,
     content: string,
   ): Observable<unknown> {
-    return this.put(`/projects/${projectId}/tasks/${taskId}/comments/${commentId}`, { content });
+    return this.put(
+      `/projects/${projectId}/tasks/${taskId}/comments/${commentId}`,
+      { content },
+      { context: handled(403, 409) },
+    );
   }
 
   remove(projectId: string, taskId: string, commentId: string): Observable<unknown> {
-    return this.delete(`/projects/${projectId}/tasks/${taskId}/comments/${commentId}`);
+    return this.delete(`/projects/${projectId}/tasks/${taskId}/comments/${commentId}`, undefined, {
+      context: handled(403, 409),
+    });
   }
 
   private normalize(source: unknown, taskId: string): TaskComment {

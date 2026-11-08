@@ -60,10 +60,14 @@ export interface StageTeam {
 export class StageTeamsService extends ApiService {
   /** `POST /projects/{pid}/teams { projectStageId, departmentId }` → `{ stageTeamId }` (TeamEndpoints.cs:32). */
   create(projectId: string, projectStageId: string, departmentId: string): Observable<string> {
-    return this.post<unknown>(`/projects/${projectId}/teams`, {
-      projectStageId,
-      departmentId,
-    }).pipe(map((r) => this.unwrapId(r, 'stageTeamId')));
+    return this.post<unknown>(
+      `/projects/${projectId}/teams`,
+      {
+        projectStageId,
+        departmentId,
+      },
+      { context: handled(403, 409) },
+    ).pipe(map((r) => this.unwrapId(r, 'stageTeamId')));
   }
 
   /**
@@ -71,9 +75,11 @@ export class StageTeamsService extends ApiService {
    * department or head, `projects.teams.HeadOrDepartmentRequired`).
    */
   createStandalone(projectId: string, projectStageId: string, headId: string): Observable<string> {
-    return this.post<unknown>(`/projects/${projectId}/teams`, { projectStageId, headId }).pipe(
-      map((r) => this.unwrapId(r, 'stageTeamId')),
-    );
+    return this.post<unknown>(
+      `/projects/${projectId}/teams`,
+      { projectStageId, headId },
+      { context: handled(403, 409) },
+    ).pipe(map((r) => this.unwrapId(r, 'stageTeamId')));
   }
 
   /** Template stage → department link (gap table P-80): `POST /stages/{stageId}/departments/{departmentId}` (TemplateEndpoints.cs:117). */
@@ -122,10 +128,14 @@ export class StageTeamsService extends ApiService {
     employeeId: string,
     role: StageTeamMemberRole = 'Contributor',
   ): Observable<string> {
-    return this.post<unknown>(`/projects/${projectId}/teams/${stageTeamId}/members`, {
-      employeeId,
-      role: ROLE_INT[role],
-    }).pipe(map((r) => this.unwrapId(r, 'stageTeamMemberId')));
+    return this.post<unknown>(
+      `/projects/${projectId}/teams/${stageTeamId}/members`,
+      {
+        employeeId,
+        role: ROLE_INT[role],
+      },
+      { context: handled(403, 409) },
+    ).pipe(map((r) => this.unwrapId(r, 'stageTeamMemberId')));
   }
 
   /** `PUT /projects/{pid}/teams/members/{memberId}/role { role }` (TeamEndpoints.cs:74). */
@@ -134,19 +144,27 @@ export class StageTeamsService extends ApiService {
     memberId: string,
     role: StageTeamMemberRole,
   ): Observable<unknown> {
-    return this.put(`/projects/${projectId}/teams/members/${memberId}/role`, {
-      role: ROLE_INT[role],
-    });
+    return this.put(
+      `/projects/${projectId}/teams/members/${memberId}/role`,
+      { role: ROLE_INT[role] },
+      { context: handled(403, 409) },
+    );
   }
 
   /** `DELETE /projects/{pid}/teams/members/{memberId}` (TeamEndpoints.cs:41). */
   removeMember(projectId: string, memberId: string): Observable<unknown> {
-    return this.delete(`/projects/${projectId}/teams/members/${memberId}`);
+    return this.delete(`/projects/${projectId}/teams/members/${memberId}`, undefined, {
+      context: handled(403, 409),
+    });
   }
 
   /** `PUT /projects/{pid}/teams/{teamId}/head { headId }` (TeamEndpoints.cs:83). */
   changeHead(projectId: string, teamId: string, headId: string): Observable<unknown> {
-    return this.put(`/projects/${projectId}/teams/${teamId}/head`, { headId });
+    return this.put(
+      `/projects/${projectId}/teams/${teamId}/head`,
+      { headId },
+      { context: handled(403, 409) },
+    );
   }
 
   /**
