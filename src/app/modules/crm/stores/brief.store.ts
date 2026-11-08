@@ -273,16 +273,35 @@ export const BriefStore = signalStore(
        * `crm.portal.NotAClient` / `crm.access.NoStanding` show their catalog message.
        */
       loadAsClient(projectId: string): void {
-        patchState(store, { loading: true, error: null, nothingSent: false, projectId });
+        patchState(store, {
+          loading: true,
+          error: null,
+          nothingSent: false,
+          projectId,
+          rounds: [],
+          diffRound: null,
+        });
         api.getMyBrief(projectId).subscribe({
-          next: (view) =>
+          next: (view) => {
             patchState(store, {
               head: view.head,
               spaces: view.spaces,
               portalRound: view.head?.round ?? 0,
               nothingSent: view.head === null,
               loading: false,
-            }),
+            });
+            // Sync F4d: the client's own rounds (`GET /crm/portal/briefs/{id}/rounds`). A failure
+            // leaves the rounds empty — the head still shows. Dropped if another project loaded since.
+            const head = view.head;
+            if (!head) return;
+            api
+              .listMyRounds(head.id)
+              .pipe(catchError(() => of([] as BriefRound[])))
+              .subscribe((rounds) => {
+                if (store.projectId() === projectId && store.head()?.id === head.id)
+                  patchState(store, { rounds });
+              });
+          },
           error: (err: unknown) => {
             const parsed = err instanceof HttpErrorResponse ? errors.parse(err) : null;
             patchState(store, {

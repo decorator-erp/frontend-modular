@@ -248,6 +248,27 @@ export class CrmCatalogService extends ApiService {
     );
   }
 
+  /**
+   * Sync F4f (S10): `GET /api/crm/catalog/items/{itemId}` → `CrmCatalogItemDetailResponse` — the item
+   * fields, `descriptionEn/Ar` + `imageUri` (S9), and `attributeValues` (`{ attributeId, valueText?,
+   * valueNumber?, valueBool?, valueDate?, optionId? }`) — `crm.catalog.read`. 404 = missing item.
+   * A response without `attributeValues` reads as no values.
+   */
+  getItemDetail(itemId: string): Observable<CatalogItem> {
+    return this.get<unknown>(`/crm/catalog/items/${itemId}`, undefined, {
+      context: handled(404),
+    }).pipe(
+      map((r) => {
+        const value = this.unwrap<unknown>(r);
+        const values = this.field<unknown[]>(value, 'attributeValues', 'attributes') ?? [];
+        return {
+          ...this.normalizeItem(value),
+          attributes: values.map((a) => this.normalizeItemAttributeValue(a)),
+        };
+      }),
+    );
+  }
+
   // ── v2 item writes ─────────────────────────────────────────────────────
 
   /**

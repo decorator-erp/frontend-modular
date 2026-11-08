@@ -224,6 +224,7 @@ describe('CrmItemService', () => {
         priority: 2,
         room: null,
         description: null,
+        spaceTypeId: null,
       });
       req.flush({ itemId: 'I' }, { status: 201, statusText: 'Created' });
 

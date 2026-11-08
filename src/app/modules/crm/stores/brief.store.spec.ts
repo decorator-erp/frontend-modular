@@ -110,6 +110,7 @@ function briefApiMock() {
     supersedeSpace: vi.fn().mockReturnValue(of('new-space-id')),
     getHeadDiff: vi.fn(),
     listRounds: vi.fn().mockReturnValue(of([])),
+    listMyRounds: vi.fn().mockReturnValue(of([])),
     getMyBrief: vi.fn(),
   };
 }
@@ -584,6 +585,32 @@ describe('BriefStore', () => {
       s.loadAsClient(PROJECT_ID);
       expect(s.nothingSent()).toBe(false);
       expect(s.headRound()).toBe(3);
+    });
+
+    it("sync F4d: loads the client's own rounds for the sent head, never the office route", () => {
+      const sent = { round: 2, sentAtUtc: '2026-10-02T10:00:00Z', outcome: 1, decidedAtUtc: null };
+      api.getMyBrief.mockReturnValue(
+        of({ head: { ...head({ status: ApprovalState.PendingApproval }), round: 2 }, spaces: [] }),
+      );
+      api.listMyRounds.mockReturnValue(of([sent]));
+      const s = store();
+      s.loadAsClient(PROJECT_ID);
+      expect(api.listMyRounds).toHaveBeenCalledWith('brief-1');
+      expect(api.listRounds).not.toHaveBeenCalled();
+      expect(s.rounds()).toEqual([sent]);
+      expect(s.latestRound()).toEqual(sent);
+    });
+
+    it('sync F4d: a failed rounds read leaves the head shown and the rounds empty', () => {
+      api.getMyBrief.mockReturnValue(
+        of({ head: { ...head({ status: ApprovalState.PendingApproval }), round: 1 }, spaces: [] }),
+      );
+      api.listMyRounds.mockReturnValue(throwError(() => new Error('403')));
+      const s = store();
+      s.loadAsClient(PROJECT_ID);
+      expect(s.head()).not.toBeNull();
+      expect(s.rounds()).toEqual([]);
+      expect(s.error()).toBeNull();
     });
 
     it.each([

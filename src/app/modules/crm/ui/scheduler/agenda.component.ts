@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, input, output, signal } from '@angular/core';
 import { CanDirective, PERM } from '@platform/permissions';
 import { CatalogService } from '@platform/i18n/catalog.service';
 import { formatCairoDateTime } from '@platform/i18n/intl-locale';
@@ -12,12 +12,19 @@ import {
   StatusBadgeTone,
 } from '@ds';
 import { MEETING_STATUS_CHIP, MEETING_TYPE_KEYS } from './meeting-labels';
+import { CrmArtifactLinksComponent } from '../artifacts/artifact-links.component';
 
 /** The employee agenda for the period (T049) — every meeting, soonest first. */
 @Component({
   selector: 'app-crm-agenda',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CanDirective, PeraButtonComponent, PeraStatusBadgeComponent, PeraEmptyComponent],
+  imports: [
+    CanDirective,
+    PeraButtonComponent,
+    PeraStatusBadgeComponent,
+    PeraEmptyComponent,
+    CrmArtifactLinksComponent,
+  ],
   host: { class: 'block' },
   template: `
     <div class="bg-surface border border-border rounded-card">
@@ -42,6 +49,17 @@ import { MEETING_STATUS_CHIP, MEETING_TYPE_KEYS } from './meeting-labels';
                 </div>
                 <div class="flex items-center gap-2">
                   <pera-status-badge [tone]="chip(m).tone" [label]="catalog.t(chip(m).key)" />
+                  <!-- Sync F4c: the meeting's linked documents, opened in place. -->
+                  <button
+                    type="button"
+                    class="fs-caption text-text-secondary cursor-pointer underline outline-none focus-visible:outline-2 focus-visible:outline-accent"
+                    *peraCan="PERM.crm.artifacts.read"
+                    [attr.aria-expanded]="docsFor() === m.id"
+                    (click)="toggleDocs(m.id)"
+                    data-meeting-docs
+                  >
+                    {{ catalog.t(docsFor() === m.id ? 'artifacts.hide' : 'artifacts.toggle') }}
+                  </button>
                   @if (canAct(m)) {
                     <div class="flex items-center gap-1.5">
                       <pera-button
@@ -79,6 +97,14 @@ import { MEETING_STATUS_CHIP, MEETING_TYPE_KEYS } from './meeting-labels';
                     </div>
                   }
                 </div>
+                @if (docsFor() === m.id) {
+                  <app-crm-artifact-links
+                    class="w-full"
+                    subject="meeting"
+                    [subjectId]="m.id"
+                    [projectId]="m.projectId"
+                  />
+                }
               </li>
             }
           </ul>
@@ -95,6 +121,12 @@ export class CrmAgendaComponent {
   protected readonly formatCairoDateTime = formatCairoDateTime;
 
   readonly rows = input<CrmMeeting[]>([]);
+  /** Sync F4c: the meeting whose linked documents are open, or `null`. */
+  protected readonly docsFor = signal<string | null>(null);
+
+  protected toggleDocs(meetingId: string): void {
+    this.docsFor.update((open) => (open === meetingId ? null : meetingId));
+  }
   readonly complete = output<string>();
   readonly noShow = output<string>();
   readonly reschedule = output<string>();

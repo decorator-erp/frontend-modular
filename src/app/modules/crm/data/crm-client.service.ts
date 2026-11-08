@@ -20,6 +20,34 @@ export class CrmClientService extends ApiService {
     );
   }
 
+  /**
+   * Sync F4b: `POST /api/clients/{id}/children { gender: 'M'|'F', age }` → `201 { childId }`
+   * (ClientEndpoints.cs:73, `clients.manage_children`). Age 0–120 (`crm.client_children.InvalidAge`).
+   */
+  addChild(clientId: string, child: { gender: 'M' | 'F'; age: number }): Observable<string> {
+    return this.post<unknown>(`/clients/${clientId}/children`, {
+      gender: child.gender,
+      age: child.age,
+    }).pipe(map((r) => this.unwrapId(r, 'childId')));
+  }
+
+  /** Sync F4b: `PUT /api/clients/{id}/children/{childId} { gender, age }` → 204 (ClientEndpoints.cs:86). */
+  updateChild(
+    clientId: string,
+    childId: string,
+    child: { gender: 'M' | 'F'; age: number },
+  ): Observable<unknown> {
+    return this.put(`/clients/${clientId}/children/${childId}`, {
+      gender: child.gender,
+      age: child.age,
+    });
+  }
+
+  /** Sync F4b: `DELETE /api/clients/{id}/children/{childId}` → 204 (ClientEndpoints.cs:100). */
+  removeChild(clientId: string, childId: string): Observable<unknown> {
+    return this.delete(`/clients/${clientId}/children/${childId}`);
+  }
+
   private normalize(source: unknown): CrmClient {
     return {
       id: this.field<string>(source, 'id') ?? '',
