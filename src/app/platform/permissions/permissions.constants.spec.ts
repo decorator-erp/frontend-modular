@@ -45,6 +45,11 @@ describe('PERM catalog', () => {
     });
   });
 
+  it('has project.manage_access, listed in the matrix (crmp P1-B, ProjectsPermissions.cs:35)', () => {
+    expect(PERM.projects.manageAccess).toBe('project.manage_access');
+    expect(ALL_PERMISSIONS.some((p) => p.key === 'project.manage_access')).toBe(true);
+  });
+
   it('exposes the UI-only DMS task-detail gate in its live claim spelling', () => {
     expect(PERM.dms.taskDetail.view).toBe('dms.task_detail.view');
   });

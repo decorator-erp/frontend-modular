@@ -140,6 +140,8 @@ const BACKEND_CODES = [
   'crm.portal.ShareNotFound', // Crm/Crm.Domain/Errors/Errors.cs:501
   'crm.portal.TitleTooLong', // Crm/Crm.Domain/Errors/Errors.cs:521
   'crm.portal.UpdateNotFound', // Crm/Crm.Domain/Errors/Errors.cs:503
+  // crmp P1-B: a grantee below Editor writing CRM (CrmProjectAccessErrors).
+  'crm.project.InsufficientLevel', // Crm/Crm.Domain/Errors/Errors.cs:503
   'crm.portal.UpdateTitleRequired', // Crm/Crm.Domain/Errors/Errors.cs:530
   'crm.projects.Inactive', // Crm/Crm.Domain/Errors/Errors.cs:442
   'crm.space_types.CodeRequired', // Crm/Crm.Domain/Errors/Errors.cs:187
@@ -222,6 +224,20 @@ const CRMP_CODES = [
   'projects.NotDeletable', // Projects/Projects.Domain/Errors/Errors.cs:57
   'projects.StagesOpen', // Projects/Projects.Domain/Errors/Errors.cs:47
   'projects.TasksOpen', // Projects/Projects.Domain/Errors/Errors.cs:52
+  // crmp P1-B: project access grants (ProjectAccessGrantErrors).
+  'projects.access_grants.AboveOwnLevel', // Projects/Projects.Domain/Errors/Errors.cs:367
+  'projects.access_grants.AlreadyGranted', // Projects/Projects.Domain/Errors/Errors.cs:388
+  'projects.access_grants.AlreadyMember', // Projects/Projects.Domain/Errors/Errors.cs:384
+  'projects.access_grants.AlreadyRevoked', // Projects/Projects.Domain/Errors/Errors.cs:394
+  'projects.access_grants.ConcurrentUpdate', // Projects/Projects.Domain/Errors/Errors.cs:397
+  'projects.access_grants.EmployeeNotFound', // Projects/Projects.Domain/Errors/Errors.cs:359
+  'projects.access_grants.InvalidWindow', // Projects/Projects.Domain/Errors/Errors.cs:376
+  'projects.access_grants.NoAreas', // Projects/Projects.Domain/Errors/Errors.cs:379
+  'projects.access_grants.NotAllowed', // Projects/Projects.Domain/Errors/Errors.cs:363
+  'projects.access_grants.NotEditable', // Projects/Projects.Domain/Errors/Errors.cs:391
+  'projects.access_grants.NotFound', // Projects/Projects.Domain/Errors/Errors.cs:356
+  'projects.access_grants.SelfGrant', // Projects/Projects.Domain/Errors/Errors.cs:370
+  'projects.access_grants.StageNotInProject', // Projects/Projects.Domain/Errors/Errors.cs:373
   'projects.comments.NotAuthor', // Projects/Projects.Domain/Errors/Errors.cs:184
   'projects.comments.NotFound', // Projects/Projects.Domain/Errors/Errors.cs:181
   'projects.members.AlreadyMember', // Projects/Projects.Domain/Errors/Errors.cs:150
