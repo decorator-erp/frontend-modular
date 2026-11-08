@@ -58,6 +58,11 @@ export class NotificationDeepLink {
               },
             });
           }
+          // crmp P1-B: a revoked grant leaves no project to open; Shared with me shows what is left.
+          if (view.type === NotificationType.ProjectAccessRevoked) {
+            return ['/projects', 'shared-with-me'];
+          }
+          // ProjectAccessGranted (184) lands on the project like any project notification.
           return ['/projects', id]; // single id — no fetch
 
         // crmp A-4: SiteApproved / SiteRejected (530/531) carry the survey id; the survey page
