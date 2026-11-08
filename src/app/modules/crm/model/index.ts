@@ -60,6 +60,7 @@ export interface CrmSpaceType {
 
 export * from './catalog.model';
 export * from './space.model';
+export * from './portal.model';
 
 // §3 — Checklist templates were retired in feature 006. The catalog (§2a) replaced
 // them: a Section/Field/Option is now just a node at some depth. See catalog.model.ts.
