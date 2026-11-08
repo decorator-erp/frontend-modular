@@ -2111,4 +2111,21 @@ export const AR: Partial<Record<CatalogKey, string>> = {
   'swm.starts': 'يبدأ {rel}',
   'swm.noEnd': 'بلا نهاية',
   'swm.someStages': 'مراحل محددة ({n})',
+  // sync W2-10 task department / stage cost
+  'pt.department': 'القسم',
+  'pt.stageCost': 'التكلفة',
+  // sync W2-3 locked documents
+  'docs.locked': 'مقفل — لا يمكن حذفه أو نقله',
+  // sync W1-7 variation sign dialog / W1-11 ledger allocate
+  'var.sign.title': 'تسجيل توقيع العميل',
+  'var.sign.noClient': 'لا يوجد عميل لهذا المشروع، لذا لا يمكن توقيع التغيير.',
+  'var.sign.client': 'وقّع بواسطة (عميل المشروع)',
+  'var.sign.pickDocument': 'المستند الموقّع',
+  'var.sign.pickHint': 'اختر مستندًا من مستندات المشروع، أو اكتب مسار المستند أدناه.',
+  'var.sign.pickPlaceholder': 'اختر مستندًا من المشروع',
+  'var.sign.path': 'مسار المستند الموقّع',
+  'var.sign.cancel': 'إلغاء',
+  'var.sign.submit': 'توقيع',
+  'var.sign.needsSignature': 'يُعتمد فرق العميل بتوقيع العميل — استخدم «توقيع».',
+  'ledger.allocate': 'تخصيص',
 };

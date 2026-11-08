@@ -72,11 +72,12 @@ describe('ProjectEditDialogComponent', () => {
     expect(closedWith).toBe(true);
   });
 
-  it('coerces blank description/notes to null', () => {
+  // Sync W2-5: the backend reads null as "keep" (Project.cs:62-84), so an emptied field is sent as ''.
+  it("sends '' for a field the user emptied, null for one that was already empty", () => {
     const c = make(data);
     c.form.setValue({ name: 'X', description: '   ', notes: '' });
     c.submit();
-    expect(updated?.req).toEqual({ name: 'X', description: null, notes: null });
+    expect(updated?.req).toEqual({ name: 'X', description: '', notes: null });
   });
 
   it('blocks submit and does not call update when name is empty', () => {

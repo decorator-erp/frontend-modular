@@ -45,7 +45,6 @@ export interface TaskFormDialogData {
     order: number;
     weight: number;
     priority: TaskPriority;
-    estimatedStartDate: string | null;
     dueDate: string | null;
     description: string | null;
     notes: string | null;
@@ -64,8 +63,8 @@ function weightPositive(control: AbstractControl): ValidationErrors | null {
 /**
  * Create / edit a project task (DMS Forms · Task). Create offers stage +
  * assignee; edit drops both (assignment and status have their own actions per
- * the handoff). Priority is single-select chips. Create posts `startDate`; edit
- * sends `estimatedStartDate` — matching the two DTOs exactly.
+ * the handoff). Priority is single-select chips. Sync W1-4: no start-date field — the task
+ * request (dms `TaskEndpoints.cs:228`) has no planned start, so one would save nothing.
  */
 @Component({
   selector: 'app-task-form-dialog',
@@ -164,16 +163,6 @@ function weightPositive(control: AbstractControl): ValidationErrors | null {
           </pera-form-field>
         }
 
-        <pera-form-field
-          label="Estimated start"
-          hint="optional"
-          [error]="errorOf('estimatedStartDate')"
-        >
-          <pera-date-input
-            formControlName="estimatedStartDate"
-            [error]="errorOf('estimatedStartDate')"
-          />
-        </pera-form-field>
         <pera-form-field label="Due date" hint="optional" [error]="errorOf('dueDate')">
           <pera-date-input formControlName="dueDate" [error]="errorOf('dueDate')" />
         </pera-form-field>
@@ -221,7 +210,6 @@ export class TaskFormDialogComponent {
     weight: [String(this.data.initial?.weight ?? 1), [Validators.required, weightPositive]],
     priority: [this.data.initial?.priority ?? ('Medium' as TaskPriority), [Validators.required]],
     assignedToId: [null as string | null],
-    estimatedStartDate: [this.data.initial?.estimatedStartDate ?? ''],
     dueDate: [this.data.initial?.dueDate ?? ''],
     description: [this.data.initial?.description ?? '', [Validators.maxLength(2000)]],
     notes: [this.data.initial?.notes ?? '', [Validators.maxLength(1000)]],

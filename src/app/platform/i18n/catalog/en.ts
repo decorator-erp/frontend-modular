@@ -2201,6 +2201,24 @@ export const EN = {
   'swm.starts': 'Starts {rel}',
   'swm.noEnd': 'No end',
   'swm.someStages': 'Specific stages ({n})',
+  // sync W2-10 task department / stage cost
+  'pt.department': 'Department',
+  'pt.stageCost': 'Cost',
+  // sync W2-3 locked documents
+  'docs.locked': 'Locked — cannot be deleted or moved',
+  // sync W1-7 variation sign dialog / W1-11 ledger allocate
+  'var.sign.title': 'Record client signature',
+  'var.sign.noClient': 'This project has no client, so the variation cannot be signed.',
+  'var.sign.client': 'Signed by (project client)',
+  'var.sign.pickDocument': 'Signed document',
+  'var.sign.pickHint': 'Pick a project document, or type the document path below.',
+  'var.sign.pickPlaceholder': 'Pick a project document',
+  'var.sign.path': 'Signed document path',
+  'var.sign.cancel': 'Cancel',
+  'var.sign.submit': 'Sign',
+  'var.sign.needsSignature':
+    "A client difference is approved by the client's signature — use Sign.",
+  'ledger.allocate': 'Allocate',
 } as const;
 
 /** The key set of record. Every catalog lookup is typed against this. */

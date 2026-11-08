@@ -37,6 +37,19 @@ describe('TaskAttachmentService (crmp A-2)', () => {
     expect(task).toBe('T1:a.pdf');
   });
 
+  it('sync W2-3: maps isLocked, version and rootDocumentId (defaults when absent)', () => {
+    let rows: { isLocked?: boolean; version?: number; rootDocumentId?: string | null }[] = [];
+    service.getByTask('T1').subscribe((l) => (rows = l));
+    http.expectOne(`${api}/project-tasks/T1/documents`).flush([
+      { id: 'D2', fileName: 'b.pdf', isLocked: true, version: 2, rootDocumentId: 'D1' },
+      { id: 'D3', fileName: 'c.pdf' },
+    ]);
+    expect(rows.map((r) => [r.isLocked, r.version, r.rootDocumentId])).toEqual([
+      [true, 2, 'D1'],
+      [false, 1, null],
+    ]);
+  });
+
   it('lists stage and project files on the Documents routes (DocumentEndpoints.cs:77,57)', () => {
     service.getByStage('S1').subscribe();
     http.expectOne(`${api}/project-stages/S1/documents`).flush([]);

@@ -47,7 +47,7 @@ const FOLDERS: FolderDef[] = [
  * Stage Files browser — the `.pnl` "Files" block from the DMS Stage Detail
  * design, mirroring the **Task Detail** Files panel (the agreed pattern): a
  * content-kind folder grid built from the stage's attachments
- * (`/api/task-attachments/by-stage/{stageId}`), hiding empty buckets. Opening a
+ * (`GET /api/project-stages/{stageId}/documents`), hiding empty buckets. Opening a
  * folder pops the shared `FilesFolderModalComponent` floating window (tile grid +
  * in-place preview), not an in-panel grid or a side drawer. The panel + head
  * "Documentation" buttons open the project-documents browser (where uploads live,
@@ -174,6 +174,8 @@ export class DmsStageFilesComponent implements OnInit {
         sizeBytes: a.fileSizeBytes,
         uploadedOn: a.uploadedOnUtc,
         isImage: kind === 'image',
+        locked: !!a.isLocked,
+        version: a.version ?? 1,
       };
     }),
   );

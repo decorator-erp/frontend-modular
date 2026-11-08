@@ -58,9 +58,9 @@ export class GateRemovedError extends Error {
 }
 
 /**
- * crmp review R2-1: a gate the frontend cannot re-create faithfully. `GateConditionResponse` carries
- * no `referencedDocumentId` (dms `Projects.Contracts/Gates/GateContracts.cs:8-11`), so a
- * DocumentApproved gate read from the list cannot be rebuilt: its create would answer 400
+ * crmp review R2-1: a gate the frontend cannot re-create faithfully. Before sync S2,
+ * `GateConditionResponse` carried no `referencedDocumentId` (dms `Projects.Contracts/Gates/GateContracts.cs:8-12`
+ * now does, and `normalizeGate` reads it); a DocumentApproved gate read without one still cannot be rebuilt: its create would answer 400
  * `gate_conditions.InvalidReference` (`DocumentApprovedHandler.cs:26-28`) after the delete went
  * through. `recreate` refuses such a request before deleting anything.
  */
@@ -234,9 +234,10 @@ export class ProjectService extends ApiService {
       clientName: this.field<string>(source, 'clientName') ?? '',
       // ProjectResponse / ProjectDetailsProjectResponse name the owner `OwnerId` (an hr employee id)
       // and the planned dates `EstimatedStartDate` / `EstimatedEndDate` (ProjectContracts.cs:18-22,
-      // 66-70). Neither carries an owner name or a budget: those stay '' / 0 and the pages show '—'.
+      // 66-70). Sync S6: ProjectResponse adds `ClientName` / `OwnerName` (either may be absent or
+      // null). There is no budget on it: that stays 0 and the list no longer shows a Budget column.
       productOwnerId: this.field<string>(source, 'ownerId', 'productOwnerId') ?? '',
-      productOwnerName: this.field<string>(source, 'productOwnerName') ?? '',
+      productOwnerName: this.field<string>(source, 'ownerName', 'productOwnerName') ?? '',
       estimatedBudget: this.num(this.field(source, 'estimatedBudget')),
       progressPercentage: this.num(this.field(source, 'progressPercentage', 'progress')),
       startDate: this.field<string | null>(source, 'estimatedStartDate', 'startDate') ?? null,
@@ -275,6 +276,8 @@ export class ProjectService extends ApiService {
       startedOnUtc: this.field<string | null>(source, 'startedOnUtc', 'actualStartDate') ?? null,
       completedOnUtc: this.field<string | null>(source, 'completedOnUtc', 'actualEndDate') ?? null,
       notes: this.field<string | null>(source, 'notes') ?? null,
+      // Sync W2-10: `ProjectStageResponse.Cost` (StageContracts.cs:15); null when absent or unset.
+      cost: this.numOrNull(this.field(source, 'cost')),
       tasks: (Array.isArray(rawTasks) ? rawTasks : []).map((t) => this.normalizeTask(t, projectId)),
       financial: this.field<ProjectStageFinancialBlock>(source, 'financial'),
       // Feature 004 — present only on the details/with-tasks responses. Non-null ⇔ CRM
@@ -302,6 +305,7 @@ export class ProjectService extends ApiService {
       priority: this.mapEnum<TaskPriority>(this.field(source, 'priority'), this.PRIORITY, 'Medium'),
       weight: this.num(this.field(source, 'weight')),
       notes: this.field<string | null>(source, 'notes') ?? null,
+      departmentId: this.field<string | null>(source, 'departmentId') ?? null,
       estimatedStartDate: this.field<string | null>(source, 'estimatedStartDate') ?? null,
       startedOnUtc: this.field<string | null>(source, 'startedOnUtc', 'actualStartDate') ?? null,
       completedOnUtc: this.field<string | null>(source, 'completedOnUtc', 'actualEndDate') ?? null,
@@ -383,9 +387,11 @@ export class ProjectService extends ApiService {
         this.mapEnum<GateStatus>(this.field(source, 'status'), this.GATE_STATUS, 'Pending') ===
           'Satisfied',
       approvalId: this.field<string | null>(source, 'approvalId') ?? null,
-      satisfiedById: this.field<string | null>(source, 'satisfiedById') ?? null,
-      satisfiedAt: this.field<string | null>(source, 'satisfiedAt') ?? null,
-      satisfiedNote: this.field<string | null>(source, 'satisfiedNote') ?? null,
+      // Sync S2: GateConditionResponse names these ResolvedById / ResolvedAt / ResolutionNote
+      // (GateContracts.cs:8-12); the old names stay as a fallback, and all three may be absent.
+      satisfiedById: this.field<string | null>(source, 'resolvedById', 'satisfiedById') ?? null,
+      satisfiedAt: this.field<string | null>(source, 'resolvedAt', 'satisfiedAt') ?? null,
+      satisfiedNote: this.field<string | null>(source, 'resolutionNote', 'satisfiedNote') ?? null,
     };
   }
 

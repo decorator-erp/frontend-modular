@@ -29,6 +29,10 @@ export interface AttachmentItem {
   folderId?: string | null;
   /** Pre-resolved thumbnail URL for images. Falls back to a styled placeholder when absent. */
   thumbUrl?: string | null;
+  /** Locked: the row offers no delete and blocks bulk move/delete; a lock glyph shows instead. */
+  locked?: boolean;
+  /** Short version tag shown in list view (e.g. `v2`); absent for a first version. */
+  versionLabel?: string | null;
 }
 
 export interface StorageUsage {
@@ -238,7 +242,7 @@ export type AttachmentView = 'grid' | 'list';
             <span class="ct">{{ selectedIds().size }} selected</span>
             <div class="acts">
               <button class="ak" (click)="bulkDownload.emit(selectedIdsArray())">Download</button>
-              @if (canManage()) {
+              @if (canManage() && !selectionLocked()) {
                 <button class="ak" (click)="bulkMove.emit(selectedIdsArray())">Move</button>
                 <button
                   class="ak solid"
@@ -299,9 +303,35 @@ export type AttachmentView = 'grid' | 'list';
                     <span class="at-link"><span class="dot"></span>{{ i.linkLabel }}</span>
                   }
                 </span>
-                <span></span>
+                <span>
+                  @if (i.versionLabel) {
+                    <span class="font-mono fs-label text-text-muted" data-version>{{
+                      i.versionLabel
+                    }}</span>
+                  }
+                </span>
                 <span class="at-when">{{ shortDate(i.uploadedOn) }}</span>
-                @if (canManage()) {
+                @if (i.locked) {
+                  <span
+                    class="at-act inline-flex items-center justify-center cursor-default"
+                    [title]="lockedLabel()"
+                    [attr.aria-label]="lockedLabel()"
+                    data-locked
+                  >
+                    <svg
+                      width="12"
+                      height="12"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="1.7"
+                      aria-hidden="true"
+                    >
+                      <rect x="5" y="11" width="14" height="10" />
+                      <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+                    </svg>
+                  </span>
+                } @else if (canManage()) {
                   <button
                     type="button"
                     class="at-act"
@@ -957,6 +987,8 @@ export class PeraAttachmentsShellComponent {
   readonly uploadHint = input<string>('PDF, JPG, PNG, DWG — up to 25 MB each.');
   /** When false, all mutating controls (upload, new folder, delete, move) are hidden. */
   readonly canManage = input<boolean>(true);
+  /** Tooltip / accessible label for a locked row's lock glyph (caller supplies the copy). */
+  readonly lockedLabel = input<string>('Locked');
 
   readonly folderSelect = output<string>();
   readonly folderCreate = output<void>();
@@ -1029,6 +1061,12 @@ export class PeraAttachmentsShellComponent {
     else next.add(id);
     this.selectedIds.set(next);
   }
+
+  /** True when any selected row is locked — bulk move/delete are then withheld. */
+  readonly selectionLocked = computed(() => {
+    const ids = this.selectedIds();
+    return this.items().some((i) => i.locked && ids.has(i.id));
+  });
 
   clearSelection(): void {
     this.selectedIds.set(new Set());

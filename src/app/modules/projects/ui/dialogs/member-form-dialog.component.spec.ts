@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { of } from 'rxjs';
 import { MemberFormDialogComponent, MemberFormDialogData } from './member-form-dialog.component';
 import { StageTeamsService } from '../../data/stage-teams.service';
-import { EmployeeService } from '@modules/people';
+import { DepartmentService, EmployeeService } from '@modules/people';
 import { ErrorHandlerService } from '@platform/http/error-handler.service';
 import { ToastService } from '@platform/feedback/toast.service';
 import { PERA_MODAL_DATA, PeraModalRef } from '@ds';
@@ -29,7 +29,16 @@ describe('MemberFormDialogComponent', () => {
           provide: StageTeamsService,
           useValue: {
             getByProject: () =>
-              of([{ id: 'team1', departmentName: 'Engineering', memberCount: 2 }]),
+              of([
+                { id: 'team1', departmentName: 'Engineering', memberCount: 2 },
+                {
+                  id: 'team2',
+                  departmentId: 'd2',
+                  departmentName: '',
+                  memberCount: 0,
+                  members: [{}],
+                },
+              ]),
             addMember: (
               projectId: string,
               stageTeamId: string,
@@ -48,6 +57,10 @@ describe('MemberFormDialogComponent', () => {
         {
           provide: EmployeeService,
           useValue: { listPaged: () => of({ items: [{ id: 'e1', fullName: 'Sara Mohamed' }] }) },
+        },
+        {
+          provide: DepartmentService,
+          useValue: { getAll: () => of([{ id: 'd2', name: 'Joinery' }]) },
         },
         {
           provide: ErrorHandlerService,
@@ -96,5 +109,10 @@ describe('MemberFormDialogComponent', () => {
     c.submit();
     expect(added).toBeNull();
     expect(closedWith).toBeUndefined();
+  });
+
+  it('sync W2-4: labels each team by its department name, resolving a missing one from the department list', () => {
+    const c = make({ mode: 'create', projectId: 'p1' });
+    expect(c.teamOptions().map((o) => o.label)).toEqual(['Engineering · 2', 'Joinery · 1']);
   });
 });

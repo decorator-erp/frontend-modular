@@ -78,11 +78,11 @@ export const COMMENT_PAGE_SIZE = 50;
     <!-- Comments (design .cmt) -->
     @for (c of comments(); track c.id) {
       <div class="group flex gap-3 px-4 py-4 border-b border-border-soft last:border-b-0">
-        <pera-avatar [name]="c.employeeName || 'Member'" size="md" />
+        <pera-avatar [name]="authorName(c)" size="md" />
         <div class="flex-1 min-w-0">
           <div class="flex items-center gap-2 mb-1">
-            <span class="fs-caption font-semibold text-text-primary">{{
-              c.employeeName || 'Member'
+            <span class="fs-caption font-semibold text-text-primary" data-author>{{
+              authorName(c)
             }}</span>
             @if (c.role) {
               <span class="fs-label text-text-muted border border-border px-1.5 py-px">{{
@@ -166,6 +166,16 @@ export class CommentsThreadComponent implements OnInit {
   readonly taskId = input.required<string>();
   /** crmp P1-B: the task's stage, for a stage-limited grant. */
   readonly stageId = input<string | null>(null);
+  /**
+   * Sync W2-4: employee id → name from the host page's directory read. `TaskCommentResponse` carries
+   * only `EmployeeId` (dms TaskContracts.cs:91), so without this every author read 'Member'.
+   */
+  readonly authorNames = input<ReadonlyMap<string, string>>(new Map());
+
+  /** The author's name: the row's own name, else the directory's, else the neutral label. */
+  authorName(c: TaskComment): string {
+    return c.employeeName || this.authorNames().get(c.employeeId) || 'Member';
+  }
 
   private readonly api = inject(TaskCommentService);
   private readonly errors = inject(ErrorHandlerService);

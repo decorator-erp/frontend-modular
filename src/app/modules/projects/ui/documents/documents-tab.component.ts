@@ -19,6 +19,7 @@ import { ToastService } from '@platform/feedback/toast.service';
 import { PermissionsService } from '@platform/permissions';
 import { PERM } from '@platform/permissions';
 import { ProjectAccessStore } from '../../stores/project-access.store';
+import { CatalogService } from '@platform/i18n/catalog.service';
 import { claimCheck } from '../../model/project-access';
 import {
   AttachmentFolder,
@@ -46,6 +47,7 @@ import {
       [items]="items()"
       [selectedFolderId]="selectedFolderId()"
       [canManage]="canManage()"
+      [lockedLabel]="catalog.t('docs.locked')"
       defaultView="list"
       uploadHint="Drag files here. PDFs, drawings, photos all welcome."
       (folderSelect)="onFolderSelect($event)"
@@ -71,6 +73,7 @@ export class DocumentsTabComponent implements OnInit {
   private readonly perms = inject(PermissionsService);
 
   private readonly access = inject(ProjectAccessStore);
+  protected readonly catalog = inject(CatalogService);
 
   /**
    * crmp P1-B: project documents are the Documents area at project level; a grantee's
@@ -103,6 +106,9 @@ export class DocumentsTabComponent implements OnInit {
       sizeBytes: d.sizeBytes,
       uploadedOn: d.createdAtUtc,
       folderId: d.folderId ?? 'all',
+      // Sync W2-3: a locked document offers no delete/move; a later revision shows its number.
+      locked: !!d.isLocked,
+      versionLabel: (d.version ?? 1) > 1 ? `v${d.version}` : null,
     })),
   );
 
@@ -184,6 +190,7 @@ export class DocumentsTabComponent implements OnInit {
   }
 
   async onDelete(item: AttachmentItem): Promise<void> {
+    if (item.locked) return;
     const ok = await this.confirm.open({
       title: 'Delete document',
       body: `Delete "${item.name}"? This cannot be undone.`,

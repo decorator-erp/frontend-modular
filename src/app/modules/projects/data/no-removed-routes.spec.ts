@@ -10,6 +10,7 @@ import type * as TS from 'typescript';
 
 interface NodeFs {
   readdirSync(path: string): string[];
+  statSync(path: string): { isDirectory(): boolean };
   readFileSync(path: string, encoding: 'utf8'): string;
 }
 
@@ -24,10 +25,24 @@ async function typescript(): Promise<typeof TS> {
 
 const ROOT = (globalThis as unknown as { process: { cwd(): string } }).process.cwd();
 // R1-F10: approvals/data too — it held the last PUT /project-stages|tasks/{id}/reject.
+// Sync W1-1: projects/ui too (recursively) — a component posted FormData to `${apiUrl}/task-attachments`.
 const DATA_DIRS = [
   `${ROOT}/src/app/modules/projects/data`,
   `${ROOT}/src/app/modules/approvals/data`,
+  `${ROOT}/src/app/modules/projects/ui`,
 ];
+
+/** Every non-spec `.ts` file under `dir`, recursively, as a path relative to it. */
+function tsFiles(fs: NodeFs, dir: string, prefix = ''): string[] {
+  return fs.readdirSync(dir).flatMap((name) => {
+    const full = `${dir}/${name}`;
+    if (fs.statSync(full).isDirectory()) return tsFiles(fs, full, `${prefix}${name}/`);
+    return name.endsWith('.ts') && !name.endsWith('.spec.ts') ? [`${prefix}${name}`] : [];
+  });
+}
+
+/** A literal that builds the URL off `environment.apiUrl` is scanned from the path after it. */
+const API_URL_PREFIX = /^\$\{[^}]*apiUrl\}/;
 
 /** Old route prefixes and the row that removed or moved each one. */
 const REMOVED: readonly [RegExp, string][] = [
@@ -59,8 +74,7 @@ async function urlLiterals(): Promise<{ file: string; url: string }[]> {
   const ts = await typescript();
   const out: { file: string; url: string }[] = [];
   for (const dir of DATA_DIRS) {
-    const files = fs.readdirSync(dir).filter((f) => f.endsWith('.ts') && !f.endsWith('.spec.ts'));
-    for (const file of files) {
+    for (const file of tsFiles(fs, dir)) {
       const code = fs.readFileSync(`${dir}/${file}`, 'utf8');
       const src = ts.createSourceFile(file, code, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
       const visit = (node: TS.Node): void => {
@@ -69,7 +83,7 @@ async function urlLiterals(): Promise<{ file: string; url: string }[]> {
           ts.isNoSubstitutionTemplateLiteral(node) ||
           ts.isTemplateExpression(node)
         ) {
-          const text = node.getText(src).slice(1, -1);
+          const text = node.getText(src).slice(1, -1).replace(API_URL_PREFIX, '');
           if (text.startsWith('/')) out.push({ file, url: text });
           return;
         }
