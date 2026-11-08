@@ -1,6 +1,15 @@
-import { Injectable, Signal, WritableSignal, inject, signal } from '@angular/core';
+import {
+  Injectable,
+  Signal,
+  WritableSignal,
+  effect,
+  inject,
+  signal,
+  untracked,
+} from '@angular/core';
 import { catchError, of } from 'rxjs';
 import { EmployeeService } from '@modules/people';
+import { AuthStore } from '@platform/auth/auth.store';
 import { handled } from '@platform/http/handled-errors';
 import { PermissionsService } from '@platform/permissions';
 import { ProjectService } from '../data/project.service';
@@ -31,6 +40,21 @@ export class ProjectAccessStore {
   private readonly meId = signal<string | null>(null);
   private readonly failed = new Set<string>();
   private meRequested = false;
+  /** The user the cache belongs to; `undefined` until the first auth read. */
+  private owner: string | null | undefined = undefined;
+
+  constructor() {
+    // Review B5 (CP-6): this store is a root singleton and logout only navigates (no reload), so a
+    // logout or a different login drops every cached project (and `myLevel`) and the employee id.
+    const auth = inject(AuthStore);
+    effect(() => {
+      const uid = auth.user()?.userId ?? null;
+      untracked(() => {
+        if (this.owner !== undefined && this.owner !== uid) this.reset();
+        this.owner = uid;
+      });
+    });
+  }
 
   /** The project signal for `id`, fetched once (null until it arrives, and on a failed read). */
   project(id: string): Signal<Project | null> {
@@ -102,6 +126,16 @@ export class ProjectAccessStore {
     );
   }
 
+  /** Forget everything user-specific; slots handed out go null and are read again on `ensure()`. */
+  private reset(): void {
+    for (const [id, s] of this.byId) {
+      s.set(null);
+      this.failed.add(id);
+    }
+    this.meId.set(null);
+    this.meRequested = false;
+  }
+
   private slot(id: string): WritableSignal<Project | null> {
     let s = this.byId.get(id);
     if (!s) {
@@ -128,7 +162,13 @@ export class ProjectAccessStore {
     this.meRequested = true;
     this.employees
       .getMe({ context: handled(403, 404) })
-      .pipe(catchError(() => of(null)))
+      .pipe(
+        catchError(() => {
+          // Review B5 (CP-6): a failed read is tried again on the next ensure()/seed().
+          this.meRequested = false;
+          return of(null);
+        }),
+      )
       .subscribe((e) => this.meId.set(e?.id ?? null));
   }
 }
