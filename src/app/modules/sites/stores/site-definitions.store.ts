@@ -68,7 +68,10 @@ export class SiteDefinitionsStore {
    * (SiteDefinitionEndpoints.cs:43,164), so they are read per row — at most `DETAIL_CONCURRENCY` at a
    * time — and kept: a later `load()` reads only rows it has not seen (A6). `full` drops them first
    * (Retry, a 409 conflict). Writes on this page change neither links nor captured values; an item's
-   * active flag changes its modules' field counts, which `itemActiveChanged` re-reads.
+   * active flag changes its modules' field counts, which `itemActiveChanged` re-reads. Captured
+   * values change elsewhere (capture, other users), so a decision that hangs on them — Change shape,
+   * the toggle's linked modules — reads that item's usage fresh first (BL-2). Reads of a superseded
+   * load never land (BL-2).
    */
   load(full = false): void {
     this.reloadAll = (f) => this.load(f);
@@ -158,10 +161,15 @@ export class SiteDefinitionsStore {
     );
   }
 
-  /** A6: an item was (de)activated — its modules' field counts change (D2 lists active items). */
-  itemActiveChanged(itemId: string): void {
-    const linked = new Set((this.usage()[itemId]?.modules ?? []).map((m) => m.moduleId));
+  /**
+   * A6: an item was (de)activated — its modules' field counts change (D2 lists active items). Its
+   * links are read fresh (BL-2); when that read fails every count is dropped and re-read.
+   */
+  async itemActiveChanged(itemId: string): Promise<void> {
+    const u = await this.freshUsage(itemId);
+    const linked = u ? new Set(u.modules.map((m) => m.moduleId)) : null;
     this.fieldCounts.update((c) => {
+      if (!linked) return {};
       const next = { ...c };
       for (const id of linked) delete next[id];
       return next;
@@ -175,6 +183,7 @@ export class SiteDefinitionsStore {
     into: { update(fn: (m: Record<string, V | null>) => Record<string, V | null>): void },
   ): void {
     if (!rows.length) return;
+    const gen = this.generation;
     from(rows)
       .pipe(
         mergeMap(
@@ -187,15 +196,25 @@ export class SiteDefinitionsStore {
         ),
         toArray(),
       )
-      .subscribe((pairs) => into.update((m) => ({ ...m, ...Object.fromEntries(pairs) })));
+      .subscribe((pairs) => {
+        // BL-2: a later load (Retry, a 409 reload) cleared or re-reads these; drop the stale values
+        if (gen !== this.generation) return;
+        into.update((m) => ({ ...m, ...Object.fromEntries(pairs) }));
+      });
   }
 
   /** One item's usage, fresh (the drawer). */
   refreshUsage(itemId: string): void {
-    this.api
-      .usage(itemId)
-      .pipe(catchError(() => of(null)))
-      .subscribe((u) => this.usage.update((m) => ({ ...m, [itemId]: u })));
+    void this.freshUsage(itemId);
+  }
+
+  /** BL-2: one item's usage read now and cached; null when the read fails. */
+  async freshUsage(itemId: string): Promise<SiteItemUsage | null> {
+    const u = await firstValueFrom(this.api.usage(itemId).pipe(catchError(() => of(null))), {
+      defaultValue: null,
+    });
+    this.usage.update((m) => ({ ...m, [itemId]: u }));
+    return u;
   }
 
   /**

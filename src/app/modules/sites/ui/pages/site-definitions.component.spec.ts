@@ -2,12 +2,17 @@ import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { HttpErrorResponse } from '@angular/common/http';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
-import { BehaviorSubject, of, throwError } from 'rxjs';
+import { BehaviorSubject, Subject, of, throwError } from 'rxjs';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ConfirmService, DrawerService, ModalService } from '@ds';
 import { ToastService } from '@platform/feedback/toast.service';
 import { SiteDefinitionService } from '../../data/site-definition.service';
-import type { SiteItem, SiteModule } from '../../model/site-definition.model';
+import type {
+  SiteItem,
+  SiteItemUsage,
+  SiteModule,
+  SiteModuleSchema,
+} from '../../model/site-definition.model';
 import { FIELDS } from '../../testing/site-fixtures';
 import type { DefFormData } from '../definitions/site-def-form-dialog.component';
 import type { SiteItemDrawerData } from '../definitions/site-item-drawer.component';
@@ -228,6 +233,7 @@ describe('SiteDefinitionsComponent (sites S-10)', () => {
     const d = ((h.drawerOpen.mock.calls[0] as unknown[])[1] as { data: SiteItemDrawerData }).data;
     const width = fx.componentInstance['store'].items()!.find((i) => i.code === 'width_cm')!;
     d.shape(width);
+    await tick();
     expect(formOf(h.modalOpen).data.note).toContain('nothing has been captured');
     h.api['deleteItem'].mockReturnValue(conflict('sites.ItemInUse'));
     d.remove(width);
@@ -298,8 +304,84 @@ describe('SiteDefinitionsComponent (sites S-10)', () => {
     await tick();
     await tick();
     expect(h.api['schema']).toHaveBeenCalledTimes(2);
-    expect(h.api['usage']).toHaveBeenCalledTimes(usage);
+    // BL-2: only the toggled item's usage is re-read, to know its modules now
+    expect(h.api['usage']).toHaveBeenCalledTimes(usage + 1);
+    expect(h.api['usage']).toHaveBeenLastCalledWith('I-kind');
     expect(store.usage()['I-free']).toBeTruthy();
+  });
+
+  it('BL-2: a Retry while the first usage / count reads are in flight never merges their stale values', async () => {
+    h = (TestBed.resetTestingModule(), setup({ tab: 'items' }));
+    const pending: { id: string; s: Subject<SiteItemUsage> }[] = [];
+    h.api['usage'].mockImplementation((id: string) => {
+      const s = new Subject<SiteItemUsage>();
+      pending.push({ id, s });
+      return s;
+    });
+    const schemas: Subject<SiteModuleSchema>[] = [];
+    h.api['schema'].mockImplementation(() => {
+      const s = new Subject<SiteModuleSchema>();
+      schemas.push(s);
+      return s;
+    });
+    const fx = TestBed.createComponent(SiteDefinitionsComponent);
+    fx.detectChanges();
+    const store = fx.componentInstance['store'];
+    expect(pending.length).toBe(3);
+    store.load(true); // Retry / the 409 reload
+    expect(pending.length).toBe(6);
+    const answer = (from: number, count: number, fields: number) => {
+      for (const { id, s } of pending.slice(from, from + 3)) {
+        s.next({
+          itemId: id,
+          code: id,
+          hasCapturedValues: count > 0,
+          capturedValueCount: count,
+          modules: [],
+        });
+        s.complete();
+      }
+      const sch = schemas[from / 3];
+      sch.next({
+        moduleId: 'M1',
+        code: 'DOORS',
+        nameEn: 'D',
+        nameAr: 'D',
+        descriptionEn: null,
+        descriptionAr: null,
+        sortOrder: 1,
+        fields: FIELDS.slice(0, fields),
+      });
+      sch.complete();
+    };
+    answer(3, 9, 2); // the reload's reads land first…
+    expect(store.usage()['I-free']?.capturedValueCount).toBe(9);
+    answer(0, 1, 1); // …then the superseded ones
+    expect(store.usage()['I-free']?.capturedValueCount).toBe(9);
+    expect(store.fieldCounts()['M1']).toBe(2);
+  });
+
+  it('BL-2: Change shape decides "values captured" from a fresh usage read, not the cached one', async () => {
+    h = (TestBed.resetTestingModule(), setup({ tab: 'items' }));
+    const fx = TestBed.createComponent(SiteDefinitionsComponent);
+    fx.detectChanges();
+    const store = fx.componentInstance['store'];
+    const free = store.items()!.find((i) => i.code === 'free')!;
+    expect(store.usage()['I-free']?.hasCapturedValues).toBe(false);
+    // someone captured a value for it since the page loaded
+    h.api['usage'].mockReturnValue(
+      of({
+        itemId: 'I-free',
+        code: 'free',
+        hasCapturedValues: true,
+        capturedValueCount: 1,
+        modules: [],
+      }),
+    );
+    fx.componentInstance['shapeItem'](free);
+    await tick();
+    expect(formOf(h.modalOpen).data.noteTone).toBe('warning');
+    expect(store.usage()['I-free']?.capturedValueCount).toBe(1);
   });
 
   it('options: add → D20 under the item, edit → D13 under /options/{id}', async () => {

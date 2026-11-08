@@ -409,15 +409,12 @@ export class SiteDefinitionsComponent {
       itemId,
       store: this.store,
       edit: (i) => this.editItem(i),
-      shape: (i) => this.shapeItem(i),
+      shape: (i) => void this.shapeItem(i),
       toggleActive: (i) =>
         void this.toggle(
           () => this.api.setItemActive(i.id, !i.isActive),
           i.isActive,
-          () => {
-            this.store.itemActiveChanged(i.id);
-            this.store.load();
-          },
+          () => void this.store.itemActiveChanged(i.id).then(() => this.store.load()),
         ),
       remove: (i) => void this.removeItem(i),
       addOption: (i) => this.optionDialog(i, null),
@@ -436,8 +433,9 @@ export class SiteDefinitionsComponent {
     );
   }
 
-  private shapeItem(i: SiteItem): void {
-    const captured = !!this.store.usage()[i.id]?.hasCapturedValues;
+  /** BL-2: whether values were captured is read fresh — capture happens elsewhere, any time. */
+  private async shapeItem(i: SiteItem): Promise<void> {
+    const captured = !!(await this.store.freshUsage(i.id))?.hasCapturedValues;
     this.openForm(
       shapeForm(this.tt, i, captured, (req) =>
         this.store.run(
