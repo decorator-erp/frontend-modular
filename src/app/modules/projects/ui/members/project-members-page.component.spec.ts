@@ -193,4 +193,10 @@ describe('ProjectMembersPageComponent (crmp P-1)', () => {
       expect(access.refresh).toHaveBeenCalledWith('P1');
     });
   });
+
+  it('blind-all A2: the per-member level select names its trigger button', () => {
+    const { el } = setup();
+    const trigger = el.querySelector('[data-member-row] pera-select button');
+    expect(trigger?.getAttribute('aria-label')).toContain('Sara');
+  });
 });

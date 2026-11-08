@@ -176,7 +176,7 @@ const LEVEL_ACCESS: Record<ProjectLevel, ProjectMemberAccess> = {
                   @if (can('member.access')) {
                     <pera-select
                       size="sm"
-                      [attr.aria-label]="catalog.t('pm.changeLevel', { name: nameOf(m) })"
+                      [ariaLabel]="catalog.t('pm.changeLevel', { name: nameOf(m) })"
                       [options]="levelOptions()"
                       [disabled]="busy()"
                       [ngModel]="levelOf(m)"
