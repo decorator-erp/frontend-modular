@@ -1,8 +1,10 @@
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
-import { of } from 'rxjs';
+import { HttpErrorResponse } from '@angular/common/http';
+import { of, throwError } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
 import { EmployeeService } from '@modules/people';
+import { ToastService } from '@platform/feedback/toast.service';
 import { ProjectStageService } from '../../data/project-stage.service';
 import { ProjectTaskService } from '../../data/project-task.service';
 import { ProjectAccessStore } from '../../stores/project-access.store';
@@ -88,4 +90,25 @@ describe('ProjectTasksPageComponent (crmp P-3)', () => {
     f.detectChanges();
     expect(el.textContent).toContain('No tasks match');
   });
+
+  it.each([
+    [403, 0],
+    [500, 0],
+    [0, 0],
+    [404, 1],
+  ])(
+    'blind-all E1: a failed Load more with %s toasts %s time(s) here (the interceptor owns 0/403/5xx)',
+    (status, n) => {
+      const full = Array.from({ length: TASK_PAGE_SIZE }, (_, i) => task(i));
+      const { c } = make([full]);
+      const svc = TestBed.inject(ProjectTaskService) as unknown as {
+        getByProject: ReturnType<typeof vi.fn>;
+      };
+      svc.getByProject.mockReturnValueOnce(throwError(() => new HttpErrorResponse({ status })));
+      const toast = TestBed.inject(ToastService);
+      const show = vi.spyOn(toast, 'show');
+      c.loadMore();
+      expect(show).toHaveBeenCalledTimes(n);
+    },
+  );
 });

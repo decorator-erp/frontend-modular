@@ -271,6 +271,8 @@ export class ProjectTasksPageComponent implements OnInit {
       },
       error: (err: HttpErrorResponse) => {
         this.loadingMore.set(false);
+        // Review blind-all E1: the global interceptor already toasts 0, 403 and 5xx for this read.
+        if (err.status === 0 || err.status === 403 || err.status >= 500) return;
         this.toast.show({ tone: 'danger', message: friendly(this.errors.parse(err)) });
       },
     });
