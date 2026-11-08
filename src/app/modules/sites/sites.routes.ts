@@ -23,6 +23,9 @@ export const sitesRoutes: Routes = [
     path: 'sites/:siteId',
     canActivate: [PermissionGuard],
     canDeactivate: [leaveGuard],
+    // BL-1: tab and module switches (and browser Back/Forward between them) change only the query
+    // params; the default 'paramsChange' would skip canDeactivate and drop the grid unasked.
+    runGuardsAndResolvers: 'paramsOrQueryParamsChange',
     data: { permission: SITE_PERM.read, breadcrumb: 'sv.survey' },
     loadComponent: () =>
       import('./ui/pages/site-detail.component').then((m) => m.SiteDetailComponent),

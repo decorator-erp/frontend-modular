@@ -513,6 +513,23 @@ describe('SiteDetailComponent — capture grid (sites S-5)', () => {
     expect(nav).toHaveBeenCalledTimes(1);
   });
 
+  it('BL-1: a reload or tab close with an edited grid asks the browser to confirm; a clean grid does not', () => {
+    const { fixture, el } = renderDetail(h);
+    const unload = () => {
+      const e = new Event('beforeunload', { cancelable: true });
+      window.dispatchEvent(e);
+      return e.defaultPrevented;
+    };
+    (el.querySelector('[data-edit-grid] button') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(unload()).toBe(false);
+    (el.querySelector('[data-add-row] button') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(unload()).toBe(true);
+    fixture.destroy();
+    expect(unload()).toBe(false);
+  });
+
   it('spaces 403 → "Whole unit" only, with the reason (A1 / BF-1); catalog 403 → picker hidden', () => {
     h.spaces = throwError(() => new HttpErrorResponse({ status: 403 }));
     h.catalog = throwError(() => new HttpErrorResponse({ status: 403 }));

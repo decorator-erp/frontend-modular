@@ -56,6 +56,7 @@ const BUILT_TABS: readonly SiteTab[] = [
 @Component({
   selector: 'app-site-detail',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  host: { '(window:beforeunload)': 'onBeforeUnload($event)' },
   providers: [SiteDetailStore],
   imports: [
     RouterLink,
@@ -361,6 +362,13 @@ export class SiteDetailComponent {
   /** A3: the route's `canDeactivate` (leaving the survey, or `/sites/A → /sites/B`). */
   canLeave(): Promise<boolean> {
     return this.store.confirmDiscard();
+  }
+
+  /** BL-1: a reload or tab close with unsaved grid edits gets the browser's own leave prompt. */
+  protected onBeforeUnload(e: BeforeUnloadEvent): void {
+    if (!this.store.captureDirty()) return;
+    e.preventDefault();
+    e.returnValue = '';
   }
 
   protected async go(tab: string): Promise<void> {
