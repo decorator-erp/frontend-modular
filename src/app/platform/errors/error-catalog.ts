@@ -513,6 +513,24 @@ export const ERROR_MESSAGES: Record<string, string> = {
   'crm.gates.UnsupportedOwner': 'This gate condition can only be set on a stage.',
   'crm.portal.InvalidDecision': 'Choose Approve or Request changes.',
   'crm.portal.InvalidStatus': "The status filter must be 'pending' or 'decided'.",
+  // crmp P2-B: client portal visibility (dms Crm.Domain/Errors/Errors.cs:501-545).
+  'crm.portal.ShareNotFound': 'This item is no longer shared with the client.',
+  'crm.portal.UpdateNotFound': 'This client update was not found.',
+  'crm.portal.ItemNotFound': 'The item to share was not found on this project.',
+  'crm.portal.InvalidItem': 'This item cannot be shared with the client.',
+  'crm.portal.NotAnImage': 'Only an image file can be shared as an image.',
+  'crm.portal.NotAPhoto': 'Only a site photo can be shared as a site photo.',
+  'crm.portal.AlreadyShared': 'This item is already shared with the client.',
+  'crm.portal.TitleTooLong': 'The title must be 200 characters or fewer.',
+  'crm.portal.NoteTooLong': 'The note must be 2000 characters or fewer.',
+  'crm.portal.BodyTooLong': 'The update text must be 10000 characters or fewer.',
+  'crm.portal.UpdateTitleRequired': 'An update needs a title.',
+  'crm.portal.SettingsChanged':
+    'The portal settings were changed at the same time. Reload and try again.',
+  'crm.portal.AlreadyPublished': 'This update is already published.',
+  'crm.portal.InvalidOrder': 'The list changed while you were reordering it. Reload and try again.',
+  'crm.portal.InvalidAttachment':
+    'An update can attach only documents, images or site photos shared with the client.',
   'approvals.CommentTooLong': 'The comment must be 2000 characters or fewer.',
   // crmp A-1: Projects (§5.5/§5.6), CRM crm-complete, gates, templates and Sites codes. Backend file:line in
   // error-catalog-backend-codes.spec.ts.
@@ -805,6 +823,23 @@ export const ERROR_MESSAGES_AR: Record<string, string> = {
   'crm.meetings.InvalidProposer': 'يجب تحديد مقترِح واحد بالضبط.',
   'crm.portal.InvalidDecision': 'اختر الاعتماد أو طلب تعديلات.',
   'crm.portal.InvalidStatus': 'يجب أن يكون مرشّح الحالة: بانتظار القرار أو تم البتّ.',
+  // crmp P2-B: the Arabic twins of the portal visibility codes.
+  'crm.portal.ShareNotFound': 'لم يعد هذا العنصر مشاركًا مع العميل.',
+  'crm.portal.UpdateNotFound': 'لم يُعثر على هذا التحديث المرسل إلى العميل.',
+  'crm.portal.ItemNotFound': 'لم يُعثر على العنصر المراد مشاركته في هذا المشروع.',
+  'crm.portal.InvalidItem': 'لا يمكن مشاركة هذا العنصر مع العميل.',
+  'crm.portal.NotAnImage': 'لا يُشارك كصورة إلا ملف صورة.',
+  'crm.portal.NotAPhoto': 'لا تُشارك كصورة موقع إلا صورة من المعاينة.',
+  'crm.portal.AlreadyShared': 'هذا العنصر مشارك مع العميل بالفعل.',
+  'crm.portal.TitleTooLong': 'يجب ألا يتجاوز العنوان 200 حرف.',
+  'crm.portal.NoteTooLong': 'يجب ألا تتجاوز الملاحظة 2000 حرف.',
+  'crm.portal.BodyTooLong': 'يجب ألا يتجاوز نص التحديث 10000 حرف.',
+  'crm.portal.UpdateTitleRequired': 'يحتاج التحديث إلى عنوان.',
+  'crm.portal.SettingsChanged': 'تغيّرت إعدادات البوابة في الوقت نفسه. أعد التحميل وحاول مجددًا.',
+  'crm.portal.AlreadyPublished': 'هذا التحديث منشور بالفعل.',
+  'crm.portal.InvalidOrder': 'تغيّرت القائمة أثناء إعادة ترتيبها. أعد التحميل وحاول مجددًا.',
+  'crm.portal.InvalidAttachment':
+    'لا يُرفق بالتحديث إلا مستندات أو صور أو صور مواقع مشاركة مع العميل.',
   'approvals.AlreadyDecided': 'تم البتّ في هذا الاعتماد بالفعل.',
   'approvals.NotFound': 'الاعتماد غير موجود.',
   'approvals.CommentTooLong': 'يجب ألا يتجاوز التعليق 2000 حرف.',

@@ -37,6 +37,14 @@ describe('PERM catalog', () => {
     });
   });
 
+  it('has the client portal visibility codes (crmp P2-B, CrmPermissions.PortalVisibility)', () => {
+    expect(PERM.crm.portalVisibility).toEqual({
+      manage: 'crm.portal.manage',
+      filesViewOwn: 'crm.portal.files.view_own',
+      progressViewOwn: 'crm.portal.progress.view_own',
+    });
+  });
+
   it('exposes the UI-only DMS task-detail gate in its live claim spelling', () => {
     expect(PERM.dms.taskDetail.view).toBe('dms.task_detail.view');
   });

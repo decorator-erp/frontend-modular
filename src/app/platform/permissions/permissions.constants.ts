@@ -243,6 +243,17 @@ export const PERM = {
       viewOwn: 'crm.approvals.view_own',
       decideOwn: 'crm.approvals.decide_own',
     },
+    /**
+     * crmp P2-B: client portal visibility (dms `CrmPermissions.PortalVisibility`, CrmPermissions.cs:165).
+     * `manage` is the office's (settings, shares, updates); office reads also accept `clients.read`.
+     */
+    portalVisibility: {
+      manage: 'crm.portal.manage',
+      // Client portal (self-scoped): files, gallery and the file stream.
+      filesViewOwn: 'crm.portal.files.view_own',
+      // Client portal (self-scoped): overview, tasks and updates.
+      progressViewOwn: 'crm.portal.progress.view_own',
+    },
   },
   /** Client portal (self-scoped) requirement-item authoring/reading. */
   requirements: {
@@ -392,6 +403,17 @@ export const ALL_PERMISSIONS: { group: string; key: string; displayName: string 
   // CRM. A key present in PERM but absent here silently fails to appear in the Roles
   // matrix — both lists are required.
   { group: 'CRM', key: PERM.crm.portal, displayName: 'Client Portal' },
+  { group: 'CRM', key: PERM.crm.portalVisibility.manage, displayName: 'Manage Client Portal' },
+  {
+    group: 'CRM',
+    key: PERM.crm.portalVisibility.filesViewOwn,
+    displayName: 'View Own Portal Files',
+  },
+  {
+    group: 'CRM',
+    key: PERM.crm.portalVisibility.progressViewOwn,
+    displayName: 'View Own Portal Progress',
+  },
   { group: 'CRM · Leads', key: PERM.crm.leads.read, displayName: 'Read Leads' },
   { group: 'CRM · Leads', key: PERM.crm.leads.create, displayName: 'Create Leads' },
   { group: 'CRM · Leads', key: PERM.crm.leads.update, displayName: 'Update Leads' },

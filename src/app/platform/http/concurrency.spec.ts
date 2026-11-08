@@ -38,6 +38,8 @@ const CONTRACT_CODES = [
   'projects.members.ConcurrentUpdate',
   'projects.ConcurrentUpdate',
   'sites.ConcurrencyConflict',
+  // crmp P2-B: two saves of one project's portal switches at once (Errors.cs:534, 409).
+  'crm.portal.SettingsChanged',
 ];
 
 describe('isConcurrencyConflict (009b X-3)', () => {

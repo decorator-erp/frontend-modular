@@ -1,14 +1,22 @@
-import { inject, Injectable } from '@angular/core';
+import { inject, Injectable, Injector } from '@angular/core';
+import { Router, UrlTree } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { ApprovalService } from '@modules/approvals';
 import { CrmMeetingService } from '@modules/crm';
 import { InvoiceService } from '@modules/finance';
 import { VariationService } from '@modules/finance';
-import { NotificationEntityType } from '../model/notification-enums';
+import { AuthStore } from '@platform/auth/auth.store';
+import { NotificationEntityType, NotificationType } from '../model/notification-enums';
 import { NotificationView } from '../model/notification.model';
 
 /** Router `navigate()` commands. */
 export type RouteCommands = (string | number)[];
+
+/**
+ * Where a notification leads: router commands, or a `UrlTree` when the destination carries a query
+ * (crmp P2-B: the client portal's `/portal?projectId&tab`). The store navigates either.
+ */
+export type DeepLinkTarget = RouteCommands | UrlTree;
 
 /** Where a notification with no reachable destination lands — never a dead link (SC-002). */
 const FALLBACK: RouteCommands = ['/notifications'];
@@ -28,8 +36,11 @@ export class NotificationDeepLink {
   private readonly variations = inject(VariationService);
   private readonly approvals = inject(ApprovalService);
   private readonly meetings = inject(CrmMeetingService);
+  private readonly router = inject(Router);
+  // Read lazily: only the client portal branch needs the caller's role.
+  private readonly injector = inject(Injector);
 
-  async resolve(view: NotificationView): Promise<RouteCommands> {
+  async resolve(view: NotificationView): Promise<DeepLinkTarget> {
     const id = view.entityId;
     if (!id) {
       return FALLBACK;
@@ -37,6 +48,16 @@ export class NotificationDeepLink {
     try {
       switch (view.entityType) {
         case NotificationEntityType.Project:
+          // crmp P2-B: a client's portal notifications (540/541) open that project in the client
+          // portal (`/portal?projectId`, the profile's per-project tabs); an update opens its tab.
+          if (this.isPortalType(view.type) && this.injector.get(AuthStore).isClient()) {
+            return this.router.createUrlTree(['/portal'], {
+              queryParams: {
+                projectId: id,
+                tab: view.type === NotificationType.CrmPortalUpdatePosted ? 'updates' : null,
+              },
+            });
+          }
           return ['/projects', id]; // single id — no fetch
 
         // crmp A-4: SiteApproved / SiteRejected (530/531) carry the survey id; the survey page
@@ -121,6 +142,13 @@ export class NotificationDeepLink {
     } catch {
       return FALLBACK; // 403/404/network → graceful fallback (still marked read by the caller)
     }
+  }
+
+  private isPortalType(type: NotificationType): boolean {
+    return (
+      type === NotificationType.CrmPortalItemShared ||
+      type === NotificationType.CrmPortalUpdatePosted
+    );
   }
 
   /**

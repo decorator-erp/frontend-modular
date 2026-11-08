@@ -1,5 +1,5 @@
 import { computed, effect, inject } from '@angular/core';
-import { Router } from '@angular/router';
+import { Router, UrlTree } from '@angular/router';
 import {
   patchState,
   signalStore,
@@ -269,7 +269,11 @@ export const NotificationStore = signalStore(
          */
         activate(view: NotificationView): void {
           this.markRead(view.id);
-          void deepLink.resolve(view).then((commands) => router.navigate(commands));
+          void deepLink
+            .resolve(view)
+            .then((target) =>
+              target instanceof UrlTree ? router.navigateByUrl(target) : router.navigate(target),
+            );
         },
       };
     },
