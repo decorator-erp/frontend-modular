@@ -39,6 +39,10 @@ jobs:
         run: npm run lint:px-styles
 
       - name: test
+        # 300+ spec files: a vitest fork worker crossed Node's ~2 GB default heap on the runner
+        # (OOM, not a failing test). The runner has 16 GB, so give each worker 4 GB.
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
         run: npm test -- --watch=false
 
       - name: TODO audit (printed, not gated)
