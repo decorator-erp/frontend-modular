@@ -1,5 +1,6 @@
 import { TestBed } from '@angular/core/testing';
-import { of } from 'rxjs';
+import { HttpErrorResponse } from '@angular/common/http';
+import { of, throwError } from 'rxjs';
 import { describe, expect, it } from 'vitest';
 import { ConfirmService, ModalService } from '@ds';
 import { DepartmentService, EmployeeService } from '@modules/people';
@@ -70,5 +71,56 @@ describe('ProjectTeamsComponent — levels (crmp P-7)', () => {
     expect(c.teamCan('team.create')).toBe(allowed);
     expect(c.teamCan('team.removeMember')).toBe(allowed);
     expect(c.tabDefs().some((t) => t.id === '__new__')).toBe(allowed);
+  });
+
+  // Review B6 (CP-7): a failed list read is an error with Retry, an unknown project a not-found state.
+  describe('review B6 — error and not-found states', () => {
+    function renderFailing(status: number) {
+      let calls = 0;
+      TestBed.configureTestingModule({
+        imports: [ProjectTeamsComponent],
+        providers: [
+          {
+            provide: StageTeamsService,
+            useValue: {
+              getByProject: () => {
+                calls++;
+                return calls === 1
+                  ? throwError(() => new HttpErrorResponse({ status }))
+                  : of([team]);
+              },
+            },
+          },
+          { provide: EmployeeService, useValue: { listPaged: () => of({ items: [] }) } },
+          { provide: DepartmentService, useValue: { getAll: () => of([]) } },
+          { provide: ModalService, useValue: { open: () => undefined } },
+          { provide: ConfirmService, useValue: { open: () => Promise.resolve(false) } },
+          { provide: PermissionsService, useValue: { can: () => true } },
+          { provide: ProjectAccessStore, useValue: { ensure: () => undefined, can: () => false } },
+        ],
+      });
+      const f = TestBed.createComponent(ProjectTeamsComponent);
+      f.componentRef.setInput('projectId', 'P1');
+      f.detectChanges();
+      f.detectChanges();
+      return { f, el: f.nativeElement as HTMLElement, calls: () => calls };
+    }
+
+    it('404: the not-found state, not "No stage teams yet"', () => {
+      const { el } = renderFailing(404);
+      expect(el.querySelector('[data-not-found]')).toBeTruthy();
+      expect(el.textContent).not.toContain('No stage teams yet');
+    });
+
+    it('any other failure: an error alert whose Retry loads again', () => {
+      const { f, el, calls } = renderFailing(500);
+      const alert = el.querySelector('[data-load-error]');
+      expect(alert).toBeTruthy();
+      expect(el.textContent).not.toContain('No stage teams yet');
+      (alert?.querySelector('button') as HTMLButtonElement).click();
+      f.detectChanges();
+      expect(calls()).toBe(2);
+      expect(el.querySelector('[data-load-error]')).toBeNull();
+    });
   });
 });

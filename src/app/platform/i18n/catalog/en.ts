@@ -1946,6 +1946,8 @@ export const EN = {
   // review A5: change shape vs stored limits
   'sv.err.shapeLimits':
     'This item still has limits that do not fit this type. Clear them in Edit first.',
+  // review B6 (CP-7): teams page load failure
+  'pteam.loadFailed': 'Stage teams could not be loaded.',
 } as const;
 
 /** The key set of record. Every catalog lookup is typed against this. */

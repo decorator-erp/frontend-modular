@@ -1858,4 +1858,6 @@ export const AR: Partial<Record<CatalogKey, string>> = {
   'sv.keepEditing': 'متابعة التعديل',
   // review A5: change shape vs stored limits
   'sv.err.shapeLimits': 'لهذا البند حدود لا تناسب هذا النوع. امسحها من «تعديل» أولًا.',
+  // review B6 (CP-7): teams page load failure
+  'pteam.loadFailed': 'تعذر تحميل فرق المراحل.',
 };

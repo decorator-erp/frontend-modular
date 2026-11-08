@@ -21,10 +21,12 @@ import { DepartmentService } from '@modules/people';
 import { ErrorHandlerService, friendly } from '@platform/http/error-handler.service';
 import { ToastService } from '@platform/feedback/toast.service';
 import { PERM } from '@platform/permissions';
+import { CatalogService } from '@platform/i18n/catalog.service';
 import { CanDirective } from '@platform/permissions';
 import {
   ConfirmService,
   ModalService,
+  PeraAlertComponent,
   PERA_MODAL_DATA,
   PeraAvatarComponent,
   PeraButtonComponent,
@@ -225,10 +227,25 @@ const NEW_TEAM_TAB = '__new__';
     PeraSkeletonComponent,
     PeraTabsComponent,
     PeraButtonComponent,
+    PeraAlertComponent,
   ],
   template: `
     @if (loading()) {
       <pera-skeleton [height]="240" rounded="md" />
+    } @else if (loadError() === 'notFound') {
+      <pera-empty
+        data-not-found
+        [title]="catalog.t('pm.notFound')"
+        [description]="catalog.t('pm.notFoundBody')"
+        iconName="search"
+      />
+    } @else if (loadError() === 'error') {
+      <pera-alert tone="danger" data-load-error>
+        {{ catalog.t('pteam.loadFailed') }}
+        <pera-button variant="ghost" size="sm" (click)="reload()">{{
+          catalog.t('pm.retry')
+        }}</pera-button>
+      </pera-alert>
     } @else if (teams().length === 0) {
       <pera-empty
         title="No stage teams yet"
@@ -366,6 +383,9 @@ export class ProjectTeamsComponent {
   readonly manageStageTeams = PERM.stageTeams.manage;
 
   readonly loading = signal(true);
+  /** Review B6 (CP-7): the list read's failure — 404 (unknown/out-of-scope project) or anything else. */
+  readonly loadError = signal<'error' | 'notFound' | null>(null);
+  protected readonly catalog = inject(CatalogService);
   readonly teams = signal<StageTeam[]>([]);
   readonly activeTeamId = signal<string>('');
 
@@ -391,8 +411,16 @@ export class ProjectTeamsComponent {
 
   private load(id: string): void {
     this.loading.set(true);
+    this.loadError.set(null);
     forkJoin({
-      teams: this.api.getByProject(id).pipe(catchError(() => of([] as StageTeam[]))),
+      teams: this.api.getByProject(id).pipe(
+        catchError((err: unknown) => {
+          this.loadError.set(
+            err instanceof HttpErrorResponse && err.status === 404 ? 'notFound' : 'error',
+          );
+          return of([] as StageTeam[]);
+        }),
+      ),
       employees: this.directory
         .listPaged({ page: 1, pageSize: 500 })
         .pipe(catchError(() => of({ items: [] }))),
