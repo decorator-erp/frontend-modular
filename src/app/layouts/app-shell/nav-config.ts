@@ -8,6 +8,11 @@ export interface NavItem {
    * Upcoming project access grant (`GET /api/me/access-grants` returns rows).
    */
   when?: 'accessGrants';
+  /**
+   * crmp P1-B: also shown, without `capability` in the token, to a caller holding an Active
+   * whole-project grant on this area (the route's ProjectGrantGuard admits them).
+   */
+  grantArea?: 'Sites';
 }
 
 export interface NavSection {
@@ -30,7 +35,13 @@ export const NAV_SECTIONS: NavSection[] = [
       },
       { label: 'Leads', icon: 'users', route: '/crm/leads', capability: 'crm.leads.read' },
       // sites (NEW-FEATURE-1, spec §6 edit 3): the icon set has no 'ruler' — 'folder' instead.
-      { label: 'Site surveys', icon: 'folder', route: '/sites', capability: 'sites.read' },
+      {
+        label: 'Site surveys',
+        icon: 'folder',
+        route: '/sites',
+        capability: 'sites.read',
+        grantArea: 'Sites',
+      },
     ],
   },
   {

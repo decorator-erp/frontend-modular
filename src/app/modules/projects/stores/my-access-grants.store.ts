@@ -1,7 +1,7 @@
 import { Injectable, computed, effect, inject, signal, untracked } from '@angular/core';
 import { AuthStore } from '@platform/auth/auth.store';
 import { ProjectAccessGrantService } from '../data/project-access-grant.service';
-import type { MyAccessGrant } from '../model/access-grant.model';
+import type { AccessArea, MyAccessGrant } from '../model/access-grant.model';
 
 /**
  * crmp P1-B: the caller's own Active and Upcoming grants ("Shared with me", `GET /api/me/access-grants`).
@@ -18,6 +18,13 @@ export class MyAccessGrantsStore {
   readonly loading = signal(false);
   readonly error = signal(false);
   readonly hasAny = computed(() => this.grants().length > 0);
+
+  /** crmp P1-B: an Active, whole-project grant on `area` (the Sites list's nav entry and route). */
+  opensArea(area: AccessArea): boolean {
+    return this.grants().some(
+      (g) => g.status === 'Active' && !g.stageIds.length && g.areas.includes(area),
+    );
+  }
 
   private loadedFor: string | null = null;
 

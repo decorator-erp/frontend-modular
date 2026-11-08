@@ -33,6 +33,19 @@ describe('MyAccessGrantsStore (crmp P1-B)', () => {
     expect(api.mine).toHaveBeenCalledTimes(2);
   });
 
+  it('opensArea: an Active whole-project grant on the area only', () => {
+    const { store } = make(() =>
+      of([
+        { ...row, areas: ['Sites'], stageIds: ['S1'], status: 'Active' },
+        { ...row, areas: ['Documents'], stageIds: [], status: 'Active' },
+        { ...row, areas: ['Sites'], stageIds: [], status: 'Upcoming' },
+      ] as MyAccessGrant[]),
+    );
+    store.ensure();
+    expect(store.opensArea('Sites')).toBe(false);
+    expect(store.opensArea('Documents')).toBe(true);
+  });
+
   it('no rows → no nav entry; a failed read is retried on the next ensure()', () => {
     const { store, api } = make(() => throwError(() => new Error('x')));
     store.ensure();

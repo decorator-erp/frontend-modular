@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 import { PermissionGuard } from '@platform/auth/permission.guard';
 import { PERM } from '@platform/permissions';
+import { ProjectGrantGuard } from './project-grant.guard';
 
 /**
  * The projects module's office-shell routes (spec 008). NEW file: its entries are the old
@@ -42,8 +43,9 @@ export const projectsRoutes: Routes = [
   // has done its job and is dropped from the route.
   {
     path: 'projects/:projectId/stages/:stageId',
-    canActivate: [PermissionGuard],
-    data: { permission: 'project.read', breadcrumb: 'route.stage' },
+    // crmp P1-B: a grant on Stages & tasks covering the stage opens it too (ProjectGrantGuard).
+    canActivate: [ProjectGrantGuard],
+    data: { permission: 'project.read', grantArea: 'StagesAndTasks', breadcrumb: 'route.stage' },
     loadComponent: () =>
       import('./ui/pages/dms-stage-detail.component').then((m) => m.DmsStageDetailComponent),
   },
@@ -81,8 +83,8 @@ export const projectsRoutes: Routes = [
   // NEW-FEATURE-1: the project's scope of work (specs/sow-scope-of-work.md §3).
   {
     path: 'projects/:id/scope-of-work',
-    canActivate: [PermissionGuard],
-    data: { permission: PERM.scope.read, breadcrumb: 'route.scopeOfWork' },
+    canActivate: [ProjectGrantGuard],
+    data: { permission: PERM.scope.read, grantArea: 'Overview', breadcrumb: 'route.scopeOfWork' },
     loadComponent: () =>
       import('./ui/scope-of-work/scope-of-work-page.component').then(
         (m) => m.ScopeOfWorkPageComponent,
@@ -91,8 +93,8 @@ export const projectsRoutes: Routes = [
   // crmp P-1 (DEVIATION-4: the project page has no tabs): the members and their levels.
   {
     path: 'projects/:id/members',
-    canActivate: [PermissionGuard],
-    data: { permission: PERM.projects.read, breadcrumb: 'route.projectMembers' },
+    canActivate: [ProjectGrantGuard],
+    data: { permission: PERM.projects.read, grantArea: 'Team', breadcrumb: 'route.projectMembers' },
     loadComponent: () =>
       import('./ui/members/project-members-page.component').then(
         (m) => m.ProjectMembersPageComponent,
@@ -101,8 +103,13 @@ export const projectsRoutes: Routes = [
   // crmp P-3: the project's tasks with stage, assignee and status filters.
   {
     path: 'projects/:id/tasks',
-    canActivate: [PermissionGuard],
-    data: { permission: PERM.stageTasks.read, breadcrumb: 'route.projectTasks' },
+    canActivate: [ProjectGrantGuard],
+    data: {
+      permission: PERM.stageTasks.read,
+      grantArea: 'StagesAndTasks',
+      grantList: true,
+      breadcrumb: 'route.projectTasks',
+    },
     loadComponent: () =>
       import('./ui/tasks/project-tasks-page.component').then((m) => m.ProjectTasksPageComponent),
   },

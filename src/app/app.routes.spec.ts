@@ -77,6 +77,8 @@ describe('nav-config — sites (NEW-FEATURE-1)', () => {
       icon: 'folder',
       route: '/sites',
       capability: 'sites.read',
+      // crmp P1-B: also for an Active whole-project grant on Sites.
+      grantArea: 'Sites',
     });
     expect(defs?.capability).toBe('sites.definitions.manage');
     expect(defs?.label).toBe('Survey definitions');

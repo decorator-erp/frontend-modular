@@ -6,6 +6,7 @@ import { Router, provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { describe, expect, it } from 'vitest';
 import { PermissionGuard } from '@platform/auth/permission.guard';
+import { ProjectGrantGuard } from '@modules/projects';
 import { sitesRoutes } from './sites.routes';
 
 describe('sitesRoutes (NEW-FEATURE-1)', () => {
@@ -17,8 +18,10 @@ describe('sitesRoutes (NEW-FEATURE-1)', () => {
       'admin/site-definitions/modules/:moduleId',
     ]);
     for (const r of sitesRoutes.slice(0, 2)) {
-      expect(r.canActivate).toEqual([PermissionGuard]);
+      // crmp P1-B: sites.read from the token, or an Active whole-project grant on Sites.
+      expect(r.canActivate).toEqual([ProjectGrantGuard]);
       expect(r.data?.['permission']).toBe('sites.read');
+      expect(r.data?.['grantArea']).toBe('Sites');
       expect(r.loadComponent).toBeTypeOf('function');
     }
     const cmp = (await sitesRoutes[0].loadComponent!()) as { name: string };

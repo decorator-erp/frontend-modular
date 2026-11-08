@@ -67,7 +67,8 @@ export class SidebarComponent {
 
   canAccess(item: NavItem): boolean {
     if (item.when === 'accessGrants' && !this.myGrants.hasAny()) return false;
-    return !item.capability || this.permissions.can(item.capability);
+    if (!item.capability || this.permissions.can(item.capability)) return true;
+    return !!item.grantArea && this.myGrants.opensArea(item.grantArea);
   }
 
   onNavigate(): void {

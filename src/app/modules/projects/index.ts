@@ -37,6 +37,8 @@ export type { ProjectLevel } from './model/project-actions';
 // sites (crmp P1-B): survey capabilities, the list's project filter and the survey documents read a
 // grantee's claims from the grant (the token does not carry them).
 export { claimCheck, grantCovers } from './model/project-access';
+// sites routes (crmp P1-B): the Sites list and a survey open to an Active whole-project Sites grant.
+export { ProjectGrantGuard } from './project-grant.guard';
 export type { AccessArea, ProjectAccess } from './model/access-grant.model';
 
 // Future: dashboard (010).

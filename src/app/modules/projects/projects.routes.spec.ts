@@ -1,5 +1,6 @@
 import { PermissionGuard } from '@platform/auth/permission.guard';
 import { projectsRoutes } from './projects.routes';
+import { ProjectGrantGuard } from './project-grant.guard';
 import { DmsStageDetailComponent } from './ui/pages/dms-stage-detail.component';
 import { ProjectCreateComponent } from './ui/pages/project-create.component';
 import { ProjectDetailComponent } from './ui/pages/project-detail.component';
@@ -51,7 +52,6 @@ describe('projectsRoutes', () => {
   });
 
   it.each([
-    ['projects/:projectId/stages/:stageId', 'project.read', 'route.stage', DmsStageDetailComponent],
     [
       'dms/projects/:projectId/tasks/:taskId',
       'dms.task_detail.view',
@@ -69,6 +69,42 @@ describe('projectsRoutes', () => {
     expect(r.canActivate).toEqual([PermissionGuard]);
     expect(r.data).toEqual({ permission, breadcrumb });
     expect(await r.loadComponent!()).toBe(cmp);
+  });
+
+  it.each([
+    [
+      'projects/:projectId/stages/:stageId',
+      'project.read',
+      'StagesAndTasks',
+      'route.stage',
+      DmsStageDetailComponent,
+    ],
+    [
+      'projects/:id/scope-of-work',
+      'scope.read',
+      'Overview',
+      'route.scopeOfWork',
+      ScopeOfWorkPageComponent,
+    ],
+  ])(
+    'crmp P1-B: %s takes ProjectGrantGuard (%s, or a grant on %s)',
+    async (path, permission, grantArea, breadcrumb, cmp) => {
+      const r = route(path)!;
+      expect(r.canActivate).toEqual([ProjectGrantGuard]);
+      expect(r.data).toEqual({ permission, grantArea, breadcrumb });
+      expect(await r.loadComponent!()).toBe(cmp);
+    },
+  );
+
+  it('crmp P1-B: the tasks list admits a grant on Stages & tasks (any stage: the list is filtered)', () => {
+    const r = route('projects/:id/tasks')!;
+    expect(r.canActivate).toEqual([ProjectGrantGuard]);
+    expect(r.data).toEqual({
+      permission: 'stage_tasks.read',
+      grantArea: 'StagesAndTasks',
+      grantList: true,
+      breadcrumb: 'route.projectTasks',
+    });
   });
 
   it('crm-prod L-fe-3: every breadcrumb is a catalog key with English and Arabic text', () => {
@@ -93,10 +129,9 @@ describe('projectsRoutes', () => {
     expect(r.pathMatch).toBe('full');
   });
 
-  it('sow #2: projects/:id/scope-of-work is PermissionGuard-gated on scope.read and lazy-loads the page', async () => {
+  it('sow #2: projects/:id/scope-of-work is gated on scope.read and lazy-loads the page', async () => {
     const r = route('projects/:id/scope-of-work')!;
-    expect(r.canActivate).toEqual([PermissionGuard]);
-    expect(r.data).toEqual({ permission: PERM.scope.read, breadcrumb: 'route.scopeOfWork' });
+    expect(r.data?.['permission']).toBe(PERM.scope.read);
     expect(PERM.scope.read).toBe('scope.read');
     expect(await r.loadComponent!()).toBe(ScopeOfWorkPageComponent);
   });
@@ -121,8 +156,13 @@ describe('projectsRoutes', () => {
 
   it('crmp P-1: the members page is lazy and guarded on project.read', () => {
     const r = route('projects/:id/members');
-    expect(r?.canActivate).toEqual([PermissionGuard]);
-    expect(r?.data).toEqual({ permission: 'project.read', breadcrumb: 'route.projectMembers' });
+    // crmp P1-B: or a grant on Team (read only).
+    expect(r?.canActivate).toEqual([ProjectGrantGuard]);
+    expect(r?.data).toEqual({
+      permission: 'project.read',
+      grantArea: 'Team',
+      breadcrumb: 'route.projectMembers',
+    });
     expect(r?.loadComponent).toBeTypeOf('function');
   });
 });
