@@ -5,6 +5,7 @@ import { patchState, signalStore, withComputed, withMethods, withState } from '@
 import { Subscription, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { CrmBriefService } from '../data/crm-brief.service';
+import { CrmPortalBriefRoundsService } from '../data/crm-portal-brief-rounds.service';
 import {
   ErrorHandlerService,
   friendly,
@@ -133,6 +134,7 @@ export const BriefStore = signalStore(
     (
       store,
       api = inject(CrmBriefService),
+      portalRounds = inject(CrmPortalBriefRoundsService),
       errors = inject(ErrorHandlerService),
       catalog = inject(CatalogService),
       reloadOnConflict = injectReloadOnConflict(),
@@ -294,7 +296,7 @@ export const BriefStore = signalStore(
             // leaves the rounds empty — the head still shows. Dropped if another project loaded since.
             const head = view.head;
             if (!head) return;
-            api
+            portalRounds
               .listMyRounds(head.id)
               .pipe(catchError(() => of([] as BriefRound[])))
               .subscribe((rounds) => {

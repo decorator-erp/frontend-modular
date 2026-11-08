@@ -17,7 +17,7 @@ import { ErrorHandlerService, friendly } from '@platform/http/error-handler.serv
 import { CatalogService } from '@platform/i18n/catalog.service';
 import type { CatalogKey } from '@platform/i18n/catalog/en';
 import { PERM } from '@platform/permissions';
-import { StageTemplatesService } from '../../data/stage-templates.service';
+import { StageTemplateStructureService } from '../../data/stage-template-structure.service';
 import type {
   TemplateStage,
   TemplateStageTask,
@@ -190,7 +190,7 @@ const EYEBROWS: Record<TemplateStructureDialogData['kind'], [string, string]> = 
   `,
 })
 export class TemplateStructureDialogComponent {
-  private readonly api = inject(StageTemplatesService);
+  private readonly api = inject(StageTemplateStructureService);
   private readonly errors = inject(ErrorHandlerService);
   private readonly catalog = inject(CatalogService);
   private readonly modalRef = inject(PeraModalRef) as PeraModalRef<boolean>;

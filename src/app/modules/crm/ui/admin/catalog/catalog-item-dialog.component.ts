@@ -16,6 +16,7 @@ import {
 } from '@angular/forms';
 import { CatalogService } from '@platform/i18n/catalog.service';
 import { CrmCatalogService } from '../../../data/crm-catalog.service';
+import { CrmCatalogItemDetailService } from '../../../data/crm-catalog-item-detail.service';
 import { ErrorHandlerService, friendly } from '@platform/http/error-handler.service';
 import { ToastService } from '@platform/feedback/toast.service';
 import { CatalogAttributeType } from '../../../model/crm-enums';
@@ -117,7 +118,7 @@ export interface CatalogItemDialogData {
               <img
                 [src]="it.imageUri"
                 [alt]="catalog.t('cat.imageL')"
-                class="w-16 h-16 object-cover border border-border shrink-0"
+                class="w-12 h-12 object-cover border border-border shrink-0"
                 data-testid="cat-item-image"
               />
             }
@@ -179,6 +180,7 @@ export interface CatalogItemDialogData {
 })
 export class CrmCatalogItemDialogComponent {
   private readonly api = inject(CrmCatalogService);
+  private readonly detailApi = inject(CrmCatalogItemDetailService);
   private readonly errorHandler = inject(ErrorHandlerService);
   private readonly toast = inject(ToastService);
   private readonly cache = inject(CatalogStore);
@@ -225,7 +227,7 @@ export class CrmCatalogItemDialogComponent {
 
     if (this.data.itemId) {
       this.form.disable();
-      this.api.getItemDetail(this.data.itemId).subscribe({
+      this.detailApi.getItemDetail(this.data.itemId).subscribe({
         next: (item) => {
           this.form.patchValue({
             code: item.code,

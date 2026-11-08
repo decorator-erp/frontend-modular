@@ -16,7 +16,8 @@ import {
   PeraSelectComponent,
   SelectOption,
 } from '@ds';
-import { FileTemplate, FileTemplatesService } from '@modules/library';
+import { FileTemplatesService } from '../../data/file-templates.service';
+import type { FileTemplate } from '../../model/file-template.model';
 import { ToastService } from '@platform/feedback/toast.service';
 import { ErrorHandlerService, friendly } from '@platform/http/error-handler.service';
 import { CatalogService } from '@platform/i18n/catalog.service';

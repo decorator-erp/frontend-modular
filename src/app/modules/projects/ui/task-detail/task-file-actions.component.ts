@@ -9,10 +9,7 @@ import {
   ScopedFolderDialogComponent,
   ScopedFolderDialogData,
 } from '../documents/scoped-folder-dialog.component';
-import {
-  ApplyFileTemplateDialogComponent,
-  ApplyFileTemplateDialogData,
-} from './apply-file-template-dialog.component';
+import { ApplyFileTemplateDialogData, loadApplyFileTemplateDialog } from '@modules/library';
 
 /**
  * Sync F3 + F2(e): the task page's extra file actions, kept out of the attachments panel — "Apply
@@ -72,7 +69,8 @@ export class TaskFileActionsComponent {
 
   async applyTemplate(): Promise<void> {
     const data: ApplyFileTemplateDialogData = { taskId: this.taskId() };
-    const ref = this.modal.open<boolean>(ApplyFileTemplateDialogComponent, { size: 'sm', data });
+    const component = await loadApplyFileTemplateDialog();
+    const ref = this.modal.open<boolean>(component, { size: 'sm', data });
     if (await ref.afterClosed()) this.changed.emit();
   }
 

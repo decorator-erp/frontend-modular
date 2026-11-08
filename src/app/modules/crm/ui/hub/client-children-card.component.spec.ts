@@ -6,7 +6,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { ConfirmService, ModalService, PERA_MODAL_DATA, PeraModalRef } from '@ds';
 import { ToastService } from '@platform/feedback/toast.service';
 import { PermissionsService } from '@platform/permissions';
-import { CrmClientService } from '../../data/crm-client.service';
+import { CrmClientChildrenService } from '../../data/crm-client-children.service';
 import { ClientHubStore } from '../../stores/client-hub.store';
 import { CrmClientChildrenCardComponent } from './client-children-card.component';
 import { CrmClientChildFormComponent } from './client-child-form.component';
@@ -29,7 +29,7 @@ describe('CrmClientChildrenCardComponent (sync F4b)', () => {
     TestBed.configureTestingModule({
       imports: [CrmClientChildrenCardComponent],
       providers: [
-        { provide: CrmClientService, useValue: api },
+        { provide: CrmClientChildrenService, useValue: api },
         { provide: ClientHubStore, useValue: store },
         { provide: PermissionsService, useValue: { can: () => granted } },
         { provide: ConfirmService, useValue: { open: async () => confirm } },
@@ -109,7 +109,7 @@ describe('CrmClientChildFormComponent (sync F4b)', () => {
     TestBed.configureTestingModule({
       imports: [CrmClientChildFormComponent],
       providers: [
-        { provide: CrmClientService, useValue: api },
+        { provide: CrmClientChildrenService, useValue: api },
         { provide: PeraModalRef, useValue: { close } },
         { provide: PERA_MODAL_DATA, useValue: { clientId: 'C', child } },
       ],

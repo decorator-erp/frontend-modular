@@ -5,6 +5,7 @@ import { ConfirmService, ModalService } from '@ds';
 import { DepartmentService } from '@modules/people';
 import { ToastService } from '@platform/feedback/toast.service';
 import { PermissionsService } from '@platform/permissions';
+import { StageTemplateStructureService } from '../../data/stage-template-structure.service';
 import { StageTemplatesService } from '../../data/stage-templates.service';
 import { StageTemplateDetailComponent } from './stage-template-detail.component';
 import { TemplateStructureDialogComponent } from './template-structure-dialog.component';
@@ -106,6 +107,7 @@ describe('StageTemplateDetailComponent (sync F1)', () => {
       imports: [StageTemplateDetailComponent],
       providers: [
         provideRouter([]),
+        { provide: StageTemplateStructureService, useValue: api },
         { provide: StageTemplatesService, useValue: api },
         {
           provide: DepartmentService,

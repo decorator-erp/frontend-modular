@@ -205,28 +205,15 @@ export class CrmBriefService extends ApiService {
    */
   listRounds(briefId: string): Observable<BriefRound[]> {
     return this.get<unknown>(`/crm/briefs/${briefId}/rounds`).pipe(
-      map((r) => this.unwrapArray<unknown>(r).map((x) => this.normalizeRound(x))),
+      map((r) =>
+        this.unwrapArray<unknown>(r).map((x) => ({
+          round: this.field<number>(x, 'round') ?? 0,
+          sentAtUtc: this.field<string>(x, 'sentAtUtc') ?? '',
+          outcome: this.field<number>(x, 'outcome') ?? 0,
+          decidedAtUtc: this.field<string | null>(x, 'decidedAtUtc') ?? null,
+        })),
+      ),
     );
-  }
-
-  /**
-   * Sync F4d: the client's own rounds — `GET /api/crm/portal/briefs/{briefId}/rounds` →
-   * `CrmBriefRoundResponse[]` (CrmPortalEndpoints.cs:43, `crm.briefs.view_own`). 403/404 are the
-   * caller's (the brief tab still shows the head without them).
-   */
-  listMyRounds(briefId: string): Observable<BriefRound[]> {
-    return this.get<unknown>(`/crm/portal/briefs/${briefId}/rounds`, undefined, {
-      context: handled(403, 404),
-    }).pipe(map((r) => this.unwrapArray<unknown>(r).map((x) => this.normalizeRound(x))));
-  }
-
-  private normalizeRound(x: unknown): BriefRound {
-    return {
-      round: this.field<number>(x, 'round') ?? 0,
-      sentAtUtc: this.field<string>(x, 'sentAtUtc') ?? '',
-      outcome: this.field<number>(x, 'outcome') ?? 0,
-      decidedAtUtc: this.field<string | null>(x, 'decidedAtUtc') ?? null,
-    };
   }
 
   private toSpaceBody(request: BriefSpaceRequest): Record<string, unknown> {

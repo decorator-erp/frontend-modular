@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { PeraModalRef } from '@ds';
 import { ToastService } from '@platform/feedback/toast.service';
 import { CrmLookupService } from '../../../data/crm-lookup.service';
+import { CrmSpaceTypeAdminService } from '../../../data/crm-space-type-admin.service';
 import { CrmSpaceTypesDialogComponent } from './space-types-dialog.component';
 
 /** Sync F4a: the space types admin. */
@@ -32,6 +33,7 @@ describe('CrmSpaceTypesDialogComponent (sync F4a)', () => {
       imports: [CrmSpaceTypesDialogComponent],
       providers: [
         { provide: CrmLookupService, useValue: api },
+        { provide: CrmSpaceTypeAdminService, useValue: api },
         { provide: ToastService, useValue: { show: vi.fn() } },
         { provide: PeraModalRef, useValue: { close } },
       ],

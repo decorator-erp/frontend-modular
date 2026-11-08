@@ -27,6 +27,7 @@ import { ErrorHandlerService, friendly } from '@platform/http/error-handler.serv
 import { CatalogService } from '@platform/i18n/catalog.service';
 import type { CatalogKey } from '@platform/i18n/catalog/en';
 import { CanDirective, PERM } from '@platform/permissions';
+import { StageTemplateStructureService } from '../../data/stage-template-structure.service';
 import { StageTemplatesService } from '../../data/stage-templates.service';
 import type {
   StageTemplateRef,
@@ -140,7 +141,7 @@ const byOrder = <T extends { order: number }>(a: T, b: T) => a.order - b.order;
                 </div>
               </header>
 
-              <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_var(--w-rail)]">
+              <div class="flex flex-col">
                 <!-- tasks -->
                 <div class="px-4 py-3">
                   <div class="flex items-center justify-between mb-2">
@@ -241,7 +242,7 @@ const byOrder = <T extends { order: number }>(a: T, b: T) => a.order - b.order;
                 </div>
 
                 <!-- departments -->
-                <aside class="px-4 py-3 border-t lg:border-t-0 lg:border-s border-border">
+                <aside class="px-4 py-3 border-t border-border">
                   <h3
                     class="m-0 mb-2 font-mono fs-micro uppercase tracking-[0.06em] text-text-muted"
                   >
@@ -277,7 +278,7 @@ const byOrder = <T extends { order: number }>(a: T, b: T) => a.order - b.order;
                         [options]="departmentOptions(n)"
                         [placeholder]="t('tplx.pickDepartment')"
                         [ariaLabel]="t('tplx.pickDepartment')"
-                        [ngModel]="pickedDepartment()[n.stage.id] ?? ''"
+                        [ngModel]="picked(n.stage.id)"
                         (ngModelChange)="pick(n.stage.id, $event)"
                         data-pick-department
                       />
@@ -285,7 +286,7 @@ const byOrder = <T extends { order: number }>(a: T, b: T) => a.order - b.order;
                     <pera-button
                       size="sm"
                       variant="secondary"
-                      [disabled]="!pickedDepartment()[n.stage.id]"
+                      [disabled]="!picked(n.stage.id)"
                       (click)="linkDepartment(n.stage.id)"
                       data-link
                       >{{ t('tplx.link') }}</pera-button
@@ -301,7 +302,8 @@ const byOrder = <T extends { order: number }>(a: T, b: T) => a.order - b.order;
   `,
 })
 export class StageTemplateDetailComponent implements OnInit {
-  private readonly api = inject(StageTemplatesService);
+  private readonly api = inject(StageTemplateStructureService);
+  private readonly templates = inject(StageTemplatesService);
   private readonly departmentsApi = inject(DepartmentService);
   private readonly modal = inject(ModalService);
   private readonly confirm = inject(ConfirmService);
@@ -352,7 +354,7 @@ export class StageTemplateDetailComponent implements OnInit {
     this.failed.set(false);
     forkJoin({
       template: this.api.getById(this.id()),
-      stages: this.api.stages(this.id()),
+      stages: this.templates.stages(this.id()),
     })
       .pipe(
         switchMap(({ template, stages }) => {
@@ -469,6 +471,11 @@ export class StageTemplateDetailComponent implements OnInit {
     this.run(this.api.removeSubTask(sub.id), 'tplx.deleted', () =>
       stageId ? this.reloadStage(stageId) : this.load(),
     );
+  }
+
+  /** The department picked for a stage, or `''`. */
+  picked(stageId: string): string {
+    return this.pickedDepartment()[stageId] || '';
   }
 
   pick(stageId: string, departmentId: string | null): void {

@@ -1,12 +1,9 @@
 import { TestBed } from '@angular/core/testing';
-import { of } from 'rxjs';
-import { ModalService, PERA_MODAL_DATA, PeraModalRef } from '@ds';
-import { FileTemplatesService } from '@modules/library';
-import { ToastService } from '@platform/feedback/toast.service';
+import { ModalService } from '@ds';
+import { loadApplyFileTemplateDialog } from '@modules/library';
 import { PermissionsService } from '@platform/permissions';
 import { ProjectAccessStore } from '../../stores/project-access.store';
 import { ScopedFolderDialogComponent } from '../documents/scoped-folder-dialog.component';
-import { ApplyFileTemplateDialogComponent } from './apply-file-template-dialog.component';
 import { TaskFileActionsComponent } from './task-file-actions.component';
 
 /** Sync F3 + F2(e): the task page's Apply template and New folder actions. */
@@ -53,7 +50,7 @@ describe('TaskFileActionsComponent (sync F3)', () => {
     f.componentInstance.changed.subscribe(() => changed++);
     await f.componentInstance.applyTemplate();
     expect(opened[0]).toEqual({
-      component: ApplyFileTemplateDialogComponent,
+      component: await loadApplyFileTemplateDialog(),
       data: { taskId: 'k1' },
     });
     expect(changed).toBe(1);
@@ -71,42 +68,5 @@ describe('TaskFileActionsComponent (sync F3)', () => {
       data: { scope: 'task', scopeId: 'k1' },
     });
     expect(changed).toBe(0);
-  });
-});
-
-describe('ApplyFileTemplateDialogComponent (sync F3)', () => {
-  it('offers only active templates and applies the picked one to the task', () => {
-    const applied: string[] = [];
-    let closed: unknown;
-    TestBed.configureTestingModule({
-      imports: [ApplyFileTemplateDialogComponent],
-      providers: [
-        {
-          provide: FileTemplatesService,
-          useValue: {
-            list: () =>
-              of([
-                { id: 'a', name: 'Title block', category: 'Cad', isActive: true },
-                { id: 'b', name: 'Old', category: 'Document', isActive: false },
-              ]),
-            applyToTask: (taskId: string, id: string) => {
-              applied.push(`${taskId} ${id}`);
-              return of('d1');
-            },
-          },
-        },
-        { provide: ToastService, useValue: { show: () => undefined } },
-        { provide: PeraModalRef, useValue: { close: (r: unknown) => (closed = r) } },
-        { provide: PERA_MODAL_DATA, useValue: { taskId: 'k1' } },
-      ],
-    });
-    const f = TestBed.createComponent(ApplyFileTemplateDialogComponent);
-    f.detectChanges();
-    const c = f.componentInstance;
-    expect(c.options()).toEqual([{ value: 'a', label: 'Title block · CAD' }]);
-    c.templateId.set('a');
-    c.submit();
-    expect(applied).toEqual(['k1 a']);
-    expect(closed).toBe(true);
   });
 });

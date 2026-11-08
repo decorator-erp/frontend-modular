@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { of, throwError } from 'rxjs';
 import { PERA_MODAL_DATA, PeraModalRef } from '@ds';
 import { ErrorHandlerService } from '@platform/http/error-handler.service';
-import { StageTemplatesService } from '../../data/stage-templates.service';
+import { StageTemplateStructureService } from '../../data/stage-template-structure.service';
 import {
   TemplateStructureDialogComponent,
   TemplateStructureDialogData,
@@ -27,7 +27,7 @@ describe('TemplateStructureDialogComponent (sync F1)', () => {
       imports: [TemplateStructureDialogComponent],
       providers: [
         {
-          provide: StageTemplatesService,
+          provide: StageTemplateStructureService,
           useValue: {
             createStage: rec('createStage'),
             updateStage: rec('updateStage'),

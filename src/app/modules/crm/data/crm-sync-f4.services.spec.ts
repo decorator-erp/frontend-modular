@@ -1,12 +1,12 @@
 import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { CrmLookupService } from './crm-lookup.service';
-import { CrmClientService } from './crm-client.service';
+import { CrmSpaceTypeAdminService } from './crm-space-type-admin.service';
+import { CrmClientChildrenService } from './crm-client-children.service';
 import { CrmArtifactService } from './crm-artifact.service';
-import { CrmBriefService } from './crm-brief.service';
+import { CrmPortalBriefRoundsService } from './crm-portal-brief-rounds.service';
 import { CrmItemService, PortalRequirementItem } from './crm-item.service';
-import { CrmCatalogService } from './crm-catalog.service';
+import { CrmCatalogItemDetailService } from './crm-catalog-item-detail.service';
 import type { BriefRound, CatalogItem } from '../model';
 
 /** Sync F4: the CRM routes the new screens call (dms Crm.Infrastructure/Endpoints). */
@@ -27,7 +27,7 @@ describe('CRM services — sync F4', () => {
   describe('(a) space types', () => {
     it('create POSTs { code, nameEn, nameAr, sortOrder } and reads { spaceTypeId }', () => {
       let id = '';
-      TestBed.inject(CrmLookupService)
+      TestBed.inject(CrmSpaceTypeAdminService)
         .createSpaceType({ code: 'kitchen', nameEn: 'Kitchen', nameAr: 'مطبخ', sortOrder: 3 })
         .subscribe((r) => (id = r));
       const req = one('POST', '/crm/space-types');
@@ -42,7 +42,7 @@ describe('CRM services — sync F4', () => {
     });
 
     it('update PUTs { nameEn, nameAr, sortOrder } (no code); active PUTs { isActive }', () => {
-      const api = TestBed.inject(CrmLookupService);
+      const api = TestBed.inject(CrmSpaceTypeAdminService);
       api.updateSpaceType('st1', { nameEn: 'K', nameAr: 'م', sortOrder: 1 }).subscribe();
       const put = one('PUT', '/crm/space-types/st1');
       expect(put.request.body).toEqual({ nameEn: 'K', nameAr: 'م', sortOrder: 1 });
@@ -56,7 +56,7 @@ describe('CRM services — sync F4', () => {
 
   describe('(b) client children', () => {
     it('add POSTs { gender, age } and reads { childId }; update PUTs; remove DELETEs', () => {
-      const api = TestBed.inject(CrmClientService);
+      const api = TestBed.inject(CrmClientChildrenService);
       let id = '';
       api.addChild('c1', { gender: 'F', age: 7 }).subscribe((r) => (id = r));
       const post = one('POST', '/clients/c1/children');
@@ -95,7 +95,7 @@ describe('CRM services — sync F4', () => {
   describe('(d) client brief rounds', () => {
     it('listMyRounds GETs /crm/portal/briefs/{id}/rounds', () => {
       let rounds: BriefRound[] = [];
-      TestBed.inject(CrmBriefService)
+      TestBed.inject(CrmPortalBriefRoundsService)
         .listMyRounds('b1')
         .subscribe((r) => (rounds = r));
       one('GET', '/crm/portal/briefs/b1/rounds').flush([
@@ -145,7 +145,7 @@ describe('CRM services — sync F4', () => {
   describe('(f) catalog item detail (S9 + S10)', () => {
     it('getItem GETs /crm/catalog/items/{id} and reads attributeValues, description and image', () => {
       let item: CatalogItem | undefined;
-      TestBed.inject(CrmCatalogService)
+      TestBed.inject(CrmCatalogItemDetailService)
         .getItemDetail('i1')
         .subscribe((r) => (item = r));
       one('GET', '/crm/catalog/items/i1').flush({
@@ -175,7 +175,7 @@ describe('CRM services — sync F4', () => {
 
     it('a detail without S9/S10 fields reads as no description, image or values', () => {
       let item: CatalogItem | undefined;
-      TestBed.inject(CrmCatalogService)
+      TestBed.inject(CrmCatalogItemDetailService)
         .getItemDetail('i1')
         .subscribe((r) => (item = r));
       one('GET', '/crm/catalog/items/i1').flush({ id: 'i1', nameEn: 'Lamp' });

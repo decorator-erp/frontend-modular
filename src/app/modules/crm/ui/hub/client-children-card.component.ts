@@ -12,7 +12,7 @@ import { ErrorHandlerService, friendly } from '@platform/http/error-handler.serv
 import { CatalogService } from '@platform/i18n/catalog.service';
 import type { CatalogKey } from '@platform/i18n/catalog/en';
 import { CanDirective, PERM } from '@platform/permissions';
-import { CrmClientService } from '../../data/crm-client.service';
+import { CrmClientChildrenService } from '../../data/crm-client-children.service';
 import type { CrmClientChild } from '../../model';
 import { ClientHubStore } from '../../stores/client-hub.store';
 import { ClientChildFormData, CrmClientChildFormComponent } from './client-child-form.component';
@@ -77,7 +77,7 @@ import { ClientChildFormData, CrmClientChildFormComponent } from './client-child
 export class CrmClientChildrenCardComponent {
   private readonly modal = inject(ModalService);
   private readonly confirm = inject(ConfirmService);
-  private readonly api = inject(CrmClientService);
+  private readonly api = inject(CrmClientChildrenService);
   private readonly errors = inject(ErrorHandlerService);
   private readonly toast = inject(ToastService);
   private readonly catalog = inject(CatalogService);

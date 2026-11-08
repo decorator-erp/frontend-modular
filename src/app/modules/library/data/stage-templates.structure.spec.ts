@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { StageTemplatesService } from './stage-templates.service';
+import { StageTemplateStructureService } from './stage-template-structure.service';
 import type {
   StageTemplateRef,
   TemplateStageTask,
@@ -9,15 +9,15 @@ import type {
 } from '../model/stage-template.model';
 
 /** Sync F1: the template structure routes (dms TemplateEndpoints.cs:66-192). */
-describe('StageTemplatesService — template structure (sync F1)', () => {
-  let service: StageTemplatesService;
+describe('StageTemplateStructureService (sync F1)', () => {
+  let service: StageTemplateStructureService;
   let http: HttpTestingController;
 
   beforeEach(() => {
     TestBed.configureTestingModule({
       providers: [provideHttpClient(), provideHttpClientTesting()],
     });
-    service = TestBed.inject(StageTemplatesService);
+    service = TestBed.inject(StageTemplateStructureService);
     http = TestBed.inject(HttpTestingController);
   });
 

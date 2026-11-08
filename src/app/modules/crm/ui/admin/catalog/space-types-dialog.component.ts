@@ -23,6 +23,7 @@ import { ErrorHandlerService, friendly } from '@platform/http/error-handler.serv
 import { CatalogService } from '@platform/i18n/catalog.service';
 import type { CatalogKey } from '@platform/i18n/catalog/en';
 import { CrmLookupService } from '../../../data/crm-lookup.service';
+import { CrmSpaceTypeAdminService } from '../../../data/crm-space-type-admin.service';
 import type { CrmSpaceType } from '../../../model';
 
 interface Draft {
@@ -74,7 +75,7 @@ const CODE = /^[a-z0-9_]{1,64}$/;
                 <th class="text-start font-medium px-2 py-1.5 border-b border-border">
                   {{ t('stypes.nameAr') }}
                 </th>
-                <th class="text-start font-medium px-2 py-1.5 border-b border-border w-20">
+                <th class="text-start font-medium px-2 py-1.5 border-b border-border w-24">
                   {{ t('stypes.sortOrder') }}
                 </th>
                 <th class="px-2 py-1.5 border-b border-border"></th>
@@ -141,12 +142,12 @@ const CODE = /^[a-z0-9_]{1,64}$/;
                       {{ st.sortOrder ?? 0 }}
                     </td>
                     <td class="px-2 py-1.5 border-b border-border-soft text-end whitespace-nowrap">
-                      <span class="me-2 fs-micro text-text-muted" data-state>{{
+                      <span class="me-1 fs-micro text-text-muted" data-state>{{
                         t(st.isActive === false ? 'stypes.inactive' : 'stypes.active')
                       }}</span>
                       <button
                         type="button"
-                        class="fs-caption text-accent hover:underline cursor-pointer me-2"
+                        class="fs-caption text-accent hover:underline cursor-pointer me-1"
                         (click)="startEdit(st)"
                         data-edit
                       >
@@ -176,7 +177,7 @@ const CODE = /^[a-z0-9_]{1,64}$/;
         </div>
 
         <form
-          class="mt-4 pt-4 border-t border-border grid grid-cols-1 sm:grid-cols-[1fr_1fr_1fr_var(--w-column)_auto] gap-2 items-end"
+          class="mt-4 pt-4 border-t border-border flex flex-wrap gap-2 items-end"
           (submit)="$event.preventDefault(); add()"
           data-add-form
         >
@@ -234,6 +235,7 @@ const CODE = /^[a-z0-9_]{1,64}$/;
 })
 export class CrmSpaceTypesDialogComponent implements OnInit {
   private readonly api = inject(CrmLookupService);
+  private readonly admin = inject(CrmSpaceTypeAdminService);
   private readonly errors = inject(ErrorHandlerService);
   private readonly toast = inject(ToastService);
   private readonly catalog = inject(CatalogService);
@@ -309,7 +311,7 @@ export class CrmSpaceTypesDialogComponent implements OnInit {
     this.error.set(problem);
     if (problem || this.busy()) return;
     this.run(
-      this.api.createSpaceType({
+      this.admin.createSpaceType({
         code: d.code.trim(),
         nameEn: d.nameEn.trim(),
         nameAr: d.nameAr.trim(),
@@ -325,7 +327,7 @@ export class CrmSpaceTypesDialogComponent implements OnInit {
     this.error.set(problem);
     if (problem || this.busy()) return;
     this.run(
-      this.api.updateSpaceType(st.id, {
+      this.admin.updateSpaceType(st.id, {
         nameEn: d.nameEn.trim(),
         nameAr: d.nameAr.trim(),
         sortOrder: Number(d.sortOrder),
@@ -337,7 +339,7 @@ export class CrmSpaceTypesDialogComponent implements OnInit {
   toggle(st: CrmSpaceType): void {
     if (this.busy()) return;
     this.error.set(null);
-    this.run(this.api.setSpaceTypeActive(st.id, st.isActive === false), () => undefined);
+    this.run(this.admin.setSpaceTypeActive(st.id, st.isActive === false), () => undefined);
   }
 
   close(): void {

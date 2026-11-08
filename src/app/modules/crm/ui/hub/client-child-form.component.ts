@@ -14,7 +14,7 @@ import { ErrorHandlerService, friendly } from '@platform/http/error-handler.serv
 import { CatalogService } from '@platform/i18n/catalog.service';
 import type { CatalogKey } from '@platform/i18n/catalog/en';
 import { PERM } from '@platform/permissions';
-import { CrmClientService } from '../../data/crm-client.service';
+import { CrmClientChildrenService } from '../../data/crm-client-children.service';
 import type { CrmClientChild } from '../../model';
 
 export interface ClientChildFormData {
@@ -83,7 +83,7 @@ const CHILD_ERRORS: Record<string, CatalogKey> = {
   `,
 })
 export class CrmClientChildFormComponent {
-  private readonly api = inject(CrmClientService);
+  private readonly api = inject(CrmClientChildrenService);
   private readonly errors = inject(ErrorHandlerService);
   private readonly catalog = inject(CatalogService);
   readonly ref = inject(PeraModalRef) as PeraModalRef<boolean>;
