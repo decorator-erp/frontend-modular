@@ -5,6 +5,7 @@ import { ModalService } from '@ds';
 import { PermissionsService } from '@platform/permissions';
 import { DmsStageFilesComponent } from './dms-stage-files.component';
 import { TaskAttachmentService } from '../../../data/task-attachment.service';
+import { DocumentVersionsService } from '../../../data/document-versions.service';
 import { ProjectAccessStore } from '../../../stores/project-access.store';
 import type { ProjectAccess } from '../../../model/access-grant.model';
 
@@ -15,6 +16,8 @@ describe('DmsStageFilesComponent — grantees (crmp P1-B)', () => {
       imports: [DmsStageFilesComponent],
       providers: [
         { provide: TaskAttachmentService, useValue: { getByStage: () => of([]) } },
+        // Sync F2: the panel also lists the stage's document versions.
+        { provide: DocumentVersionsService, useValue: { getByStage: () => of([]) } },
         { provide: ModalService, useValue: {} },
         { provide: PermissionsService, useValue: { can: () => token } },
         { provide: ProjectAccessStore, useValue: { project: () => () => ({ myAccess }) } },

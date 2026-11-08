@@ -11,9 +11,18 @@ import { HttpErrorResponse } from '@angular/common/http';
 import {
   DocumentFolder,
   DocumentFoldersService,
-  ProjectDocument,
   ProjectDocumentsService,
 } from '../../data/documents.service';
+import {
+  DocumentVersion,
+  DocumentVersionsService,
+  latestPerLineage,
+} from '../../data/document-versions.service';
+import { CatalogService } from '@platform/i18n/catalog.service';
+import {
+  DocumentVersionsDialogComponent,
+  DocumentVersionsDialogData,
+} from './document-versions-dialog.component';
 import { ErrorHandlerService, friendly } from '@platform/http/error-handler.service';
 import { ToastService } from '@platform/feedback/toast.service';
 import { PermissionsService } from '@platform/permissions';
@@ -25,6 +34,7 @@ import {
   AttachmentItem,
   ConfirmService,
   DrawerService,
+  ModalService,
   PeraAttachmentsShellComponent,
   PeraFilePreviewDrawerComponent,
 } from '@ds';
@@ -69,6 +79,9 @@ export class DocumentsTabComponent implements OnInit {
   private readonly confirm = inject(ConfirmService);
   private readonly drawer = inject(DrawerService);
   private readonly perms = inject(PermissionsService);
+  private readonly versionsApi = inject(DocumentVersionsService);
+  private readonly modal = inject(ModalService);
+  private readonly catalog = inject(CatalogService);
 
   private readonly access = inject(ProjectAccessStore);
 
@@ -82,8 +95,20 @@ export class DocumentsTabComponent implements OnInit {
     )(PERM.documents.upload),
   );
 
+  /** Sync F2(c): a review request needs `documents.update` (DocumentEndpoints.cs:46). */
+  readonly canRequestReview = computed(() =>
+    claimCheck(this.access.project(this.projectId())()?.myAccess, 'Documents', (p) =>
+      this.perms.can(p),
+    )(PERM.documents.update),
+  );
+
   readonly rootFolders = signal<DocumentFolder[]>([]);
-  readonly documents = signal<ProjectDocument[]>([]);
+  /**
+   * Sync F2: every active row — older versions stay active — so the shell shows the newest version
+   * of each lineage; the rest are in the versions dialog.
+   */
+  readonly allVersions = signal<DocumentVersion[]>([]);
+  readonly documents = computed(() => latestPerLineage(this.allVersions()));
   readonly selectedFolderId = signal<string | null>('all');
 
   readonly folders = computed<AttachmentFolder[]>(() => [
@@ -101,8 +126,9 @@ export class DocumentsTabComponent implements OnInit {
       name: d.fileName,
       ext: d.fileName.split('.').pop()?.toLowerCase() ?? '',
       sizeBytes: d.sizeBytes,
-      uploadedOn: d.createdAtUtc,
+      uploadedOn: d.uploadedOnUtc,
       folderId: d.folderId ?? 'all',
+      linkLabel: this.versionLabel(d),
     })),
   );
 
@@ -114,7 +140,31 @@ export class DocumentsTabComponent implements OnInit {
 
   load(): void {
     this.foldersApi.getByProject(this.projectId()).subscribe((list) => this.rootFolders.set(list));
-    this.docsApi.getByProject(this.projectId()).subscribe((list) => this.documents.set(list));
+    this.versionsApi.getByProject(this.projectId()).subscribe((list) => this.allVersions.set(list));
+  }
+
+  /** `v2 · Locked`, `Locked`, `v3` — or nothing for an unlocked v1. */
+  private versionLabel(d: DocumentVersion): string | null {
+    const parts: string[] = [];
+    if (d.version > 1) parts.push(this.catalog.t('docv.version', { n: d.version }));
+    if (d.isLocked) parts.push(this.catalog.t('docv.locked'));
+    return parts.length ? parts.join(' · ') : null;
+  }
+
+  private find(id: string): DocumentVersion | undefined {
+    return this.documents().find((d) => d.id === id);
+  }
+
+  /** Sync F2: versions, a new version and a review request; reloads when something changed. */
+  async openVersions(documentId: string): Promise<void> {
+    const data: DocumentVersionsDialogData = {
+      documentId,
+      projectId: this.projectId(),
+      canUpload: this.canManage(),
+      canRequestReview: this.canRequestReview(),
+    };
+    const ref = this.modal.open<boolean>(DocumentVersionsDialogComponent, { size: 'lg', data });
+    if (await ref.afterClosed()) this.load();
   }
 
   onFolderSelect(id: string): void {
@@ -164,6 +214,9 @@ export class DocumentsTabComponent implements OnInit {
         uploadedOn: item.uploadedOn,
         fetchBlob: () => this.docsApi.download(item.id),
         onDownload: () => this.download(item),
+        actions: [
+          { label: this.catalog.t('docv.open'), run: () => void this.openVersions(item.id) },
+        ],
       },
     });
   }
@@ -184,6 +237,14 @@ export class DocumentsTabComponent implements OnInit {
   }
 
   async onDelete(item: AttachmentItem): Promise<void> {
+    // Sync F2: a locked document is 409 `project_documents.Locked` on delete — say so up front.
+    if (this.find(item.id)?.isLocked) {
+      this.toast.show({
+        tone: 'warning',
+        message: this.catalog.t('docv.lockedNoDelete', { name: item.name }),
+      });
+      return;
+    }
     const ok = await this.confirm.open({
       title: 'Delete document',
       body: `Delete "${item.name}"? This cannot be undone.`,
@@ -192,13 +253,22 @@ export class DocumentsTabComponent implements OnInit {
     });
     if (!ok) return;
     this.docsApi.remove(item.id).subscribe({
-      next: () => this.documents.update((list) => list.filter((d) => d.id !== item.id)),
+      next: () => this.allVersions.update((list) => list.filter((d) => d.id !== item.id)),
       error: (err: HttpErrorResponse) =>
         this.toast.show({ tone: 'danger', message: friendly(this.errors.parse(err)) }),
     });
   }
 
-  async onBulkDelete(ids: string[]): Promise<void> {
+  async onBulkDelete(selected: string[]): Promise<void> {
+    // Sync F2: locked documents are skipped (and named), the rest go.
+    const locked = selected.filter((id) => this.find(id)?.isLocked);
+    for (const id of locked) {
+      this.toast.show({
+        tone: 'warning',
+        message: this.catalog.t('docv.lockedNoDelete', { name: this.find(id)?.fileName ?? '' }),
+      });
+    }
+    const ids = selected.filter((id) => !locked.includes(id));
     if (!ids.length) return;
     const ok = await this.confirm.open({
       title: `Delete ${ids.length} documents`,
@@ -209,7 +279,7 @@ export class DocumentsTabComponent implements OnInit {
     if (!ok) return;
     ids.forEach((id) =>
       this.docsApi.remove(id).subscribe({
-        next: () => this.documents.update((list) => list.filter((d) => d.id !== id)),
+        next: () => this.allVersions.update((list) => list.filter((d) => d.id !== id)),
         error: (err: HttpErrorResponse) =>
           this.toast.show({ tone: 'danger', message: friendly(this.errors.parse(err)) }),
       }),
