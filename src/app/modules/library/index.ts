@@ -10,3 +10,11 @@ export { StageTemplatesService } from './data/stage-templates.service';
 // Projects scope of work (specs/sow-scope-of-work.md): the stage picker's template stages
 // (defaultFee / taskCount). 008b #10.
 export type { TemplateStage } from './model/stage-template.model';
+
+// Sync F3: projects (task page "Apply template"). A loader, not the class, so the dialog and the
+// file template service stay out of the initial bundle (this barrel is imported eagerly).
+export const loadApplyFileTemplateDialog = () =>
+  import('./ui/file-templates/apply-file-template-dialog.component').then(
+    (m) => m.ApplyFileTemplateDialogComponent,
+  );
+export type { ApplyFileTemplateDialogData } from './ui/file-templates/apply-file-template-dialog.component';

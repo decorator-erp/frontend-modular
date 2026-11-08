@@ -53,19 +53,33 @@ export interface RaiseVariationRequest {
   budgetLineId?: string | null;
 }
 
-/** Only allowed while the variation is in `Draft`. */
+/**
+ * `PUT /variations/{id}/description` — `UpdateVariationDescriptionRequest(string? Description)`
+ * (VariationMessages.cs:35-36). Draft only (409 otherwise); empty or whitespace clears it.
+ */
 export interface SetVariationDescriptionRequest {
   description: string;
 }
 
+/**
+ * `ApproveVariationRequest(Guid? SignedByClientId, string? SignedDocumentPath)` (VariationMessages.cs:27).
+ * An InternalChange approves with neither (sending either is `SignatureFieldsNotAllowed`); a
+ * ClientDifference's approval IS the client signing — see {@link SignVariationRequest}.
+ */
 export interface ApproveVariationRequest {
-  note?: string | null;
+  signedByClientId?: string | null;
+  signedDocumentPath?: string | null;
 }
 
 export interface RejectVariationRequest {
   note?: string | null;
 }
 
+/**
+ * `SignVariationRequest(Guid SignedByClientId, string SignedDocumentPath)` (VariationMessages.cs:29) —
+ * both required. Valid while a ClientDifference is `Submitted` (Variation.cs Approve).
+ */
 export interface SignVariationRequest {
-  signedDocumentPath?: string | null;
+  signedByClientId: string;
+  signedDocumentPath: string;
 }

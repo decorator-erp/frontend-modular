@@ -55,14 +55,6 @@ import {
               [error]="errorOf('email')"
             />
           </pera-form-field>
-          <pera-form-field
-            label="Username"
-            [required]="true"
-            [error]="errorOf('userName')"
-            hint="Lowercase letters, digits, . _ -"
-          >
-            <pera-input formControlName="userName" [error]="errorOf('userName')" />
-          </pera-form-field>
           <div class="md:col-span-2">
             <pera-form-field
               label="Phone"
@@ -116,7 +108,6 @@ export class AddClientDialogComponent {
     firstName: ['', [Validators.required, PeraValidators.trimmedLength(1, 80)]],
     lastName: ['', [Validators.required, PeraValidators.trimmedLength(1, 80)]],
     email: ['', [Validators.required, PeraValidators.email]],
-    userName: ['', [Validators.required, PeraValidators.username]],
     phone: ['', [Validators.required, PeraValidators.phone]],
     address: ['', [Validators.required, PeraValidators.trimmedLength(5, 300)]],
     notes: ['', [Validators.maxLength(500)]],
@@ -146,7 +137,6 @@ export class AddClientDialogComponent {
       firstName: v.firstName.trim(),
       lastName: v.lastName.trim(),
       email: v.email.trim(),
-      userName: v.userName.trim(),
       phone: v.phone.trim(),
       address: v.address.trim(),
       notes: v.notes.trim() || undefined,

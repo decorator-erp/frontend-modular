@@ -103,8 +103,6 @@ describe('StageTeamsService (crmp A-2)', () => {
     expect(head.request.body).toEqual({ headId: 'E2' });
   });
 
-  it('links a template stage to a department on POST /stages/{id}/departments/{deptId} (TemplateEndpoints.cs:117)', () => {
-    service.createForTemplate('ST1', 'D1').subscribe();
-    expect(http.expectOne(`${api}/stages/ST1/departments/D1`).request.method).toBe('POST');
-  });
+  // The template-stage → department link moved to the library StageTemplatesService (sync F1);
+  // its test is in library/data/stage-templates.structure.spec.ts.
 });

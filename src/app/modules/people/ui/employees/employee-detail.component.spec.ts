@@ -33,9 +33,9 @@ const employee = (over: Partial<EmployeeFull>): EmployeeFull => ({
 describe('EmployeeDetailComponent — loginActive (006b-2 #20)', () => {
   const api = {
     getFull: vi.fn(),
-    getOverview: () => of(null),
-    getProjects: () => of([]),
-    getTasks: () => of([]),
+    getOverview: vi.fn(() => of(null)),
+    getProjects: vi.fn(() => of([])),
+    getTasks: vi.fn(() => of([])),
     activate: vi.fn(() => of(undefined)),
     deactivate: vi.fn(() => of(undefined)),
   };
@@ -71,6 +71,18 @@ describe('EmployeeDetailComponent — loginActive (006b-2 #20)', () => {
 
   const text = (fixture: { nativeElement: HTMLElement }) => fixture.nativeElement.textContent ?? '';
   const BANNER = "This employee is active, but their login is off, so they can't sign in.";
+
+  // Sync W1-13: /employees/{id}/overview|projects|tasks do not exist — never requested.
+  it('requests no overview/projects/tasks and shows them unavailable', () => {
+    const fixture = render(employee({}));
+    const c = fixture.componentInstance;
+    expect(api.getOverview).not.toHaveBeenCalled();
+    expect(api.getProjects).not.toHaveBeenCalled();
+    expect(api.getTasks).not.toHaveBeenCalled();
+    expect(c.overviewUnavailable()).toBe(true);
+    expect(c.projectsUnavailable()).toBe(true);
+    expect(c.tasksUnavailable()).toBe(true);
+  });
 
   it('shows the login chip, and warns when an active employee cannot sign in', () => {
     const fixture = render(employee({ loginActive: false }));

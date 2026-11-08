@@ -73,6 +73,19 @@ describe('authInterceptor — the 401 refresh-and-retry path', () => {
     req.flush([]);
   });
 
+  it('sync W1-12: POST /auth/logout carries the token, and its 401 runs no refresh', async () => {
+    const LOGOUT = `${environment.apiUrl}/auth/logout`;
+    let failed = false;
+    http.post(LOGOUT, {}).subscribe({ error: () => (failed = true) });
+    const req = backend.expectOne(LOGOUT);
+    expect(req.request.headers.get('Authorization')).toBe('Bearer old-token');
+    req.flush(null, { status: 401, statusText: 'Unauthorized' });
+    await Promise.resolve();
+    backend.expectNone(REFRESH);
+    expect(failed).toBe(true);
+    expect(authStore.logout).not.toHaveBeenCalled();
+  });
+
   it('on a 401, refreshes once and retries the original request with the new token', async () => {
     let result: unknown;
     http.get(PROTECTED).subscribe((r) => (result = r));

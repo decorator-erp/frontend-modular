@@ -1,6 +1,9 @@
-import { ChangeDetectionStrategy, Component, inject, input, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { CrmItemService } from '../../data/crm-item.service';
+import { CrmLookupService } from '../../data/crm-lookup.service';
+import type { CrmSpaceType } from '../../model';
+import { PERM, PermissionsService } from '@platform/permissions';
 import { ErrorHandlerService, friendly } from '@platform/http/error-handler.service';
 import { CatalogService } from '@platform/i18n/catalog.service';
 import type { CatalogKey } from '@platform/i18n/catalog/en';
@@ -18,7 +21,7 @@ import {
   SelectOption,
 } from '@ds';
 
-const CATEGORY_KEYS: Record<RequirementCategory, CatalogKey> = {
+export const CATEGORY_KEYS: Record<RequirementCategory, CatalogKey> = {
   [RequirementCategory.SpaceLayout]: 'item.catLayout',
   [RequirementCategory.Style]: 'item.catSelStyle',
   [RequirementCategory.ColorPalette]: 'item.catSelColorPalette',
@@ -30,7 +33,7 @@ const CATEGORY_KEYS: Record<RequirementCategory, CatalogKey> = {
   [RequirementCategory.Technical]: 'item.catSelTechnical',
   [RequirementCategory.Other]: 'common.other',
 };
-const PRIORITY_KEYS: Record<RequirementPriority, CatalogKey> = {
+export const PRIORITY_KEYS: Record<RequirementPriority, CatalogKey> = {
   [RequirementPriority.Low]: 'item.prLow',
   [RequirementPriority.Medium]: 'item.prMed',
   [RequirementPriority.High]: 'item.prHigh',
@@ -94,6 +97,20 @@ const PRIORITY_KEYS: Record<RequirementPriority, CatalogKey> = {
             <pera-select formControlName="category" [options]="categoryOptions" />
           </pera-form-field>
 
+          <!-- Sync F4e: the requirement's space type, when the caller can read them. -->
+          @if (spaceTypeOptions().length > 1) {
+            <pera-form-field
+              [label]="catalog.t('pitems.spaceType')"
+              [hint]="catalog.t('common.optionalLbl')"
+            >
+              <pera-select
+                formControlName="spaceTypeId"
+                [options]="spaceTypeOptions()"
+                data-space-type
+              />
+            </pera-form-field>
+          }
+
           <div class="grid grid-cols-2 gap-x-4 gap-y-4">
             <pera-form-field
               [label]="catalog.t('brief.room')"
@@ -130,7 +147,33 @@ export class CrmAddRequirementComponent {
   private readonly items = inject(CrmItemService);
   private readonly errorHandler = inject(ErrorHandlerService);
   private readonly toast = inject(ToastService);
+  private readonly lookup = inject(CrmLookupService);
   protected readonly catalog = inject(CatalogService);
+
+  /**
+   * Sync F4e: the active space types (`GET /crm/space-types`). There is no portal route for them and
+   * the client baseline has no `crm.space_types.read`, so without it (or on a failed read) the
+   * picker is left out and no space type is sent.
+   */
+  private readonly spaceTypes = signal<CrmSpaceType[]>([]);
+  protected readonly spaceTypeOptions = computed<SelectOption[]>(() => {
+    const active = this.spaceTypes().filter((t) => t.isActive !== false);
+    if (!active.length) return [];
+    const ar = this.catalog.locale() === 'ar';
+    return [
+      { value: '', label: this.catalog.t('pitems.noSpaceType') },
+      ...active.map((t) => ({ value: t.id, label: ar ? t.nameAr || t.nameEn : t.nameEn })),
+    ];
+  });
+
+  constructor() {
+    if (inject(PermissionsService).can(PERM.crm.spaceTypes.read)) {
+      this.lookup.spaceTypes().subscribe({
+        next: (list) => this.spaceTypes.set(list),
+        error: () => this.spaceTypes.set([]),
+      });
+    }
+  }
 
   readonly projectId = input.required<string>();
   /** `null` ⇒ the period is closed (T088) — the form does not render. */
@@ -155,6 +198,7 @@ export class CrmAddRequirementComponent {
     room: [''],
     priority: [String(RequirementPriority.Medium)],
     details: ['', [Validators.maxLength(2000)]],
+    spaceTypeId: [''],
   });
 
   readonly serverError = signal<ParsedApiError | null>(null);
@@ -174,6 +218,7 @@ export class CrmAddRequirementComponent {
       room: '',
       priority: String(RequirementPriority.Medium),
       details: '',
+      spaceTypeId: '',
     });
   }
 
@@ -196,6 +241,7 @@ export class CrmAddRequirementComponent {
         priority: Number(v.priority),
         room: v.room.trim() || null,
         description: v.details.trim() || null,
+        spaceTypeId: v.spaceTypeId || null,
       })
       .subscribe({
         next: () => {

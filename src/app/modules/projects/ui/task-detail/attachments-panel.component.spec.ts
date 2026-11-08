@@ -1,5 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { of } from 'rxjs';
+import { vi } from 'vitest';
 import { AttachmentsPanelComponent } from './attachments-panel.component';
 import { TaskAttachmentService } from '../../data/task-attachment.service';
 import { ErrorHandlerService } from '@platform/http/error-handler.service';
@@ -30,6 +31,8 @@ describe('AttachmentsPanelComponent (files browser)', () => {
   let openedComponent: unknown;
   let openedConfig: { data: { folderName?: string; files?: unknown[] } } | null;
   let canManage: boolean;
+  let upload: ReturnType<typeof vi.fn>;
+  let getByTask: ReturnType<typeof vi.fn>;
 
   const modal = {
     open: (component: unknown, config: { data: unknown }) => {
@@ -43,6 +46,8 @@ describe('AttachmentsPanelComponent (files browser)', () => {
     openedComponent = null;
     openedConfig = null;
     canManage = opts.canManage ?? true;
+    upload = vi.fn(() => of('d9'));
+    getByTask = vi.fn(() => of(attachments));
     TestBed.configureTestingModule({
       imports: [AttachmentsPanelComponent],
       providers: [
@@ -50,7 +55,8 @@ describe('AttachmentsPanelComponent (files browser)', () => {
         {
           provide: TaskAttachmentService,
           useValue: {
-            getByTask: () => of(attachments),
+            getByTask,
+            upload,
             download: () => of(new Blob()),
             remove: () => of(undefined),
           },
@@ -131,5 +137,15 @@ describe('AttachmentsPanelComponent (files browser)', () => {
   it('shows Upload with manage-tasks permission', () => {
     const fixture = make([att()], { canManage: true });
     expect(fixture.nativeElement.textContent).toContain('Upload');
+  });
+
+  it('uploads a picked file through the Documents task route (TaskAttachmentService.upload) and reloads', () => {
+    const fixture = make([att()], { canManage: true });
+    const file = new File(['x'], 'site.png', { type: 'image/png' });
+    const input = { files: [file], value: 'C:/fake/site.png' };
+    fixture.componentInstance.onPick({ target: input } as unknown as Event);
+    expect(upload).toHaveBeenCalledWith('t1', file);
+    expect(getByTask).toHaveBeenCalledTimes(2);
+    expect(input.value).toBe('');
   });
 });

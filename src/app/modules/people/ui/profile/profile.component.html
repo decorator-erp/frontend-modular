@@ -268,14 +268,8 @@
         <pera-card>
           <h2 class="m-0 mb-3 text-sm font-semibold">Security</h2>
           <div class="flex flex-col gap-3 text-sm">
-            <div>
-              <pera-button
-                variant="secondary"
-                [disabled]="true"
-                peraTooltip="Not wired yet — POST /api/auth/change-password exists but has no UI"
-                >Change password</pera-button
-              >
-            </div>
+            <!-- Sync F5: POST /api/auth/change-password. -->
+            <app-change-password-card />
             <!-- No "Last login": lastLoginAt lives in Identity and no HR route exposes it. -->
           </div>
         </pera-card>

@@ -43,6 +43,8 @@ import { PERM } from '@platform/permissions';
 import { CanDirective } from '@platform/permissions';
 import { PermissionsService } from '@platform/permissions';
 import { EmployeeService } from '@modules/people';
+import { CatalogService } from '@platform/i18n/catalog.service';
+import { MoneyService } from '@shared/ui/money.service';
 import {
   ConfirmService,
   ModalService,
@@ -194,6 +196,18 @@ type TaskFilter = 'all' | RollupStatus;
 
                 <div class="mt-5 flex flex-wrap items-center gap-3">
                   <app-dms-stage-status-pill [status]="s.status" [lg]="true" />
+
+                  <!-- Sync W2-10: ProjectStageResponse.Cost (StageContracts.cs:15), when set. -->
+                  @if (s.cost !== null && s.cost !== undefined) {
+                    <span
+                      class="inline-flex items-center gap-2 border border-border px-3 py-1.5 tabular-nums"
+                      [style.fontSize]="'var(--fs-label)'"
+                      data-stage-cost
+                    >
+                      <span class="text-text-muted">{{ catalog.t('pt.stageCost') }}</span>
+                      <span class="font-medium">{{ money.format(s.cost, 'EGP') }}</span>
+                    </span>
+                  }
 
                   @if (s.status === 'Locked') {
                     <span
@@ -463,7 +477,7 @@ type TaskFilter = 'all' | RollupStatus;
               <ng-container *peraCan="activitiesRead">
                 <div [class]="PNL">
                   <div [class]="PNL_H"><div class="t">Stage activity</div></div>
-                  <app-activity-feed entityName="Stage" [entityId]="s.id" [take]="100" />
+                  <app-activity-feed entityName="ProjectStage" [entityId]="s.id" [take]="100" />
                 </div>
               </ng-container>
             </div>
@@ -602,6 +616,8 @@ export class DmsStageDetailComponent implements OnInit, OnDestroy {
   private readonly toast = inject(ToastService);
   private readonly errors = inject(ErrorHandlerService);
   private readonly perms = inject(PermissionsService);
+  protected readonly catalog = inject(CatalogService);
+  protected readonly money = inject(MoneyService);
 
   /**
    * Real backend permissions (the route already enforces `Projects.Read`, so the

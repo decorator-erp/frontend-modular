@@ -157,6 +157,8 @@ export interface ProjectStage {
   /** Actual completion (ActualEndDate) — stamped on complete. */
   completedOnUtc: string | null;
   notes: string | null;
+  /** Sync W2-10: `ProjectStageResponse.Cost` (StageContracts.cs:15); null when absent or unset. */
+  cost?: number | null;
   tasks: ProjectTask[]; // present on the with-tasks/details responses
   /** Financial block — present on enriched stage responses (financial-queries spec). */
   financial?: ProjectStageFinancialBlock;
@@ -189,7 +191,9 @@ export interface ProjectTask {
   priority: TaskPriority;
   weight: number;
   notes: string | null;
-  /** Planned start (estimatedStartDate). Editable while the task is still Open. */
+  /** Sync W2-10: `ProjectTaskResponse.DepartmentId` (TaskContracts.cs:8); absent on older rows. */
+  departmentId?: string | null;
+  /** Planned start (estimatedStartDate). Not on `ProjectTaskResponse`; always null today (sync W1-4). */
   estimatedStartDate: string | null;
   startedOnUtc: string | null;
   completedOnUtc: string | null;
@@ -280,6 +284,12 @@ export interface TaskAttachment {
   fileSizeBytes: number;
   uploadedById: string;
   uploadedOnUtc: string;
+  /** Sync W2-3: `ProjectDocumentResponse.IsLocked` — no delete or move while locked. */
+  isLocked?: boolean;
+  /** Sync W2-3: revision number (1 for the first upload). */
+  version?: number;
+  /** Sync W2-3: the first revision's id. */
+  rootDocumentId?: string | null;
 }
 
 // ---- Request payloads ------------------------------------------------------

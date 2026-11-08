@@ -89,13 +89,55 @@ export class LedgerEntryService extends ApiService {
     return this.get<unknown>(`/ledger-entries/by-project/${projectId}`, {
       direction: query.direction,
       type: query.type,
-      stageId: query.stageId,
-      taskId: query.taskId,
+      // Sync W1-10: the route binds `projectStageId` / `projectTaskId` (LedgerEntryEndpoints.cs:86-88).
+      projectStageId: query.stageId,
+      projectTaskId: query.taskId,
       fromDate: query.fromDate,
       toDate: query.toDate,
       skip: ((query.pageNumber ?? 1) - 1) * (query.pageSize ?? 20),
       take: query.pageSize ?? 20,
-    }).pipe(map((r) => this.normalisePaged<LedgerEntryResponse>(r)));
+    }).pipe(
+      map((r) => {
+        const page = this.normalisePaged<unknown>(r);
+        return { ...page, items: page.items.map((e) => this.normaliseListItem(e)) };
+      }),
+    );
+  }
+
+  /**
+   * Sync W1-11: `GET /ledger-entries/by-project/{projectId}/unallocated?skip&take` (finance.read;
+   * LedgerEntryEndpoints.cs:109) → `PagedResult<UnallocatedLedgerEntryResponse>`. Returns entry id →
+   * the unallocated remainder (decimal string), for the payments that still have one.
+   */
+  getUnallocated(projectId: string, take = 200): Observable<Map<string, string>> {
+    return this.get<unknown>(`/ledger-entries/by-project/${projectId}/unallocated`, {
+      skip: 0,
+      take,
+    }).pipe(
+      map((r) => {
+        const out = new Map<string, string>();
+        for (const e of this.normalisePaged<unknown>(r).items) {
+          const id = this.field<string>(e, 'id');
+          const rest = this.field<number | string>(e, 'unallocatedAmount');
+          if (id && rest !== undefined && rest !== null && Number(rest) > 0)
+            out.set(id, String(rest));
+        }
+        return out;
+      }),
+    );
+  }
+
+  /**
+   * `LedgerEntryListItemResponse` (LedgerEntryMessages.cs:53). Sync S7: `isReversed` and `note` are
+   * read (absent → not reversed, no note); the amount stays the wire value for MoneyService.
+   */
+  private normaliseListItem(source: unknown): LedgerEntryResponse {
+    const row = (source ?? {}) as LedgerEntryResponse;
+    return {
+      ...row,
+      isReversed: this.field<boolean>(source, 'isReversed') ?? false,
+      note: this.field<string | null>(source, 'note') ?? null,
+    };
   }
 
   private normalisePaged<T>(response: unknown): PagedResult<T> {

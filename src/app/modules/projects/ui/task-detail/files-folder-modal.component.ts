@@ -1,3 +1,4 @@
+import { CatalogService } from '@platform/i18n/catalog.service';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -218,7 +219,32 @@ export interface FilesFolderModalData {
                   <div class="fs-label font-medium truncate" [title]="t.name">
                     {{ t.name }}
                   </div>
-                  @if (data.canManage) {
+                  @if ((t.version ?? 1) > 1) {
+                    <span class="shrink-0 font-mono fs-label text-text-muted" data-version
+                      >v{{ t.version }}</span
+                    >
+                  }
+                  @if (t.locked) {
+                    <span
+                      class="shrink-0 -me-0.5 text-text-muted"
+                      [title]="catalog.t('docs.locked')"
+                      [attr.aria-label]="catalog.t('docs.locked')"
+                      data-locked
+                    >
+                      <svg
+                        width="12"
+                        height="12"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="1.7"
+                        aria-hidden="true"
+                      >
+                        <rect x="5" y="11" width="14" height="10" />
+                        <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+                      </svg>
+                    </span>
+                  } @else if (data.canManage) {
                     <button
                       type="button"
                       class="shrink-0 -me-0.5 text-text-muted hover:text-danger opacity-0 group-hover:opacity-100 transition-opacity"
@@ -271,6 +297,7 @@ export class FilesFolderModalComponent implements OnDestroy {
   private readonly confirm = inject(ConfirmService);
   private readonly modalRef = inject(PeraModalRef) as PeraModalRef<boolean>;
   readonly data = inject(PERA_MODAL_DATA) as FilesFolderModalData;
+  protected readonly catalog = inject(CatalogService);
 
   readonly files = signal<AttTile[]>([]);
   readonly selected = signal<AttTile | null>(null);
@@ -338,6 +365,7 @@ export class FilesFolderModalComponent implements OnDestroy {
   }
 
   async remove(tile: AttTile, event: Event): Promise<void> {
+    if (tile.locked) return;
     event.stopPropagation();
     const ok = await this.confirm.open({
       title: 'Delete attachment',

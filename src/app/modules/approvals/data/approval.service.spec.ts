@@ -17,13 +17,27 @@ describe('ApprovalService', () => {
 
   afterEach(() => http.verify());
 
-  it('GETs /approvals/pending and returns the list', () => {
+  // Sync W1-6: pageNumber/pageSize are required (ApprovalEndpoints.cs:24-31); the answer is a PagedResult.
+  it('GETs /approvals/pending?pageNumber=1&pageSize=200 and reads the paged items', () => {
     let result: PendingApprovalResponse[] | undefined;
     svc.listPending().subscribe((r) => (result = r));
-    const req = http.expectOne('/api/approvals/pending');
+    const req = http.expectOne((r) => r.url === '/api/approvals/pending');
     expect(req.request.method).toBe('GET');
-    req.flush([{ id: 'a1', projectId: 'p1' }]);
-    expect(result).toEqual([{ id: 'a1', projectId: 'p1' }]);
+    expect(req.request.params.get('pageNumber')).toBe('1');
+    expect(req.request.params.get('pageSize')).toBe('200');
+    req.flush({
+      items: [
+        { id: 'a1', subjectType: 2, subjectId: 's1', type: 1, round: 1, projectId: 'p1' },
+        { id: 'a2', subjectType: 'RequirementItem', subjectId: 's2', projectId: null },
+      ],
+      pageNumber: 1,
+      pageSize: 200,
+      totalCount: 2,
+    });
+    expect(result).toEqual([
+      { id: 'a1', projectId: 'p1', subjectId: 's1', subjectType: 'DesignBrief' },
+      { id: 'a2', projectId: '', subjectId: 's2', subjectType: 'RequirementItem' },
+    ]);
   });
 
   // crm-prod FINDING-P2-10: `GET /api/projects/approval-requests` has no backend route; the

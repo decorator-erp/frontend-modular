@@ -58,22 +58,34 @@ describe('CrmCatalogItemDialogComponent (009b #36, #38)', () => {
     const fixture = TestBed.createComponent(CrmCatalogItemDialogComponent);
     fixture.detectChanges();
     http.expectOne(url('/crm/catalog/tree')).flush([CATEGORY]);
-    // Select only: the non-Select spec controls bind `[formControlName]` inside the outer
-    // `form`, not `specForm` — an old-app bug (verbatim), out of this row.
     http
       .expectOne(url('/crm/catalog/categories/C/attributes'))
       .flush([attr('style', CatalogAttributeType.Select)]);
+    fixture.detectChanges();
+    // Sync F4f: a Select attribute now reads its options (it used to say "not available").
+    http
+      .expectOne((r) => r.url === url('/crm/catalog/attributes/style/options'))
+      .flush([
+        {
+          id: 'O1',
+          code: 'modern',
+          nameEn: 'Modern',
+          nameAr: 'حديث',
+          imageUri: null,
+          sortOrder: 0,
+          isActive: true,
+        },
+      ]);
     fixture.detectChanges();
     return fixture;
   }
 
   afterEach(() => http.verify());
 
-  it('loads the spec fields from the categories route and marks a Select "not available"', () => {
+  it('loads the spec fields from the categories route and offers a Select its options', () => {
     const el = render({ categoryId: 'C' }).nativeElement as HTMLElement;
-    const unavailable = el.querySelectorAll('[data-testid="cat-options-unavailable"]');
-    expect(unavailable).toHaveLength(1);
-    expect(unavailable[0].textContent).toContain('Not available yet.');
+    expect(el.querySelector('[data-testid="cat-options-unavailable"]')).toBeNull();
+    expect(el.querySelector('pera-select')).not.toBeNull();
   });
 
   it('creates without description or image and writes the specs to the returned id (009b #38)', () => {

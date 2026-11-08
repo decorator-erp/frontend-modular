@@ -11,7 +11,7 @@ import { FormArray, FormBuilder, FormGroup, ReactiveFormsModule, Validators } fr
 import { ActivatedRoute, Router } from '@angular/router';
 import { combineLatest, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
-import { BudgetLineService } from '../../data/budget-line.service';
+import { BudgetLineService, budgetLineLabel } from '../../data/budget-line.service';
 import { InvoiceService } from '../../data/invoice.service';
 import { ProjectStageService } from '@modules/projects';
 import { ProjectTaskService } from '@modules/projects';
@@ -287,7 +287,7 @@ export class InvoiceFormComponent implements OnInit {
       ]);
       this.budgetOptions.set([
         { value: '', label: '—' },
-        ...bl.map((l) => ({ value: l.id, label: `${l.costCategoryName} — ${l.name}` })),
+        ...bl.map((l) => ({ value: l.id, label: budgetLineLabel(l) })),
       ]);
       this.taskOptions.set([
         { value: '', label: '—' },

@@ -48,6 +48,10 @@ export interface CatalogCategory {
   selectionMode: CatalogSelectionMode;
   /** Drives completeness. */
   isRequired: boolean;
+  /** Sync S9: `CrmCatalogCategoryResponse.DescriptionEn/Ar` and `ImageUri`; absent on older rows. */
+  descriptionEn?: string | null;
+  descriptionAr?: string | null;
+  imageUri?: string | null;
   sortOrder: number;
   isActive: boolean;
   /** Synthetic render key. Never a domain id — see `ApiService.trackKeyFor`. */

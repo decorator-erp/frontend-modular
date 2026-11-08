@@ -128,14 +128,6 @@
                 <div class="font-mono fs-micro text-text-muted uppercase mb-1">Client</div>
                 <span class="truncate block">{{ row.clientName || '—' }}</span>
               </div>
-              <div class="col-span-2">
-                <div class="font-mono fs-micro text-text-muted uppercase mb-1">Budget</div>
-                <span
-                  class="inline-flex items-center gap-1.5 font-mono px-1.5 py-0.5 border border-border bg-bg tabular-nums"
-                >
-                  <pera-currency [amount]="row.estimatedBudget" />
-                </span>
-              </div>
             </div>
           </button>
         }
@@ -253,10 +245,4 @@
   } @else {
     <span class="text-text-muted">—</span>
   }
-</ng-template>
-
-<ng-template #budgetTpl let-row>
-  <span class="flex justify-end tabular-nums">
-    <pera-currency [amount]="row.estimatedBudget" />
-  </span>
 </ng-template>

@@ -20,6 +20,7 @@ import {
 import { CatalogAdminStore } from '../../../stores/catalog-admin.store';
 import { CrmCatalogChildrenListComponent } from './catalog-children-list.component';
 import { CrmCatalogCategoryDetailComponent } from './catalog-category-detail.component';
+import { CrmSpaceTypesDialogComponent } from './space-types-dialog.component';
 import {
   CrmNewCategoryDialogComponent,
   NewCategoryDialogData,
@@ -89,6 +90,14 @@ import {
           [ngModel]="store.searchTerm()"
           (ngModelChange)="store.search($event)"
         />
+        <!-- Sync F4a: the space types admin. -->
+        <pera-button
+          variant="secondary"
+          *peraCan="PERM.crm.spaceTypes.manage"
+          (click)="openSpaceTypes()"
+          data-testid="cat-space-types"
+          >{{ catalog.t('stypes.open') }}</pera-button
+        >
         <pera-button
           variant="primary"
           iconStart="plus"
@@ -159,10 +168,10 @@ export class CrmCatalogAdminPageComponent {
       .map((t) => ({ value: t.id, label: this.categoryName(t) })),
   ]);
 
+  private readonly lookup = inject(CrmLookupService);
+
   constructor() {
-    inject(CrmLookupService)
-      .spaceTypes()
-      .subscribe({ next: (t) => this.spaceTypes.set(t), error: () => undefined });
+    this.loadSpaceTypes();
 
     // Position follows the URL — drill-down is linkable and Back moves up a level.
     this.route.queryParamMap
@@ -180,6 +189,20 @@ export class CrmCatalogAdminPageComponent {
       queryParams: { category: categoryId },
       queryParamsHandling: 'merge',
     });
+  }
+
+  private loadSpaceTypes(): void {
+    this.lookup
+      .spaceTypes()
+      .subscribe({ next: (t) => this.spaceTypes.set(t), error: () => undefined });
+  }
+
+  /** Sync F4a: add, rename, reorder and switch space types; the filter re-reads them after. */
+  async openSpaceTypes(): Promise<void> {
+    const changed = await this.modal
+      .open<boolean>(CrmSpaceTypesDialogComponent, { size: 'lg' })
+      .afterClosed();
+    if (changed) this.loadSpaceTypes();
   }
 
   /** Jump to a search hit and clear the search, returning to normal drill-down. */

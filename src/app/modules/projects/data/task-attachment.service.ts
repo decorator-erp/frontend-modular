@@ -71,6 +71,9 @@ export class TaskAttachmentService extends ApiService {
       fileSizeBytes: this.field<number>(source, 'fileSizeBytes') ?? 0,
       uploadedById: this.field<string>(source, 'uploadedById') ?? '',
       uploadedOnUtc: this.field<string>(source, 'uploadedOnUtc') ?? '',
+      isLocked: this.field<boolean>(source, 'isLocked') ?? false,
+      version: this.field<number>(source, 'version') ?? 1,
+      rootDocumentId: this.field<string | null>(source, 'rootDocumentId') ?? null,
     };
   }
 }

@@ -24,6 +24,13 @@ const skipAuth = (url: string): boolean =>
   url.includes('/crm/public/');
 
 /**
+ * Sync W1-12: `POST /auth/logout` carries the token (it is authenticated) but its 401 never runs the
+ * refresh flow — logout is already tearing the session down, and a refresh there would spend the
+ * single-use refresh token and re-enter the logout.
+ */
+const isLogout = (url: string): boolean => url.endsWith('/auth/logout');
+
+/**
  * The logout in progress, or `null`. N concurrent 401s that share one failed refresh each reach
  * `catchError`; without this they would each toast, each POST `/auth/revoke` (into the same per-IP
  * rate limit) and each navigate. Reset when the logout settles.
@@ -58,7 +65,7 @@ const bounceToLogin = (
   }
 
   bouncing = authStore
-    .logout()
+    .logout({ endServerSession: false })
     .then(() =>
       keepReturnUrl
         ? router.navigate(['/login'], { queryParams: { returnUrl } })
@@ -134,7 +141,12 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
 
   return next(request).pipe(
     catchError((error) => {
-      if (error instanceof HttpErrorResponse && error.status === 401 && !skipAuth(req.url)) {
+      if (
+        error instanceof HttpErrorResponse &&
+        error.status === 401 &&
+        !skipAuth(req.url) &&
+        !isLogout(req.url)
+      ) {
         return handle401(request, next, tokenService, tokenRefresh, authStore, router, toast);
       }
       return throwError(() => error);

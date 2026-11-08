@@ -66,11 +66,30 @@ describe('CrmCatalogService', () => {
           depth: 0,
           selectionMode: CatalogSelectionMode.None,
           isRequired: false,
+          descriptionEn: null,
+          descriptionAr: null,
+          imageUri: null,
           sortOrder: 0,
           isActive: true,
           trackKey: 'cat-1',
         },
       ]);
+    });
+
+    it('sync W2-9 (S9): reads the category description and image', () => {
+      let categories: CatalogCategory[] = [];
+      service.getCategories(null, true).subscribe((r) => (categories = r));
+      http.expectOne(url('/crm/catalog/tree')).flush([
+        {
+          ...wire('cat-1', '/cat-1/'),
+          descriptionEn: 'Floors',
+          descriptionAr: 'أرضيات',
+          imageUri: 'https://cdn.example.com/f.png',
+        },
+      ]);
+      expect(categories[0].descriptionEn).toBe('Floors');
+      expect(categories[0].descriptionAr).toBe('أرضيات');
+      expect(categories[0].imageUri).toBe('https://cdn.example.com/f.png');
     });
 
     it('filters the subtree and inactive rows client-side', () => {
@@ -118,6 +137,25 @@ describe('CrmCatalogService', () => {
       expect(items[0].isActive).toBe(false);
       expect(items[0].attributes).toEqual([]);
       expect(items[0].trackKey).toBe('item-1');
+    });
+
+    it('sync W2-9 (S9): reads the item description and image', () => {
+      let items: CatalogItem[] = [];
+      service.itemsByCategory('C').subscribe((r) => (items = r));
+      http.expectOne(url('/crm/catalog/categories/C/items')).flush([
+        {
+          id: 'i1',
+          categoryId: 'C',
+          descriptionEn: 'Solid oak',
+          descriptionAr: 'بلوط',
+          imageUri: 'u',
+        },
+      ]);
+      expect([items[0].descriptionEn, items[0].descriptionAr, items[0].imageUri]).toEqual([
+        'Solid oak',
+        'بلوط',
+        'u',
+      ]);
     });
   });
 

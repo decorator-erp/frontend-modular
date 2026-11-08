@@ -7,9 +7,9 @@ import { PagedResult } from '@platform/types';
 import type { InvoiceStatus, InvoiceType } from '../model/enums';
 import { ApiService } from '@platform/http/api.service';
 
+/** Sync W1-11: the route filters by `status` only (InvoiceEndpoints.cs:65-66) — no `type`. */
 export interface InvoiceQuery {
   status?: InvoiceStatus;
-  type?: InvoiceType;
   pageNumber?: number;
   pageSize?: number;
 }
@@ -48,14 +48,14 @@ export class InvoiceService extends ApiService {
   ): Observable<PagedResult<InvoiceResponse>> {
     return this.get<unknown>(`/invoices/by-project/${projectId}`, {
       status: query.status,
-      type: query.type,
       skip: ((query.pageNumber ?? 1) - 1) * (query.pageSize ?? 20),
       take: query.pageSize ?? 20,
     }).pipe(map((r) => this.normalisePaged<InvoiceResponse>(r)));
   }
 
+  /** `GET /invoices/by-project/{projectId}/outstanding` (InvoiceEndpoints.cs:76; sync W1-11). */
   getOutstanding(projectId: string): Observable<InvoiceResponse[]> {
-    return this.get<unknown>(`/invoices/outstanding/${projectId}`).pipe(
+    return this.get<unknown>(`/invoices/by-project/${projectId}/outstanding`).pipe(
       map((r) => this.unwrapArray<InvoiceResponse>(r)),
     );
   }

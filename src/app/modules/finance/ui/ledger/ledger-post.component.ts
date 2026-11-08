@@ -11,7 +11,7 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { combineLatest, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
-import { BudgetLineService } from '../../data/budget-line.service';
+import { BudgetLineService, budgetLineLabel } from '../../data/budget-line.service';
 import { LedgerEntryService } from '../../data/ledger-entry.service';
 import { ProjectStageService } from '@modules/projects';
 import { ClientSearchService } from '@modules/clients';
@@ -329,9 +329,7 @@ export class LedgerPostComponent implements OnInit {
         .search({ pageSize: 200, isActive: true })
         .pipe(catchError(() => of({ items: [], totalCount: 0, pageIndex: 1, totalPages: 1 }))),
     ]).subscribe(([lines, stages, clients]) => {
-      this.budgetLines.set(
-        lines.map((l) => ({ value: l.id, label: `${l.costCategoryName} — ${l.name}` })),
-      );
+      this.budgetLines.set(lines.map((l) => ({ value: l.id, label: budgetLineLabel(l) })));
       this.linesById.set(
         Object.fromEntries(
           lines.map((l) => [

@@ -69,7 +69,6 @@ describe('TaskFormDialogComponent', () => {
     const c = make({ mode: 'create', projectId: 'p1', projectStageId: 's1', nextOrder: 20 });
     c.form.patchValue({
       name: 'Issue redlined floor plan',
-      estimatedStartDate: '2026-04-01',
       dueDate: '2026-04-18',
     });
     c.submit();
@@ -98,7 +97,6 @@ describe('TaskFormDialogComponent', () => {
         order: 20,
         weight: 2,
         priority: 'High',
-        estimatedStartDate: '2026-04-01',
         dueDate: null,
         description: null,
         notes: null,

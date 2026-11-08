@@ -15,7 +15,14 @@ import { ErrorHandlerService, friendly } from '@platform/http/error-handler.serv
 import { ToastService } from '@platform/feedback/toast.service';
 import { MarkdownService } from '@shared/markdown/markdown.service';
 import { VariationResponse } from '../../model/variation.model';
+import { CatalogService } from '@platform/i18n/catalog.service';
+import { SignVariationRequest } from '../../model/variation.model';
 import {
+  VariationSignDialogComponent,
+  VariationSignDialogData,
+} from './variation-sign-dialog.component';
+import {
+  ModalService,
   PeraAlertComponent,
   PeraButtonComponent,
   PeraFormFieldComponent,
@@ -212,6 +219,8 @@ export class VariationDetailComponent implements OnInit {
   protected readonly md = inject(MarkdownService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly modal = inject(ModalService);
+  protected readonly catalog = inject(CatalogService);
 
   readonly loading = signal(true);
   readonly busy = signal(false);
@@ -219,7 +228,8 @@ export class VariationDetailComponent implements OnInit {
   readonly variation = signal<VariationResponse | null>(null);
 
   readonly descForm = this.fb.group({
-    description: ['', [Validators.required, Validators.maxLength(2048)]],
+    // Sync S4: the backend caps the description at 512 characters (400 above).
+    description: ['', [Validators.required, Validators.maxLength(512)]],
   });
 
   ngOnInit(): void {
@@ -239,25 +249,25 @@ export class VariationDetailComponent implements OnInit {
     });
   }
 
+  /**
+   * Sync W1-7 (dms Finance.Domain/Variation.cs Approve): a Submitted ClientDifference is approved BY
+   * the client's signature — Sign (with the client and the signed document), never a bare Approve
+   * (`SignatureRequired`). A Submitted InternalChange is approved with no signature. Apply follows
+   * approval for both kinds.
+   */
   can(action: 'submit' | 'approve' | 'sign' | 'apply' | 'reject' | 'cancel'): boolean {
     const s = this.variation()?.status;
     if (!s || this.busy()) return false;
+    const client = this.variation()?.kind === 'ClientDifference';
     switch (action) {
       case 'submit':
         return s === 'Draft';
       case 'approve':
-        return s === 'Submitted';
+        return s === 'Submitted' && !client;
       case 'sign':
-        return (
-          s === 'Approved' &&
-          this.variation()?.kind === 'ClientDifference' &&
-          !this.variation()?.signedDocumentPath
-        );
+        return s === 'Submitted' && client;
       case 'apply':
-        return (
-          s === 'Approved' &&
-          (this.variation()?.kind === 'InternalChange' || !!this.variation()?.signedDocumentPath)
-        );
+        return s === 'Approved';
       case 'reject':
         return s === 'Submitted';
       case 'cancel':
@@ -267,32 +277,53 @@ export class VariationDetailComponent implements OnInit {
 
   reason(action: string): string {
     if (this.can(action as never)) return '';
-    const s = this.variation()?.status ?? 'Unknown';
+    const v = this.variation();
+    if (action === 'approve' && v?.status === 'Submitted' && v.kind === 'ClientDifference') {
+      return this.catalog.t('var.sign.needsSignature');
+    }
+    const s = v?.status ?? 'Unknown';
     return `Not allowed in status ${s}.`;
+  }
+
+  /** Sign: collect the client and the signed document, then `PUT …/sign`. */
+  async sign(): Promise<void> {
+    const v = this.variation();
+    if (!v || !this.can('sign')) return;
+    const data: VariationSignDialogData = { projectId: v.projectId };
+    const req = await this.modal
+      .open<SignVariationRequest | null>(VariationSignDialogComponent, { size: 'md', data })
+      .afterClosed();
+    if (req) this.execute('sign', v.id, this.api.sign(v.id, req));
   }
 
   run(action: 'submit' | 'approve' | 'sign' | 'apply' | 'reject' | 'cancel'): void {
     const v = this.variation();
     if (!v || !this.can(action)) return;
-    this.busy.set(true);
-    this.alert.set(null);
+    if (action === 'sign') {
+      void this.sign();
+      return;
+    }
     const call$: Observable<unknown> =
       action === 'submit'
         ? this.api.submit(v.id)
         : action === 'approve'
           ? this.api.approve(v.id)
-          : action === 'sign'
-            ? this.api.sign(v.id)
-            : action === 'apply'
-              ? this.api.apply(v.id)
-              : action === 'reject'
-                ? this.api.reject(v.id)
-                : this.api.cancel(v.id);
+          : action === 'apply'
+            ? this.api.apply(v.id)
+            : action === 'reject'
+              ? this.api.reject(v.id)
+              : this.api.cancel(v.id);
+    this.execute(action, v.id, call$);
+  }
+
+  private execute(action: string, id: string, call$: Observable<unknown>): void {
+    this.busy.set(true);
+    this.alert.set(null);
     call$.subscribe({
       next: () => {
         this.toast.show({ tone: 'success', message: `Variation ${action}` });
         this.busy.set(false);
-        this.load(v.id);
+        this.load(id);
       },
       error: (err: HttpErrorResponse) => {
         this.busy.set(false);

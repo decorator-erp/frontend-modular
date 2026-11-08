@@ -113,6 +113,15 @@ export const ClientHubStore = signalStore(
         patchState(store, { selectedProjectId: projectId });
       },
 
+      /** Sync F4b: re-read the client (its children) after a household change. */
+      reloadClient(): void {
+        if (!store.clientId()) return;
+        clientApi.getClient(store.clientId()).subscribe({
+          next: (client) => patchState(store, { client }),
+          error: () => undefined,
+        });
+      },
+
       reloadContacts(): void {
         if (!store.clientId()) return;
         contactApi

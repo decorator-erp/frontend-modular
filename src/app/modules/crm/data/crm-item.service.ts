@@ -40,6 +40,10 @@ export interface PortalRequirementItem {
   title: string;
   description: string | null;
   room: string | null;
+  /** Sync F4e: `RequirementCategory` / `RequirementPriority` ints; `null` when the row lacks them. */
+  category: number | null;
+  priority: number | null;
+  spaceTypeId: string | null;
   approvalStatus: ApprovalState;
   submittedByMe: boolean;
   decisionComment: string | null;
@@ -135,6 +139,9 @@ export class CrmItemService extends ApiService {
           title: this.field<string>(x, 'title') ?? '',
           description: this.field<string | null>(x, 'description') ?? null,
           room: this.field<string | null>(x, 'room') ?? null,
+          category: this.optionalInt(this.field(x, 'category')),
+          priority: this.optionalInt(this.field(x, 'priority')),
+          spaceTypeId: this.field<string | null>(x, 'spaceTypeId') ?? null,
           approvalStatus: Number(this.field(x, 'approvalStatus') ?? 0) as ApprovalState,
           submittedByMe: this.field<boolean>(x, 'submittedByMe') ?? false,
           decisionComment: this.field<string | null>(x, 'decisionComment') ?? null,
@@ -170,6 +177,8 @@ export class CrmItemService extends ApiService {
         priority: request.priority,
         room: request.room ?? null,
         description: request.description ?? null,
+        // Sync F4e: AddPortalItemRequest.SpaceTypeId (CrmPortalEndpoints.cs:206), optional.
+        spaceTypeId: request.spaceTypeId ?? null,
       },
       { context: handled(403) }, // FINDING-5-7: the form shows the 403's catalog message.
     ).pipe(map((r) => this.unwrapId(r, 'itemId')));
@@ -286,6 +295,13 @@ export class CrmItemService extends ApiService {
       createdByContactId: this.field<string | null>(source, 'createdByContactId') ?? null,
       projectTaskId: this.field<string | null>(source, 'projectTaskId') ?? null,
     };
+  }
+
+  /** A wire int, or `null` when it is absent or not a number. */
+  private optionalInt(v: unknown): number | null {
+    if (v === null || v === undefined || v === '') return null;
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null;
   }
 }
 

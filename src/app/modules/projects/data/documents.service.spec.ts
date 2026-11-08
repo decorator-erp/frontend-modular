@@ -117,6 +117,20 @@ describe('documents.service', () => {
       expect(doc.createdAtUtc).toBe('2026-10-01T10:00:00Z');
     });
 
+    it('sync W2-3: reads isLocked, version and rootDocumentId', () => {
+      const doc = read({ id: 'd2', isLocked: true, version: 3, rootDocumentId: 'd0' });
+      expect(doc.isLocked).toBe(true);
+      expect(doc.version).toBe(3);
+      expect(doc.rootDocumentId).toBe('d0');
+    });
+
+    it('sync W2-3: an older row without them reads unlocked, version 1', () => {
+      const doc = read({ id: 'd' });
+      expect(doc.isLocked).toBe(false);
+      expect(doc.version).toBe(1);
+      expect(doc.rootDocumentId).toBeNull();
+    });
+
     it('still reads the old names as fallbacks', () => {
       const doc = read({
         id: 'd',
@@ -170,6 +184,9 @@ describe('documents.service', () => {
           description: 'Site plan',
           uploadedByUserId: 'e1',
           createdAtUtc: '2026-10-01T10:00:00Z',
+          isLocked: false,
+          version: 1,
+          rootDocumentId: 'd1',
         },
       ]);
     });

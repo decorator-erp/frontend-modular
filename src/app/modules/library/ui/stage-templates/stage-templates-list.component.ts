@@ -97,6 +97,11 @@ export class StageTemplatesListComponent implements OnInit {
     return (t.type ?? '').toLowerCase() === 'system';
   }
 
+  /** Sync F1: the structure editor (stages, tasks, sub-tasks, departments). */
+  openStructure(t: StageTemplateRef): void {
+    void this.router.navigate(['/library/stage-templates', t.id]);
+  }
+
   async openEditor(t: StageTemplateRef): Promise<void> {
     if (this.isSystem(t)) {
       this.toast.show({ tone: 'info', message: 'System templates cannot be edited.' });

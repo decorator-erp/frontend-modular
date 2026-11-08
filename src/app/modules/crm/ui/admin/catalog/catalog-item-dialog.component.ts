@@ -16,10 +16,11 @@ import {
 } from '@angular/forms';
 import { CatalogService } from '@platform/i18n/catalog.service';
 import { CrmCatalogService } from '../../../data/crm-catalog.service';
+import { CrmCatalogItemDetailService } from '../../../data/crm-catalog-item-detail.service';
 import { ErrorHandlerService, friendly } from '@platform/http/error-handler.service';
 import { ToastService } from '@platform/feedback/toast.service';
 import { CatalogAttributeType } from '../../../model/crm-enums';
-import type { CatalogAttribute } from '../../../model';
+import type { CatalogAttribute, CatalogItem, ItemAttributeValue } from '../../../model';
 import {
   PERA_MODAL_DATA,
   PeraCheckboxComponent,
@@ -41,6 +42,12 @@ export interface CatalogItemDialogData {
    * and slugified into a starting `code` the admin can still edit.
    */
   prefillName?: string | null;
+  /**
+   * Sync F4f: present → EDIT that item. It is read through `GET /crm/catalog/items/{id}` (S10);
+   * the identity fields show read-only (there is no item update route) and only the spec values are
+   * saved, through the replace-all set-values route.
+   */
+  itemId?: string;
 }
 
 /**
@@ -73,8 +80,10 @@ export interface CatalogItemDialogData {
   ],
   template: `
     <pera-form-modal
-      eyebrow="POST /api/crm/catalog/items"
-      [title]="catalog.t('cat.newItem')"
+      [eyebrow]="
+        isEdit ? 'PUT /api/crm/catalog/items/{id}/attribute-values' : 'POST /api/crm/catalog/items'
+      "
+      [title]="catalog.t(isEdit ? 'cat.editItem' : 'cat.newItem')"
       size="md"
       permission="crm.catalog.manage"
       [submitLabel]="catalog.t('cat.save')"
@@ -85,6 +94,11 @@ export interface CatalogItemDialogData {
       (cancelled)="close()"
     >
       <div [formGroup]="form" class="flex flex-col gap-4">
+        @if (isEdit) {
+          <p class="fs-caption text-text-muted m-0" data-testid="cat-identity-fixed">
+            {{ catalog.t('cat.identityFixed') }}
+          </p>
+        }
         <pera-form-field [label]="catalog.t('cat.codeL')" [required]="true">
           <pera-input formControlName="code" dir="ltr" />
         </pera-form-field>
@@ -97,13 +111,35 @@ export interface CatalogItemDialogData {
           </pera-form-field>
           <!-- 009b #38: the item create binds no description or image. -->
         </div>
+        <!-- Sync F4f (S9): the item's description and image, read-only, when the server has them. -->
+        @if (item(); as it) {
+          <div class="flex items-start gap-3" data-testid="cat-item-media">
+            @if (it.imageUri) {
+              <img
+                [src]="it.imageUri"
+                [alt]="catalog.t('cat.imageL')"
+                class="w-12 h-12 object-cover border border-border shrink-0"
+                data-testid="cat-item-image"
+              />
+            }
+            <div class="flex flex-col gap-1 min-w-0">
+              <span class="fs-label uppercase tracking-wide text-text-muted">{{
+                catalog.t('cat.descriptionL')
+              }}</span>
+              <p class="fs-body-sm m-0" dir="auto" data-testid="cat-item-description">
+                {{ description(it) || catalog.t('cat.noDescription') }}
+              </p>
+            </div>
+          </div>
+        }
         <pera-checkbox formControlName="isPurchasable">{{
           catalog.t('cat.isPurchasableL')
         }}</pera-checkbox>
 
         @if (defs(); as list) {
           @if (list.length > 0) {
-            <div class="flex flex-col gap-3 pt-3 border-t border-border">
+            <!-- Sync F4f: the spec controls live in specForm, not the outer form. -->
+            <div [formGroup]="specForm" class="flex flex-col gap-3 pt-3 border-t border-border">
               <span class="fs-label uppercase tracking-wide text-text-muted">{{
                 catalog.t('cat.specs')
               }}</span>
@@ -120,13 +156,8 @@ export interface CatalogItemDialogData {
                       <pera-date-input [formControlName]="def.id" />
                     }
                     @case (ATTR_TYPE.Select) {
-                      <!-- 009b #36: no route reads an attribute's options. -->
-                      <p
-                        class="fs-caption text-text-muted m-0"
-                        data-testid="cat-options-unavailable"
-                      >
-                        {{ catalog.t('cat.notAvailable') }}
-                      </p>
+                      <!-- Sync F4f: options come from GET /crm/catalog/attributes/{id}/options. -->
+                      <pera-select [formControlName]="def.id" [options]="optionsFor(def.id)" />
                     }
                     @default {
                       <pera-input [formControlName]="def.id" dir="auto" />
@@ -145,6 +176,7 @@ export interface CatalogItemDialogData {
 })
 export class CrmCatalogItemDialogComponent {
   private readonly api = inject(CrmCatalogService);
+  private readonly detailApi = inject(CrmCatalogItemDetailService);
   private readonly errorHandler = inject(ErrorHandlerService);
   private readonly toast = inject(ToastService);
   private readonly cache = inject(CatalogStore);
@@ -152,6 +184,11 @@ export class CrmCatalogItemDialogComponent {
   private readonly modalRef = inject(PeraModalRef) as PeraModalRef<string | null>;
   protected readonly catalog = inject(CatalogService);
   readonly data = inject(PERA_MODAL_DATA) as CatalogItemDialogData;
+  readonly isEdit = !!this.data.itemId;
+  /** Sync F4f: the item being edited, once read. */
+  protected readonly item = signal<CatalogItem | null>(null);
+  private seeded = false;
+  private readonly selectOptions = signal<Record<string, SelectOption[]>>({});
 
   protected readonly ATTR_TYPE = CatalogAttributeType;
 
@@ -185,6 +222,22 @@ export class CrmCatalogItemDialogComponent {
   constructor() {
     this.cache.loadEffectiveAttributes(this.data.categoryId);
 
+    if (this.data.itemId) {
+      this.form.disable();
+      this.detailApi.getItemDetail(this.data.itemId).subscribe({
+        next: (item) => {
+          this.form.patchValue({
+            code: item.code,
+            nameEn: item.nameEn,
+            nameAr: item.nameAr,
+            isPurchasable: item.isPurchasable,
+          });
+          this.item.set(item);
+        },
+        error: () => this.errorKey.set(this.catalog.t('cat.itemLoadFailed')),
+      });
+    }
+
     if (this.data.prefillName) {
       this.form.patchValue({
         nameEn: this.data.prefillName,
@@ -198,7 +251,40 @@ export class CrmCatalogItemDialogComponent {
       this.built = true;
       for (const def of defs) {
         this.specForm.addControl(def.id, new FormControl('', { nonNullable: true }));
+        if (def.dataType === CatalogAttributeType.Select) this.loadOptions(def.id);
       }
+    });
+
+    // Sync F4f: seed the spec controls from the item's values once both have landed.
+    effect(() => {
+      const defs = this.defs();
+      const item = this.item();
+      if (!defs || !item || this.seeded) return;
+      this.seeded = true;
+      for (const value of item.attributes) {
+        this.specForm.get(value.attributeId)?.setValue(specText(value));
+      }
+    });
+  }
+
+  /** Sync F4f: a Select attribute's active options, as select rows (a blank row clears it). */
+  protected optionsFor(attributeId: string): SelectOption[] {
+    return this.selectOptions()[attributeId] ?? [{ value: '', label: '—' }];
+  }
+
+  private loadOptions(attributeId: string): void {
+    this.api.attributeOptions(attributeId).subscribe({
+      next: (options) =>
+        this.selectOptions.update((all) => ({
+          ...all,
+          [attributeId]: [
+            { value: '', label: '—' },
+            ...options.map((o) => ({
+              value: o.id,
+              label: this.catalog.locale() === 'ar' ? o.nameAr || o.nameEn : o.nameEn,
+            })),
+          ],
+        })),
     });
   }
 
@@ -207,11 +293,27 @@ export class CrmCatalogItemDialogComponent {
     return def.unit ? `${name} · ${def.unit}` : name;
   }
 
+  protected description(item: CatalogItem): string {
+    return (
+      (this.catalog.locale() === 'ar'
+        ? item.descriptionAr || item.descriptionEn
+        : item.descriptionEn || item.descriptionAr) ?? ''
+    );
+  }
+
   close(): void {
     this.modalRef.close(null);
   }
 
   submit(): void {
+    if (this.data.itemId) {
+      // Sync F4f: an edit saves the spec values only (no item update route).
+      if (!this.item()) return;
+      this.submitting.set(true);
+      this.errorKey.set(null);
+      this.writeSpecValues(this.data.itemId);
+      return;
+    }
     if (this.form.invalid) {
       this.form.markAllAsTouched();
       return;
@@ -278,4 +380,13 @@ function slugify(name: string): string {
     .replace(/[^a-z0-9]+/g, '_')
     .replace(/^_+|_+$/g, '')
     .slice(0, 64);
+}
+
+/** Sync F4f: one stored value as the text its spec control holds. */
+function specText(value: ItemAttributeValue): string {
+  if (value.valueNumber !== null) return String(value.valueNumber);
+  if (value.valueBool !== null) return value.valueBool ? 'true' : 'false';
+  if (value.valueDate !== null) return value.valueDate;
+  if (value.optionId !== null) return value.optionId;
+  return value.valueText ?? '';
 }

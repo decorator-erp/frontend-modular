@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, OnInit, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { CanDirective, PERM } from '@platform/permissions';
 import { isClientAuthoredItem } from '../../data/crm-item.service';
@@ -24,6 +24,7 @@ import {
 import { ItemsStore } from '../../stores/items.store';
 import { PeriodStore } from '../../stores/period.store';
 import { CrmItemFormComponent, ItemFormMode } from './item-form.component';
+import { CrmArtifactLinksComponent } from '../artifacts/artifact-links.component';
 
 const CATEGORY_LABEL_KEYS: Record<RequirementCategory, CatalogKey> = {
   [RequirementCategory.SpaceLayout]: 'item.catLayout',
@@ -74,6 +75,7 @@ const SOURCE_LABEL_KEYS: Record<RequirementSource, CatalogKey> = {
     PeraPageHeaderComponent,
     PeraSkeletonComponent,
     PeraStatusBadgeComponent,
+    CrmArtifactLinksComponent,
   ],
   host: { class: 'block bg-bg min-h-full' },
   template: `
@@ -133,6 +135,19 @@ const SOURCE_LABEL_KEYS: Record<RequirementSource, CatalogKey> = {
                       @if (isClientAuthored(item)) {
                         <pera-status-badge tone="success" [label]="catalog.t('client.lbl')" />
                       }
+                      <!-- Sync F4c: the item's linked documents, opened in place. -->
+                      <button
+                        *peraCan="PERM.crm.artifacts.read"
+                        type="button"
+                        class="fs-caption text-text-secondary cursor-pointer underline outline-none focus-visible:outline-2 focus-visible:outline-accent"
+                        [attr.aria-expanded]="docsFor() === item.id"
+                        (click)="toggleDocs(item.id)"
+                        data-item-docs
+                      >
+                        {{
+                          catalog.t(docsFor() === item.id ? 'artifacts.hide' : 'artifacts.toggle')
+                        }}
+                      </button>
                       @if (!isSupersededRow(item)) {
                         <div class="flex items-center gap-1.5">
                           @if (isLockedRow(item)) {
@@ -174,6 +189,14 @@ const SOURCE_LABEL_KEYS: Record<RequirementSource, CatalogKey> = {
                       }
                     </div>
                   </div>
+                  @if (docsFor() === item.id) {
+                    <app-crm-artifact-links
+                      class="mt-2"
+                      subject="requirement-item"
+                      [subjectId]="item.id"
+                      [projectId]="store.projectId() ?? projectId"
+                    />
+                  }
                 </li>
               }
             </ul>
@@ -192,7 +215,13 @@ export class CrmItemsBoardComponent implements OnInit {
   protected readonly PERM = PERM;
   protected readonly APPROVAL_STATE = ApprovalState;
 
-  private projectId = '';
+  protected projectId = '';
+  /** Sync F4c: the item whose linked documents are open, or `null`. */
+  protected readonly docsFor = signal<string | null>(null);
+
+  protected toggleDocs(itemId: string): void {
+    this.docsFor.update((open) => (open === itemId ? null : itemId));
+  }
 
   ngOnInit(): void {
     this.projectId = this.route.snapshot.paramMap.get('projectId') ?? '';

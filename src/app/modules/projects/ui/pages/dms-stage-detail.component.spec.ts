@@ -219,6 +219,21 @@ describe('DmsStageDetailComponent', () => {
     expect(el.querySelector('[data-rail-link]')?.textContent).toContain('Gate to advance');
   });
 
+  it('sync W2-10: shows the stage cost on the header when the response carries one', () => {
+    granted = new Set([PERM.projects.read]);
+    theStage = { ...stage('Active'), cost: 1500 } as ProjectStage;
+    const el = render().nativeElement as HTMLElement;
+    const chip = el.querySelector('[data-stage-cost]');
+    expect(chip?.textContent).toContain('Cost');
+    expect(chip?.textContent).toContain('1,500');
+  });
+
+  it('sync W2-10: no cost chip when the stage has no cost', () => {
+    granted = new Set([PERM.projects.read]);
+    const el = render().nativeElement as HTMLElement;
+    expect(el.querySelector('[data-stage-cost]')).toBeNull();
+  });
+
   it('hides lifecycle actions from a plain reader and never shows stage finance', () => {
     granted = new Set([PERM.projects.read, PERM.activities.read]);
     const fixture = render();

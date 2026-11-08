@@ -7,8 +7,7 @@ import {
   input,
   signal,
 } from '@angular/core';
-import { HttpClient, HttpErrorResponse, HttpEventType } from '@angular/common/http';
-import { environment } from '../../../../../environments/environment';
+import { HttpErrorResponse } from '@angular/common/http';
 import { TaskAttachmentService } from '../../data/task-attachment.service';
 import { ErrorHandlerService, friendly } from '@platform/http/error-handler.service';
 import { ToastService } from '@platform/feedback/toast.service';
@@ -44,6 +43,10 @@ export interface AttTile {
   sizeBytes: number;
   uploadedOn: string | null;
   isImage: boolean;
+  /** Sync W2-3: a locked document has no delete (lock glyph instead). */
+  locked?: boolean;
+  /** Sync W2-3: revision number; `v{n}` shows when it is above 1. */
+  version?: number;
 }
 
 interface FolderDef {
@@ -56,7 +59,7 @@ const IMAGE_EXTS = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'heic', 'bmp', 'svg'];
 const SHEET_EXTS = ['xlsx', 'xls', 'csv', 'ods'];
 
 /**
- * The design's four folders don't survive a flat `/api/task-attachments` list
+ * The design's four folders don't survive a flat task documents list
  * (References vs Site photos are indistinguishable by extension), so this is a
  * presentational grouping by content kind — Drawings, Schedules, References,
  * Other — not a fake folder API. See docs/DMS_TASK_DETAIL_BACKEND_GAPS.md.
@@ -69,14 +72,14 @@ const FOLDERS: FolderDef[] = [
 ];
 
 /**
- * Task files browser — `/api/task-attachments` per api-docs/09. Renders the SAME
+ * Task files browser — the task's documents (`GET /api/project-tasks/{taskId}/documents`). Renders the SAME
  * flat content-kind folder grid as the Stage Detail Files panel
  * (`DmsStageFilesComponent`): a self-contained panel (header with folder count +
  * a Documentation action) over a hairline 2-up folder grid that hides empty
  * buckets. Opening a folder pops the shared `FilesFolderModalComponent` floating
  * window (tile grid + in-place preview, delete/download). The header carries a
  * Documentation action (project-documents) and an Upload action (manage-tasks
- * only) that posts straight to `/api/task-attachments`.
+ * only) that uploads through `TaskAttachmentService.upload` (`POST /api/project-tasks/{taskId}/documents`).
  */
 @Component({
   selector: 'app-attachments-panel',
@@ -314,7 +317,6 @@ export class AttachmentsPanelComponent implements OnInit {
   readonly projectId = input<string>('');
 
   private readonly api = inject(TaskAttachmentService);
-  private readonly http = inject(HttpClient);
   private readonly errors = inject(ErrorHandlerService);
   private readonly toast = inject(ToastService);
   private readonly modal = inject(ModalService);
@@ -349,6 +351,8 @@ export class AttachmentsPanelComponent implements OnInit {
         sizeBytes: a.fileSizeBytes,
         uploadedOn: a.uploadedOnUtc,
         isImage: kind === 'image',
+        locked: !!a.isLocked,
+        version: a.version ?? 1,
       };
     }),
   );
@@ -376,25 +380,15 @@ export class AttachmentsPanelComponent implements OnInit {
   }
 
   private uploadOne(file: File): void {
-    const form = new FormData();
-    form.append('taskId', this.taskId());
-    form.append('file', file);
-    this.http
-      .post(`${environment.apiUrl}/task-attachments`, form, {
-        reportProgress: true,
-        observe: 'events',
-      })
-      .subscribe({
-        next: (ev) => {
-          if (ev.type === HttpEventType.Response) {
-            this.toast.show({ tone: 'success', message: `Uploaded ${file.name}` });
-            this.load();
-          }
-        },
-        error: (err: HttpErrorResponse) => {
-          this.toast.show({ tone: 'danger', message: friendly(this.errors.parse(err)) });
-        },
-      });
+    this.api.upload(this.taskId(), file).subscribe({
+      next: () => {
+        this.toast.show({ tone: 'success', message: `Uploaded ${file.name}` });
+        this.load();
+      },
+      error: (err: HttpErrorResponse) => {
+        this.toast.show({ tone: 'danger', message: friendly(this.errors.parse(err)) });
+      },
+    });
   }
 
   /** Open the folder's files in the centered floating window; reload on close. */

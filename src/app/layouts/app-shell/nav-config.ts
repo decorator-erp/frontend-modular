@@ -85,6 +85,13 @@ export const NAV_SECTIONS: NavSection[] = [
     title: 'Library',
     items: [
       { label: 'Stage templates', icon: 'folder', route: '/library/stage-templates' },
+      // Sync F3: the file template library (FileTemplateEndpoints.cs).
+      {
+        label: 'File templates',
+        icon: 'file-text',
+        route: '/library/file-templates',
+        capability: 'file_templates.read',
+      },
       { label: 'BOQ catalog', icon: 'file-text', route: '/library/boq-catalog' },
       { label: 'Materials', icon: 'folder', route: '/library/materials' },
     ],

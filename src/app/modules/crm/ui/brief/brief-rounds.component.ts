@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
 import { CatalogService } from '@platform/i18n/catalog.service';
 import type { CatalogKey } from '@platform/i18n/catalog/en';
 import { formatCairoDateTime } from '@platform/i18n/intl-locale';
@@ -127,6 +127,8 @@ const UNKNOWN_CHIP = {
 export class CrmBriefRoundsComponent {
   protected readonly catalog = inject(CatalogService);
   protected readonly store = inject(BriefStore);
+  /** Sync F4d: `client` words the banner to the client ("You approved…") in the portal. */
+  readonly audience = input<'office' | 'client'>('office');
 
   /** The latest round's decision, as a banner — nothing while it is pending, voided or unsent. */
   protected readonly banner = computed<{ tone: 'success' | 'warning'; text: string } | null>(() => {
@@ -135,12 +137,20 @@ export class CrmBriefRoundsComponent {
     if (latest.outcome === ROUND_OUTCOME.Approved)
       return {
         tone: 'success',
-        text: this.catalog.t('brief.approvedBanner', { round: latest.round }),
+        text: this.catalog.t(
+          this.audience() === 'client' ? 'brief.clientApprovedBanner' : 'brief.approvedBanner',
+          { round: latest.round },
+        ),
       };
     if (latest.outcome === ROUND_OUTCOME.ChangesRequested)
       return {
         tone: 'warning',
-        text: this.catalog.t('brief.changesRequestedBanner', { round: latest.round }),
+        text: this.catalog.t(
+          this.audience() === 'client'
+            ? 'brief.clientChangesBanner'
+            : 'brief.changesRequestedBanner',
+          { round: latest.round },
+        ),
       };
     return null;
   });

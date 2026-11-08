@@ -1,3 +1,4 @@
+import { catchError, of } from 'rxjs';
 import { HttpErrorResponse } from '@angular/common/http';
 import {
   ChangeDetectionStrategy,
@@ -118,11 +119,17 @@ export class AssignRoleDialogComponent implements OnInit {
   });
 
   ngOnInit(): void {
-    // TODO(backend-gap): nothing lists the members OF a role — `GET /api/roles/users/{userId}` is
-    // per-user, and asking it for every row would be a request per employee. So `assigned` starts
-    // empty and only tracks what THIS dialog session assigned: a user who already holds the role
-    // still shows "Assign", and the duplicate is reported by the server on click rather than
-    // prevented up front. Seed it properly if a members-of-a-role route ever ships.
+    // Sync W2-11: seed `assigned` from the role's members (`GET /api/roles/{roleId}/users`, one page
+    // of up to 200 — the route's cap), so a user who already holds the role shows as assigned. A
+    // failed read leaves it empty: the server still reports a duplicate on click.
+    this.roles
+      .users(this.data.roleId, 1, 200)
+      .pipe(catchError(() => of(null)))
+      .subscribe((paged) => {
+        if (!paged) return;
+        const members = paged.items.map((u) => u.id);
+        this.assigned.update((s) => new Set([...s, ...members]));
+      });
     this.directory.listPaged({ page: 1, pageSize: 500, isActive: true }).subscribe({
       next: (paged) => {
         this.all.set(paged.items);

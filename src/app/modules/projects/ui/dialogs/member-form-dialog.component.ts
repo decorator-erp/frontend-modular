@@ -1,8 +1,8 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { catchError, of } from 'rxjs';
+import { catchError, forkJoin, of } from 'rxjs';
 import { StageTeamMemberRole, StageTeamsService } from '../../data/stage-teams.service';
-import { EmployeeService } from '@modules/people';
+import { DepartmentService, EmployeeService } from '@modules/people';
 import { ErrorHandlerService, friendly } from '@platform/http/error-handler.service';
 import { ToastService } from '@platform/feedback/toast.service';
 import { ParsedApiError } from '@platform/types';
@@ -108,6 +108,7 @@ export class MemberFormDialogComponent {
   private readonly fb = inject(FormBuilder);
   private readonly teams = inject(StageTeamsService);
   private readonly directory = inject(EmployeeService);
+  private readonly departments = inject(DepartmentService);
   private readonly errorHandler = inject(ErrorHandlerService);
   private readonly toast = inject(ToastService);
   private readonly modalRef = inject(PeraModalRef) as PeraModalRef<boolean>;
@@ -150,14 +151,21 @@ export class MemberFormDialogComponent {
             (paged?.items ?? []).map((e) => ({ value: e.id, label: e.fullName })),
           ),
         );
-      this.teams
-        .getByProject(this.data.projectId)
-        .pipe(catchError(() => of([])))
-        .subscribe((list) =>
-          this.teamOptions.set(
-            list.map((t) => ({ value: t.id, label: `${t.departmentName} · ${t.memberCount}` })),
-          ),
+      // Sync W2-4: a team row may carry no department name — resolve it from the department list,
+      // as project-teams.component.ts does, so the picker never reads "undefined · 3".
+      forkJoin({
+        list: this.teams.getByProject(this.data.projectId).pipe(catchError(() => of([]))),
+        departments: this.departments.getAll().pipe(catchError(() => of([]))),
+      }).subscribe(({ list, departments }) => {
+        const deptById = new Map((departments ?? []).map((d) => [d.id, d.name]));
+        this.teamOptions.set(
+          list.map((t) => {
+            const name = t.departmentName || deptById.get(t.departmentId) || t.departmentId;
+            const count = t.memberCount || t.members?.length || 0;
+            return { value: t.id, label: `${name} · ${count}` };
+          }),
         );
+      });
     }
   }
 

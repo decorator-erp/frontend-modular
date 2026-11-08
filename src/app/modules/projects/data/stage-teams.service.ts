@@ -82,11 +82,6 @@ export class StageTeamsService extends ApiService {
     ).pipe(map((r) => this.unwrapId(r, 'stageTeamId')));
   }
 
-  /** Template stage → department link (gap table P-80): `POST /stages/{stageId}/departments/{departmentId}` (TemplateEndpoints.cs:117). */
-  createForTemplate(stageId: string, departmentId: string): Observable<unknown> {
-    return this.post(`/stages/${stageId}/departments/${departmentId}`, {});
-  }
-
   /** `GET /projects/{pid}/teams/{teamId}` plus its members (TeamEndpoints.cs:49,57). */
   getById(projectId: string, teamId: string): Observable<StageTeam> {
     return forkJoin({

@@ -25,6 +25,8 @@ import { formatCairoDate } from '@platform/i18n/intl-locale';
 import { CrmItemService, PortalRequirementItem } from '../../data/crm-item.service';
 import { ApprovalState } from '../../model/crm-enums';
 import type { ClientProfileProject } from '../../model';
+import { RequirementCategory, RequirementPriority } from '../../model/crm-enums';
+import { CATEGORY_KEYS, PRIORITY_KEYS } from './add-requirement.component';
 
 export const PORTAL_ITEMS_PAGE_SIZE = 20;
 
@@ -89,6 +91,25 @@ export const PORTAL_ITEMS_PAGE_SIZE = 20;
                 <span class="fs-body-sm font-medium grow min-w-0">{{ it.title }}</span>
                 <span class="fs-label" data-state>{{ stateLabel(it.approvalStatus) }}</span>
               </div>
+              <!-- Sync F4e: category and priority, when the row carries them. -->
+              @if (categoryLabel(it.category) || priorityLabel(it.priority)) {
+                <div class="flex flex-wrap gap-1.5">
+                  @if (categoryLabel(it.category); as c) {
+                    <span
+                      class="fs-micro px-1.5 py-px border border-border bg-bg text-text-secondary"
+                      data-category
+                      >{{ c }}</span
+                    >
+                  }
+                  @if (priorityLabel(it.priority); as p) {
+                    <span
+                      class="fs-micro px-1.5 py-px border border-border bg-bg text-text-secondary"
+                      data-priority
+                      >{{ p }}</span
+                    >
+                  }
+                </div>
+              }
               <span class="fs-caption text-text-muted">
                 {{ it.projectName }} · {{ date(it.createdAtUtc) }}
                 @if (it.room) {
@@ -208,6 +229,16 @@ export class PortalItemsComponent {
           this.loading.set(false);
         },
       });
+  }
+
+  categoryLabel(c: number | null | undefined): string {
+    const key = c == null ? undefined : CATEGORY_KEYS[c as RequirementCategory];
+    return key ? this.catalog.t(key) : '';
+  }
+
+  priorityLabel(p: number | null | undefined): string {
+    const key = p == null ? undefined : PRIORITY_KEYS[p as RequirementPriority];
+    return key ? this.catalog.t(key) : '';
   }
 
   stateLabel(s: ApprovalState): string {

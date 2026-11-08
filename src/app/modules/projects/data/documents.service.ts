@@ -25,6 +25,12 @@ export interface ProjectDocument {
   description: string | null;
   uploadedByUserId: string;
   createdAtUtc: string;
+  /** Sync W2-3: `ProjectDocumentResponse.IsLocked` — a locked document cannot be deleted or moved. */
+  isLocked?: boolean;
+  /** Sync W2-3: revision number (1 for the first upload). */
+  version?: number;
+  /** Sync W2-3: the first revision's id (itself for version 1). */
+  rootDocumentId?: string | null;
 }
 
 /**
@@ -180,6 +186,9 @@ export class ProjectDocumentsService extends ApiService {
       description: this.field<string | null>(source, 'description') ?? null,
       uploadedByUserId: this.field<string>(source, 'uploadedById', 'uploadedByUserId') ?? '',
       createdAtUtc: this.field<string>(source, 'uploadedOnUtc', 'createdAtUtc') ?? '',
+      isLocked: this.field<boolean>(source, 'isLocked') ?? false,
+      version: this.field<number>(source, 'version') ?? 1,
+      rootDocumentId: this.field<string | null>(source, 'rootDocumentId') ?? null,
     };
   }
 }

@@ -29,7 +29,7 @@ import { ToastService } from '@platform/feedback/toast.service';
 import { ProjectTask, TaskDetails, TaskPriority } from '../../model/project.model';
 import { PermissionsService } from '@platform/permissions';
 import { formatShortDate } from '@shared/ui/status';
-import { EmployeeService } from '@modules/people';
+import { DepartmentService, EmployeeService } from '@modules/people';
 import {
   ModalService,
   PeraAvatarComponent,
@@ -51,11 +51,11 @@ import { CatalogService } from '@platform/i18n/catalog.service';
 import { ProjectClosedBannerComponent } from '../shared/project-closed-banner.component';
 import { ProjectAccessStore } from '../../stores/project-access.store';
 import { CommentsThreadComponent } from '../task-detail/comments-thread.component';
+import { TaskFileActionsComponent } from '../task-detail/task-file-actions.component';
 import { AttachmentsPanelComponent } from '../task-detail/attachments-panel.component';
 import { TaskStatusActionsComponent } from '../task-detail/status-actions.component';
 import { ActivityFeedComponent } from '../activity/activity-feed.component';
 import { DmsStatusPillComponent } from '../task-detail/dms/dms-status-pill.component';
-import { DmsLinkedItemsComponent } from '../task-detail/dms/dms-linked-items.component';
 
 type ActivityView = 'comments' | 'history';
 
@@ -98,10 +98,10 @@ const PRIORITY_DOT: Record<string, string> = {
     GateConditionsPanelComponent,
     CommentsThreadComponent,
     AttachmentsPanelComponent,
+    TaskFileActionsComponent,
     TaskStatusActionsComponent,
     ActivityFeedComponent,
     DmsStatusPillComponent,
-    DmsLinkedItemsComponent,
   ],
   template: `
     <!-- crmp P-9: a closed project's work is read-only (projects.Closed); every write is hidden. -->
@@ -275,19 +275,23 @@ const PRIORITY_DOT: Record<string, string> = {
             }
 
             <!-- files (self-contained panel, mirrors the Stage Detail Files browser) -->
+            <!-- sync F3 / F2(e): Apply template + task folder, outside the attachments panel -->
+            <app-task-file-actions
+              [taskId]="taskId()"
+              [projectId]="projectId()"
+              [stageId]="t.projectStageId"
+              (changed)="attachments.load()"
+            />
             <app-attachments-panel
+              #attachments
               [taskId]="taskId()"
               [projectId]="projectId()"
               [stageName]="stageName()"
             />
 
-            <!-- linked items -->
-            <pera-card padding="none" class="flex flex-col">
-              <div class="flex items-center gap-2.5 px-5 py-3 border-b border-border">
-                <h3 class="font-medium text-sm text-text-primary truncate">Linked items</h3>
-              </div>
-              <app-dms-linked-items [taskId]="taskId()" />
-            </pera-card>
+            <!-- TODO(backend-gap): Linked items (sync W1-13). The dependency-tree API behind
+                 app-dms-linked-items (finance DependencyTreeService) has no backend route, so the
+                 panel is hidden rather than firing known 404s. Restore it once the route exists. -->
 
             <!-- CRM task-main panel (feature 004) — registered via the core
                  TASK_WORKSPACE token; zero panels render when this task isn't CRM. -->
@@ -318,10 +322,11 @@ const PRIORITY_DOT: Record<string, string> = {
                     [projectId]="projectId()"
                     [taskId]="taskId()"
                     [stageId]="t.projectStageId"
+                    [authorNames]="employeeNames()"
                   />
                 }
                 @case ('history') {
-                  <app-activity-feed entityName="Task" [entityId]="taskId()" [take]="100" />
+                  <app-activity-feed entityName="ProjectTask" [entityId]="taskId()" [take]="100" />
                 }
               }
             </pera-card>
@@ -428,6 +433,17 @@ const PRIORITY_DOT: Record<string, string> = {
                     <span class="font-mono fs-label text-text-muted font-normal">pts</span></span
                   >
                 </div>
+                @if (t.departmentId) {
+                  <div
+                    class="grid grid-cols-[var(--w-column-sm)_1fr] gap-2.5 items-center py-2.5 border-b border-border-soft"
+                    data-department
+                  >
+                    <span class="fs-label text-text-muted">{{ catalog.t('pt.department') }}</span>
+                    <span class="fs-caption font-medium truncate">{{
+                      departmentName() ?? '—'
+                    }}</span>
+                  </div>
+                }
                 @if (t.projectStageId; as sid) {
                   <div
                     class="grid grid-cols-[var(--w-column-sm)_1fr] gap-2.5 items-center py-2.5 border-b border-border-soft"
@@ -441,9 +457,10 @@ const PRIORITY_DOT: Record<string, string> = {
                   </div>
                 }
 
-                <!-- Due date — inline-editable -->
+                <!-- Due date — inline-editable. Sync W1-4: the task has no planned start (dms
+                     ProjectTaskResponse / TaskRequest), so the Start date and Duration rows are gone. -->
                 <div
-                  class="grid grid-cols-[var(--w-column-sm)_1fr] gap-2.5 items-center py-2.5 border-b border-border-soft"
+                  class="grid grid-cols-[var(--w-column-sm)_1fr] gap-2.5 items-center py-2.5 border-b border-border-soft last:border-b-0"
                 >
                   <span class="fs-label text-text-muted">Due date</span>
                   @if (editingField() === 'due') {
@@ -498,68 +515,6 @@ const PRIORITY_DOT: Record<string, string> = {
                       }}
                     </button>
                   }
-                </div>
-
-                <!-- Start date — editable only while the task is still Open -->
-                <div
-                  class="grid grid-cols-[var(--w-column-sm)_1fr] gap-2.5 items-center py-2.5 border-b border-border-soft"
-                >
-                  <span class="fs-label text-text-muted">Start date</span>
-                  @if (editingField() === 'start') {
-                    <span class="flex items-center gap-1.5 min-w-0">
-                      <pera-date-input size="sm" [(ngModel)]="dateDraft" class="flex-1 min-w-0" />
-                      <button
-                        type="button"
-                        class="text-success px-1 cursor-pointer disabled:opacity-50"
-                        [disabled]="savingDate()"
-                        (click)="saveDate('start')"
-                        aria-label="Save start date"
-                      >
-                        ✓
-                      </button>
-                      <button
-                        type="button"
-                        class="text-text-muted px-1 cursor-pointer"
-                        (click)="cancelEditDate()"
-                        aria-label="Cancel"
-                      >
-                        ✕
-                      </button>
-                    </span>
-                  } @else {
-                    <button
-                      type="button"
-                      class="inline-flex items-center fs-caption w-max text-start disabled:cursor-default"
-                      [class.font-medium]="t.estimatedStartDate"
-                      [class.text-text-muted]="!t.estimatedStartDate"
-                      [class.cursor-pointer]="canEditStart()"
-                      [class.hover:underline]="canEditStart()"
-                      [disabled]="!canEditStart()"
-                      (click)="startEditDate('start', t.estimatedStartDate)"
-                    >
-                      {{
-                        t.estimatedStartDate
-                          ? shortDate(t.estimatedStartDate, locale.locale())
-                          : canEditStart()
-                            ? 'Set start date'
-                            : '—'
-                      }}
-                    </button>
-                  }
-                </div>
-
-                <!-- Duration — derived span between start and due dates (no backend field) -->
-                <div
-                  class="grid grid-cols-[var(--w-column-sm)_1fr] gap-2.5 items-center py-2.5 last:border-b-0"
-                >
-                  <span class="fs-label text-text-muted">Duration</span>
-                  <span class="fs-caption font-medium tabular-nums">
-                    @if (durationDays(); as d) {
-                      {{ d }} {{ d === 1 ? 'day' : 'days' }}
-                    } @else {
-                      <span class="text-text-muted font-normal">—</span>
-                    }
-                  </span>
                 </div>
               </div>
             </pera-card>
@@ -688,6 +643,7 @@ export class TaskDetailComponent implements OnInit, OnDestroy {
   private readonly perms = inject(PermissionsService);
   protected readonly access = inject(ProjectAccessStore);
   private readonly directory = inject(EmployeeService);
+  private readonly departmentsApi = inject(DepartmentService);
   private readonly modal = inject(ModalService);
   readonly locale = inject(LocaleService);
 
@@ -704,12 +660,6 @@ export class TaskDetailComponent implements OnInit, OnDestroy {
   readonly canAddGate = computed(() =>
     this.access.can(this.projectId(), 'taskGate.create', this.task()?.projectStageId),
   );
-  /** Planned start is editable whenever the caller can manage tasks (backend accepts it on update). */
-  /**
-   * crmp review R1-F8: the planned start is read-only. The task PUT (`TaskRequest`, dms
-   * `TaskEndpoints.cs:228`) has no start-date field, so an edit would toast success and save nothing.
-   */
-  readonly canEditStart = computed(() => false);
 
   readonly loading = signal(true);
   readonly failed = signal(false);
@@ -717,13 +667,16 @@ export class TaskDetailComponent implements OnInit, OnDestroy {
   readonly saving = signal(false);
   readonly editingDescription = signal(false);
   /** Which detail field (if any) is in inline-edit mode. */
-  readonly editingField = signal<'due' | 'start' | 'assignee' | 'priority' | null>(null);
+  readonly editingField = signal<'due' | 'assignee' | 'priority' | null>(null);
   readonly savingDate = signal(false);
   /** yyyy-MM-dd draft bound to the inline date input. */
   dateDraft = '';
   readonly projectName = signal('');
   readonly stageName = signal('');
-  private readonly employeeNames = signal<Map<string, string>>(new Map());
+  /** Employee id → name (directory read); also names the comment authors (sync W2-4). */
+  protected readonly employeeNames = signal<Map<string, string>>(new Map());
+  /** Sync W2-10: the task's department (`ProjectTaskResponse.DepartmentId`), resolved by name. */
+  readonly departmentName = signal<string | null>(null);
 
   readonly projectId = signal('');
   readonly taskId = signal('');
@@ -768,16 +721,6 @@ export class TaskDetailComponent implements OnInit, OnDestroy {
     { value: 'High', label: 'High' },
     { value: 'Urgent', label: 'Urgent' },
   ];
-  /** Planned span between start and due dates (inclusive day count). Derived — no backend field. */
-  readonly durationDays = computed<number | null>(() => {
-    const t = this.task();
-    if (!t?.estimatedStartDate || !t.dueDate) return null;
-    const s = Date.parse(t.estimatedStartDate);
-    const e = Date.parse(t.dueDate);
-    if (Number.isNaN(s) || Number.isNaN(e) || e < s) return null;
-    return Math.round((e - s) / 86_400_000) + 1;
-  });
-
   readonly shortDate = formatShortDate;
   protected readonly priorityDot = (p: string): string => PRIORITY_DOT[p] ?? PRIORITY_DOT['Low'];
 
@@ -866,6 +809,7 @@ export class TaskDetailComponent implements OnInit, OnDestroy {
         this.details.set(details);
         this.loading.set(false);
         this.syncBreadcrumb();
+        this.loadDepartment(details.task.departmentId ?? null);
         const sid = details.task.projectStageId;
         if (sid && !this.stageName()) {
           this.stagesApi
@@ -884,6 +828,18 @@ export class TaskDetailComponent implements OnInit, OnDestroy {
         this.failed.set(true);
       },
     });
+  }
+
+  /** Sync W2-10: one department read for the task's department name; a failure leaves '—'. */
+  private loadDepartment(departmentId: string | null): void {
+    if (!departmentId) {
+      this.departmentName.set(null);
+      return;
+    }
+    this.departmentsApi
+      .getById(departmentId)
+      .pipe(catchError(() => of(null)))
+      .subscribe((d) => this.departmentName.set(d?.name || null));
   }
 
   /** DMS / Project / Stage / Task — fed to the app-shell topbar breadcrumb. */
@@ -909,9 +865,12 @@ export class TaskDetailComponent implements OnInit, OnDestroy {
     return !Number.isNaN(ms) && ms < Date.now();
   }
 
-  startEditDate(field: 'due' | 'start', current: string | null): void {
-    if (field === 'due' && !this.canManageTasks()) return;
-    if (field === 'start' && !this.canEditStart()) return;
+  /**
+   * crmp review R1-F8 / sync W1-4: only the due date is editable. The task has no planned start (dms
+   * `ProjectTaskResponse`, `TaskRequest` at `TaskEndpoints.cs:228`), so the start-date editor is gone.
+   */
+  startEditDate(field: 'due', current: string | null): void {
+    if (field !== 'due' || !this.canManageTasks()) return;
     this.dateDraft = current ? current.slice(0, 10) : '';
     this.editingField.set(field);
   }
@@ -976,35 +935,29 @@ export class TaskDetailComponent implements OnInit, OnDestroy {
       });
   }
 
-  saveDate(field: 'due' | 'start'): void {
+  saveDate(field: 'due'): void {
     const t = this.task();
-    if (!t || this.savingDate()) return;
+    if (!t || this.savingDate() || field !== 'due') return;
     this.savingDate.set(true);
     const value = this.dateDraft || null;
-    const patch = field === 'due' ? { dueDate: value } : { estimatedStartDate: value };
     this.tasksApi
       .update(this.projectId(), t.id, {
         name: t.name,
         order: t.order,
         weight: t.weight,
         priority: t.priority,
-        dueDate: t.dueDate,
+        dueDate: value,
         description: t.description,
         notes: t.notes,
-        ...patch,
       })
       .subscribe({
         next: () => {
           this.savingDate.set(false);
           this.editingField.set(null);
-          const key = field === 'due' ? 'dueDate' : 'estimatedStartDate';
           this.details.update((d) =>
-            d ? { ...d, task: { ...d.task, [key]: value } as ProjectTask } : d,
+            d ? { ...d, task: { ...d.task, dueDate: value } as ProjectTask } : d,
           );
-          this.toast.show({
-            tone: 'success',
-            message: field === 'due' ? 'Due date saved' : 'Start date saved',
-          });
+          this.toast.show({ tone: 'success', message: 'Due date saved' });
         },
         error: (err: HttpErrorResponse) => {
           this.savingDate.set(false);
@@ -1030,7 +983,6 @@ export class TaskDetailComponent implements OnInit, OnDestroy {
         order: t.order,
         weight: t.weight,
         priority: t.priority,
-        estimatedStartDate: t.estimatedStartDate,
         dueDate: t.dueDate,
         description: t.description,
         notes: t.notes,

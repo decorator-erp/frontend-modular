@@ -25,7 +25,6 @@ import {
   FilterState,
   PeraAvatarComponent,
   PeraButtonComponent,
-  PeraCurrencyComponent,
   PeraDataTableComponent,
   PeraEmptyComponent,
   PeraFilterBarComponent,
@@ -44,7 +43,6 @@ const PAGE_SIZE = 20;
     FormsModule,
     PeraAvatarComponent,
     PeraButtonComponent,
-    PeraCurrencyComponent,
     PeraDataTableComponent,
     PeraEmptyComponent,
     PeraFilterBarComponent,
@@ -60,7 +58,22 @@ export class ProjectsListComponent implements OnInit {
   readonly locale = inject(LocaleService);
 
   readonly loading = signal(true);
-  readonly rows = signal<ProjectWithCode[]>([]);
+  /** The page as read from `GET /api/projects`. */
+  private readonly pageRows = signal<ProjectWithCode[]>([]);
+  /**
+   * Sync W2-2: `ProjectResponse.ClientName` (S6) when the backend sends it, else the client's name
+   * from the client filter's own list, so a row never shows a blank client it could name.
+   */
+  readonly rows = computed<ProjectWithCode[]>(() => {
+    const names = new Map(
+      this.clientOptions()
+        .filter((o) => o.value !== null && o.value !== undefined)
+        .map((o) => [String(o.value), o.label]),
+    );
+    return this.pageRows().map((r) =>
+      r.clientName || !r.clientId ? r : { ...r, clientName: names.get(r.clientId) ?? '' },
+    );
+  });
   readonly totalCount = signal(0);
   readonly page = signal(1);
   readonly search = signal('');
@@ -128,7 +141,6 @@ export class ProjectsListComponent implements OnInit {
   private readonly typeTpl = viewChild.required<TemplateRef<unknown>>('typeTpl');
   private readonly progressTpl = viewChild.required<TemplateRef<unknown>>('progressTpl');
   private readonly ownerTpl = viewChild.required<TemplateRef<unknown>>('ownerTpl');
-  private readonly budgetTpl = viewChild.required<TemplateRef<unknown>>('budgetTpl');
 
   readonly columns = computed<ColumnDef<ProjectWithCode>[]>(() => [
     { key: 'code', header: 'Code', width: 100, sortable: false, template: this.codeTpl() },
@@ -144,13 +156,7 @@ export class ProjectsListComponent implements OnInit {
       template: this.progressTpl(),
     },
     { key: 'productOwnerName', header: 'Owner', width: 140, template: this.ownerTpl() },
-    {
-      key: 'estimatedBudget',
-      header: 'Budget',
-      width: 120,
-      sortable: false,
-      template: this.budgetTpl(),
-    },
+    // Sync W2-2: no Budget column — ProjectResponse carries no budget.
   ]);
 
   readonly statusTone = projectStatusTone;
@@ -194,12 +200,12 @@ export class ProjectsListComponent implements OnInit {
       })
       .subscribe({
         next: (result) => {
-          this.rows.set(result.items);
+          this.pageRows.set(result.items);
           this.totalCount.set(result.totalCount);
           this.loading.set(false);
         },
         error: () => {
-          this.rows.set([]);
+          this.pageRows.set([]);
           this.totalCount.set(0);
           this.loading.set(false);
         },

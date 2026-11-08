@@ -118,6 +118,15 @@ export class ProjectEditDialogComponent {
     this.modalRef.close(false);
   }
 
+  /**
+   * Sync W2-5: the project PUT treats null as "keep" (dms `Project.Update`, Project.cs:62-84), so a
+   * field the user emptied is sent as '' — which the backend stores, clearing it. A field that was
+   * already empty stays null (nothing to clear).
+   */
+  private cleared(value: string, initial: string | null | undefined): string | null {
+    return value.trim() || (initial ? '' : null);
+  }
+
   submit(): void {
     const id = this.data?.id;
     if (!id || this.form.invalid) {
@@ -129,8 +138,8 @@ export class ProjectEditDialogComponent {
     const v = this.form.getRawValue();
     const payload: UpdateProjectRequest = {
       name: v.name.trim(),
-      description: v.description.trim() || null,
-      notes: v.notes.trim() || null,
+      description: this.cleared(v.description, this.data?.initial.description),
+      notes: this.cleared(v.notes, this.data?.initial.notes),
     };
     this.projects.update(id, payload).subscribe({
       next: () => {

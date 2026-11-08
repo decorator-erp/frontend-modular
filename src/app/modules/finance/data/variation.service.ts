@@ -42,9 +42,12 @@ function variationKindWire(k: VariationKind): number {
 /**
  * Variations — `api-docs/11-finance.md` Section 5.
  *
- * Lifecycle:
- *   Draft → Submitted → Approved → (Signed for ClientDifference) → Applied
+ * Lifecycle (dms Finance.Domain/Variation.cs):
+ *   Draft → Submitted → Approved → Applied
  *   ↳ Rejected | Cancelled (terminal)
+ * A ClientDifference leaves Submitted by being SIGNED (`sign`, with the client and the signed
+ * document) — signing is its approval; a plain `approve` answers `SignatureRequired`. An
+ * InternalChange leaves Submitted by `approve` with no signature fields.
  *
  * Auto-raised drafts come from server-side budget guards — the UI only needs
  * `setDescription` + `submit` to push them forward.
@@ -69,7 +72,7 @@ export class VariationService extends ApiService {
     return this.put(`/variations/${id}/approve`, req);
   }
 
-  sign(id: string, req: SignVariationRequest = {}): Observable<unknown> {
+  sign(id: string, req: SignVariationRequest): Observable<unknown> {
     return this.put(`/variations/${id}/sign`, req);
   }
 

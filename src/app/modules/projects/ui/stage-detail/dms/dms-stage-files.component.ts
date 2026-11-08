@@ -24,6 +24,25 @@ import {
   DocumentationModalComponent,
   DocumentationModalData,
 } from '../../task-detail/documentation-modal.component';
+import { CatalogService } from '@platform/i18n/catalog.service';
+import type { CatalogKey } from '@platform/i18n/catalog/en';
+import {
+  DocumentVersion,
+  DocumentVersionsService,
+  latestPerLineage,
+} from '../../../data/document-versions.service';
+import {
+  DocumentVersionsDialogComponent,
+  DocumentVersionsDialogData,
+} from '../../documents/document-versions-dialog.component';
+import {
+  StageUploadDialogComponent,
+  StageUploadDialogData,
+} from '../../documents/stage-upload-dialog.component';
+import {
+  ScopedFolderDialogComponent,
+  ScopedFolderDialogData,
+} from '../../documents/scoped-folder-dialog.component';
 
 type AttKind = 'pdf' | 'dwg' | 'sheet' | 'image' | 'other';
 type FolderKey = 'drawings' | 'schedules' | 'references' | 'other';
@@ -47,7 +66,7 @@ const FOLDERS: FolderDef[] = [
  * Stage Files browser — the `.pnl` "Files" block from the DMS Stage Detail
  * design, mirroring the **Task Detail** Files panel (the agreed pattern): a
  * content-kind folder grid built from the stage's attachments
- * (`/api/task-attachments/by-stage/{stageId}`), hiding empty buckets. Opening a
+ * (`GET /api/project-stages/{stageId}/documents`), hiding empty buckets. Opening a
  * folder pops the shared `FilesFolderModalComponent` floating window (tile grid +
  * in-place preview), not an in-panel grid or a side drawer. The panel + head
  * "Documentation" buttons open the project-documents browser (where uploads live,
@@ -68,6 +87,15 @@ const FOLDERS: FolderDef[] = [
             {{ visibleFolders().length === 1 ? 'folder' : 'folders' }}</span
           >
         </div>
+        <span class="flex-1"></span>
+        @if (canUpload()) {
+          <button type="button" [class]="BT_GH_SM" (click)="openUpload()" data-stage-upload>
+            {{ t('stf.upload') }}
+          </button>
+          <button type="button" [class]="BT_GH_SM" (click)="openNewFolder()" data-stage-folder>
+            {{ t('stf.newFolder') }}
+          </button>
+        }
         <button type="button" [class]="BT_GH_SM" (click)="openDocumentation()">
           <svg
             width="13"
@@ -128,6 +156,40 @@ const FOLDERS: FolderDef[] = [
           This stage has no files yet. Open Documentation to add files.
         </div>
       }
+
+      <!-- Sync F2: the stage's documents (newest version of each), with versions and review. -->
+      @if (documents().length) {
+        <ul
+          class="m-0 p-0 list-none border-t border-border-soft divide-y divide-border-soft"
+          data-stage-docs
+        >
+          @for (d of documents(); track d.id) {
+            <li class="px-4 py-2 flex items-center gap-2.5" [attr.data-doc]="d.id">
+              <span class="flex-1 min-w-0 truncate fs-caption">{{ d.fileName }}</span>
+              @if (d.version > 1) {
+                <span class="font-mono fs-micro text-text-muted">{{
+                  t('docv.version', { n: d.version })
+                }}</span>
+              }
+              @if (d.isLocked) {
+                <span
+                  class="font-mono fs-micro px-1.5 py-px border border-warning bg-warning-soft text-warning"
+                  data-doc-locked
+                  >{{ t('docv.locked') }}</span
+                >
+              }
+              <button
+                type="button"
+                class="font-mono fs-micro text-accent hover:underline cursor-pointer"
+                (click)="openVersions(d)"
+                data-doc-versions
+              >
+                {{ t('stf.versions') }}
+              </button>
+            </li>
+          }
+        </ul>
+      }
     </div>
   `,
 })
@@ -159,6 +221,34 @@ export class DmsStageFilesComponent implements OnInit {
   );
   private readonly attachments = signal<TaskAttachment[]>([]);
 
+  private readonly versionsApi = inject(DocumentVersionsService);
+  private readonly catalog = inject(CatalogService);
+  private readonly stageVersions = signal<DocumentVersion[]>([]);
+  /** Sync F2: the newest version of each of the stage's documents. */
+  readonly documents = computed(() => latestPerLineage(this.stageVersions()));
+
+  /** Sync F2: stage uploads and folders need `documents.upload` (Documents area, this stage). */
+  readonly canUpload = computed(() =>
+    claimCheck(
+      this.access.project(this.projectId())()?.myAccess,
+      'Documents',
+      (p) => this.perms.can(p),
+      this.stageId(),
+    )(PERM.documents.upload),
+  );
+  readonly canRequestReview = computed(() =>
+    claimCheck(
+      this.access.project(this.projectId())()?.myAccess,
+      'Documents',
+      (p) => this.perms.can(p),
+      this.stageId(),
+    )(PERM.documents.update),
+  );
+
+  t(key: CatalogKey, params?: Record<string, string | number>): string {
+    return this.catalog.t(key, params);
+  }
+
   private readonly allTiles = computed<AttTile[]>(() =>
     this.attachments().map((a) => {
       const ext = a.fileName.split('.').pop()?.toLowerCase() ?? '';
@@ -174,6 +264,8 @@ export class DmsStageFilesComponent implements OnInit {
         sizeBytes: a.fileSizeBytes,
         uploadedOn: a.uploadedOnUtc,
         isImage: kind === 'image',
+        locked: !!a.isLocked,
+        version: a.version ?? 1,
       };
     }),
   );
@@ -191,6 +283,36 @@ export class DmsStageFilesComponent implements OnInit {
 
   load(): void {
     this.api.getByStage(this.stageId()).subscribe((list) => this.attachments.set(list));
+    this.versionsApi.getByStage(this.stageId()).subscribe({
+      next: (list) => this.stageVersions.set(list),
+      error: () => this.stageVersions.set([]),
+    });
+  }
+
+  /** Sync F2(d): `POST /project-stages/{id}/documents`. */
+  async openUpload(): Promise<void> {
+    const data: StageUploadDialogData = { stageId: this.stageId() };
+    const ref = this.modal.open<boolean>(StageUploadDialogComponent, { size: 'md', data });
+    if (await ref.afterClosed()) this.load();
+  }
+
+  /** Sync F2(e): `POST /project-stages/{id}/document-folders`. */
+  async openNewFolder(): Promise<void> {
+    const data: ScopedFolderDialogData = { scope: 'stage', scopeId: this.stageId() };
+    const ref = this.modal.open<string>(ScopedFolderDialogComponent, { size: 'sm', data });
+    if (await ref.afterClosed()) this.load();
+  }
+
+  /** Sync F2(a-c): versions, a new version and a review request. */
+  async openVersions(d: DocumentVersion): Promise<void> {
+    const data: DocumentVersionsDialogData = {
+      documentId: d.id,
+      projectId: this.projectId(),
+      canUpload: this.canUpload(),
+      canRequestReview: this.canRequestReview(),
+    };
+    const ref = this.modal.open<boolean>(DocumentVersionsDialogComponent, { size: 'lg', data });
+    if (await ref.afterClosed()) this.load();
   }
 
   /** Open the folder's files in the shared floating window; reload on close. */

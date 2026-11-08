@@ -19,19 +19,21 @@ describe('NotificationService', () => {
 
   afterEach(() => http.verify());
 
-  it('translates uiPage=1 → page=0 on the wire (0-based quirk, Principle VI)', () => {
+  // Sync W1-9: NotificationEndpoints.cs:30 takes a 1-based pageNumber (no more 0-based page).
+  it('sends uiPage=1 as pageNumber=1 (no 0-based page param)', () => {
     svc.list(1).subscribe();
     const req = http.expectOne((r) => r.url === '/api/notifications');
-    expect(req.request.params.get('page')).toBe('0');
+    expect(req.request.params.get('pageNumber')).toBe('1');
+    expect(req.request.params.has('page')).toBe(false);
     expect(req.request.params.get('pageSize')).toBe('20');
-    req.flush({ items: [], totalCount: 0, pageIndex: 0, totalPages: 0 });
+    req.flush({ items: [], totalCount: 0, pageNumber: 1, pageSize: 20 });
   });
 
-  it('translates uiPage=3 → page=2', () => {
+  it('sends uiPage=3 as pageNumber=3', () => {
     svc.list(3, 20).subscribe();
     const req = http.expectOne((r) => r.url === '/api/notifications');
-    expect(req.request.params.get('page')).toBe('2');
-    req.flush({ items: [], totalCount: 0, pageIndex: 2, totalPages: 0 });
+    expect(req.request.params.get('pageNumber')).toBe('3');
+    req.flush({ items: [], totalCount: 0, pageNumber: 3, pageSize: 20 });
   });
 
   it('omits unreadOnly unless explicitly true', () => {
@@ -48,15 +50,23 @@ describe('NotificationService', () => {
     req.flush({ items: [], totalCount: 0, pageIndex: 0, totalPages: 0 });
   });
 
-  it('maps the wire response onto a 1-based PagedResult (0-based index + 1)', () => {
+  it('maps the wire PagedResult (1-based pageNumber) onto the app PagedResult', () => {
     let result: PagedResult<NotificationResponse> | undefined;
     svc.list(2, 20).subscribe((r) => (result = r));
     const req = http.expectOne((r) => r.url === '/api/notifications');
-    req.flush({ items: [{ id: 'n1' }], totalCount: 5, pageIndex: 1, totalPages: 3 });
-    expect(result?.page).toBe(2); // wire 0-based 1 → app 1-based 2
+    req.flush({ items: [{ id: 'n1' }], totalCount: 5, pageNumber: 2, pageSize: 20, totalPages: 3 });
+    expect(result?.page).toBe(2);
     expect(result?.totalCount).toBe(5);
     expect(result?.totalPages).toBe(3);
     expect(result?.items).toHaveLength(1);
+  });
+
+  it('still reads a legacy 0-based pageIndex response', () => {
+    let result: PagedResult<NotificationResponse> | undefined;
+    svc.list(2, 20).subscribe((r) => (result = r));
+    const req = http.expectOne((r) => r.url === '/api/notifications');
+    req.flush({ items: [], totalCount: 5, pageIndex: 1, totalPages: 3 });
+    expect(result?.page).toBe(2);
   });
 
   it('unreadCount() returns the bare integer', () => {
