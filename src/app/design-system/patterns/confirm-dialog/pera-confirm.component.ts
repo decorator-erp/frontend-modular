@@ -1,8 +1,11 @@
-import { ChangeDetectionStrategy, Component, Injectable, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, Injectable, inject, signal } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { ModalService, PERA_MODAL_DATA, PeraModalRef } from '../modal/modal.service';
 import { PeraButtonComponent } from '../../components/button/pera-button.component';
 import { A11yModule } from '@angular/cdk/a11y';
 import { PeraIconComponent } from '../../components/icon/pera-icon.component';
+import { PeraTextareaComponent } from '../../components/textarea/pera-textarea.component';
+import { PeraFormFieldComponent } from '../form-field/pera-form-field.component';
 
 export interface ConfirmOptions {
   title: string;
@@ -10,11 +13,29 @@ export interface ConfirmOptions {
   confirmLabel?: string;
   cancelLabel?: string;
   tone?: 'default' | 'danger';
+  /**
+   * An optional free-text reason under the body (`ConfirmService.openWithReason`). The confirm
+   * stays enabled when it is empty: the reason is optional.
+   */
+  reason?: { label: string; placeholder?: string; maxLength?: number };
+}
+
+/** The answer of `ConfirmService.openWithReason`: confirmed or not, and the trimmed reason. */
+export interface ConfirmWithReason {
+  confirmed: boolean;
+  reason: string;
 }
 
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [A11yModule, PeraButtonComponent, PeraIconComponent],
+  imports: [
+    A11yModule,
+    FormsModule,
+    PeraButtonComponent,
+    PeraIconComponent,
+    PeraTextareaComponent,
+    PeraFormFieldComponent,
+  ],
   template: `
     <div
       cdkTrapFocus
@@ -39,6 +60,18 @@ export interface ConfirmOptions {
           <p class="m-0 text-sm text-text-secondary">{{ opts.body }}</p>
         </div>
       </div>
+      @if (opts.reason; as r) {
+        <div class="px-4 pb-4" data-confirm-reason>
+          <pera-form-field [label]="r.label">
+            <pera-textarea
+              [rows]="3"
+              [placeholder]="r.placeholder ?? ''"
+              [ngModel]="reason()"
+              (ngModelChange)="setReason($event)"
+            />
+          </pera-form-field>
+        </div>
+      }
       <footer class="flex justify-end gap-2 px-4 py-3 border-t border-border">
         <pera-button variant="ghost" (click)="close(false)">{{
           opts.cancelLabel || 'Cancel'
@@ -55,10 +88,19 @@ export interface ConfirmOptions {
 })
 export class PeraConfirmComponent {
   readonly opts = inject(PERA_MODAL_DATA) as ConfirmOptions;
-  private readonly modalRef = inject(PeraModalRef) as PeraModalRef<boolean>;
+  private readonly modalRef = inject(PeraModalRef) as PeraModalRef<boolean | ConfirmWithReason>;
+  readonly reason = signal('');
+
+  setReason(value: string | null): void {
+    const max = this.opts.reason?.maxLength;
+    const text = value ?? '';
+    this.reason.set(max ? text.slice(0, max) : text);
+  }
 
   close(result: boolean): void {
-    this.modalRef.close(result);
+    this.modalRef.close(
+      this.opts.reason ? { confirmed: result, reason: this.reason().trim() } : result,
+    );
   }
 }
 
@@ -69,5 +111,18 @@ export class ConfirmService {
   async open(options: ConfirmOptions): Promise<boolean> {
     const ref = this.modal.open<boolean>(PeraConfirmComponent, { data: options });
     return (await ref.afterClosed()) ?? false;
+  }
+
+  /** `open` with an optional free-text reason (`options.reason`); dismissing is not confirming. */
+  async openWithReason(
+    options: ConfirmOptions & { reason: NonNullable<ConfirmOptions['reason']> },
+  ): Promise<ConfirmWithReason> {
+    const ref = this.modal.open<ConfirmWithReason | boolean>(PeraConfirmComponent, {
+      data: options,
+    });
+    const result = await ref.afterClosed();
+    return typeof result === 'object' && result
+      ? result
+      : { confirmed: result === true, reason: '' };
   }
 }

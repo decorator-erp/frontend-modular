@@ -157,6 +157,14 @@
               >{{ catalog.t('projects.membersLink') }}</a
             >
           }
+          @if (canManageAccess()) {
+            <a
+              [class]="btnClass"
+              [routerLink]="['/projects', proj.id, 'access']"
+              data-access-link
+              >{{ catalog.t('projects.accessLink') }}</a
+            >
+          }
           @if (canAddStage()) {
             <button type="button" [class]="btnClass" (click)="newStage()" data-new-stage>
               <svg

@@ -117,3 +117,24 @@ export function claimCheck(
   const codes = impliedCodes(area, access.level);
   return (permission) => codes.includes(permission);
 }
+
+/**
+ * crmp P1-B: who may manage grants on a project (dms ProjectAccessGrantHandlers.cs:80-89): a holder of
+ * `project.manage_access`, or a Manager by membership — never through a grant, never `read_all` alone.
+ */
+export function canManageGrants(
+  access: ProjectAccess | null | undefined,
+  can: (permission: string) => boolean,
+): boolean {
+  if (can(PERM.projects.manageAccess)) return true;
+  return access?.source === 'Member' && access.level === 'Manager';
+}
+
+/** The highest level the caller may grant: `project.manage_access` → Manager; else their member level. */
+export function grantLevelCap(
+  access: ProjectAccess | null | undefined,
+  can: (permission: string) => boolean,
+): ProjectLevel {
+  if (can(PERM.projects.manageAccess)) return 'Manager';
+  return access?.source === 'Member' ? access.level : 'Viewer';
+}

@@ -104,4 +104,13 @@ export const projectsRoutes: Routes = [
     loadComponent: () =>
       import('./ui/teams/project-teams-page.component').then((m) => m.ProjectTeamsPageComponent),
   },
+  // crmp P1-B: the project's temporary access grants (its Access tab). The page itself admits only a
+  // project.manage_access holder or a Manager by membership.
+  {
+    path: 'projects/:id/access',
+    canActivate: [PermissionGuard],
+    data: { permission: PERM.projects.read, breadcrumb: 'route.projectAccess' },
+    loadComponent: () =>
+      import('./ui/access/project-access-page.component').then((m) => m.ProjectAccessPageComponent),
+  },
 ];

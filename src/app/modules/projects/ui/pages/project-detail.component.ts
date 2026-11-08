@@ -19,7 +19,13 @@ import { ProjectAction } from '../../model/project-actions';
 import { ProjectClosedBannerComponent } from '../shared/project-closed-banner.component';
 import { ProjectGrantBannerComponent } from '../shared/project-grant-banner.component';
 import type { AccessArea } from '../../model/access-grant.model';
-import { claimCheck, grantCovers, impliedCodes, isGrantAccess } from '../../model/project-access';
+import {
+  canManageGrants,
+  claimCheck,
+  grantCovers,
+  impliedCodes,
+  isGrantAccess,
+} from '../../model/project-access';
 import { ConfirmService, PeraAlertComponent } from '@ds';
 import { ErrorHandlerService, friendly } from '@platform/http/error-handler.service';
 import { injectReloadOnConflict } from '@platform/http/concurrency';
@@ -212,6 +218,13 @@ export class ProjectDetailComponent implements OnInit {
 
   /** crmp P1-B: how the caller reaches the project (null for an older response: member behaviour). */
   readonly myAccess = computed(() => this.details()?.myAccess ?? null);
+  /**
+   * crmp P1-B: the Access tab — a `project.manage_access` holder, or a Manager by membership (never a
+   * grantee, never read_all alone; dms ProjectAccessGrantHandlers.cs:80-89).
+   */
+  readonly canManageAccess = computed(() =>
+    canManageGrants(this.myAccess(), (p) => this.perms.can(p)),
+  );
   /** crmp P1-B: a stage-limited grant sees only its stages in the Stages & tasks panel. */
   readonly visibleStages = computed(() => {
     const a = this.myAccess();

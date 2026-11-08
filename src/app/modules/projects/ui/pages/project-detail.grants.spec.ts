@@ -150,6 +150,30 @@ describe('ProjectDetailComponent — grantees (crmp P1-B)', () => {
     expect(el.querySelector('[data-members-link]')).not.toBeNull();
   });
 
+  it('the Access tab: project.manage_access, or a Manager by membership — never a grantee or read_all alone', () => {
+    const member = (level: ProjectAccess['level']): ProjectAccess => ({
+      source: 'Member',
+      level,
+      areas: [],
+      stageIds: [],
+      expiresAtUtc: null,
+    });
+    const cases: [ProjectAccess | null, string[], boolean][] = [
+      [member('Manager'), [], true],
+      [member('Editor'), [], false],
+      [member('Editor'), ['project.manage_access'], true],
+      [{ ...member('Manager'), source: 'ReadAll' }, ['project.read_all'], false],
+      [{ ...member('Manager'), source: 'ReadAll' }, ['project.manage_access'], true],
+      [g(['Overview', 'Team'], [], 'Manager'), [], false],
+      [null, ['project.read'], false],
+    ];
+    for (const [access, token, shown] of cases) {
+      TestBed.resetTestingModule();
+      const { el } = render(access, token);
+      expect(!!el.querySelector('[data-access-link]'), `${access?.source} ${token}`).toBe(shown);
+    }
+  });
+
   it('members keep the token gating and see no banner', () => {
     const { el } = render(
       { source: 'Member', level: 'Manager', areas: [], stageIds: [], expiresAtUtc: null },

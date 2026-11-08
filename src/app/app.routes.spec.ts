@@ -147,8 +147,8 @@ describe('app.routes — the 004 shell skeleton', () => {
   // +1 audit, +4 library, +1 notifications. 007: +1 finance. 008: +8 projects. 009: +1 admin/catalog,
   // +1 crm, +1 approvals, +1 crm/designer/projects/:projectId. sow (NEW-FEATURE-1): +1
   // projects/:id/scope-of-work. crmp: +3 projects/:id/members, /tasks, /teams (P-1, P-3, P-7).
-  // sites (NEW-FEATURE-1): +1 sites loadChildren
-  const EXPECTED_SHELL_CHILDREN_AT_009 = 35;
+  // sites (NEW-FEATURE-1): +1 sites loadChildren. crmp P1-B: +1 projects/:id/access.
+  const EXPECTED_SHELL_CHILDREN_AT_009 = 36;
 
   it('has exactly the expected number of real (non-stub) shell children', () => {
     expect(shellChildren()).toHaveLength(EXPECTED_SHELL_CHILDREN_AT_009);

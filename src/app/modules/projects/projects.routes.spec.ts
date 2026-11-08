@@ -33,6 +33,7 @@ describe('projectsRoutes', () => {
       'projects/:id/members',
       'projects/:id/tasks',
       'projects/:id/teams',
+      'projects/:id/access',
     ]);
   });
 
@@ -73,7 +74,7 @@ describe('projectsRoutes', () => {
     const crumbs = projectsRoutes
       .map((r) => r.data?.['breadcrumb'] as string | undefined)
       .filter((c): c is string => !!c);
-    expect(crumbs.length).toBe(11); // 8 + crmp P-1 members, P-3 tasks, P-7 teams
+    expect(crumbs.length).toBe(12); // 8 + crmp P-1 members, P-3 tasks, P-7 teams, P1-B access
     for (const crumb of crumbs) {
       expect(isCatalogKey(crumb)).toBe(true);
       if (!isCatalogKey(crumb)) continue;
@@ -97,6 +98,14 @@ describe('projectsRoutes', () => {
     expect(r.data).toEqual({ permission: PERM.scope.read, breadcrumb: 'route.scopeOfWork' });
     expect(PERM.scope.read).toBe('scope.read');
     expect(await r.loadComponent!()).toBe(ScopeOfWorkPageComponent);
+  });
+
+  it('crmp P1-B: the access page is lazy, guarded on project.read and loads ProjectAccessPageComponent', async () => {
+    const r = route('projects/:id/access')!;
+    expect(r.canActivate).toEqual([PermissionGuard]);
+    expect(r.data).toEqual({ permission: 'project.read', breadcrumb: 'route.projectAccess' });
+    const cmp = (await r.loadComponent!()) as { name: string };
+    expect(cmp.name).toContain('ProjectAccessPageComponent');
   });
 
   it('crmp P-1: the members page is lazy and guarded on project.read', () => {
