@@ -1951,6 +1951,22 @@ export const EN = {
   // BF-2 follow-up: name the submitter (dms SiteDetailResponse.SubmittedById)
   'sv.submittedBannerBy': 'Submitted by {n} · {d}. Capture is locked until a decision.',
   'sv.trail.submitted': 'Submitted by {n}',
+  // crmp P1-B: project access grants — levels, areas and the temporary-access banner
+  'grants.level.Viewer': 'Read only',
+  'grants.level.Editor': 'Read + write',
+  'grants.level.Manager': 'Full',
+  'grants.area.Overview': 'Overview & progress',
+  'grants.area.StagesAndTasks': 'Stages & tasks',
+  'grants.area.Documents': 'Documents',
+  'grants.area.Sites': 'Site surveys',
+  'grants.area.Crm': 'CRM (brief, spaces, items)',
+  'grants.area.Team': 'Team (read)',
+  'grants.wholeProject': 'Whole project',
+  'grants.banner': 'Temporary access: {level} · {scope} · {until}',
+  'grants.banner.until': 'until {date}',
+  'grants.banner.noEnd': 'no end',
+  // crmp P1-B: list separator for grant areas and stages
+  'grants.listSep': ', ',
 } as const;
 
 /** The key set of record. Every catalog lookup is typed against this. */

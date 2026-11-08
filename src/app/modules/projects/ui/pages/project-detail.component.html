@@ -31,6 +31,7 @@
     <!-- ============ Project header card ============ -->
     <div class="px-8 pt-6 flex flex-col gap-3">
       <app-project-closed-banner [project]="proj" />
+      <app-project-grant-banner [access]="myAccess()" [stages]="stages()" />
       @if (scopeBlocksStages()) {
         <pera-alert tone="info" data-scope-not-confirmed>
           {{ scopeNotConfirmedMessage() }}
@@ -93,64 +94,69 @@
               Edit
             </button>
           }
-          <button type="button" [class]="btnClass" (click)="openDocuments()">
-            <svg
-              width="13"
-              height="13"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="1.7"
-              class="shrink-0"
+          @if (covers('Documents')) {
+            <button type="button" [class]="btnClass" (click)="openDocuments()">
+              <svg
+                width="13"
+                height="13"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.7"
+                class="shrink-0"
+              >
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                <path d="M14 2v6h6" />
+              </svg>
+              Documents
+            </button>
+          }
+          @if (areaCan('Crm', perm.crmDashboard)) {
+            <button type="button" [class]="btnClass" (click)="openRequirementGathering()">
+              <svg
+                width="13"
+                height="13"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.7"
+                class="shrink-0"
+              >
+                <path
+                  d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"
+                />
+                <rect x="9" y="3" width="6" height="4" rx="1" />
+              </svg>
+              {{ catalog.t('nav.reqGathering') }}
+            </button>
+          }
+          @if (isStage() && areaCan('Overview', perm.scope)) {
+            <a [class]="btnClass" [routerLink]="['/projects', proj.id, 'scope-of-work']">{{
+              catalog.t('sow.title')
+            }}</a>
+          }
+          @if (areaCan('Sites', 'sites.read')) {
+            <a
+              [class]="btnClass"
+              [routerLink]="['/sites']"
+              [queryParams]="{ projectId: proj.id }"
+              data-sites-link
+              >{{ catalog.t('sv.navSurveys') }}</a
             >
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-              <path d="M14 2v6h6" />
-            </svg>
-            Documents
-          </button>
-          <button
-            type="button"
-            [class]="btnClass"
-            *peraCan="perm.crmDashboard"
-            (click)="openRequirementGathering()"
-          >
-            <svg
-              width="13"
-              height="13"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="1.7"
-              class="shrink-0"
+          }
+          @if (shows('StagesAndTasks')) {
+            <a [class]="btnClass" [routerLink]="['/projects', proj.id, 'tasks']" data-tasks-link>{{
+              catalog.t('projects.tasksLink')
+            }}</a>
+          }
+          @if (shows('Team')) {
+            <a
+              [class]="btnClass"
+              [routerLink]="['/projects', proj.id, 'members']"
+              data-members-link
+              >{{ catalog.t('projects.membersLink') }}</a
             >
-              <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2" />
-              <rect x="9" y="3" width="6" height="4" rx="1" />
-            </svg>
-            {{ catalog.t('nav.reqGathering') }}
-          </button>
-          <a
-            *peraCan="isStage() ? perm.scope : []"
-            [class]="btnClass"
-            [routerLink]="['/projects', proj.id, 'scope-of-work']"
-            >{{ catalog.t('sow.title') }}</a
-          >
-          <a
-            *peraCan="'sites.read'"
-            [class]="btnClass"
-            [routerLink]="['/sites']"
-            [queryParams]="{ projectId: proj.id }"
-            data-sites-link
-            >{{ catalog.t('sv.navSurveys') }}</a
-          >
-          <a [class]="btnClass" [routerLink]="['/projects', proj.id, 'tasks']" data-tasks-link>{{
-            catalog.t('projects.tasksLink')
-          }}</a>
-          <a
-            [class]="btnClass"
-            [routerLink]="['/projects', proj.id, 'members']"
-            data-members-link
-            >{{ catalog.t('projects.membersLink') }}</a
-          >
+          }
           @if (canAddStage()) {
             <button type="button" [class]="btnClass" (click)="newStage()" data-new-stage>
               <svg
@@ -221,99 +227,145 @@
       }
 
       <!-- Stages & tasks — List ⇄ Gantt -->
-      <section [class]="panelClass" class="lg:col-span-12" *peraCan="perm.tasksPanel">
-        <div data-panel-head [class]="panelHeadClass">
-          <div class="flex items-center gap-2.5">
-            <h3 [class]="panelTitleClass">Stages &amp; tasks</h3>
-            <span [class]="countChipClass">
-              @if (isStage()) {
-                {{ stageCount() }} stages ·
-              }
-              {{ totalTasks() }} tasks</span
-            >
-          </div>
-          <div class="flex items-center gap-1.5">
-            <button
-              type="button"
-              [class]="chipClass(stView() === 'list')"
-              (click)="stView.set('list')"
-            >
-              List
-            </button>
-            <button
-              type="button"
-              [class]="chipClass(stView() === 'gantt')"
-              (click)="stView.set('gantt')"
-            >
-              Gantt
-            </button>
-          </div>
-        </div>
-        <div class="min-w-0">
-          @if (stView() === 'list') {
-            <div
-              data-stl-head
-              [class]="stlGrid"
-              class="px-5 py-2.5 border-b border-border-soft font-mono uppercase tracking-[0.05em] text-text-muted"
-              [style.fontSize]="'var(--fs-micro)'"
-            >
-              <span>Stage / task</span><span>Status</span><span>Owner</span>
-              <span class="text-end justify-self-end">Due</span>
-              <span class="text-end justify-self-end">Progress</span>
+      @if (listCan('StagesAndTasks', perm.tasksPanel)) {
+        <section [class]="panelClass" class="lg:col-span-12">
+          <div data-panel-head [class]="panelHeadClass">
+            <div class="flex items-center gap-2.5">
+              <h3 [class]="panelTitleClass">Stages &amp; tasks</h3>
+              <span [class]="countChipClass">
+                @if (isStage()) {
+                  {{ stageCount() }} stages ·
+                }
+                {{ totalTasks() }} tasks</span
+              >
             </div>
-            @if (isStage()) {
-              @for (s of stages(); track s.id) {
-                <div [class]="stlGrid" class="px-5 py-2.5 border-b border-border-soft bg-hover">
-                  <span [class]="stlNameClass">
-                    <span
-                      class="font-mono text-text-muted shrink-0"
-                      [style.fontSize]="'var(--fs-micro)'"
-                      >Stage {{ pad(s.order) }}</span
-                    >{{ s.name }}
-                  </span>
-                  <span>
-                    <pera-status-badge
-                      [tone]="stageStTone(s.status)"
-                      [label]="stageStLabel(s.status)"
-                    />
-                  </span>
-                  <span [class]="stlOwnerClass">
-                    @if (stageOwner(s.id); as owner) {
+            <div class="flex items-center gap-1.5">
+              <button
+                type="button"
+                [class]="chipClass(stView() === 'list')"
+                (click)="stView.set('list')"
+              >
+                List
+              </button>
+              <button
+                type="button"
+                [class]="chipClass(stView() === 'gantt')"
+                (click)="stView.set('gantt')"
+              >
+                Gantt
+              </button>
+            </div>
+          </div>
+          <div class="min-w-0">
+            @if (stView() === 'list') {
+              <div
+                data-stl-head
+                [class]="stlGrid"
+                class="px-5 py-2.5 border-b border-border-soft font-mono uppercase tracking-[0.05em] text-text-muted"
+                [style.fontSize]="'var(--fs-micro)'"
+              >
+                <span>Stage / task</span><span>Status</span><span>Owner</span>
+                <span class="text-end justify-self-end">Due</span>
+                <span class="text-end justify-self-end">Progress</span>
+              </div>
+              @if (isStage()) {
+                @for (s of visibleStages(); track s.id) {
+                  <div [class]="stlGrid" class="px-5 py-2.5 border-b border-border-soft bg-hover">
+                    <span [class]="stlNameClass">
                       <span
-                        [class]="avMiniClass"
-                        [style.width]="'var(--space-5)'"
-                        [style.height]="'var(--space-5)'"
-                        >{{ initials(owner) }}</span
-                      >{{ owner }}
-                    } @else {
-                      —
-                    }
-                  </span>
-                  <span
-                    class="text-end justify-self-end font-mono text-text-muted"
-                    [style.fontSize]="'var(--fs-label)'"
-                    >{{ stageDue(s) }}</span
-                  >
-                  <span class="text-end justify-self-end">
-                    <span
-                      class="inline-flex items-center justify-end gap-1.5 font-mono text-text-secondary"
-                      [style.fontSize]="'var(--fs-label)'"
-                    >
-                      <span class="w-16 h-1.5 bg-surface-muted border border-border-soft relative">
+                        class="font-mono text-text-muted shrink-0"
+                        [style.fontSize]="'var(--fs-micro)'"
+                        >Stage {{ pad(s.order) }}</span
+                      >{{ s.name }}
+                    </span>
+                    <span>
+                      <pera-status-badge
+                        [tone]="stageStTone(s.status)"
+                        [label]="stageStLabel(s.status)"
+                      />
+                    </span>
+                    <span [class]="stlOwnerClass">
+                      @if (stageOwner(s.id); as owner) {
                         <span
-                          class="absolute inset-y-0 start-0 bg-text-primary"
-                          [style.width.%]="s.progressPercent"
-                        ></span> </span
-                      >{{ s.progressPercent }}%
+                          [class]="avMiniClass"
+                          [style.width]="'var(--space-5)'"
+                          [style.height]="'var(--space-5)'"
+                          >{{ initials(owner) }}</span
+                        >{{ owner }}
+                      } @else {
+                        —
+                      }
                     </span>
-                  </span>
-                </div>
-                @for (t of s.tasks; track t.id) {
+                    <span
+                      class="text-end justify-self-end font-mono text-text-muted"
+                      [style.fontSize]="'var(--fs-label)'"
+                      >{{ stageDue(s) }}</span
+                    >
+                    <span class="text-end justify-self-end">
+                      <span
+                        class="inline-flex items-center justify-end gap-1.5 font-mono text-text-secondary"
+                        [style.fontSize]="'var(--fs-label)'"
+                      >
+                        <span
+                          class="w-16 h-1.5 bg-surface-muted border border-border-soft relative"
+                        >
+                          <span
+                            class="absolute inset-y-0 start-0 bg-text-primary"
+                            [style.width.%]="s.progressPercent"
+                          ></span> </span
+                        >{{ s.progressPercent }}%
+                      </span>
+                    </span>
+                  </div>
+                  @for (t of s.tasks; track t.id) {
+                    <button type="button" [class]="stlTaskClass" (click)="openTask(t)">
+                      <span [class]="stlNameClass" class="font-normal!">
+                        <span class="w-2 h-px bg-border shrink-0" aria-hidden="true"></span>
+                        {{ t.name }}
+                      </span>
+                      <span>
+                        <pera-status-badge
+                          [tone]="taskStTone(t.status)"
+                          [label]="taskLabel(t.status)"
+                        />
+                      </span>
+                      <span [class]="stlOwnerClass">
+                        @if (nameOf(t.assignedToId); as nm) {
+                          <span
+                            [class]="avMiniClass"
+                            [style.width]="'var(--space-5)'"
+                            [style.height]="'var(--space-5)'"
+                            >{{ initials(nm) }}</span
+                          >{{ nm }}
+                        } @else {
+                          —
+                        }
+                      </span>
+                      <span
+                        class="text-end justify-self-end font-mono text-text-muted"
+                        [style.fontSize]="'var(--fs-label)'"
+                        >{{ taskDue(t) }}</span
+                      >
+                      <span
+                        class="text-end justify-self-end font-mono text-text-muted"
+                        [style.fontSize]="'var(--fs-label)'"
+                        >{{ taskProgress(t) }}</span
+                      >
+                    </button>
+                  } @empty {
+                    <div [class]="stlGrid" class="px-5 py-2 border-b border-border-soft">
+                      <span class="text-text-muted" [style.fontSize]="'var(--fs-caption)'"
+                        >No tasks in this stage</span
+                      ><span></span><span></span><span></span><span></span>
+                    </div>
+                  }
+                } @empty {
+                  <p [class]="panelEmptyClass">No stages defined yet.</p>
+                }
+              } @else {
+                @for (t of unstagedTasks(); track t.id) {
                   <button type="button" [class]="stlTaskClass" (click)="openTask(t)">
-                    <span [class]="stlNameClass" class="font-normal!">
-                      <span class="w-2 h-px bg-border shrink-0" aria-hidden="true"></span>
-                      {{ t.name }}
-                    </span>
+                    <span [class]="stlNameClass" class="font-normal!">{{ t.name }}</span>
                     <span>
                       <pera-status-badge
                         [tone]="taskStTone(t.status)"
@@ -344,57 +396,15 @@
                     >
                   </button>
                 } @empty {
-                  <div [class]="stlGrid" class="px-5 py-2 border-b border-border-soft">
-                    <span class="text-text-muted" [style.fontSize]="'var(--fs-caption)'"
-                      >No tasks in this stage</span
-                    ><span></span><span></span><span></span><span></span>
-                  </div>
+                  <p [class]="panelEmptyClass">No tasks yet.</p>
                 }
-              } @empty {
-                <p [class]="panelEmptyClass">No stages defined yet.</p>
               }
             } @else {
-              @for (t of unstagedTasks(); track t.id) {
-                <button type="button" [class]="stlTaskClass" (click)="openTask(t)">
-                  <span [class]="stlNameClass" class="font-normal!">{{ t.name }}</span>
-                  <span>
-                    <pera-status-badge
-                      [tone]="taskStTone(t.status)"
-                      [label]="taskLabel(t.status)"
-                    />
-                  </span>
-                  <span [class]="stlOwnerClass">
-                    @if (nameOf(t.assignedToId); as nm) {
-                      <span
-                        [class]="avMiniClass"
-                        [style.width]="'var(--space-5)'"
-                        [style.height]="'var(--space-5)'"
-                        >{{ initials(nm) }}</span
-                      >{{ nm }}
-                    } @else {
-                      —
-                    }
-                  </span>
-                  <span
-                    class="text-end justify-self-end font-mono text-text-muted"
-                    [style.fontSize]="'var(--fs-label)'"
-                    >{{ taskDue(t) }}</span
-                  >
-                  <span
-                    class="text-end justify-self-end font-mono text-text-muted"
-                    [style.fontSize]="'var(--fs-label)'"
-                    >{{ taskProgress(t) }}</span
-                  >
-                </button>
-              } @empty {
-                <p [class]="panelEmptyClass">No tasks yet.</p>
-              }
+              <app-tasks-gantt-view [stages]="visibleStages()" [tasks]="unstagedTasks()" />
             }
-          } @else {
-            <app-tasks-gantt-view [stages]="stages()" [tasks]="unstagedTasks()" />
-          }
-        </div>
-      </section>
+          </div>
+        </section>
+      }
 
       <!-- Task status donut — the three cards in this row are equal height; content tops out. -->
       <section [class]="panelClass" class="lg:col-span-4">
@@ -467,101 +477,104 @@
       </section>
 
       <!-- Team — compact project-member roster -->
-      <section [class]="panelClass" class="lg:col-span-6" *peraCan="perm.team">
-        <div data-panel-head [class]="panelHeadClass">
-          <div class="flex items-center gap-2.5">
-            <h3 [class]="panelTitleClass">Team</h3>
-            <span [class]="countChipClass">{{ members().length }}</span>
-          </div>
-          <button
-            type="button"
-            [class]="panelLinkClass"
-            *peraCan="perm.manageTeam"
-            (click)="manageTeam()"
-          >
-            Manage <span class="inline-block rtl:rotate-180" aria-hidden="true">→</span>
-          </button>
-        </div>
-        <div class="min-w-0">
-          @if (members().length) {
-            @for (m of members(); track m.id; let i = $index) {
-              <div
-                class="grid grid-cols-[1.5rem_minmax(0,1fr)_auto] gap-2.5 items-center px-5 py-2.5 border-b border-border-soft last:border-b-0"
-              >
-                <span
-                  [class]="avMiniClass"
-                  [class.bg-text-muted]="i % 2 === 1"
-                  [style.width]="'var(--space-5)'"
-                  [style.height]="'var(--space-5)'"
-                  >{{ initials(nameOf(m.employeeId)) }}</span
-                >
-                <span class="truncate text-text-primary" [style.fontSize]="'var(--fs-caption)'">{{
-                  nameOf(m.employeeId) || '—'
-                }}</span>
-                <span [class]="tagClass">{{ m.access }}</span>
-              </div>
-            }
-          } @else {
-            <p [class]="panelEmptyClass">No team members yet.</p>
-          }
-        </div>
-      </section>
-
-      <!-- Documents -->
-      <section [class]="panelClass" class="lg:col-span-6" *peraCan="perm.documents">
-        <div data-panel-head [class]="panelHeadClass">
-          <div class="flex items-center gap-2.5">
-            <h3 [class]="panelTitleClass">Documents</h3>
-            <span [class]="countChipClass">recent</span>
-          </div>
-          <button type="button" [class]="panelLinkClass" (click)="openDocuments()">
-            All <span class="inline-block rtl:rotate-180" aria-hidden="true">→</span>
-          </button>
-        </div>
-        <div class="min-w-0">
-          @if (recentDocs().length) {
-            @for (d of recentDocs(); track d.id; let i = $index) {
-              <button
-                type="button"
-                class="w-full text-start grid grid-cols-[2rem_minmax(0,1fr)_auto_auto_1rem] gap-3 items-center px-5 py-2.5 border-0 border-b border-border-soft last:border-b-0 bg-transparent cursor-pointer hover:bg-hover transition-colors"
-                (click)="openDocuments()"
-              >
-                <span class="font-mono text-text-muted" [style.fontSize]="'var(--fs-label)'">{{
-                  pad(i + 1)
-                }}</span>
-                <span class="min-w-0 flex flex-col gap-0.5">
-                  <span class="truncate text-text-primary" [style.fontSize]="'var(--fs-caption)'">{{
-                    d.fileName
-                  }}</span>
-                  <span
-                    class="truncate font-mono text-text-muted"
-                    [style.fontSize]="'var(--fs-label)'"
-                  >
-                    @if (docAuthor(d); as a) {
-                      {{ a }} ·
-                    }
-                    {{ fileSize(d.sizeBytes) }}</span
-                  >
-                </span>
-                <span [class]="tagClass">{{ docKind(d) }}</span>
-                <span
-                  class="whitespace-nowrap font-mono text-text-muted"
-                  [style.fontSize]="'var(--fs-label)'"
-                  >{{ relativeTime(d.createdAtUtc) }}</span
-                >
-                <span
-                  class="text-end font-mono text-text-muted"
-                  [style.fontSize]="'var(--fs-caption)'"
-                  aria-hidden="true"
-                  ><span class="inline-block rtl:rotate-180">→</span></span
-                >
+      @if (shows('Team') && areaCan('Team', perm.team)) {
+        <section [class]="panelClass" class="lg:col-span-6">
+          <div data-panel-head [class]="panelHeadClass">
+            <div class="flex items-center gap-2.5">
+              <h3 [class]="panelTitleClass">Team</h3>
+              <span [class]="countChipClass">{{ members().length }}</span>
+            </div>
+            @if (areaCan('Team', perm.manageTeam)) {
+              <button type="button" [class]="panelLinkClass" (click)="manageTeam()">
+                Manage <span class="inline-block rtl:rotate-180" aria-hidden="true">→</span>
               </button>
             }
-          } @else {
-            <p [class]="panelEmptyClass">No documents uploaded yet.</p>
-          }
-        </div>
-      </section>
+          </div>
+          <div class="min-w-0">
+            @if (members().length) {
+              @for (m of members(); track m.id; let i = $index) {
+                <div
+                  class="grid grid-cols-[1.5rem_minmax(0,1fr)_auto] gap-2.5 items-center px-5 py-2.5 border-b border-border-soft last:border-b-0"
+                >
+                  <span
+                    [class]="avMiniClass"
+                    [class.bg-text-muted]="i % 2 === 1"
+                    [style.width]="'var(--space-5)'"
+                    [style.height]="'var(--space-5)'"
+                    >{{ initials(nameOf(m.employeeId)) }}</span
+                  >
+                  <span class="truncate text-text-primary" [style.fontSize]="'var(--fs-caption)'">{{
+                    nameOf(m.employeeId) || '—'
+                  }}</span>
+                  <span [class]="tagClass">{{ m.access }}</span>
+                </div>
+              }
+            } @else {
+              <p [class]="panelEmptyClass">No team members yet.</p>
+            }
+          </div>
+        </section>
+      }
+
+      <!-- Documents -->
+      @if (areaCan('Documents', perm.documents)) {
+        <section [class]="panelClass" class="lg:col-span-6">
+          <div data-panel-head [class]="panelHeadClass">
+            <div class="flex items-center gap-2.5">
+              <h3 [class]="panelTitleClass">Documents</h3>
+              <span [class]="countChipClass">recent</span>
+            </div>
+            <button type="button" [class]="panelLinkClass" (click)="openDocuments()">
+              All <span class="inline-block rtl:rotate-180" aria-hidden="true">→</span>
+            </button>
+          </div>
+          <div class="min-w-0">
+            @if (recentDocs().length) {
+              @for (d of recentDocs(); track d.id; let i = $index) {
+                <button
+                  type="button"
+                  class="w-full text-start grid grid-cols-[2rem_minmax(0,1fr)_auto_auto_1rem] gap-3 items-center px-5 py-2.5 border-0 border-b border-border-soft last:border-b-0 bg-transparent cursor-pointer hover:bg-hover transition-colors"
+                  (click)="openDocuments()"
+                >
+                  <span class="font-mono text-text-muted" [style.fontSize]="'var(--fs-label)'">{{
+                    pad(i + 1)
+                  }}</span>
+                  <span class="min-w-0 flex flex-col gap-0.5">
+                    <span
+                      class="truncate text-text-primary"
+                      [style.fontSize]="'var(--fs-caption)'"
+                      >{{ d.fileName }}</span
+                    >
+                    <span
+                      class="truncate font-mono text-text-muted"
+                      [style.fontSize]="'var(--fs-label)'"
+                    >
+                      @if (docAuthor(d); as a) {
+                        {{ a }} ·
+                      }
+                      {{ fileSize(d.sizeBytes) }}</span
+                    >
+                  </span>
+                  <span [class]="tagClass">{{ docKind(d) }}</span>
+                  <span
+                    class="whitespace-nowrap font-mono text-text-muted"
+                    [style.fontSize]="'var(--fs-label)'"
+                    >{{ relativeTime(d.createdAtUtc) }}</span
+                  >
+                  <span
+                    class="text-end font-mono text-text-muted"
+                    [style.fontSize]="'var(--fs-caption)'"
+                    aria-hidden="true"
+                    ><span class="inline-block rtl:rotate-180">→</span></span
+                  >
+                </button>
+              }
+            } @else {
+              <p [class]="panelEmptyClass">No documents uploaded yet.</p>
+            }
+          </div>
+        </section>
+      }
 
       <!-- Risk register (empty state) — no backend endpoint yet -->
       <section [class]="panelClass" class="lg:col-span-12">

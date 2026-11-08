@@ -1863,4 +1863,20 @@ export const AR: Partial<Record<CatalogKey, string>> = {
   // BF-2 follow-up: name the submitter (dms SiteDetailResponse.SubmittedById)
   'sv.submittedBannerBy': 'أرسلها {n} · {d}. التسجيل مغلق حتى صدور القرار.',
   'sv.trail.submitted': 'أرسلها {n}',
+  // crmp P1-B: project access grants — levels, areas and the temporary-access banner
+  'grants.level.Viewer': 'قراءة فقط',
+  'grants.level.Editor': 'قراءة وكتابة',
+  'grants.level.Manager': 'كاملة',
+  'grants.area.Overview': 'النظرة العامة والتقدم',
+  'grants.area.StagesAndTasks': 'المراحل والمهام',
+  'grants.area.Documents': 'المستندات',
+  'grants.area.Sites': 'معاينات المواقع',
+  'grants.area.Crm': 'إدارة العملاء (الموجز والمساحات والبنود)',
+  'grants.area.Team': 'الفريق (قراءة)',
+  'grants.wholeProject': 'المشروع كاملًا',
+  'grants.banner': 'وصول مؤقت: {level} · {scope} · {until}',
+  'grants.banner.until': 'حتى {date}',
+  'grants.banner.noEnd': 'بلا نهاية',
+  // crmp P1-B: list separator for grant areas and stages
+  'grants.listSep': '، ',
 };

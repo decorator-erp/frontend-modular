@@ -23,6 +23,8 @@ import {
 import { Observable, catchError, of } from 'rxjs';
 import { ProjectStageService } from '../../data/project-stage.service';
 import { ProjectClosedBannerComponent } from '../shared/project-closed-banner.component';
+import { ProjectGrantBannerComponent } from '../shared/project-grant-banner.component';
+import { claimCheck, isGrantAccess } from '../../model/project-access';
 import { ProjectAccessStore } from '../../stores/project-access.store';
 import type { ProjectAction } from '../../model/project-actions';
 import { StageGateConditionService } from '../../data/stage-gate-condition.service';
@@ -106,6 +108,7 @@ type TaskFilter = 'all' | RollupStatus;
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     ProjectClosedBannerComponent,
+    ProjectGrantBannerComponent,
     RouterLink,
     FormsModule,
     NgComponentOutlet,
@@ -127,7 +130,10 @@ type TaskFilter = 'all' | RollupStatus;
   template: `
     <!-- crmp P-9: a closed project's work is read-only (projects.Closed); every write is hidden. -->
     @if (access.project(projectId())(); as closedCheck) {
-      <div class="px-6 pt-4"><app-project-closed-banner [project]="closedCheck" /></div>
+      <div class="px-6 pt-4 flex flex-col gap-3">
+        <app-project-closed-banner [project]="closedCheck" />
+        <app-project-grant-banner [access]="closedCheck.myAccess" [stages]="stages()" />
+      </div>
     }
     @if (loading()) {
       <div class="p-6">
@@ -320,18 +326,18 @@ type TaskFilter = 'all' | RollupStatus;
               </div>
 
               <!-- stepper -->
-              <ng-container *peraCan="canRead">
+              @if (readable()) {
                 @if (stages().length) {
                   <app-dms-stage-stepper
-                    [stages]="stages()"
+                    [stages]="visibleStages()"
                     [currentStageId]="s.id"
                     [projectId]="projectId()"
                   />
                 }
-              </ng-container>
+              }
 
               <!-- description -->
-              <ng-container *peraCan="canRead">
+              @if (readable()) {
                 <div [class]="PNL">
                   <div [class]="PNL_H">
                     <div [class]="PNL_H_T">Description</div>
@@ -390,7 +396,7 @@ type TaskFilter = 'all' | RollupStatus;
                     }
                   </div>
                 </div>
-              </ng-container>
+              }
 
               <!-- blocking callout -->
               @if (submitBlocked()) {
@@ -419,33 +425,33 @@ type TaskFilter = 'all' | RollupStatus;
               }
 
               <!-- progress rollup -->
-              <ng-container *peraCan="canRead">
+              @if (readable()) {
                 <app-dms-stage-progress
                   [tasks]="tasks()"
                   [filter]="filter()"
                   (filterPick)="setFilter($event)"
                 />
-              </ng-container>
+              }
 
               <!-- tasks -->
-              <ng-container *peraCan="canRead">
+              @if (readable()) {
                 <app-dms-stage-tasks
                   [tasks]="tasks()"
                   [filter]="filter()"
                   [assigneeNames]="employeeNames()"
                   (filterChange)="filter.set($event)"
                 />
-              </ng-container>
+              }
 
               <!-- files -->
-              <ng-container *peraCan="canRead">
+              @if (readable()) {
                 <app-dms-stage-files
                   [stageId]="s.id"
                   [projectId]="projectId()"
                   [stageOrder]="s.order"
                   [stageName]="s.name"
                 />
-              </ng-container>
+              }
 
               <!-- CRM stage-main panels (feature 004) — registered via the core
                    TASK_WORKSPACE token; zero panels render when this stage isn't CRM. -->
@@ -464,7 +470,7 @@ type TaskFilter = 'all' | RollupStatus;
 
             <!-- ============ RIGHT RAIL ============ -->
             <div class="flex flex-col gap-3.5">
-              <ng-container *peraCan="canRead">
+              @if (readable()) {
                 <app-dms-stage-info
                   [stage]="s"
                   [stageCount]="stageCount()"
@@ -477,10 +483,10 @@ type TaskFilter = 'all' | RollupStatus;
                   (saveTargetDate)="onSaveTargetDate($event)"
                   (saveOwner)="onSaveOwner($event)"
                 />
-              </ng-container>
+              }
 
               <!-- Gate to advance — opens the gate checklist in a floating window. -->
-              <ng-container *peraCan="canRead">
+              @if (readable()) {
                 <button
                   data-rail-link
                   type="button"
@@ -521,19 +527,19 @@ type TaskFilter = 'all' | RollupStatus;
                     <path d="M9 6l6 6-6 6" />
                   </svg>
                 </button>
-              </ng-container>
+              }
 
-              <ng-container *peraCan="canRead">
+              @if (readable()) {
                 <app-dms-stage-dependencies
                   [stages]="stages()"
                   [currentStageId]="s.id"
                   [projectId]="projectId()"
                 />
-              </ng-container>
+              }
 
-              <ng-container *peraCan="canRead">
+              @if (readable()) {
                 <app-dms-stage-team [projectId]="projectId()" [stageId]="s.id" />
-              </ng-container>
+              }
 
               <!-- CRM stage-rail panels (feature 004) -->
               @for (panel of stageRailPanels(); track panel.order) {
@@ -603,7 +609,18 @@ export class DmsStageDetailComponent implements OnInit, OnDestroy {
    * gates are what still do work). The old DMS rollout permission family was
    * retired at GA.
    */
-  protected readonly canRead = PERM.projects.read;
+  /**
+   * crmp P1-B: the stage's read panels — `project.read` from the token for members and read_all; for a
+   * grantee, the Stages & tasks area covering this stage (its token does not carry the code).
+   */
+  readonly readable = computed(() =>
+    claimCheck(
+      this.access.project(this.projectId())()?.myAccess,
+      'StagesAndTasks',
+      (p) => this.perms.can(p),
+      this.stageId(),
+    )(PERM.projects.read),
+  );
   protected readonly canManageStages = PERM.stages.manage;
   protected readonly manageTasks = PERM.stageTasks.manage;
   protected readonly activitiesRead = PERM.activities.read;
@@ -615,6 +632,12 @@ export class DmsStageDetailComponent implements OnInit, OnDestroy {
   readonly busy = signal(false);
   readonly stage = signal<ProjectStage | null>(null);
   readonly stages = signal<ProjectStage[]>([]);
+  /** crmp P1-B: a stage-limited grant steps only through its own stages. */
+  readonly visibleStages = computed(() => {
+    const a = this.access.project(this.projectId())()?.myAccess;
+    const ids = isGrantAccess(a) ? a.stageIds : [];
+    return ids.length ? this.stages().filter((x) => ids.includes(x.id)) : this.stages();
+  });
   readonly gates = signal<GateCondition[]>([]);
   readonly projectName = signal('');
   readonly employeeNames = signal<Map<string, string>>(new Map());
