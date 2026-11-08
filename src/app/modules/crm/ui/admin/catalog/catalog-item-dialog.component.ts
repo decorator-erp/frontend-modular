@@ -138,7 +138,8 @@ export interface CatalogItemDialogData {
 
         @if (defs(); as list) {
           @if (list.length > 0) {
-            <div class="flex flex-col gap-3 pt-3 border-t border-border">
+            <!-- Sync F4f: the spec controls live in specForm, not the outer form. -->
+            <div [formGroup]="specForm" class="flex flex-col gap-3 pt-3 border-t border-border">
               <span class="fs-label uppercase tracking-wide text-text-muted">{{
                 catalog.t('cat.specs')
               }}</span>
@@ -155,13 +156,8 @@ export interface CatalogItemDialogData {
                       <pera-date-input [formControlName]="def.id" />
                     }
                     @case (ATTR_TYPE.Select) {
-                      <!-- 009b #36: no route reads an attribute's options. -->
-                      <p
-                        class="fs-caption text-text-muted m-0"
-                        data-testid="cat-options-unavailable"
-                      >
-                        {{ catalog.t('cat.notAvailable') }}
-                      </p>
+                      <!-- Sync F4f: options come from GET /crm/catalog/attributes/{id}/options. -->
+                      <pera-select [formControlName]="def.id" [options]="optionsFor(def.id)" />
                     }
                     @default {
                       <pera-input [formControlName]="def.id" dir="auto" />
@@ -192,6 +188,7 @@ export class CrmCatalogItemDialogComponent {
   /** Sync F4f: the item being edited, once read. */
   protected readonly item = signal<CatalogItem | null>(null);
   private seeded = false;
+  private readonly selectOptions = signal<Record<string, SelectOption[]>>({});
 
   protected readonly ATTR_TYPE = CatalogAttributeType;
 
@@ -254,6 +251,7 @@ export class CrmCatalogItemDialogComponent {
       this.built = true;
       for (const def of defs) {
         this.specForm.addControl(def.id, new FormControl('', { nonNullable: true }));
+        if (def.dataType === CatalogAttributeType.Select) this.loadOptions(def.id);
       }
     });
 
@@ -266,6 +264,27 @@ export class CrmCatalogItemDialogComponent {
       for (const value of item.attributes) {
         this.specForm.get(value.attributeId)?.setValue(specText(value));
       }
+    });
+  }
+
+  /** Sync F4f: a Select attribute's active options, as select rows (a blank row clears it). */
+  protected optionsFor(attributeId: string): SelectOption[] {
+    return this.selectOptions()[attributeId] ?? [{ value: '', label: '—' }];
+  }
+
+  private loadOptions(attributeId: string): void {
+    this.api.attributeOptions(attributeId).subscribe({
+      next: (options) =>
+        this.selectOptions.update((all) => ({
+          ...all,
+          [attributeId]: [
+            { value: '', label: '—' },
+            ...options.map((o) => ({
+              value: o.id,
+              label: this.catalog.locale() === 'ar' ? o.nameAr || o.nameEn : o.nameEn,
+            })),
+          ],
+        })),
     });
   }
 

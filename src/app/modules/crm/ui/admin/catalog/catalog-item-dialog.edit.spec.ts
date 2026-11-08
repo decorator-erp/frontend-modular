@@ -78,6 +78,9 @@ describe('CrmCatalogItemDialogComponent — edit mode (sync F4f)', () => {
       },
     ]);
     fixture.detectChanges();
+    // Sync F4f: the Select attribute reads its options.
+    http.expectOne((r) => r.url === url('/crm/catalog/attributes/style/options')).flush([]);
+    fixture.detectChanges();
     return fixture;
   }
 
