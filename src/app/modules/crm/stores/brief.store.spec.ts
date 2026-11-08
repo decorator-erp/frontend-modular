@@ -3,6 +3,7 @@ import { TestBed } from '@angular/core/testing';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { NEVER, Subject, of, throwError } from 'rxjs';
 import { CrmApprovalsService } from '../data/crm-approvals.service';
+import { CrmPortalBriefRoundsService } from '../data/crm-portal-brief-rounds.service';
 import { CrmBriefService } from '../data/crm-brief.service';
 import { ApprovalState } from '../model/crm-enums';
 import type { BriefHead, BriefRound, BriefSpace, BriefSpaceRef, CrmSpaceType } from '../model';
@@ -126,15 +127,19 @@ function approvalsApiMock() {
 
 describe('BriefStore', () => {
   let api: ReturnType<typeof briefApiMock>;
+  let portalRounds: { listMyRounds: ReturnType<typeof vi.fn> };
   let approvals: ReturnType<typeof approvalsApiMock>;
 
   beforeEach(() => {
     api = briefApiMock();
+    portalRounds = { listMyRounds: vi.fn().mockReturnValue(of([])) };
     approvals = approvalsApiMock();
     TestBed.configureTestingModule({
       providers: [
         BriefStore,
         { provide: CrmBriefService, useValue: api },
+        // Sync F4d: the client's own rounds route.
+        { provide: CrmPortalBriefRoundsService, useValue: portalRounds },
         { provide: CrmApprovalsService, useValue: approvals },
       ],
     });
@@ -584,6 +589,32 @@ describe('BriefStore', () => {
       s.loadAsClient(PROJECT_ID);
       expect(s.nothingSent()).toBe(false);
       expect(s.headRound()).toBe(3);
+    });
+
+    it("sync F4d: loads the client's own rounds for the sent head, never the office route", () => {
+      const sent = { round: 2, sentAtUtc: '2026-10-02T10:00:00Z', outcome: 1, decidedAtUtc: null };
+      api.getMyBrief.mockReturnValue(
+        of({ head: { ...head({ status: ApprovalState.PendingApproval }), round: 2 }, spaces: [] }),
+      );
+      portalRounds.listMyRounds.mockReturnValue(of([sent]));
+      const s = store();
+      s.loadAsClient(PROJECT_ID);
+      expect(portalRounds.listMyRounds).toHaveBeenCalledWith('brief-1');
+      expect(api.listRounds).not.toHaveBeenCalled();
+      expect(s.rounds()).toEqual([sent]);
+      expect(s.latestRound()).toEqual(sent);
+    });
+
+    it('sync F4d: a failed rounds read leaves the head shown and the rounds empty', () => {
+      api.getMyBrief.mockReturnValue(
+        of({ head: { ...head({ status: ApprovalState.PendingApproval }), round: 1 }, spaces: [] }),
+      );
+      portalRounds.listMyRounds.mockReturnValue(throwError(() => new Error('403')));
+      const s = store();
+      s.loadAsClient(PROJECT_ID);
+      expect(s.head()).not.toBeNull();
+      expect(s.rounds()).toEqual([]);
+      expect(s.error()).toBeNull();
     });
 
     it.each([

@@ -374,6 +374,15 @@ import {
                   />
                 }
                 @if (canManage()) {
+                  <!-- Sync F4f: open the item to see and edit its spec values. -->
+                  <button
+                    type="button"
+                    class="fs-caption text-accent hover:underline"
+                    (click)="openItemEditor(c, item)"
+                    data-testid="cat-edit-item"
+                  >
+                    {{ catalog.t('common.edit') }}
+                  </button>
                   <ng-container
                     *ngTemplateOutlet="rowActions; context: { kind: 'items', entry: item }"
                   />
@@ -837,7 +846,20 @@ export class CrmCatalogCategoryDetailComponent {
 
   // ── Items ────────────────────────────────────────────────────────────
 
-  /** Create-only (009b #N-9: no item update route). */
+  /** Sync F4f: the item dialog in edit mode — spec values from `GET /items/{id}` (S10). */
+  openItemEditor(category: CatalogCategory, item: CatalogItem): void {
+    const data: CatalogItemDialogData = {
+      categoryId: item.categoryId || category.id,
+      itemId: item.id,
+    };
+    this.modal.open<string | null>(CrmCatalogItemDialogComponent, {
+      size: 'md',
+      data,
+      injector: this.injector,
+    });
+  }
+
+  /** Create (009b #N-9: no item update route; the edit mode saves spec values only). */
   openItemDialog(category: CatalogCategory): void {
     const data: CatalogItemDialogData = { categoryId: category.id };
     this.modal.open<string | null>(CrmCatalogItemDialogComponent, {

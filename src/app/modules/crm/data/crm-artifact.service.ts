@@ -13,6 +13,14 @@ const LIST_PATH: Record<CrmArtifactSubject, (id: string) => string> = {
   meeting: (id) => `/crm/artifacts/by-meeting/${id}`,
 };
 
+/** The one subject key `POST /crm/artifacts` takes for each subject (CrmArtifactEndpoints.cs:125). */
+const SUBJECT_KEY: Record<CrmArtifactSubject, string> = {
+  brief: 'briefId',
+  space: 'spaceId',
+  'requirement-item': 'requirementItemId',
+  meeting: 'meetingId',
+};
+
 /** The backend's default and maximum page (`CrmArtifactLists.MaxRows`, contract §2.12). */
 export const ARTIFACT_MAX_PAGE_SIZE = 200;
 
@@ -38,6 +46,20 @@ export class CrmArtifactService extends ApiService {
       { pageNumber, pageSize },
       { context: handled(403, 404) },
     ).pipe(map((r) => this.unwrapArray<unknown>(r).map((l) => this.normalizeLink(l))));
+  }
+
+  /**
+   * Sync F4c: `POST /api/crm/artifacts { documentId, <exactly one of briefId | spaceId |
+   * requirementItemId | meetingId> }` → `201 { artifactDocumentId }` (CrmArtifactEndpoints.cs:27,
+   * `crm.artifacts.manage`). The author is the calling employee, resolved by the server. 409
+   * `AlreadyLinked` / `SubjectLocked` and 404 `DocumentNotFound` are the caller's to show.
+   */
+  link(subject: CrmArtifactSubject, subjectId: string, documentId: string): Observable<string> {
+    return this.post<unknown>(
+      '/crm/artifacts',
+      { documentId, [SUBJECT_KEY[subject]]: subjectId },
+      { context: handled(403, 404, 409) },
+    ).pipe(map((r) => this.unwrapId(r, 'artifactDocumentId')));
   }
 
   /**

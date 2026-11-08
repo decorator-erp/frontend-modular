@@ -486,6 +486,8 @@ export interface ClientAddRequirementItemRequest {
   priority: number;
   room?: string | null;
   description?: string | null;
+  /** Sync F4e: the requirement's space type (an active one), optional. */
+  spaceTypeId?: string | null;
 }
 
 // ---------------------------------------------------------------------------

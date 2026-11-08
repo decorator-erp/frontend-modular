@@ -8,6 +8,7 @@ import {
 } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { BriefStore } from '../../stores/brief.store';
+import { CrmBriefRoundsComponent } from '../brief/brief-rounds.component';
 import { PortalItemsComponent } from './portal-items.component';
 import { ClientProfileStore } from '../../stores/client-profile.store';
 import { MeetingsStore } from '../../stores/meetings.store';
@@ -76,6 +77,7 @@ const PORTAL_TABS: PortalClientTab[] = ['progress', 'files', 'gallery', 'tasks',
     CrmIdentityCardComponent,
     CanDirective,
     CrmSelectionsViewComponent,
+    CrmBriefRoundsComponent,
     CrmPortalProgressComponent,
     CrmPortalSectionTabComponent,
   ],
@@ -244,6 +246,10 @@ const PORTAL_TABS: PortalClientTab[] = ['progress', 'files', 'gallery', 'tasks',
                         }}</span>
                         <app-crm-selections-view [selections]="entry.selections" />
                       </div>
+                    }
+                    <!-- Sync F4d: the client's own rounds (GET /crm/portal/briefs/{id}/rounds). -->
+                    @if (brief.rounds().length) {
+                      <app-crm-brief-rounds class="pt-2" audience="client" />
                     }
                   } @else {
                     <pera-empty [title]="catalog.t('client.tabBrief')" />

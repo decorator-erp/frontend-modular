@@ -13,6 +13,7 @@ import { of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import {
   ConfirmService,
+  ModalService,
   PeraAlertComponent,
   PeraButtonComponent,
   PeraEmptyComponent,
@@ -27,6 +28,10 @@ import { PERM } from '@platform/permissions';
 import { PermissionsService } from '@platform/permissions/permissions.service';
 import { CrmArtifactService } from '../../data/crm-artifact.service';
 import type { CrmArtifactLink, CrmArtifactSubject } from '../../model';
+import {
+  ArtifactLinkDialogData,
+  CrmArtifactLinkDialogComponent,
+} from './artifact-link-dialog.component';
 
 export const ARTIFACT_PAGE_SIZE = 20;
 
@@ -51,9 +56,17 @@ export const ARTIFACT_PAGE_SIZE = 20;
   template: `
     @if (canRead()) {
       <section class="bg-surface border border-border rounded-card flex flex-col gap-3 p-4">
-        <h3 class="fs-body font-semibold text-text-primary m-0">
-          {{ catalog.t('artifacts.title') }}
-        </h3>
+        <div class="flex items-center gap-2">
+          <h3 class="fs-body font-semibold text-text-primary m-0 flex-1">
+            {{ catalog.t('artifacts.title') }}
+          </h3>
+          <!-- Sync F4c: link a project document (or a new upload) to this subject. -->
+          @if (canManage() && projectId()) {
+            <pera-button variant="secondary" size="sm" (click)="openLink()" data-link-document>{{
+              catalog.t('artifacts.link')
+            }}</pera-button>
+          }
+        </div>
         @if (error(); as message) {
           <pera-alert tone="warning">
             {{ message }}
@@ -118,6 +131,7 @@ export class CrmArtifactLinksComponent {
   private readonly errors = inject(ErrorHandlerService);
   private readonly confirm = inject(ConfirmService);
   private readonly toast = inject(ToastService);
+  private readonly modal = inject(ModalService);
   protected readonly catalog = inject(CatalogService);
 
   readonly subject = input.required<CrmArtifactSubject>();
@@ -135,7 +149,7 @@ export class CrmArtifactLinksComponent {
   private generation = 0;
 
   protected readonly canRead = computed(() => this.permissions.can(PERM.crm.artifacts.read));
-  private readonly canManage = computed(() => this.permissions.can(PERM.crm.artifacts.manage));
+  protected readonly canManage = computed(() => this.permissions.can(PERM.crm.artifacts.manage));
 
   constructor() {
     effect(() => {
@@ -206,6 +220,26 @@ export class CrmArtifactLinksComponent {
         );
       },
     });
+  }
+
+  /** Sync F4c: pick or upload a document and link it; the list and the names reload after. */
+  async openLink(): Promise<void> {
+    const data: ArtifactLinkDialogData = {
+      subject: this.subject(),
+      subjectId: this.subjectId(),
+      projectId: this.projectId(),
+      linkedDocumentIds: this.links().map((l) => l.documentId),
+    };
+    const ok = await this.modal
+      .open<boolean>(CrmArtifactLinkDialogComponent, { size: 'md', data })
+      .afterClosed();
+    if (!ok) return;
+    this.toast.show({ tone: 'success', message: this.catalog.t('artifacts.linked') });
+    this.documentsApi
+      .getByProject(this.projectId())
+      .pipe(catchError(() => of<ProjectDocument[]>([])))
+      .subscribe((list) => this.docs.set(new Map(list.map((d) => [d.id, d]))));
+    this.reload();
   }
 
   protected async unlink(link: CrmArtifactLink): Promise<void> {

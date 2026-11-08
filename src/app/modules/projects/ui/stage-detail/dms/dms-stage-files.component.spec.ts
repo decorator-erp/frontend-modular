@@ -2,6 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { of } from 'rxjs';
 import { DmsStageFilesComponent } from './dms-stage-files.component';
 import { TaskAttachmentService } from '../../../data/task-attachment.service';
+import { DocumentVersionsService } from '../../../data/document-versions.service';
 import { PermissionsService } from '@platform/permissions';
 import { ModalService } from '@ds';
 import { FilesFolderModalComponent } from '../../task-detail/files-folder-modal.component';
@@ -42,6 +43,8 @@ describe('DmsStageFilesComponent', () => {
       imports: [DmsStageFilesComponent],
       providers: [
         { provide: TaskAttachmentService, useValue: { getByStage: () => of(attachments) } },
+        // Sync F2: the panel also lists the stage's document versions.
+        { provide: DocumentVersionsService, useValue: { getByStage: () => of([]) } },
         { provide: ModalService, useValue: modal },
         { provide: PermissionsService, useValue: { can: () => true } },
         { provide: ProjectAccessStore, useValue: { project: () => () => null } },

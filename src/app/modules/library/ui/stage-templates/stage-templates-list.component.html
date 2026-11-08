@@ -192,6 +192,14 @@
           </div>
 
           <div class="px-5 py-4 flex flex-col gap-2">
+            <button
+              type="button"
+              (click)="openStructure(t)"
+              class="inline-flex items-center justify-center gap-1.5 px-3 py-2 border border-accent bg-accent-soft text-accent fs-caption cursor-pointer hover:bg-surface-muted"
+              data-open-structure
+            >
+              {{ catalog.t('tplx.openEditor') }}
+            </button>
             @if (!isSystem(t)) {
               <ng-container *peraCan="'stages.manage'">
                 <button
@@ -199,7 +207,7 @@
                   (click)="openEditor(t)"
                   class="inline-flex items-center justify-center gap-1.5 px-3 py-2 border border-border bg-bg fs-caption cursor-pointer hover:bg-surface-muted"
                 >
-                  Open editor
+                  {{ catalog.t('tpl.editDetails') }}
                 </button>
                 <button
                   type="button"

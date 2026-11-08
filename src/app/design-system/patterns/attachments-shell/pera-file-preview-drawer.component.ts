@@ -25,6 +25,15 @@ export interface FilePreviewLink {
   onOpen?: () => void;
 }
 
+/**
+ * An extra footer action next to Download (e.g. a host's "Versions" dialog). The drawer closes
+ * first, then runs `run`, so a dialog the action opens is not stacked under the drawer.
+ */
+export interface FilePreviewAction {
+  label: string;
+  run: () => void;
+}
+
 export interface FilePreviewData {
   id: string;
   name: string;
@@ -39,6 +48,8 @@ export interface FilePreviewData {
   fetchBlob: () => Observable<Blob>;
   /** Optional callback fired by the Download button — usually identical to clicking the file in the host shell. */
   onDownload?: () => void;
+  /** Optional extra footer actions, rendered before Download. */
+  actions?: FilePreviewAction[];
 }
 
 /**
@@ -158,6 +169,11 @@ export interface FilePreviewData {
           }
         }
         <div class="pv-act">
+          @for (a of data.actions ?? []; track a.label) {
+            <button type="button" class="act" (click)="runAction(a)" data-preview-action>
+              {{ a.label }}
+            </button>
+          }
           <button type="button" class="act primary" (click)="data.onDownload?.()">Download</button>
           <button type="button" class="act" (click)="close()">Close</button>
         </div>
@@ -395,6 +411,11 @@ export class PeraFilePreviewDrawerComponent implements OnInit, OnDestroy {
 
   close(): void {
     this.ref.close();
+  }
+
+  runAction(action: FilePreviewAction): void {
+    this.ref.close();
+    action.run();
   }
   zoomIn(): void {
     this.zoom.update((z) => Math.min(3, z + 0.25));

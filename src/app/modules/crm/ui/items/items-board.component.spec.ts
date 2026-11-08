@@ -84,7 +84,10 @@ function renderBoard(can: (p: string) => boolean = () => true) {
   const rows = Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('li'));
   return (title: string) => {
     const row = rows.find((li) => li.textContent?.includes(title));
-    return Array.from(row?.querySelectorAll('button') ?? []);
+    // Sync F4c: the row's "Documents" toggle opens the links panel; it is not an item action.
+    return Array.from(
+      row?.querySelectorAll<HTMLButtonElement>('button:not([data-item-docs])') ?? [],
+    );
   };
 }
 

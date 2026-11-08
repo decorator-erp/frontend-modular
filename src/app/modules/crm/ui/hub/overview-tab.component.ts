@@ -28,6 +28,7 @@ import { ClientHubStore } from '../../stores/client-hub.store';
 import { CrmContactFormComponent } from './contact-form.component';
 import { CrmEditContactFormComponent } from './edit-contact-form.component';
 import { CrmNoteFormComponent } from './note-form.component';
+import { CrmClientChildrenCardComponent } from './client-children-card.component';
 
 /** Overview tab (B3) — full contact management + client-level internal notes. */
 @Component({
@@ -40,6 +41,7 @@ import { CrmNoteFormComponent } from './note-form.component';
     PeraDataTableComponent,
     PeraEmptyComponent,
     PeraStatusBadgeComponent,
+    CrmClientChildrenCardComponent,
   ],
   template: `
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -128,6 +130,9 @@ import { CrmNoteFormComponent } from './note-form.component';
           <pera-empty [title]="catalog.t('hub.noNotes')" />
         }
       </pera-card>
+
+      <!-- Sync F4b: the client's household. -->
+      <app-crm-client-children-card />
     </div>
   `,
 })
