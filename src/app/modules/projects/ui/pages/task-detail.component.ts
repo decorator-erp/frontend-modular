@@ -51,6 +51,7 @@ import { CatalogService } from '@platform/i18n/catalog.service';
 import { ProjectClosedBannerComponent } from '../shared/project-closed-banner.component';
 import { ProjectAccessStore } from '../../stores/project-access.store';
 import { CommentsThreadComponent } from '../task-detail/comments-thread.component';
+import { TaskFileActionsComponent } from '../task-detail/task-file-actions.component';
 import { AttachmentsPanelComponent } from '../task-detail/attachments-panel.component';
 import { TaskStatusActionsComponent } from '../task-detail/status-actions.component';
 import { ActivityFeedComponent } from '../activity/activity-feed.component';
@@ -98,6 +99,7 @@ const PRIORITY_DOT: Record<string, string> = {
     GateConditionsPanelComponent,
     CommentsThreadComponent,
     AttachmentsPanelComponent,
+    TaskFileActionsComponent,
     TaskStatusActionsComponent,
     ActivityFeedComponent,
     DmsStatusPillComponent,
@@ -275,7 +277,15 @@ const PRIORITY_DOT: Record<string, string> = {
             }
 
             <!-- files (self-contained panel, mirrors the Stage Detail Files browser) -->
+            <!-- sync F3 / F2(e): Apply template + task folder, outside the attachments panel -->
+            <app-task-file-actions
+              [taskId]="taskId()"
+              [projectId]="projectId()"
+              [stageId]="t.projectStageId"
+              (changed)="attachments.load()"
+            />
             <app-attachments-panel
+              #attachments
               [taskId]="taskId()"
               [projectId]="projectId()"
               [stageName]="stageName()"

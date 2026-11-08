@@ -10,3 +10,7 @@ export { StageTemplatesService } from './data/stage-templates.service';
 // Projects scope of work (specs/sow-scope-of-work.md): the stage picker's template stages
 // (defaultFee / taskCount). 008b #10.
 export type { TemplateStage } from './model/stage-template.model';
+
+// Sync F3: projects (task page "Apply template").
+export { FileTemplatesService } from './data/file-templates.service';
+export type { FileTemplate } from './model/file-template.model';

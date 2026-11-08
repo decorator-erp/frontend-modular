@@ -1,4 +1,5 @@
 import { Routes } from '@angular/router';
+import { PermissionGuard } from '@platform/auth/permission.guard';
 
 /**
  * The four library routes, children of the office shell. Each object is the old `app.routes.ts`
@@ -22,6 +23,16 @@ export const libraryRoutes: Routes = [
     loadComponent: () =>
       import('./ui/stage-templates/stage-template-detail.component').then(
         (m) => m.StageTemplateDetailComponent,
+      ),
+  },
+  // Sync F3: the file template library. Lazy; reads need `file_templates.read`.
+  {
+    path: 'library/file-templates',
+    canActivate: [PermissionGuard],
+    data: { permission: 'file_templates.read', breadcrumb: 'File templates' },
+    loadComponent: () =>
+      import('./ui/file-templates/file-templates-list.component').then(
+        (m) => m.FileTemplatesListComponent,
       ),
   },
   {

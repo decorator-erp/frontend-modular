@@ -99,6 +99,17 @@ describe('nav-config — Shared with me (crmp P1-B)', () => {
   });
 });
 
+describe('nav-config — File templates (sync F3)', () => {
+  it('sits in Library, gated on file_templates.read like its route', () => {
+    expect(NAV_ITEMS.find((i: NavItem) => i.route === '/library/file-templates')).toEqual({
+      label: 'File templates',
+      icon: 'file-text',
+      route: '/library/file-templates',
+      capability: 'file_templates.read',
+    });
+  });
+});
+
 describe('app.routes — the 004 shell skeleton', () => {
   it('declares portal before the office shell, so the shell catch-all never swallows it', () => {
     const portalIndex = routes.findIndex((r) => r.path === 'portal');
@@ -164,8 +175,9 @@ describe('app.routes — the 004 shell skeleton', () => {
   // +1 crm, +1 approvals, +1 crm/designer/projects/:projectId. sow (NEW-FEATURE-1): +1
   // projects/:id/scope-of-work. crmp: +3 projects/:id/members, /tasks, /teams (P-1, P-3, P-7).
   // sites (NEW-FEATURE-1): +1 sites loadChildren. crmp P1-B: +1 projects/:id/access,
-  // +1 projects/shared-with-me.
-  const EXPECTED_SHELL_CHILDREN_AT_009 = 37;
+  // +1 projects/shared-with-me. sync F1: +1 library/stage-templates/:id. sync F3: +1
+  // library/file-templates.
+  const EXPECTED_SHELL_CHILDREN_AT_009 = 39;
 
   it('has exactly the expected number of real (non-stub) shell children', () => {
     expect(shellChildren()).toHaveLength(EXPECTED_SHELL_CHILDREN_AT_009);
