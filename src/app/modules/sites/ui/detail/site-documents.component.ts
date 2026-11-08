@@ -1,3 +1,4 @@
+import { claimCheck } from '@modules/projects';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -257,12 +258,21 @@ export class SiteDocumentsComponent {
    * project's portal shares (`crm.portal.manage` or `clients.read`); null renders nothing.
    */
   protected readonly shareAction = signal<Type<unknown> | null>(null);
+  /**
+   * crmp P1-B: the project documents are the Documents area (project level, so a stage-limited grant
+   * has none); a grantee's `documents.*` come from the grant, not the token.
+   */
+  private docCan(permission: string): boolean {
+    return claimCheck(this.detail.project()?.myAccess, 'Documents', (p) => this.permissions.can(p))(
+      permission,
+    );
+  }
   protected readonly uploadBlocked = computed(
-    () => !this.permissions.can(SITE_PERM.documentsUpload) || this.uploadForbidden(),
+    () => !this.docCan(SITE_PERM.documentsUpload) || this.uploadForbidden(),
   );
   protected readonly canUpload = computed(() => this.edit() && !this.uploadBlocked());
   protected readonly canAttach = computed(
-    () => this.edit() && this.permissions.can(SITE_PERM.documentsRead) && !this.docsForbidden(),
+    () => this.edit() && this.docCan(SITE_PERM.documentsRead) && !this.docsForbidden(),
   );
 
   protected readonly groups = computed<KindGroup[]>(() => {
@@ -316,7 +326,7 @@ export class SiteDocumentsComponent {
   private loadDocs(): void {
     const projectId = this.detail.site()?.projectId;
     if (!projectId) return;
-    if (!this.permissions.can(SITE_PERM.documentsRead)) {
+    if (!this.docCan(SITE_PERM.documentsRead)) {
       this.docsForbidden.set(true);
       return;
     }

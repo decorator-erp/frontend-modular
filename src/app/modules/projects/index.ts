@@ -26,10 +26,22 @@ export type { ProjectDocument } from './data/documents.service';
 // crmp C-7: crm artifact unlink compares the link's author with the caller's employee id (`me()`).
 export { ProjectAccessStore } from './stores/project-access.store';
 
+// layouts (sidebar): the "Shared with me" nav entry shows only when the caller has grants (crmp P1-B).
+// A loader, not the class: the store and its service stay out of the initial bundle.
+export const loadMyAccessGrantsStore = () =>
+  import('./stores/my-access-grants.store').then((m) => m.MyAccessGrantsStore);
+
 // sites (NEW-FEATURE-1): survey capabilities compare the caller's project level and the project's
 // liveness (site-capabilities.ts, the list's create gate).
 export { isProjectClosed, levelAtLeast, toProjectLevel } from './model/project-actions';
 export type { ProjectLevel } from './model/project-actions';
+
+// sites (crmp P1-B): survey capabilities, the list's project filter and the survey documents read a
+// grantee's claims from the grant (the token does not carry them).
+export { claimCheck, grantCovers } from './model/project-access';
+// sites routes (crmp P1-B): the Sites list and a survey open to an Active whole-project Sites grant.
+export { ProjectGrantGuard } from './project-grant.guard';
+export type { AccessArea, ProjectAccess } from './model/access-grant.model';
 
 // Future: dashboard (010).
 export { StageGateConditionService } from './data/stage-gate-condition.service';

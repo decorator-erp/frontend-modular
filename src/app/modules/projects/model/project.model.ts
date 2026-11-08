@@ -1,4 +1,5 @@
 import type { ProjectLevel } from './project-actions';
+import type { ProjectAccess } from './access-grant.model';
 // ============================================================================
 // Project workflow domain — TypeScript mirror of the .NET backend DTOs/enums.
 //
@@ -83,6 +84,11 @@ export interface Project {
    * §2.17.2; 1 Viewer, 2 Editor, 3 Manager). Viewer when absent, the least privilege.
    */
   myLevel: ProjectLevel;
+  /**
+   * crmp P1-B: how the caller reaches the project (`ProjectResponse.MyAccess`, GrantContracts.cs:32-38):
+   * ReadAll, Member or Grant with its level, areas, stages and expiry. Null when the response has none.
+   */
+  myAccess?: ProjectAccess | null;
   /** Financial block — present on enriched project responses (financial-queries spec). */
   financial?: ProjectFinancialBlock;
   /** Render-only `@for` key — synthetic when the server omitted `id`. Never send it. */
@@ -116,6 +122,8 @@ export interface ProjectDetails {
    * `ProjectDetailsProjectResponse` has none). The normalizer copies it onto `project.myLevel` too.
    */
   myLevel: ProjectLevel;
+  /** crmp P1-B: at the top of `ProjectDetailsResponse`, copied onto `project.myAccess` too. */
+  myAccess?: ProjectAccess | null;
   project: Project;
   stages: ProjectStage[];
   unstagedTasks: ProjectTask[];

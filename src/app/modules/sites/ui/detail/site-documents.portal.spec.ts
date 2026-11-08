@@ -59,6 +59,8 @@ describe('SiteDocumentsComponent — share a photo with the client (crmp P2-B)',
           provide: SiteDetailStore,
           useValue: {
             site: signal({ id: 'SV1', projectId: 'P1' }),
+            // crmp P1-B: the documents claim check reads the project's myAccess; null = token claims only.
+            project: signal(null),
             caps: signal({ edit: false }),
           },
         },

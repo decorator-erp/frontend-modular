@@ -7,6 +7,7 @@ import { ModalService } from '@ds';
 import { FilesFolderModalComponent } from '../../task-detail/files-folder-modal.component';
 import { DocumentationModalComponent } from '../../task-detail/documentation-modal.component';
 import type { TaskAttachment } from '../../../model/project.model';
+import { ProjectAccessStore } from '../../../stores/project-access.store';
 
 function att(o: Partial<TaskAttachment> = {}): TaskAttachment {
   return {
@@ -43,6 +44,7 @@ describe('DmsStageFilesComponent', () => {
         { provide: TaskAttachmentService, useValue: { getByStage: () => of(attachments) } },
         { provide: ModalService, useValue: modal },
         { provide: PermissionsService, useValue: { can: () => true } },
+        { provide: ProjectAccessStore, useValue: { project: () => () => null } },
       ],
     });
     const fixture = TestBed.createComponent(DmsStageFilesComponent);

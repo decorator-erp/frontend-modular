@@ -77,9 +77,25 @@ describe('nav-config — sites (NEW-FEATURE-1)', () => {
       icon: 'folder',
       route: '/sites',
       capability: 'sites.read',
+      // crmp P1-B: also for an Active whole-project grant on Sites.
+      grantArea: 'Sites',
     });
     expect(defs?.capability).toBe('sites.definitions.manage');
     expect(defs?.label).toBe('Survey definitions');
+  });
+});
+
+describe('nav-config — Shared with me (crmp P1-B)', () => {
+  it('sits under Operations after Projects and shows only when the caller has grants', () => {
+    const item = NAV_ITEMS.find((i: NavItem) => i.route === '/projects/shared-with-me');
+    expect(item).toEqual({
+      label: 'Shared with me',
+      icon: 'users',
+      route: '/projects/shared-with-me',
+      when: 'accessGrants',
+    });
+    const routes = NAV_ITEMS.map((i) => i.route);
+    expect(routes.indexOf('/projects/shared-with-me')).toBe(routes.indexOf('/projects') + 1);
   });
 });
 
@@ -147,8 +163,9 @@ describe('app.routes — the 004 shell skeleton', () => {
   // +1 audit, +4 library, +1 notifications. 007: +1 finance. 008: +8 projects. 009: +1 admin/catalog,
   // +1 crm, +1 approvals, +1 crm/designer/projects/:projectId. sow (NEW-FEATURE-1): +1
   // projects/:id/scope-of-work. crmp: +3 projects/:id/members, /tasks, /teams (P-1, P-3, P-7).
-  // sites (NEW-FEATURE-1): +1 sites loadChildren
-  const EXPECTED_SHELL_CHILDREN_AT_009 = 35;
+  // sites (NEW-FEATURE-1): +1 sites loadChildren. crmp P1-B: +1 projects/:id/access,
+  // +1 projects/shared-with-me.
+  const EXPECTED_SHELL_CHILDREN_AT_009 = 37;
 
   it('has exactly the expected number of real (non-stub) shell children', () => {
     expect(shellChildren()).toHaveLength(EXPECTED_SHELL_CHILDREN_AT_009);

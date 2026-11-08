@@ -39,6 +39,8 @@ describe('access arriving after first render (crmp R-P2-F1)', () => {
         {
           provide: ProjectAccessStore,
           useValue: {
+            me: () => null,
+            claim: (_id: string, _area: string, p: string) => grants.has(p),
             can: (_id: string, a: ProjectAction) => {
               const l = level();
               return (

@@ -37,6 +37,7 @@ import type {
 } from '@modules/finance';
 import { ApiService } from '@platform/http/api.service';
 import { toProjectLevel } from '../model/project-actions';
+import { toProjectAccess } from '../model/access-grant.model';
 import { handled } from '@platform/http/handled-errors';
 import { PagedResult } from '@platform/types';
 
@@ -245,6 +246,7 @@ export class ProjectService extends ApiService {
       stageCount: this.num(this.field(source, 'stageCount')),
       isActive: this.field<boolean>(source, 'isActive') ?? true,
       myLevel: toProjectLevel(this.field(source, 'myLevel')),
+      myAccess: toProjectAccess(this.field(source, 'myAccess')),
       financial: this.field<ProjectFinancialBlock>(source, 'financial'),
     };
   }
@@ -405,9 +407,11 @@ export class ProjectService extends ApiService {
       this.normalizeTask(t, project.id),
     );
     const myLevel = toProjectLevel(this.field(source, 'myLevel'));
+    const myAccess = toProjectAccess(this.field(source, 'myAccess')) ?? project.myAccess;
     return {
       myLevel,
-      project: { ...project, myLevel },
+      myAccess,
+      project: { ...project, myLevel, myAccess },
       stages,
       unstagedTasks,
       taskCounts: this.normalizeTaskCounts(this.field(source, 'taskCounts')),

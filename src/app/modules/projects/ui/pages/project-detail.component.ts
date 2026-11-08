@@ -17,6 +17,15 @@ import { ScopeOfWorkStatus } from '../../model/scope-of-work.model';
 import { ProjectAccessStore } from '../../stores/project-access.store';
 import { ProjectAction } from '../../model/project-actions';
 import { ProjectClosedBannerComponent } from '../shared/project-closed-banner.component';
+import { ProjectGrantBannerComponent } from '../shared/project-grant-banner.component';
+import type { AccessArea } from '../../model/access-grant.model';
+import {
+  canManageGrants,
+  claimCheck,
+  grantCovers,
+  impliedCodes,
+  isGrantAccess,
+} from '../../model/project-access';
 import { ConfirmService, PeraAlertComponent } from '@ds';
 import { ErrorHandlerService, friendly } from '@platform/http/error-handler.service';
 import { injectReloadOnConflict } from '@platform/http/concurrency';
@@ -133,6 +142,7 @@ const STL_GRID = 'grid grid-cols-[minmax(0,1fr)_9rem_8rem_6rem_9rem] gap-3 items
     CanDirective,
     PeraAlertComponent,
     ProjectClosedBannerComponent,
+    ProjectGrantBannerComponent,
     PeraDonutComponent,
     PeraEmptyComponent,
     PeraEntityHeaderCardComponent,
@@ -210,6 +220,51 @@ export class ProjectDetailComponent implements OnInit {
 
   readonly project = computed(() => this.details()?.project ?? null);
   readonly stages = computed(() => this.details()?.stages ?? []);
+
+  /** crmp P1-B: how the caller reaches the project (null for an older response: member behaviour). */
+  readonly myAccess = computed(() => this.details()?.myAccess ?? null);
+  /**
+   * crmp P1-B: the Access tab — a `project.manage_access` holder, or a Manager by membership (never a
+   * grantee, never read_all alone; dms ProjectAccessGrantHandlers.cs:80-89).
+   */
+  readonly canManageAccess = computed(() =>
+    canManageGrants(this.myAccess(), (p) => this.perms.can(p)),
+  );
+  /** crmp P1-B: a stage-limited grant sees only its stages in the Stages & tasks panel. */
+  readonly visibleStages = computed(() => {
+    const a = this.myAccess();
+    if (!isGrantAccess(a) || !a.stageIds.length) return this.stages();
+    return this.stages().filter((s) => a.stageIds.includes(s.id));
+  });
+
+  /**
+   * crmp P1-B: a panel's claim — the token for members and read_all, the grant's implied table for a
+   * grantee (whose token does not carry it), and nothing outside the grant's areas.
+   */
+  protected areaCan(area: AccessArea, permission: string): boolean {
+    return claimCheck(this.myAccess(), area, (p) => this.perms.can(p))(permission);
+  }
+
+  /**
+   * crmp P1-B: a panel listing rows the backend filters by the grant's stages (Stages & tasks): the
+   * area granted and the code implied, whatever the stage limit. Members: the token.
+   */
+  protected listCan(area: AccessArea, permission: string): boolean {
+    const a = this.myAccess();
+    if (!isGrantAccess(a)) return this.perms.can(permission);
+    return a.areas.includes(area) && impliedCodes(area, a.level).includes(permission);
+  }
+
+  /** crmp P1-B: the access covers `area` at project level (a stage-limited grant: Overview only). */
+  protected covers(area: AccessArea): boolean {
+    return grantCovers(this.myAccess(), area);
+  }
+
+  /** crmp P1-B: a link to a list the backend filters by the grant's stages: shown when the area is granted. */
+  protected shows(area: AccessArea): boolean {
+    const a = this.myAccess();
+    return !isGrantAccess(a) || a.areas.includes(area);
+  }
   readonly unstagedTasks = computed<ProjectTask[]>(() => this.details()?.unstagedTasks ?? []);
   readonly isStage = computed(() => this.project()?.workflowType === 'Stage');
 
@@ -576,7 +631,7 @@ export class ProjectDetailComponent implements OnInit {
 
   /** Compact "recent documents" panel — first 5 project documents, newest first. */
   private loadRecentDocuments(id: string): void {
-    if (!this.perms.can(this.perm.documents)) return;
+    if (!this.areaCan('Documents', this.perm.documents)) return;
     this.docsApi
       .getByProject(id)
       .pipe(catchError(() => of([] as ProjectDocument[])))
@@ -787,6 +842,8 @@ export class ProjectDetailComponent implements OnInit {
 
   /** Timeline click → open the stage's detail page. */
   openStage(stage: ProjectStage): void {
+    // crmp P1-B: a stage outside a stage-limited grant has no page for the caller.
+    if (!grantCovers(this.myAccess(), 'StagesAndTasks', stage.id)) return;
     const project = this.project();
     if (project) void this.router.navigate(['/projects', project.id, 'stages', stage.id]);
   }

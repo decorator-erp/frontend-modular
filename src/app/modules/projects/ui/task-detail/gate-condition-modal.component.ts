@@ -43,6 +43,8 @@ export interface GateConditionModalData {
   gate?: GateCondition | null;
   /** PERM doc-string used to gate Edit / Delete / Mark-resolved inside the modal. */
   managePermission: string;
+  /** crmp P1-B: the stage a task gate's task is on (a stage gate's stage is `ownerId`). */
+  stageId?: string | null;
 }
 
 /** A status segment value — backend only models satisfied/pending (`isSatisfied`). */
@@ -364,7 +366,8 @@ export class GateConditionModalComponent {
   private gateCan(op: 'create' | 'delete' | 'satisfy'): boolean {
     const action =
       `${this.data.ownerKind === 'task' ? 'taskGate' : 'stageGate'}.${op}` as ProjectAction;
-    return this.access.can(this.data.projectId, action);
+    const stageId = this.data.ownerKind === 'stage' ? this.data.ownerId : this.data.stageId;
+    return this.access.can(this.data.projectId, action, stageId);
   }
 
   /**

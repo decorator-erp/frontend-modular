@@ -10,6 +10,7 @@ import { ModalService } from '@ds';
 import { FilesFolderModalComponent } from './files-folder-modal.component';
 import { DocumentationModalComponent } from './documentation-modal.component';
 import type { TaskAttachment } from '../../model/project.model';
+import { ProjectAccessStore } from '../../stores/project-access.store';
 
 function att(o: Partial<TaskAttachment> = {}): TaskAttachment {
   return {
@@ -45,6 +46,7 @@ describe('AttachmentsPanelComponent (files browser)', () => {
     TestBed.configureTestingModule({
       imports: [AttachmentsPanelComponent],
       providers: [
+        { provide: ProjectAccessStore, useValue: { project: () => () => null } },
         {
           provide: TaskAttachmentService,
           useValue: {

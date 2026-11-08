@@ -1,6 +1,7 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  Injector,
   computed,
   inject,
   input,
@@ -18,6 +19,7 @@ import {
   PeraKbdComponent,
   PeraTooltipDirective,
 } from '@ds';
+import { loadMyAccessGrantsStore } from '@modules/projects';
 import { NAV_SECTIONS, NavItem } from '../nav-config';
 
 @Component({
@@ -39,6 +41,12 @@ export class SidebarComponent {
   private readonly auth = inject(AuthStore);
   private readonly router = inject(Router);
   private readonly permissions = inject(PermissionsService);
+  private readonly injector = inject(Injector);
+  /** crmp P1-B: the caller's grants, once the lazy store has loaded (null until then). */
+  private readonly myGrants = signal<{
+    hasAny(): boolean;
+    opensArea(area: 'Sites'): boolean;
+  } | null>(null);
   readonly palette = inject(CommandPaletteService);
 
   /**
@@ -58,8 +66,20 @@ export class SidebarComponent {
   readonly userName = computed(() => this.auth.user()?.userName ?? '');
   readonly userEmail = computed(() => this.auth.user()?.email ?? '');
 
+  constructor() {
+    // crmp P1-B: "Shared with me" shows only when the caller has grants (one read per user).
+    void loadMyAccessGrantsStore().then((Store) => {
+      const store = this.injector.get(Store);
+      store.ensure();
+      this.myGrants.set(store);
+    });
+  }
+
   canAccess(item: NavItem): boolean {
-    return !item.capability || this.permissions.can(item.capability);
+    const grants = this.myGrants();
+    if (item.when === 'accessGrants' && !grants?.hasAny()) return false;
+    if (!item.capability || this.permissions.can(item.capability)) return true;
+    return !!item.grantArea && !!grants?.opensArea(item.grantArea);
   }
 
   onNavigate(): void {

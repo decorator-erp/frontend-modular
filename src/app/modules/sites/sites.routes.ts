@@ -1,4 +1,5 @@
 import { CanDeactivateFn, Routes } from '@angular/router';
+import { ProjectGrantGuard } from '@modules/projects';
 import { PermissionGuard } from '@platform/auth/permission.guard';
 import { SITE_PERM } from './model/site-permissions';
 
@@ -15,18 +16,19 @@ const leaveGuard: CanDeactivateFn<{ canLeave?: () => boolean | Promise<boolean> 
 export const sitesRoutes: Routes = [
   {
     path: 'sites',
-    canActivate: [PermissionGuard],
-    data: { permission: SITE_PERM.read, breadcrumb: 'sv.navSurveys' },
+    // crmp P1-B: a grantee's token has no sites.read; an Active whole-project grant on Sites opens it.
+    canActivate: [ProjectGrantGuard],
+    data: { permission: SITE_PERM.read, grantArea: 'Sites', breadcrumb: 'sv.navSurveys' },
     loadComponent: () => import('./ui/pages/site-list.component').then((m) => m.SiteListComponent),
   },
   {
     path: 'sites/:siteId',
-    canActivate: [PermissionGuard],
+    canActivate: [ProjectGrantGuard],
     canDeactivate: [leaveGuard],
     // BL-1: tab and module switches (and browser Back/Forward between them) change only the query
     // params; the default 'paramsChange' would skip canDeactivate and drop the grid unasked.
     runGuardsAndResolvers: 'paramsOrQueryParamsChange',
-    data: { permission: SITE_PERM.read, breadcrumb: 'sv.survey' },
+    data: { permission: SITE_PERM.read, grantArea: 'Sites', breadcrumb: 'sv.survey' },
     loadComponent: () =>
       import('./ui/pages/site-detail.component').then((m) => m.SiteDetailComponent),
   },

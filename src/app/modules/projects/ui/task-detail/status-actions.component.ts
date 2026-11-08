@@ -190,13 +190,23 @@ export class TaskStatusActionsComponent {
    * (`projects.tasks.NotDeletable`).
    */
   can(action: ProjectAction): boolean {
-    return this.access.can(this.task().projectId, action);
+    return this.access.can(this.task().projectId, action, this.task().projectStageId);
   }
   readonly canStart = computed(() =>
-    this.access.canExecute(this.task().projectId, this.task(), 'task.start'),
+    this.access.canExecute(
+      this.task().projectId,
+      this.task(),
+      'task.start',
+      this.task().projectStageId,
+    ),
   );
   readonly canComplete = computed(() =>
-    this.access.canExecute(this.task().projectId, this.task(), 'task.complete'),
+    this.access.canExecute(
+      this.task().projectId,
+      this.task(),
+      'task.complete',
+      this.task().projectStageId,
+    ),
   );
   readonly notStarted = computed(() => ['Open', 'Locked'].includes(this.status()));
   readonly isLive = computed(() => !['Completed', 'Cancelled'].includes(this.status()));
