@@ -257,7 +257,7 @@ export class SiteDetailStore {
   }
 
   private resolveNames(site: SiteDetail): void {
-    for (const id of [site.createdById, site.decidedById]) {
+    for (const id of [site.createdById, site.submittedById, site.decidedById]) {
       if (!id || id in this.names()) continue;
       this.names.update((n) => ({ ...n, [id]: null }));
       this.lookup.employeeName(id).subscribe((name) => {

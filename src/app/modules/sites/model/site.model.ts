@@ -83,7 +83,8 @@ export interface SiteModuleRecordCount {
   recordCount: number;
 }
 
-/** `SiteDetailResponse` (`SiteContracts.cs:47-55`). No `submittedById` (DEVIATION-S1, BF-2). */
+/** `SiteDetailResponse` (`SiteContracts.cs:47-60`). `submittedById` arrived with BF-2 (dms PR #26): the HR
+ * employee id of whoever submitted the current round; null on a draft and after a reopen. */
 export interface SiteDetail extends SiteUnitData {
   id: string;
   projectId: string;
@@ -91,6 +92,7 @@ export interface SiteDetail extends SiteUnitData {
   status: SiteStatus;
   createdById: string;
   submittedAtUtc: string | null;
+  submittedById: string | null;
   decidedAtUtc: string | null;
   decidedById: string | null;
   decisionNote: string | null;

@@ -96,4 +96,13 @@ describe('SCOPE_ERROR_CODES (crm-prod FINDING-P2-9)', () => {
       expect(ERROR_MESSAGES_AR[code], code).toBeTruthy();
     }
   });
+  // BF-1 (dms PR #26): Documents writes below Editor answer 403 project_documents.InsufficientLevel.
+  it('project_documents.InsufficientLevel reads in EN and AR', () => {
+    expect(friendlyMessage('project_documents.InsufficientLevel', 'fb', 'en')).toBe(
+      'Your access level on this project does not allow this action.',
+    );
+    expect(friendlyMessage('project_documents.InsufficientLevel', 'fb', 'ar')).toBe(
+      'مستوى صلاحيتك على هذا المشروع لا يسمح بهذا الإجراء.',
+    );
+  });
 });

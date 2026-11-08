@@ -1948,6 +1948,9 @@ export const EN = {
     'This item still has limits that do not fit this type. Clear them in Edit first.',
   // review B6 (CP-7): teams page load failure
   'pteam.loadFailed': 'Stage teams could not be loaded.',
+  // BF-2 follow-up: name the submitter (dms SiteDetailResponse.SubmittedById)
+  'sv.submittedBannerBy': 'Submitted by {n} · {d}. Capture is locked until a decision.',
+  'sv.trail.submitted': 'Submitted by {n}',
 } as const;
 
 /** The key set of record. Every catalog lookup is typed against this. */

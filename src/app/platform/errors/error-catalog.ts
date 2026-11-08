@@ -207,6 +207,8 @@ export const ERROR_MESSAGES: Record<string, string> = {
 
   // From api-docs/09-documents-attachments-comments.md — project documents
   'project_documents.NotFound': 'Document not found.',
+  'project_documents.InsufficientLevel':
+    'Your access level on this project does not allow this action.',
   'project_documents.ProjectNotFound': 'The project for this document was not found.',
   'project_documents.FolderNotFound': 'The target folder was not found.',
   'project_documents.EmptyFile': 'The selected file is empty.',
@@ -874,6 +876,7 @@ export const ERROR_MESSAGES_AR: Record<string, string> = {
   'sites.DocumentAlreadyLinked': 'هذا المستند مرفق هنا بالفعل.',
   'sites.DocumentNotFound': 'مرفق المعاينة غير موجود.',
   'sites.InsufficientLevel': 'مستوى صلاحيتك على هذا المشروع لا يسمح بهذا الإجراء.',
+  'project_documents.InsufficientLevel': 'مستوى صلاحيتك على هذا المشروع لا يسمح بهذا الإجراء.',
   'sites.InvalidData': 'بيانات المعاينة غير صحيحة.',
   'sites.InvalidDocumentSubject': 'يجب أن يتبع المرفق المعاينة كلها أو سجلًا واحدًا فقط.',
   'sites.InvalidTransition': 'لا يُسمح بهذا التغيير من حالة المعاينة الحالية.',

@@ -40,12 +40,12 @@ const NONE: SiteCaps = {
  * AND (except deciding a Submitted survey) an open project (prototype `caps()`, `sites.js:192-202`;
  * server order `SiteScopeDecorator.cs:60-92`). A project not loaded yet allows nothing.
  *
- * Self-approval (DEVIATION-S1): Approve is hidden when the caller's employee id equals `createdById`
- * and the caller lacks `project.read_all`; the backend also refuses the submitter, which the response
- * does not carry (BF-2), so that case surfaces as a 403 `sites.SelfApprovalNotAllowed`.
+ * Self-approval (DEVIATION-S1, BF-2): Approve is hidden when the caller's employee id equals `createdById`
+ * OR `submittedById` and the caller lacks `project.read_all` — the same two people the backend refuses
+ * (`SiteCommandHandlers.cs:243`). The handled 403 `sites.SelfApprovalNotAllowed` stays as the fallback.
  */
 export function siteCaps(
-  site: { status: number; createdById: string } | null,
+  site: { status: number; createdById: string; submittedById?: string | null } | null,
   project: SiteProjectGate | null,
   can: (perm: string) => boolean,
   me: string | null,
@@ -56,7 +56,10 @@ export function siteCaps(
   const manager = levelAtLeast(project.myLevel, 'Manager');
   const editable = site.status === SiteStatus.Draft || site.status === SiteStatus.Rejected;
   const decide = can(SITE_PERM.approve) && manager && site.status === SiteStatus.Submitted;
-  const self = !!me && site.createdById === me && !can(SITE_PERM.projectReadAll);
+  const self =
+    !!me &&
+    (site.createdById === me || site.submittedById === me) &&
+    !can(SITE_PERM.projectReadAll);
   return {
     closed,
     edit: can(SITE_PERM.update) && editor && editable && !closed,

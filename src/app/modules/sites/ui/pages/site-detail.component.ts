@@ -221,7 +221,12 @@ const BUILT_TABS: readonly SiteTab[] = [
           }
           @if (s.status === submitted && s.submittedAtUtc) {
             <pera-alert tone="info" data-banner="submitted">{{
-              t('sv.submittedBannerNoName', { d: dateTime(s.submittedAtUtc) })
+              s.submittedById
+                ? t('sv.submittedBannerBy', {
+                    n: nameOf(s.submittedById),
+                    d: dateTime(s.submittedAtUtc),
+                  })
+                : t('sv.submittedBannerNoName', { d: dateTime(s.submittedAtUtc) })
             }}</pera-alert>
           }
           @if (s.status === approved) {

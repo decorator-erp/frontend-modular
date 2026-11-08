@@ -1860,4 +1860,7 @@ export const AR: Partial<Record<CatalogKey, string>> = {
   'sv.err.shapeLimits': 'لهذا البند حدود لا تناسب هذا النوع. امسحها من «تعديل» أولًا.',
   // review B6 (CP-7): teams page load failure
   'pteam.loadFailed': 'تعذر تحميل فرق المراحل.',
+  // BF-2 follow-up: name the submitter (dms SiteDetailResponse.SubmittedById)
+  'sv.submittedBannerBy': 'أرسلها {n} · {d}. التسجيل مغلق حتى صدور القرار.',
+  'sv.trail.submitted': 'أرسلها {n}',
 };

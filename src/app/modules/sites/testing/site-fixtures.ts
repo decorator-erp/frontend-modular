@@ -12,6 +12,7 @@ export function detail(patch: Partial<SiteDetail> = {}): SiteDetail {
     status: 1,
     createdById: 'E-creator',
     submittedAtUtc: null,
+    submittedById: null,
     decidedAtUtc: null,
     decidedById: null,
     decisionNote: null,

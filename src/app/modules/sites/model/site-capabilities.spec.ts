@@ -89,6 +89,31 @@ describe('siteCaps (sites S-1)', () => {
     expect(c.selfApproval).toBe(true);
   });
 
+  // BF-2: the backend refuses the SUBMITTER too (SiteCommandHandlers: creator OR submitter); the response
+  // now carries submittedById, so Approve hides for a submitter who did not create the survey.
+  it('the submitter who is not the creator sees Reject but not Approve (BF-2)', () => {
+    const can = (p: string) => p !== 'project.read_all';
+    const c = siteCaps(
+      { status: 2, createdById: 'X', submittedById: 'E' },
+      project('Manager', false),
+      can,
+      'E',
+    );
+    expect(c.decide).toBe(true);
+    expect(c.approve).toBe(false);
+    expect(c.selfApproval).toBe(true);
+  });
+
+  it('project.read_all still overrides for the submitter (BF-2)', () => {
+    const c = siteCaps(
+      { status: 2, createdById: 'X', submittedById: 'E' },
+      project('Manager', false),
+      () => true,
+      'E',
+    );
+    expect(c.approve).toBe(true);
+  });
+
   it('an unknown caller id (no employee) hides nothing by self-approval', () => {
     const c = siteCaps(
       { status: 2, createdById: 'E' },
