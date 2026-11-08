@@ -10,7 +10,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { FormBuilder, ReactiveFormsModule, Validators, FormsModule } from '@angular/forms';
 import { combineLatest, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
-import { BudgetLineService } from '../../data/budget-line.service';
+import { BudgetLineService, budgetLineLabel } from '../../data/budget-line.service';
 import { ProjectTaskService } from '@modules/projects';
 import { VariationService } from '../../data/variation.service';
 import { ErrorHandlerService } from '@platform/http/error-handler.service';
@@ -184,9 +184,7 @@ export class VariationRaiseComponent implements OnInit {
       this.budgets.getByProject(this.data.projectId).pipe(catchError(() => of([]))),
     ]).subscribe(([tasks, lines]) => {
       this.tasks.set(tasks.map((t) => ({ value: t.id, label: t.name })));
-      this.budgetLines.set(
-        lines.map((l) => ({ value: l.id, label: `${l.costCategoryName} — ${l.name}` })),
-      );
+      this.budgetLines.set(lines.map((l) => ({ value: l.id, label: budgetLineLabel(l) })));
     });
 
     // ClientDifference: auto-compute amount from chosen - budgeted

@@ -9,6 +9,10 @@ import {
   viewChild,
 } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
+import { catchError, of } from 'rxjs';
+import { CatalogService } from '@platform/i18n/catalog.service';
+import { PermissionsService } from '@platform/permissions';
+import { LedgerAllocateComponent, LedgerAllocateData } from './ledger-allocate.component';
 import { LedgerEntryService } from '../../data/ledger-entry.service';
 import { LedgerEntryResponse } from '../../model/ledger-entry.model';
 import { CanDirective, PERM } from '@platform/permissions';
@@ -21,6 +25,7 @@ import {
   PeraButtonComponent,
   PeraDataTableComponent,
   PeraPageHeaderComponent,
+  ModalService,
 } from '@ds';
 
 @Component({
@@ -91,6 +96,14 @@ import {
         row.note || ''
       }}</span></ng-template
     >
+    <!-- Sync W1-11: allocate a payment that still has an unallocated remainder (record_payment). -->
+    <ng-template #actionsCell let-row>
+      @if (canAllocate() && unallocated().get(row.id); as rest) {
+        <pera-button size="sm" variant="ghost" (click)="allocate(row.id, rest)" data-allocate>{{
+          catalog.t('ledger.allocate')
+        }}</pera-button>
+      }
+    </ng-template>
   `,
 })
 export class LedgerListComponent implements OnInit {
@@ -104,6 +117,13 @@ export class LedgerListComponent implements OnInit {
   readonly projectId = signal('');
   readonly loading = signal(true);
   readonly entries = signal<LedgerEntryResponse[]>([]);
+  /** Entry id → unallocated remainder, from `GET …/by-project/{projectId}/unallocated`. */
+  readonly unallocated = signal<Map<string, string>>(new Map());
+  private readonly modal = inject(ModalService);
+  private readonly perms = inject(PermissionsService);
+  protected readonly catalog = inject(CatalogService);
+  /** Allocation is `finance.record_payment` (LedgerEntryEndpoints.cs, `/{id}/allocate`). */
+  readonly canAllocate = computed(() => this.perms.can(PERM.finance.recordPayment));
 
   private readonly dateTpl = viewChild<TemplateRef<unknown>>('dateCell');
   private readonly typeTpl = viewChild<TemplateRef<unknown>>('typeCell');
@@ -111,6 +131,7 @@ export class LedgerListComponent implements OnInit {
   private readonly amountTpl = viewChild<TemplateRef<unknown>>('amountCell');
   private readonly refTpl = viewChild<TemplateRef<unknown>>('refCell');
   private readonly noteTpl = viewChild<TemplateRef<unknown>>('noteCell');
+  private readonly actionsTpl = viewChild<TemplateRef<unknown>>('actionsCell');
 
   readonly columns = computed<ColumnDef<LedgerEntryResponse>[]>(() => {
     const opt = (t: TemplateRef<unknown> | undefined) => (t ? { template: t } : {});
@@ -121,6 +142,7 @@ export class LedgerListComponent implements OnInit {
       { key: 'amount', header: 'Amount', width: 150, ...opt(this.amountTpl()) },
       { key: 'reference', header: 'Reference', minWidth: 220, ...opt(this.refTpl()) },
       { key: 'note', header: 'Note', minWidth: 220, ...opt(this.noteTpl()) },
+      { key: 'id', header: '', width: 110, sortable: false, ...opt(this.actionsTpl()) },
     ];
   });
 
@@ -146,6 +168,19 @@ export class LedgerListComponent implements OnInit {
       },
       error: () => this.loading.set(false),
     });
+    this.api
+      .getUnallocated(this.projectId())
+      .pipe(catchError(() => of(new Map<string, string>())))
+      .subscribe((m) => this.unallocated.set(m));
+  }
+
+  /** Open the allocate dialog for one payment; reload when it allocated. */
+  async allocate(entryId: string, unallocated: string): Promise<void> {
+    const data: LedgerAllocateData = { projectId: this.projectId(), entryId, unallocated };
+    const done = await this.modal
+      .open<boolean>(LedgerAllocateComponent, { size: 'md', data })
+      .afterClosed();
+    if (done) this.load();
   }
 
   goNew(): void {
