@@ -16,6 +16,7 @@ import { NotificationDeepLink } from './notification-deep-link';
 function view(
   entityType: NotificationEntityType | null,
   entityId: string | null = 'e1',
+  projectId: string | null = null,
 ): NotificationView {
   return {
     id: 'n1',
@@ -25,6 +26,7 @@ function view(
     body: null,
     entityType,
     entityId,
+    projectId,
     createdAtUtc: '2026-07-08T09:00:00Z',
     isUnread: true,
   };
@@ -72,15 +74,37 @@ describe('NotificationDeepLink', () => {
     ]);
   });
 
-  // crmp A-2 (BLOCKED): task and stage reads need the project id in the route, and a notification
-  // carries only the entity id (dms NotificationContracts.cs:14), so these fall back.
-  it('ProjectTask falls back: the task route needs a project id the notification does not carry', async () => {
+  // crmp A-2: task and stage screens are nested under the project, and the notification now carries
+  // the parent project (dms NotificationResponse.ProjectId), so these open directly — no fetch.
+  it('ProjectTask opens the task under its project without a fetch', async () => {
+    expect(await resolver.resolve(view(NotificationEntityType.ProjectTask, 't1', 'p1'))).toEqual([
+      '/projects',
+      'p1',
+      'tasks',
+      't1',
+    ]);
+    expect(invoices.getById).not.toHaveBeenCalled();
+    expect(approvals.listPending).not.toHaveBeenCalled();
+  });
+
+  it('ProjectStage opens the stage under its project without a fetch', async () => {
+    expect(await resolver.resolve(view(NotificationEntityType.ProjectStage, 's1', 'p1'))).toEqual([
+      '/projects',
+      'p1',
+      'stages',
+      's1',
+    ]);
+  });
+
+  // A row stored before the backend added the column has no project: there is nothing to build the
+  // nested route from, so it falls back rather than linking somewhere wrong.
+  it('ProjectTask with no projectId (an older notification) falls back', async () => {
     expect(await resolver.resolve(view(NotificationEntityType.ProjectTask, 't1'))).toEqual([
       '/notifications',
     ]);
   });
 
-  it('ProjectStage falls back for the same reason', async () => {
+  it('ProjectStage with no projectId (an older notification) falls back', async () => {
     expect(await resolver.resolve(view(NotificationEntityType.ProjectStage, 's1'))).toEqual([
       '/notifications',
     ]);

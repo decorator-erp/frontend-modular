@@ -15,6 +15,7 @@ function view(id: string, unread = true): NotificationView {
     body: null,
     entityType: NotificationEntityType.ProjectTask,
     entityId: `e-${id}`,
+    projectId: null,
     createdAtUtc: new Date(Date.now() - 3_600_000).toISOString(),
     isUnread: unread,
   };

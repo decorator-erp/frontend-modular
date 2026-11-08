@@ -16,7 +16,8 @@ const FALLBACK: RouteCommands = ['/notifications'];
 /**
  * Resolves a notification to a route via **fetch-on-click** (never during list rendering). Most
  * entities are nested under a project whose id is NOT in the notification payload, so the parent
- * `projectId` is fetched from the entity's own GET-by-id. Any failure (403/404/network), an entity
+ * `projectId` is fetched from the entity's own GET-by-id. Tasks and stages are the exception: their
+ * notifications carry `projectId`, so they route without a fetch. Any failure (403/404/network), an entity
  * type with no screen, or a missing parent → graceful fallback to the notifications page (SC-002).
  *
  * Adding a future screen is a one-line `case`.
@@ -43,14 +44,15 @@ export class NotificationDeepLink {
         case NotificationEntityType.Site:
           return ['/sites', id];
 
-        // crmp A-2 (BLOCKED): task and stage reads are nested under the project now
-        // (`/projects/{projectId}/tasks/{taskId}`), and a notification carries only the entity id
-        // (dms `Notifications.Contracts/NotificationContracts.cs:14`). The old `/project-tasks/{id}` and
-        // `/project-stages/{id}` lookups no longer exist, so these fall back until the backend sends the
-        // project id with the notification.
+        // crmp A-2: task and stage screens are nested under the project, and the notification carries
+        // its parent project (dms `NotificationResponse.ProjectId`, on the REST list and the push), so
+        // the route is built directly — no fetch. A notification stored before the backend added the
+        // field has no project and falls back.
         case NotificationEntityType.ProjectTask:
+          return view.projectId ? ['/projects', view.projectId, 'tasks', id] : FALLBACK;
+
         case NotificationEntityType.ProjectStage:
-          return FALLBACK;
+          return view.projectId ? ['/projects', view.projectId, 'stages', id] : FALLBACK;
 
         case NotificationEntityType.Invoice: {
           const invoice = await firstValueFrom(this.invoices.getById(id));

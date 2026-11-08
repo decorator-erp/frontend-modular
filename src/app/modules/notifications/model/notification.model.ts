@@ -21,6 +21,12 @@ export interface NotificationResponse {
    */
   entityType?: string | number | null;
   entityId?: string | null;
+  /**
+   * The entity's parent project, for screens nested under one (ProjectTask, ProjectStage). Sent on
+   * the REST list and the SignalR push (dms `NotificationResponse.ProjectId`). Null when the entity is
+   * not project-scoped or the notification predates the field.
+   */
+  projectId?: string | null;
   /** ISO-8601 UTC. */
   createdAtUtc: string;
   /** ISO-8601 UTC when read; null/absent ⇒ unread. The SignalR push omits it (a push is unread). */
@@ -36,6 +42,7 @@ export interface NotificationView {
   body: string | null;
   entityType: NotificationEntityType | null;
   entityId: string | null;
+  projectId: string | null;
   createdAtUtc: string;
   isUnread: boolean;
 }
@@ -66,6 +73,7 @@ export function mapNotification(dto: NotificationResponse): NotificationView {
     body: dto.body ?? null,
     entityType: coerceEntityType(dto.entityType),
     entityId: dto.entityId ?? null,
+    projectId: dto.projectId ?? null,
     createdAtUtc: dto.createdAtUtc,
     isUnread: !dto.readAtUtc,
   };

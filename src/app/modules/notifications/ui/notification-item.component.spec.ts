@@ -12,6 +12,7 @@ function view(overrides: Partial<NotificationView> = {}): NotificationView {
     body: 'Review the drawings',
     entityType: NotificationEntityType.ProjectTask,
     entityId: 't1',
+    projectId: null,
     createdAtUtc: new Date(Date.now() - 3_600_000).toISOString(),
     isUnread: true,
     ...overrides,

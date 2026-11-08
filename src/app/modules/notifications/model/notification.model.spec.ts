@@ -50,6 +50,16 @@ describe('mapNotification', () => {
     expect(v.entityId).toBeNull();
   });
 
+  // crmp A-2: the parent project comes on both the REST read and the SignalR push.
+  it('maps projectId when the wire carries it', () => {
+    expect(mapNotification(dto({ projectId: 'p-9' })).projectId).toBe('p-9');
+  });
+
+  it('normalizes a null or absent projectId to null', () => {
+    expect(mapNotification(dto({ projectId: null })).projectId).toBeNull();
+    expect(mapNotification(dto()).projectId).toBeNull();
+  });
+
   // Regression: the wire is inconsistent — the REST list sends entityType as the enum NAME
   // string ("ProjectTask"), the SignalR push sends the raw int (5). Both must land on the enum,
   // else the deep-link resolver's numeric switch never matches → wrong /notifications fallback.
