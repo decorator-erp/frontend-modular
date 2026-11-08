@@ -9,6 +9,7 @@ import { PERM, PermissionsService } from '@platform/permissions';
 import { ToastService } from '@platform/feedback/toast.service';
 import { ProjectService } from '../../data/project.service';
 import { ProjectMemberService } from '../../data/project-member.service';
+import { ProjectAccessStore } from '../../stores/project-access.store';
 import type { ProjectLevel } from '../../model/project-actions';
 import { ProjectMembersPageComponent } from './project-members-page.component';
 
@@ -39,6 +40,18 @@ function setup(
     remove: vi.fn(() => of(undefined)),
   };
   const perms = new Set(opts.perms ?? [PERM.projects.read, PERM.projects.manageMembers]);
+  const level = { current: opts.level ?? 'Manager' };
+  const access = { seed: vi.fn(), refresh: vi.fn(), ensure: vi.fn() };
+  const getById = vi.fn(
+    () =>
+      opts.project$ ??
+      of({
+        id: 'P1',
+        status: opts.status ?? 'InProgress',
+        isActive: true,
+        myLevel: level.current,
+      }),
+  );
   TestBed.configureTestingModule({
     imports: [ProjectMembersPageComponent],
     providers: [
@@ -49,17 +62,9 @@ function setup(
       },
       {
         provide: ProjectService,
-        useValue: {
-          getById: () =>
-            opts.project$ ??
-            of({
-              id: 'P1',
-              status: opts.status ?? 'InProgress',
-              isActive: true,
-              myLevel: opts.level ?? 'Manager',
-            }),
-        },
+        useValue: { getById },
       },
+      { provide: ProjectAccessStore, useValue: access },
       { provide: ProjectMemberService, useValue: api },
       {
         provide: EmployeeService,
@@ -81,7 +86,7 @@ function setup(
   const fixture = TestBed.createComponent(ProjectMembersPageComponent);
   fixture.detectChanges();
   const el = fixture.nativeElement as HTMLElement;
-  return { fixture, c: fixture.componentInstance, el, api };
+  return { fixture, c: fixture.componentInstance, el, api, access, getById, level };
 }
 
 describe('ProjectMembersPageComponent (crmp P-1)', () => {
@@ -165,5 +170,27 @@ describe('ProjectMembersPageComponent (crmp P-1)', () => {
     const { el } = setup({ status: 'OnHold' });
     expect(el.querySelector('[data-closed-banner]')).toBeTruthy();
     expect(el.querySelector('[data-add-member]')).toBeTruthy();
+  });
+
+  // Review B7 (blind-all B6, CP-8): a member write can change the caller's own level.
+  it('B7: after a member write the project is read again and the shared access store re-seeded', () => {
+    const { c, el, fixture, access, getById, level } = setup();
+    expect(access.seed).toHaveBeenCalledTimes(1);
+    level.current = 'Viewer'; // the Manager demoted themselves
+    c.changeLevel(member as never, 'Viewer');
+    fixture.detectChanges();
+    expect(getById).toHaveBeenCalledTimes(2);
+    expect(access.seed).toHaveBeenCalledTimes(2);
+    expect(access.seed).toHaveBeenLastCalledWith(expect.objectContaining({ myLevel: 'Viewer' }));
+    expect(el.querySelector('[data-add-member]')).toBeNull();
+  });
+
+  it('B7: a project re-read that fails (e.g. removed themselves) refreshes the store instead', () => {
+    const { c, access, getById } = setup();
+    getById.mockReturnValueOnce(throwError(() => new HttpErrorResponse({ status: 404 })));
+    void c.remove(member as never);
+    return Promise.resolve().then(() => {
+      expect(access.refresh).toHaveBeenCalledWith('P1');
+    });
   });
 });

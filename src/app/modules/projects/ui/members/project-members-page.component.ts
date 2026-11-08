@@ -31,6 +31,7 @@ import { formatCairoDate } from '@platform/i18n/intl-locale';
 import { PermissionsService } from '@platform/permissions';
 import { ProjectService } from '../../data/project.service';
 import { ProjectMemberService } from '../../data/project-member.service';
+import { ProjectAccessStore } from '../../stores/project-access.store';
 import type { Project, ProjectMember, ProjectMemberAccess } from '../../model/project.model';
 import {
   ProjectAction,
@@ -219,6 +220,7 @@ export class ProjectMembersPageComponent implements OnInit {
   private readonly confirm = inject(ConfirmService);
   private readonly permissions = inject(PermissionsService);
   private readonly reloadOnConflict = injectReloadOnConflict();
+  private readonly access = inject(ProjectAccessStore);
   protected readonly catalog = inject(CatalogService);
 
   readonly projectId = this.route.snapshot.paramMap.get('id') ?? '';
@@ -265,6 +267,8 @@ export class ProjectMembersPageComponent implements OnInit {
     }).subscribe({
       next: ({ project, members, employees }) => {
         this.project.set(project);
+        // Review B7 (CP-8): the shared gate other project screens read holds the same project.
+        this.access.seed(project);
         this.members.set(members);
         this.employees.set(new Map((employees?.items ?? []).map((e) => [e.id, e.fullName])));
         this.state.set('ready');
@@ -340,6 +344,7 @@ export class ProjectMembersPageComponent implements OnInit {
         after?.();
         this.toast.show({ tone: 'success', message: this.catalog.t(successKey) });
         this.reloadMembers();
+        this.reloadProject();
       },
       error: (err: HttpErrorResponse) => {
         this.busy.set(false);
@@ -347,6 +352,21 @@ export class ProjectMembersPageComponent implements OnInit {
         this.inlineError.set(friendly(this.errors.parse(err)));
         this.reloadMembers();
       },
+    });
+  }
+
+  /**
+   * Review B7 (blind-all B6, CP-8): a level change or removal may be the caller's own, so re-read the
+   * project (its `myLevel`) and re-seed the shared ProjectAccessStore; on a failed read (e.g. no longer
+   * a member) the store reads it again itself.
+   */
+  private reloadProject(): void {
+    this.projects.getById(this.projectId).subscribe({
+      next: (project) => {
+        this.project.set(project);
+        this.access.seed(project);
+      },
+      error: () => this.access.refresh(this.projectId),
     });
   }
 
