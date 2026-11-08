@@ -105,11 +105,6 @@
               Target
             </th>
             <th
-              class="text-start font-mono fs-micro tracking-[0.02em] text-text-muted font-medium px-3 py-2.5 border-b border-border w-28"
-            >
-              Outcome
-            </th>
-            <th
               class="text-start font-mono fs-micro tracking-[0.02em] text-text-muted font-medium px-3 py-2.5 border-b border-border w-32"
             >
               IP
@@ -144,32 +139,6 @@
                   </div>
                 }
               </td>
-              <td class="px-3 py-2 border-b border-border-soft align-middle">
-                <span
-                  class="inline-flex items-center gap-1.5 font-mono fs-micro font-medium px-1.5 py-0.5 border"
-                  [class.text-success]="outcomeTone(e.outcome) === 'success'"
-                  [class.border-success]="outcomeTone(e.outcome) === 'success'"
-                  [class.bg-success-soft]="outcomeTone(e.outcome) === 'success'"
-                  [class.text-danger]="outcomeTone(e.outcome) === 'danger'"
-                  [class.border-danger]="outcomeTone(e.outcome) === 'danger'"
-                  [class.bg-danger-soft]="outcomeTone(e.outcome) === 'danger'"
-                  [class.text-warning]="outcomeTone(e.outcome) === 'warning'"
-                  [class.border-warning]="outcomeTone(e.outcome) === 'warning'"
-                  [class.bg-warning-soft]="outcomeTone(e.outcome) === 'warning'"
-                  [class.text-text-muted]="outcomeTone(e.outcome) === 'neutral'"
-                  [class.border-border]="outcomeTone(e.outcome) === 'neutral'"
-                  [class.bg-bg]="outcomeTone(e.outcome) === 'neutral'"
-                >
-                  <span
-                    class="w-1.5 h-1.5 rounded-full"
-                    [class.bg-success]="outcomeTone(e.outcome) === 'success'"
-                    [class.bg-danger]="outcomeTone(e.outcome) === 'danger'"
-                    [class.bg-warning]="outcomeTone(e.outcome) === 'warning'"
-                    [class.bg-text-muted]="outcomeTone(e.outcome) === 'neutral'"
-                  ></span>
-                  {{ e.outcome || '—' }}
-                </span>
-              </td>
               <td
                 class="px-3 py-2 border-b border-border-soft align-middle font-mono fs-label text-text-muted"
               >
@@ -184,7 +153,7 @@
             <!-- ============ Row-expand diff drawer ============ -->
             @if (expandedId() === e.id) {
               <tr class="border-b border-border-soft bg-surface-muted/40">
-                <td colspan="7" class="px-5 py-4">
+                <td colspan="6" class="px-5 py-4">
                   <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <div
@@ -235,6 +204,9 @@
                     >
                       @if (e.module) {
                         <span>MODULE · {{ e.module }}</span>
+                      }
+                      @if (e.changedColumns) {
+                        <span class="truncate" data-changed>{{ e.changedColumns }}</span>
                       }
                       @if (e.requestMethod) {
                         <span>{{ e.requestMethod }}</span>

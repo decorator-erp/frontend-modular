@@ -94,14 +94,6 @@ export class AuditLogComponent implements OnInit {
     }
   }
 
-  outcomeTone(outcome: string): 'success' | 'danger' | 'warning' | 'neutral' {
-    const o = outcome.toLowerCase();
-    if (o.includes('success')) return 'success';
-    if (o.includes('fail') || o.includes('error')) return 'danger';
-    if (o.includes('warn')) return 'warning';
-    return 'neutral';
-  }
-
   prettyJson(value: string | null): string {
     if (!value) return '—';
     try {

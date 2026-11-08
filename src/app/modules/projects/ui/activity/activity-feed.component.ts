@@ -35,10 +35,10 @@ function sameRun(x: ActivityResponse, y: ActivityResponse): boolean {
 
 /**
  * Reusable activity feed. Powers:
- *   - Project Detail · Activity tab (`entityName="Project"`, takes 50)
- *   - Project Detail · Overview "Recent activity" panel (compact, take 8)
- *   - Stage Detail · Activity tab (`entityName="Stage"`, take 50)
- *   - Task Detail · Activities tab (`entityName="Task"`, take 50)
+ *   - Project Detail · Overview "Recent activity" panel (`projectId`, compact, take 8)
+ *   - Stage Detail · Activity tab (`entityName="ProjectStage"`, take 100)
+ *   - Task Detail · Activities tab (`entityName="ProjectTask"`, take 100)
+ * Sync W1-5: entity names are the ones the backend writes — "Project", "ProjectStage", "ProjectTask".
  *
  * Three loading modes selected via inputs:
  *   - `entityName + entityId`  → per-entity timeline
@@ -74,26 +74,28 @@ function sameRun(x: ActivityResponse, y: ActivityResponse): boolean {
             <div class="min-w-0">
               <div class="fs-caption leading-snug">
                 <span class="font-medium">{{ a.actorName ?? 'System' }}</span>
-                <span class="text-text-secondary"> {{ verb(a.action, a.entityName) }} </span>
-                @if (a.entityDisplayName) {
-                  <span class="font-medium">{{ a.entityDisplayName }}</span>
+                <!-- Sync W1-5: the backend's own sentence is the headline when there is one. -->
+                @if (showMessage(a)) {
+                  <span class="text-text-primary" data-message> {{ a.message }} </span>
                 } @else {
-                  <span class="font-mono fs-label text-text-muted">{{ a.entityName }}</span>
+                  <span class="text-text-secondary"> {{ verb(a.action, a.entityName) }} </span>
+                  @if (a.entityDisplayName) {
+                    <span class="font-medium">{{ a.entityDisplayName }}</span>
+                  } @else {
+                    <span class="font-mono fs-label text-text-muted">{{ a.entityName }}</span>
+                  }
                 }
                 @if (row.count > 1) {
                   <span class="font-mono fs-label text-text-muted">× {{ row.count }}</span>
                 }
               </div>
-              @if (showMessage(a)) {
-                <div class="fs-label text-text-secondary mt-0.5 truncate">{{ a.message }}</div>
-              }
               <div
                 class="flex items-center gap-2 font-mono fs-micro uppercase tracking-[0.04em] text-text-muted mt-1"
               >
                 <pera-icon [name]="iconFor(a.action)" [size]="11" />
                 <span>{{ actionLabel(a.action) }}</span>
                 <span>·</span>
-                <span>{{ a.entityName }}</span>
+                <span>{{ a.entityDisplayName || a.entityName }}</span>
               </div>
             </div>
             <span class="font-mono fs-label text-text-muted tabular-nums whitespace-nowrap mt-0.5">
@@ -200,7 +202,8 @@ export class ActivityFeedComponent {
 
   /** Split a CamelCase / PascalCase action token into its words. */
   private splitWords(action: string): string[] {
-    return action
+    // Sync W1-5: the service maps the AuditAction int; String() keeps a stray number from crashing.
+    return String(action ?? '')
       .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
       .split(/[\s_]+/)
       .filter(Boolean);
@@ -220,8 +223,8 @@ export class ActivityFeedComponent {
   }
 
   iconFor(action: string): 'edit' | 'check-circle' | 'plus' | 'trash' | 'lock' | 'flag' {
-    if (/created|added/i.test(action)) return 'plus';
-    if (/deleted|removed/i.test(action)) return 'trash';
+    if (/^create$|created|added/i.test(action)) return 'plus';
+    if (/^delete$|deleted|removed/i.test(action)) return 'trash';
     if (/completed|approved|satisfied/i.test(action)) return 'check-circle';
     if (/locked/i.test(action)) return 'lock';
     if (/started|activated/i.test(action)) return 'flag';

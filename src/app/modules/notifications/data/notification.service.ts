@@ -6,22 +6,24 @@ import { ApiService } from '@platform/http/api.service';
 
 /**
  * Notification REST reads/writes for the current user. Caller-scoped, RFC7807 errors flow through
- * the shared interceptor. This service is the ONLY place aware that the list endpoint's `page` is
- * **0-based** (every other list in the app is 1-based) — Principle VI: the quirk never escapes here.
+ * the shared interceptor. Sync W1-9: the list takes a 1-based `pageNumber` and answers a
+ * `PagedResult` `{ items, pageNumber, pageSize, totalCount, totalPages }` (dms NotificationEndpoints.cs:30,
+ * BuildingBlocks/Pagination/PagedResult.cs). The old 0-based `page`/`pageIndex` quirk is gone; an old
+ * `pageIndex` response still reads (+1).
  */
 @Injectable({ providedIn: 'root' })
 export class NotificationService extends ApiService {
-  /** Paginated list, newest-first. Callers pass the app's usual 1-based page; we send `page - 1`. */
+  /** Paginated list, newest-first. Callers pass the app's usual 1-based page, sent as `pageNumber`. */
   list(
     uiPage = 1,
     pageSize = 20,
     unreadOnly?: boolean,
   ): Observable<PagedResult<NotificationResponse>> {
     return this.get<unknown>('/notifications', {
-      page: uiPage - 1, // 0-BASED wire quirk — quarantined
+      pageNumber: uiPage,
       pageSize,
       unreadOnly: unreadOnly ? true : undefined,
-    }).pipe(map((r) => this.normalize(r, pageSize)));
+    }).pipe(map((r) => this.normalize(r, uiPage, pageSize)));
   }
 
   /** Current unread total. Used for the initial badge paint and the reconnect resync. */
@@ -41,18 +43,22 @@ export class NotificationService extends ApiService {
     return this.put<void>('/notifications/read-all', {});
   }
 
-  /** Map the wire response onto the app's `PagedResult` (1-based `page`), converting the
-   *  0-based wire index. The response does not carry `pageSize`, so we echo the request's. */
-  private normalize(response: unknown, pageSize: number): PagedResult<NotificationResponse> {
+  /** Map the wire `PagedResult` onto the app's (1-based `page`); missing fields echo the request. */
+  private normalize(
+    response: unknown,
+    uiPage: number,
+    pageSize: number,
+  ): PagedResult<NotificationResponse> {
     const value = this.unwrap<Record<string, unknown>>(response);
     const items = this.unwrapArray<NotificationResponse>(
       this.field<unknown>(value, 'items') ?? value,
     );
-    const wireIndex = this.field<number>(value, 'pageIndex', 'page') ?? 0; // 0-based
+    const pageNumber = this.field<number>(value, 'pageNumber');
+    const pageIndex = this.field<number>(value, 'pageIndex'); // legacy 0-based
     return {
       items,
       totalCount: this.field<number>(value, 'totalCount') ?? items.length,
-      page: wireIndex + 1, // → app 1-based
+      page: pageNumber ?? (pageIndex !== undefined ? pageIndex + 1 : uiPage),
       pageSize: this.field<number>(value, 'pageSize') ?? pageSize,
       totalPages: this.field<number>(value, 'totalPages') ?? 0,
     };

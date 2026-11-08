@@ -17,10 +17,23 @@ import { ApiService } from '@platform/http/api.service';
  */
 export interface PendingApprovalResponse {
   id: string;
+  /** Sync S3: `PendingApprovalResponse.ProjectId` — '' when the backend does not know it. */
   projectId: string;
   subjectId?: string | null;
   subjectType?: string | null;
 }
+
+/** `ApprovalSubjectType` (dms Approvals.Contracts/Enums.cs:8-15) — the wire sends the int. */
+const SUBJECT_TYPE: Record<number, string> = {
+  1: 'GateCondition',
+  2: 'DesignBrief',
+  3: 'RequirementItem',
+  4: 'BriefSpace',
+  5: 'ProjectDocument',
+};
+
+/** One page large enough for a deep-link lookup; the route requires both paging params. */
+const PENDING_PAGE_SIZE = 200;
 
 /**
  * Approvals for projects: the pending list and gate rejection. The open gate queue read
@@ -29,11 +42,27 @@ export interface PendingApprovalResponse {
  */
 @Injectable({ providedIn: 'root' })
 export class ApprovalService extends ApiService {
-  /** Approvals awaiting the caller. Used to resolve an approval notification's parent project. */
+  /**
+   * Approvals awaiting the caller. Used to resolve an approval notification's parent project.
+   * `GET /api/approvals/pending?pageNumber&pageSize` — both required (dms ApprovalEndpoints.cs:24-31) —
+   * answers a `PagedResult<PendingApprovalResponse>`; `subjectType` is an int, mapped to its name.
+   */
   listPending(): Observable<PendingApprovalResponse[]> {
-    return this.get<unknown>('/approvals/pending').pipe(
-      map((r) => this.unwrapArray<PendingApprovalResponse>(r)),
-    );
+    return this.get<unknown>('/approvals/pending', {
+      pageNumber: 1,
+      pageSize: PENDING_PAGE_SIZE,
+    }).pipe(map((r) => this.unwrapArray(r).map((a) => this.normalizePending(a))));
+  }
+
+  private normalizePending(source: unknown): PendingApprovalResponse {
+    const raw = this.field<unknown>(source, 'subjectType');
+    return {
+      id: this.field<string>(source, 'id') ?? '',
+      projectId: this.field<string | null>(source, 'projectId') ?? '',
+      subjectId: this.field<string | null>(source, 'subjectId') ?? null,
+      subjectType:
+        typeof raw === 'number' ? (SUBJECT_TYPE[raw] ?? null) : ((raw as string) ?? null),
+    };
   }
 
   // crmp review R1-F10: `reject(ownerKind, ownerId)` is removed — it had no caller and PUT
