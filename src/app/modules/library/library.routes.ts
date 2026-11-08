@@ -14,6 +14,16 @@ export const libraryRoutes: Routes = [
         (m) => m.StageTemplatesListComponent,
       ),
   },
+  // Sync F1: the template structure editor (stages, tasks, sub-tasks, departments). Lazy, ungated
+  // like the list: reads need `stages.read`, every write control is behind `*peraCan` stages.manage.
+  {
+    path: 'library/stage-templates/:id',
+    data: { breadcrumb: 'Stage template' },
+    loadComponent: () =>
+      import('./ui/stage-templates/stage-template-detail.component').then(
+        (m) => m.StageTemplateDetailComponent,
+      ),
+  },
   {
     path: 'library/boq-catalog',
     data: { breadcrumb: 'BOQ catalog' },

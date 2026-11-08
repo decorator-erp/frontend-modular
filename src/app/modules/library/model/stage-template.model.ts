@@ -48,3 +48,53 @@ export interface TemplateStage {
   defaultFee: number | null;
   taskCount: number;
 }
+
+/**
+ * Template structure editor (sync F1). The stage write body — `CreateStageRequest` /
+ * `UpdateStageRequest` (TemplateEndpoints.cs:185-187). The stage weight is `weightPercent`.
+ */
+export interface TemplateStageInput {
+  name: string;
+  order: number;
+  weightPercent: number;
+  description: string | null;
+  defaultFee: number | null;
+}
+
+/** Mirrors `StageTaskResponse` (TemplateContracts.cs:42). The task weight is `weight`, not a percent. */
+export interface TemplateStageTask {
+  id: string;
+  stageId: string;
+  name: string;
+  description: string | null;
+  order: number;
+  weight: number;
+  departmentId: string | null;
+}
+
+/** `CreateStageTaskRequest` / `UpdateStageTaskRequest` (TemplateEndpoints.cs:188-189). */
+export interface TemplateStageTaskInput {
+  name: string;
+  order: number;
+  weight: number;
+  description: string | null;
+  departmentId: string | null;
+}
+
+/** Mirrors `StageSubTaskResponse` (TemplateContracts.cs:55). */
+export interface TemplateSubTask {
+  id: string;
+  stageTaskId: string;
+  title: string;
+  description: string | null;
+  order: number;
+  isRequired: boolean;
+}
+
+/** `CreateStageSubTaskRequest` / `UpdateStageSubTaskRequest` (TemplateEndpoints.cs:190-191). */
+export interface TemplateSubTaskInput {
+  title: string;
+  order: number;
+  isRequired: boolean;
+  description: string | null;
+}
