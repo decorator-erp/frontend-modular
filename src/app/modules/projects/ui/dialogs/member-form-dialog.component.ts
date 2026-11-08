@@ -180,8 +180,8 @@ export class MemberFormDialogComponent {
     const v = this.form.getRawValue();
     const role = v.role as StageTeamMemberRole;
     const call = this.isEdit
-      ? this.teams.changeMemberRole(this.data.memberId!, role)
-      : this.teams.addMember(v.stageTeamId!, v.employeeId!, role);
+      ? this.teams.changeMemberRole(this.data.projectId, this.data.memberId!, role)
+      : this.teams.addMember(this.data.projectId, v.stageTeamId!, v.employeeId!, role);
     call.subscribe({
       next: () => {
         this.toast.show({

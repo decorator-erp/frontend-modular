@@ -1,3 +1,4 @@
+import { ProjectAccessStore } from '../../stores/project-access.store';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -9,7 +10,6 @@ import {
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { ProjectStage, ProjectTask } from '../../model/project.model';
-import { CanDirective } from '@platform/permissions';
 import { LocaleService } from '@platform/i18n';
 import { formatShortDate } from '@shared/ui/status';
 import { PeraEmptyComponent } from '@ds';
@@ -35,7 +35,7 @@ const DAY_MS = 86_400_000;
 @Component({
   selector: 'app-workflow-overview',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, CanDirective, PeraEmptyComponent, TasksGanttViewComponent],
+  imports: [RouterLink, PeraEmptyComponent, TasksGanttViewComponent],
   template: `
     <!-- Header row -->
     <div class="flex items-center justify-between gap-3 mb-4 flex-wrap">
@@ -70,13 +70,14 @@ const DAY_MS = 86_400_000;
             Gantt
           </button>
         </div>
-        <a
-          *peraCan="'stages.manage'"
-          [routerLink]="['/projects', projectId(), 'workflow', 'builder']"
-          class="inline-flex items-center gap-1.5 px-2.5 py-1.5 font-mono fs-label uppercase border border-border bg-surface hover:bg-surface-muted"
-        >
-          Open builder <span class="inline-block rtl:rotate-180" aria-hidden="true">→</span>
-        </a>
+        @if (canOpenBuilder()) {
+          <a
+            [routerLink]="['/projects', projectId(), 'workflow', 'builder']"
+            class="inline-flex items-center gap-1.5 px-2.5 py-1.5 font-mono fs-label uppercase border border-border bg-surface hover:bg-surface-muted"
+          >
+            Open builder <span class="inline-block rtl:rotate-180" aria-hidden="true">→</span>
+          </a>
+        }
       </div>
     </div>
 
@@ -218,6 +219,9 @@ export class WorkflowOverviewComponent {
   readonly locale = inject(LocaleService);
 
   readonly projectId = input.required<string>();
+  private readonly access = inject(ProjectAccessStore);
+  /** crmp review R2: the builder link shows only to a caller who may add stages (claim AND level). */
+  readonly canOpenBuilder = computed(() => this.access.can(this.projectId(), 'stage.create'));
   readonly stages = input<ProjectStage[]>([]);
   readonly unstagedTasks = input<ProjectTask[]>([]);
 

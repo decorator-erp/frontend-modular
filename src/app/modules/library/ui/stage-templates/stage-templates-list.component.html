@@ -201,6 +201,15 @@
                 >
                   Open editor
                 </button>
+                <button
+                  type="button"
+                  [disabled]="deleting()"
+                  (click)="remove(t)"
+                  class="inline-flex items-center justify-center gap-1.5 px-3 py-2 border border-border bg-bg fs-caption text-danger cursor-pointer hover:bg-danger-soft disabled:opacity-50"
+                  data-delete-template
+                >
+                  {{ catalog.t('tpl.delete') }}
+                </button>
               </ng-container>
             }
             <button

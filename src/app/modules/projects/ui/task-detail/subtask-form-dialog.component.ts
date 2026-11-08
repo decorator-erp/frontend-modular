@@ -20,10 +20,11 @@ import {
 
 export interface SubtaskFormDialogData {
   mode: 'create' | 'edit';
+  projectId: string;
   projectTaskId: string;
   subtaskId?: string;
   nextOrder?: number;
-  initial?: { title: string; order: number; isRequired: boolean };
+  initial?: { title: string; description?: string | null; order: number; isRequired: boolean };
 }
 
 /** Create / edit a task sub-task / checklist item (DMS Forms · Sub-task). */
@@ -92,7 +93,7 @@ export class SubtaskFormDialogComponent {
   readonly form = this.fb.nonNullable.group({
     title: [
       this.data.initial?.title ?? '',
-      [Validators.required, PeraValidators.trimmedLength(1, 300)],
+      [Validators.required, PeraValidators.trimmedLength(1, 200)],
     ],
     order: [
       String(this.data.initial?.order ?? this.data.nextOrder ?? 10),
@@ -122,13 +123,15 @@ export class SubtaskFormDialogComponent {
     this.serverError.set(null);
     const v = this.form.getRawValue();
     const call = this.isEdit
-      ? this.api.update(this.data.subtaskId!, {
+      ? this.api.update(this.data.projectId, this.data.projectTaskId, this.data.subtaskId!, {
           title: v.title.trim(),
+          // Review B2 (CP-3): the PUT is a full replace (ManualSubTaskHandlers.cs:133); resend the
+          // description the form does not edit, or the server clears it.
+          description: this.data.initial?.description ?? null,
           order: Number(v.order),
           isRequired: v.isRequired,
         } satisfies UpdateProjectSubTaskRequest)
-      : this.api.create({
-          projectTaskId: this.data.projectTaskId,
+      : this.api.create(this.data.projectId, this.data.projectTaskId, {
           title: v.title.trim(),
           order: Number(v.order),
           isRequired: v.isRequired,

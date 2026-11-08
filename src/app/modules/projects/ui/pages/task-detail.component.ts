@@ -28,7 +28,6 @@ import { ErrorHandlerService, friendly } from '@platform/http/error-handler.serv
 import { ToastService } from '@platform/feedback/toast.service';
 import { ProjectTask, TaskDetails, TaskPriority } from '../../model/project.model';
 import { PermissionsService } from '@platform/permissions';
-import { PERM } from '@platform/permissions';
 import { formatShortDate } from '@shared/ui/status';
 import { EmployeeService } from '@modules/people';
 import {
@@ -48,6 +47,9 @@ import {
 import { TaskFormDialogComponent, TaskFormDialogData } from '../dialogs/task-form-dialog.component';
 import { SubtasksPanelComponent } from '../task-detail/subtasks-panel.component';
 import { GateConditionsPanelComponent } from '../task-detail/gate-conditions-panel.component';
+import { CatalogService } from '@platform/i18n/catalog.service';
+import { ProjectClosedBannerComponent } from '../shared/project-closed-banner.component';
+import { ProjectAccessStore } from '../../stores/project-access.store';
 import { CommentsThreadComponent } from '../task-detail/comments-thread.component';
 import { AttachmentsPanelComponent } from '../task-detail/attachments-panel.component';
 import { TaskStatusActionsComponent } from '../task-detail/status-actions.component';
@@ -78,6 +80,7 @@ const PRIORITY_DOT: Record<string, string> = {
   selector: 'app-task-detail',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
+    ProjectClosedBannerComponent,
     FormsModule,
     RouterLink,
     NgComponentOutlet,
@@ -101,6 +104,10 @@ const PRIORITY_DOT: Record<string, string> = {
     DmsLinkedItemsComponent,
   ],
   template: `
+    <!-- crmp P-9: a closed project's work is read-only (projects.Closed); every write is hidden. -->
+    @if (access.project(projectId())(); as closedCheck) {
+      <div class="px-6 pt-4"><app-project-closed-banner [project]="closedCheck" /></div>
+    }
     @if (loading()) {
       <div class="p-6">
         <pera-skeleton [height]="120" rounded="md" />
@@ -158,6 +165,7 @@ const PRIORITY_DOT: Record<string, string> = {
                   (changed)="refresh()"
                   (deleted)="backToProject()"
                 />
+                <span class="fs-caption text-text-muted" data-task-summary>{{ summary() }}</span>
                 @if (canManageTasks()) {
                   <button
                     type="button"
@@ -256,7 +264,12 @@ const PRIORITY_DOT: Record<string, string> = {
                     >{{ doneSubs() + '/' + subCount() + ' done' }}</span
                   >
                 </div>
-                <app-subtasks-panel [taskId]="taskId()" />
+                <app-subtasks-panel
+                  [projectId]="projectId()"
+                  [taskId]="taskId()"
+                  [taskStatus]="t.status"
+                  [assignedToId]="t.assignedToId"
+                />
               </pera-card>
             }
 
@@ -300,7 +313,7 @@ const PRIORITY_DOT: Record<string, string> = {
               </div>
               @switch (activityView()) {
                 @case ('comments') {
-                  <app-comments-thread [taskId]="taskId()" />
+                  <app-comments-thread [projectId]="projectId()" [taskId]="taskId()" />
                 }
                 @case ('history') {
                   <app-activity-feed entityName="Task" [entityId]="taskId()" [take]="100" />
@@ -348,16 +361,16 @@ const PRIORITY_DOT: Record<string, string> = {
                     <button
                       type="button"
                       class="flex items-center gap-2 fs-caption font-medium min-w-0 text-start disabled:cursor-default"
-                      [class.cursor-pointer]="canManageTasks()"
-                      [class.hover:underline]="canManageTasks()"
-                      [disabled]="!canManageTasks()"
+                      [class.cursor-pointer]="canAssign()"
+                      [class.hover:underline]="canAssign()"
+                      [disabled]="!canAssign()"
                       (click)="startEdit('assignee')"
                     >
                       @if (assigneeName(); as nm) {
                         <pera-avatar [name]="nm" size="xs" /><span class="truncate">{{ nm }}</span>
                       } @else {
                         <span class="text-text-muted font-normal">{{
-                          canManageTasks() ? 'Assign…' : 'Unassigned'
+                          canAssign() ? 'Assign…' : 'Unassigned'
                         }}</span>
                       }
                     </button>
@@ -555,7 +568,7 @@ const PRIORITY_DOT: Record<string, string> = {
                     >{{ gateCount() }}</span
                   >
                 </div>
-                @if (canManageTasks()) {
+                @if (canAddGate()) {
                   <button
                     type="button"
                     class="inline-flex items-center gap-1.5 fs-label text-text-muted hover:text-accent transition-colors shrink-0"
@@ -667,13 +680,24 @@ export class TaskDetailComponent implements OnInit, OnDestroy {
   private readonly errors = inject(ErrorHandlerService);
   private readonly toast = inject(ToastService);
   private readonly perms = inject(PermissionsService);
+  protected readonly access = inject(ProjectAccessStore);
   private readonly directory = inject(EmployeeService);
   private readonly modal = inject(ModalService);
   readonly locale = inject(LocaleService);
 
-  readonly canManageTasks = computed(() => this.perms.can(PERM.stageTasks.manage));
+  /**
+   * crmp P-3: task edits need `stage_tasks.manage` AND the Manager level AND an open project; assigning
+   * needs `stage_tasks.assign` at Manager (contract §2.17.2). Read through the shared ProjectAccessStore.
+   */
+  readonly canManageTasks = computed(() => this.access.can(this.projectId(), 'task.update'));
+  readonly canAssign = computed(() => this.access.can(this.projectId(), 'task.assign'));
+  readonly canAddGate = computed(() => this.access.can(this.projectId(), 'taskGate.create'));
   /** Planned start is editable whenever the caller can manage tasks (backend accepts it on update). */
-  readonly canEditStart = computed(() => this.canManageTasks());
+  /**
+   * crmp review R1-F8: the planned start is read-only. The task PUT (`TaskRequest`, dms
+   * `TaskEndpoints.cs:228`) has no start-date field, so an edit would toast success and save nothing.
+   */
+  readonly canEditStart = computed(() => false);
 
   readonly loading = signal(true);
   readonly failed = signal(false);
@@ -701,9 +725,22 @@ export class TaskDetailComponent implements OnInit, OnDestroy {
   readonly task = computed(() => this.details()?.task ?? null);
   readonly subCount = computed(() => this.details()?.subTasks.length ?? 0);
   readonly doneSubs = computed(() => this.details()?.subTasks.filter((s) => s.isDone).length ?? 0);
+  /** crmp P-3: the details' sub-task, comment and gate summaries (`ProjectTaskDetailsResponse`). */
+  readonly summary = computed(() => {
+    const d = this.details();
+    if (!d) return '';
+    return this.catalog.t('pt.summary', {
+      done: d.subTasks.filter((x) => x.isDone).length,
+      total: d.subTasksCount,
+      comments: d.commentsCount,
+      gates: `${d.gates.satisfied}/${d.gates.total}`,
+    });
+  });
+  protected readonly catalog = inject(CatalogService);
+
   readonly gateCount = computed(() => {
-    const gates = this.details()?.gateConditions ?? [];
-    return `${gates.filter((g) => g.isSatisfied).length}/${gates.length}`;
+    const gates = this.details()?.gates;
+    return `${gates?.satisfied ?? 0}/${gates?.total ?? 0}`;
   });
   readonly assigneeName = computed(() => {
     const id = this.task()?.assignedToId;
@@ -783,6 +820,7 @@ export class TaskDetailComponent implements OnInit, OnDestroy {
     // Legacy route uses `:id`; the gated DMS route uses `:projectId`. Accept either.
     const pm = this.route.snapshot.paramMap;
     this.projectId.set(pm.get('id') ?? pm.get('projectId') ?? '');
+    this.access.ensure(this.projectId());
     this.taskId.set(pm.get('taskId') ?? '');
     this.load();
     this.directory
@@ -811,7 +849,7 @@ export class TaskDetailComponent implements OnInit, OnDestroy {
   load(): void {
     this.loading.set(true);
     this.failed.set(false);
-    this.tasksApi.getDetails(this.taskId()).subscribe({
+    this.tasksApi.getDetails(this.projectId(), this.taskId()).subscribe({
       next: (details) => {
         this.details.set(details);
         this.loading.set(false);
@@ -819,7 +857,7 @@ export class TaskDetailComponent implements OnInit, OnDestroy {
         const sid = details.task.projectStageId;
         if (sid && !this.stageName()) {
           this.stagesApi
-            .getDetails(sid)
+            .getDetails(this.projectId(), sid)
             .pipe(catchError(() => of(null)))
             .subscribe((s) => {
               if (s) {
@@ -872,18 +910,18 @@ export class TaskDetailComponent implements OnInit, OnDestroy {
 
   /** Enter inline-edit for a select-backed field (assignee / priority). */
   startEdit(field: 'assignee' | 'priority'): void {
-    if (!this.canManageTasks()) return;
+    if (field === 'assignee' ? !this.canAssign() : !this.canManageTasks()) return;
     this.editingField.set(field);
   }
 
-  /** Reassign the task (PUT /project-tasks/{id}/assign); no-op if unchanged. */
+  /** Reassign the task (`POST /projects/{pid}/tasks/{id}/assign`); no-op if unchanged. */
   saveAssignee(assignedToId: string | null): void {
     const t = this.task();
     if (!t || !assignedToId || assignedToId === t.assignedToId) {
       this.editingField.set(null);
       return;
     }
-    this.tasksApi.assign(t.id, assignedToId).subscribe({
+    this.tasksApi.assign(this.projectId(), t.id, assignedToId).subscribe({
       next: () => {
         this.editingField.set(null);
         this.details.update((d) =>
@@ -904,13 +942,12 @@ export class TaskDetailComponent implements OnInit, OnDestroy {
       return;
     }
     this.tasksApi
-      .update(t.id, {
+      .update(this.projectId(), t.id, {
         name: t.name,
         order: t.order,
         weight: t.weight,
         priority,
         dueDate: t.dueDate,
-        estimatedStartDate: t.estimatedStartDate,
         description: t.description,
         notes: t.notes,
       })
@@ -934,13 +971,12 @@ export class TaskDetailComponent implements OnInit, OnDestroy {
     const value = this.dateDraft || null;
     const patch = field === 'due' ? { dueDate: value } : { estimatedStartDate: value };
     this.tasksApi
-      .update(t.id, {
+      .update(this.projectId(), t.id, {
         name: t.name,
         order: t.order,
         weight: t.weight,
         priority: t.priority,
         dueDate: t.dueDate,
-        estimatedStartDate: t.estimatedStartDate,
         description: t.description,
         notes: t.notes,
         ...patch,
@@ -966,7 +1002,9 @@ export class TaskDetailComponent implements OnInit, OnDestroy {
   }
 
   refresh(): void {
-    this.tasksApi.getDetails(this.taskId()).subscribe((details) => this.details.set(details));
+    this.tasksApi
+      .getDetails(this.projectId(), this.taskId())
+      .subscribe((details) => this.details.set(details));
   }
 
   /** Edit task — open the DMS Forms task dialog seeded from the current task. */
@@ -1008,7 +1046,7 @@ export class TaskDetailComponent implements OnInit, OnDestroy {
     this.saving.set(true);
     const draft = this.descriptionDraft;
     this.tasksApi
-      .update(t.id, {
+      .update(this.projectId(), t.id, {
         name: t.name,
         order: t.order,
         weight: t.weight,
@@ -1050,13 +1088,12 @@ export class TaskDetailComponent implements OnInit, OnDestroy {
     this.savingNotes.set(true);
     const draft = this.notesDraft.trim() || null;
     this.tasksApi
-      .update(t.id, {
+      .update(this.projectId(), t.id, {
         name: t.name,
         order: t.order,
         weight: t.weight,
         priority: t.priority,
         dueDate: t.dueDate,
-        estimatedStartDate: t.estimatedStartDate,
         description: t.description,
         notes: draft,
       })

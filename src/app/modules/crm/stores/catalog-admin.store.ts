@@ -2,13 +2,14 @@ import { computed, inject } from '@angular/core';
 import type { HttpErrorResponse } from '@angular/common/http';
 import { patchState, signalStore, withComputed, withMethods, withState } from '@ngrx/signals';
 import type { Observable } from 'rxjs';
-import { CrmCatalogService } from '../data/crm-catalog.service';
+import { CrmCatalogService, type CatalogEntryKind } from '../data/crm-catalog.service';
 import { ErrorHandlerService } from '@platform/http/error-handler.service';
 import type { CatalogKey } from '@platform/i18n/catalog/en';
 import type {
   AddCatalogAttributeOptionRequest,
   AddCatalogAttributeRequest,
   CatalogAttribute,
+  CatalogAttributeOption,
   CatalogCategory,
   CatalogItem,
   CreateCatalogCategoryRequest,
@@ -34,9 +35,9 @@ export type { MutationHandlers };
  * targeting is write-only again and the search filters the cached `/tree` client-side.
  *
  * Every mutation refetches. This store is deliberately URL-agnostic — it never imports the
- * Router. 009b #N-8: no category update, reorder, activate, clone, delete or unmap route
- * exists, so those mutations are gone; create, move and map remain. 009b #N-10: attributes
- * and options are add-only.
+ * Router. crmp C-4 (D4): activate/deactivate and delete for every kind, unmap, the options
+ * read (`includeInactive` toggle) and the `tree?spaceTypeId` filter are back; edits go
+ * through `CrmCatalogEntryDialogComponent`, which calls the service and asks for `reload()`.
  */
 
 interface CatalogAdminState {
@@ -47,6 +48,13 @@ interface CatalogAdminState {
   searchResults: CatalogCategory[];
   /** A catalog KEY, never prose — every consumer renders `catalog.t(error()!)`. */
   error: CatalogKey | null;
+  /** crmp C-4: options per attribute id, read through `GET attributes/{id}/options`. */
+  options: Record<string, CatalogAttributeOption[]>;
+  includeInactiveOptions: boolean;
+  /** crmp C-4: `tree?spaceTypeId` — non-null ⇒ the page lists that space type's picker tree. */
+  spaceTypeFilter: string | null;
+  spaceTypeResults: CatalogCategory[];
+  spaceTypeLoading: boolean;
 }
 
 const INITIAL: CatalogAdminState = {
@@ -55,6 +63,11 @@ const INITIAL: CatalogAdminState = {
   searchTerm: '',
   searchResults: [],
   error: null,
+  options: {},
+  includeInactiveOptions: false,
+  spaceTypeFilter: null,
+  spaceTypeResults: [],
+  spaceTypeLoading: false,
 };
 
 export const CatalogAdminStore = signalStore(
@@ -108,6 +121,29 @@ export const CatalogAdminStore = signalStore(
         }
       };
 
+      /** Re-read the space-type filter's tree, when one is set. */
+      const refreshFilter = (): void => {
+        const filter = store.spaceTypeFilter();
+        if (!filter) return;
+        api.treeForSpaceType(filter).subscribe({
+          next: (list) => patchState(store, { spaceTypeResults: list }),
+          error: () => undefined,
+        });
+      };
+
+      /** After an activate/delete: the tree, the filter and every loaded options list. */
+      const refreshAll = (): void => {
+        refresh();
+        refreshFilter();
+        const include = store.includeInactiveOptions();
+        for (const id of Object.keys(store.options())) {
+          api.attributeOptions(id, include).subscribe({
+            next: (list) => patchState(store, { options: { ...store.options(), [id]: list } }),
+            error: () => undefined,
+          });
+        }
+      };
+
       /**
        * Run a mutation with the shared `saving`/`error` bookkeeping. `handlers.onError`
        * gets the parsed server error so the caller can surface the domain code.
@@ -118,6 +154,7 @@ export const CatalogAdminStore = signalStore(
         after: () => void = refresh,
         handlers?: MutationHandlers,
       ): void => {
+        if (store.saving()) return;
         patchState(store, { saving: true, error: null });
         obs.subscribe({
           next: () => {
@@ -149,7 +186,7 @@ export const CatalogAdminStore = signalStore(
 
         /** Refetch the cache — for the page to call after a dialog mutates out-of-band. */
         reload(): void {
-          refresh();
+          refreshAll();
         },
 
         /**
@@ -199,12 +236,79 @@ export const CatalogAdminStore = signalStore(
         ): void {
           run(api.addOption(attributeId, request), 'cat.optionSaveFailed', refresh, handlers);
         },
-        // ── Space-type targeting (write-only: no mappings read, 009b #N-7) ──
+        // ── crmp C-4: activate/deactivate, delete, options read, tree filter ──
+        setActive(
+          kind: CatalogEntryKind,
+          id: string,
+          isActive: boolean,
+          handlers?: MutationHandlers,
+        ): void {
+          run(api.setEntryActive(kind, id, isActive), 'cat.statusFailed', refreshAll, handlers);
+        },
+        /**
+         * Hard delete. A 409 `crm.catalog.InUse` is not a page error: the caller offers
+         * deactivate instead, so the store's `error` stays clear for it.
+         */
+        deleteEntry(kind: CatalogEntryKind, id: string, handlers?: MutationHandlers): void {
+          if (store.saving()) return;
+          patchState(store, { saving: true, error: null });
+          api.deleteEntry(kind, id).subscribe({
+            next: () => {
+              patchState(store, { saving: false });
+              refreshAll();
+              handlers?.onDone?.();
+            },
+            error: (err: HttpErrorResponse) => {
+              const parsed = errors.parse(err);
+              patchState(store, {
+                saving: false,
+                error: parsed.code === 'crm.catalog.InUse' ? null : 'cat.deleteFailed',
+              });
+              handlers?.onError?.(parsed, 'cat.deleteFailed');
+            },
+          });
+        },
+        /** Read one attribute's options under the current `includeInactiveOptions`. */
+        loadOptions(attributeId: string): void {
+          api.attributeOptions(attributeId, store.includeInactiveOptions()).subscribe({
+            next: (list) =>
+              patchState(store, { options: { ...store.options(), [attributeId]: list } }),
+            error: () => patchState(store, { error: 'cat.optionsLoadFailed' }),
+          });
+        },
+        /** Flip the toggle and re-read every attribute whose options are already loaded. */
+        setIncludeInactiveOptions(include: boolean): void {
+          patchState(store, { includeInactiveOptions: include });
+          for (const id of Object.keys(store.options())) this.loadOptions(id);
+        },
+        /** `null` clears the filter and the page returns to drill-down. */
+        filterBySpaceType(spaceTypeId: string | null): void {
+          patchState(store, { spaceTypeFilter: spaceTypeId, spaceTypeResults: [] });
+          if (!spaceTypeId) return;
+          patchState(store, { spaceTypeLoading: true });
+          api.treeForSpaceType(spaceTypeId).subscribe({
+            next: (list) => {
+              if (store.spaceTypeFilter() !== spaceTypeId) return;
+              patchState(store, { spaceTypeResults: list, spaceTypeLoading: false });
+            },
+            error: () => patchState(store, { spaceTypeLoading: false, error: 'cat.loadFailed' }),
+          });
+        },
+        unmapSpaceType(categoryId: string, spaceTypeId: string, handlers?: MutationHandlers): void {
+          run(
+            api.unmapCategorySpaceType(categoryId, spaceTypeId),
+            'cat.targetingFailed',
+            refreshFilter,
+            handlers,
+          );
+        },
+
+        // ── Space-type targeting ──
         mapSpaceType(categoryId: string, spaceTypeId: string, handlers?: MutationHandlers): void {
           run(
             api.mapCategorySpaceType(categoryId, spaceTypeId),
             'cat.targetingFailed',
-            () => undefined,
+            refreshFilter,
             handlers,
           );
         },

@@ -155,6 +155,8 @@ export const routes: Routes = [
       },
       // Projects (spec 008): the eight old entries, metadata verbatim, spread at their old position.
       ...projectsRoutes,
+      // Sites (NEW-FEATURE-1): site surveys. Its routes are distinct literals (`sites`, `sites/:siteId`).
+      { path: '', loadChildren: () => import('@modules/sites').then((m) => m.sitesRoutes) },
       {
         path: '403',
         loadComponent: () =>

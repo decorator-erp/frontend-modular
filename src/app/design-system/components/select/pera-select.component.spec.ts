@@ -54,4 +54,16 @@ describe('PeraSelectComponent', () => {
     f.componentInstance.pick(OPTIONS[1]);
     expect(picked).toBe('i');
   });
+
+  it('V-1: an ariaLabel keeps the selected value (or placeholder) in the accessible name', () => {
+    const f = select();
+    const trigger = () => (f.nativeElement as HTMLElement).querySelector('button')!;
+    expect(trigger().hasAttribute('aria-label')).toBe(false); // unset → name is the content
+    f.componentRef.setInput('ariaLabel', 'Space – DO-01');
+    f.detectChanges();
+    expect(trigger().getAttribute('aria-label')).toBe('Space – DO-01: Status');
+    f.componentInstance.writeValue('i');
+    f.detectChanges();
+    expect(trigger().getAttribute('aria-label')).toBe('Space – DO-01: Inactive');
+  });
 });

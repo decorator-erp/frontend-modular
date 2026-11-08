@@ -33,6 +33,11 @@ const CONTRACT_CODES = [
   'crm.briefs.ConcurrentSend',
   'crm.contacts.ConcurrentPrimaryChange',
   'projects.scope.ConcurrentUpdate',
+  // crmp A-4: added to §1.4 by crm-complete (#112/#113, #123/#124) and the sites-projects fixes (P9, S3).
+  'crm.storefront.ConcurrentUpdate',
+  'projects.members.ConcurrentUpdate',
+  'projects.ConcurrentUpdate',
+  'sites.ConcurrencyConflict',
 ];
 
 describe('isConcurrencyConflict (009b X-3)', () => {

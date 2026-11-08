@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { Observable, forkJoin } from 'rxjs';
 import { map, switchMap } from 'rxjs/operators';
 import { ApiService } from '@platform/http/api.service';
+import { handled } from '@platform/http/handled-errors';
 import { CatalogAttributeType, CatalogSelectionMode } from '../model/crm-enums';
 import type {
   AddCatalogAttributeOptionRequest,
@@ -53,6 +54,35 @@ import type {
  * or delete; items are created and their attribute values written. 009b #N-10: nor an
  * attribute or option update, delete or reorder; attributes and options are added only.
  */
+/** The `{kind}` segment of the catalog admin routes (`CrmCatalogEndpoints.cs:107-129`). */
+export type CatalogEntryKind = 'categories' | 'items' | 'attributes' | 'options';
+
+/**
+ * `CatalogEntryRequest` (`CrmCatalogEndpoints.cs:153`). `code`/`nameEn`/`nameAr` are required
+ * for every kind; every other member is optional and a member left out keeps its value
+ * (`UpdateCrmCatalogEntryCommandHandler`). Which ones a kind reads: categories
+ * `selectionMode`/`isRequired`/descriptions/`imageUri`; items `isPurchasable`/descriptions/
+ * `imageUri`; attributes `unit`/`isRequired`; options `imageUri`.
+ */
+export interface CatalogEntryUpdate {
+  code: string;
+  nameEn: string;
+  nameAr: string;
+  selectionMode?: CatalogSelectionMode;
+  isRequired?: boolean;
+  isPurchasable?: boolean;
+  unit?: string | null;
+  descriptionEn?: string | null;
+  descriptionAr?: string | null;
+  imageUri?: string | null;
+}
+
+/**
+ * crmp C-4 (D4): the catalog admin writes — edit (#117), activate/deactivate (#118), delete
+ * (#119, 409 `crm.catalog.InUse` → deactivate instead), the options read with
+ * `includeInactive` (#115), map/unmap a space type (#61/#116) and the `tree?spaceTypeId`
+ * picker. The 009b #N-8..#N-10 "no route" notes below are superseded by these.
+ */
 @Injectable({ providedIn: 'root' })
 export class CrmCatalogService extends ApiService {
   // ── v2 reads ───────────────────────────────────────────────────────────
@@ -88,6 +118,75 @@ export class CrmCatalogService extends ApiService {
   categoryAttributes(categoryId: string): Observable<CatalogAttribute[]> {
     return this.get<unknown>(`/crm/catalog/categories/${categoryId}/attributes`).pipe(
       map((r) => this.unwrapArray<unknown>(r).map((a) => this.normalizeAttribute(a))),
+    );
+  }
+
+  /**
+   * `GET /api/crm/catalog/tree?spaceTypeId=` — `crm.catalog.read` (`CrmCatalogEndpoints.cs:83`).
+   * The picker view: active categories targeted to the space type directly or through an
+   * ancestor, inactive subtrees hidden (`GetCrmCatalogTreeQueryHandler`).
+   */
+  treeForSpaceType(spaceTypeId: string): Observable<CatalogCategory[]> {
+    return this.get<unknown>('/crm/catalog/tree', { spaceTypeId }).pipe(
+      map((r) => this.unwrapArray<unknown>(r).map((c) => this.normalizeCategory(c))),
+    );
+  }
+
+  /**
+   * `GET /api/crm/catalog/attributes/{attributeId}/options?includeInactive=` — `crm.catalog.read`
+   * (`CrmCatalogEndpoints.cs:91`, #115). Ordered by `sortOrder` then code.
+   */
+  attributeOptions(
+    attributeId: string,
+    includeInactive = false,
+  ): Observable<CatalogAttributeOption[]> {
+    return this.get<unknown>(`/crm/catalog/attributes/${attributeId}/options`, {
+      includeInactive: String(includeInactive),
+    }).pipe(map((r) => this.unwrapArray<unknown>(r).map((o) => this.normalizeOption(o))));
+  }
+
+  /**
+   * `PUT /api/crm/catalog/{kind}/{id}` → `204` — `crm.catalog.manage` (`CrmCatalogEndpoints.cs:107`,
+   * #117). Only the members given are sent. 409 `crm.catalog.CodeTaken` and 404
+   * `crm.catalog.EntryNotFound` are shown by the caller.
+   */
+  updateEntry(kind: CatalogEntryKind, id: string, request: CatalogEntryUpdate): Observable<void> {
+    const body: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(request)) {
+      if (value !== undefined) body[key] = value;
+    }
+    return this.put<void>(`/crm/catalog/${kind}/${id}`, body, { context: handled(404, 409) });
+  }
+
+  /** `PUT /api/crm/catalog/{kind}/{id}/active` `{ isActive }` → `204` (`CrmCatalogEndpoints.cs:117`, #118). */
+  setEntryActive(kind: CatalogEntryKind, id: string, isActive: boolean): Observable<void> {
+    return this.put<void>(
+      `/crm/catalog/${kind}/${id}/active`,
+      { isActive },
+      { context: handled(404, 409) },
+    );
+  }
+
+  /**
+   * `DELETE /api/crm/catalog/{kind}/{id}` → `204` (`CrmCatalogEndpoints.cs:124`, #119). 409
+   * `crm.catalog.InUse` when something references the entry — the caller offers deactivate.
+   */
+  deleteEntry(kind: CatalogEntryKind, id: string): Observable<void> {
+    return this.delete<void>(`/crm/catalog/${kind}/${id}`, undefined, {
+      context: handled(404, 409),
+    });
+  }
+
+  /**
+   * `DELETE /api/crm/catalog/categories/{categoryId}/space-types/{spaceTypeId}` → `204`
+   * (`CrmCatalogEndpoints.cs:100`, #116). 404 `crm.catalog.MappingNotFound` when the category is
+   * not targeted to that type.
+   */
+  unmapCategorySpaceType(categoryId: string, spaceTypeId: string): Observable<void> {
+    return this.delete<void>(
+      `/crm/catalog/categories/${categoryId}/space-types/${spaceTypeId}`,
+      undefined,
+      { context: handled(404) },
     );
   }
 
@@ -127,12 +226,13 @@ export class CrmCatalogService extends ApiService {
   /**
    * `POST /api/crm/catalog/categories/{categoryId}/space-types/{spaceTypeId}`, **no body** →
    * `204` (not `201`, even though it's a POST) — `crm.catalog.manage`.
-   * `409 crm.catalog.DuplicateMapping` (009b #37).
+   * `409 crm.catalog.DuplicateMapping` (009b #37), shown by the caller.
    */
   mapCategorySpaceType(categoryId: string, spaceTypeId: string): Observable<void> {
     return this.post<void>(
       `/crm/catalog/categories/${categoryId}/space-types/${spaceTypeId}`,
       null,
+      { context: handled(404, 409) },
     );
   }
 

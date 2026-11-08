@@ -17,6 +17,8 @@ export const NAV_SECTIONS: NavSection[] = [
       { label: 'Dashboard', icon: 'home', route: '/dashboard' },
       { label: 'Projects', icon: 'briefcase', route: '/projects' },
       { label: 'Leads', icon: 'users', route: '/crm/leads', capability: 'crm.leads.read' },
+      // sites (NEW-FEATURE-1, spec §6 edit 3): the icon set has no 'ruler' — 'folder' instead.
+      { label: 'Site surveys', icon: 'folder', route: '/sites', capability: 'sites.read' },
     ],
   },
   {
@@ -48,6 +50,12 @@ export const NAV_SECTIONS: NavSection[] = [
       },
       { label: 'Finance', icon: 'briefcase', route: '/finance' },
       { label: 'Audit log', icon: 'file-text', route: '/audit', capability: 'audit.read' },
+      {
+        label: 'Survey definitions',
+        icon: 'settings',
+        route: '/admin/site-definitions',
+        capability: 'sites.definitions.manage',
+      },
     ],
   },
   {

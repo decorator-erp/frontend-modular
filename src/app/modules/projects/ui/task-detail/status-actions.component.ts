@@ -9,13 +9,14 @@ import {
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
+import { Observable } from 'rxjs';
 import { ProjectTaskService } from '../../data/project-task.service';
-import { TaskLifecycleService } from '../../data/task-lifecycle.service';
 import { ErrorHandlerService, friendly } from '@platform/http/error-handler.service';
 import { ToastService } from '@platform/feedback/toast.service';
-import { PERM } from '@platform/permissions';
-import { CanDirective } from '@platform/permissions';
-import { ApprovalType, ProjectTask } from '../../model/project.model';
+import { ProjectTask } from '../../model/project.model';
+import type { ProjectAction } from '../../model/project-actions';
+import { ProjectAccessStore } from '../../stores/project-access.store';
+import { CatalogService } from '@platform/i18n/catalog.service';
 import {
   ConfirmService,
   ModalService,
@@ -24,17 +25,10 @@ import {
   PeraModalComponent,
   PeraModalFooterDirective,
   PeraModalRef,
-  PeraSelectComponent,
   PeraTextareaComponent,
-  SelectOption,
 } from '@ds';
 
-const APPROVAL_OPTIONS: SelectOption[] = [
-  { value: 'ManagerApproval', label: 'Manager approval' },
-  { value: 'ClientReview', label: 'Client review' },
-];
-
-/** Approve modal — ApproveProjectTaskRequest { approvalType (req), note? } per api-docs/07. */
+/** Reject modal — `POST …/tasks/{taskId}/reject { reason }` (dms `TaskEndpoints.cs:106,225`). */
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
@@ -42,58 +36,6 @@ const APPROVAL_OPTIONS: SelectOption[] = [
     PeraModalComponent,
     PeraModalFooterDirective,
     PeraFormFieldComponent,
-    PeraSelectComponent,
-    PeraTextareaComponent,
-    PeraButtonComponent,
-  ],
-  template: `
-    <pera-modal title="Approve task" size="sm">
-      <div class="flex flex-col gap-3">
-        <pera-form-field label="Approval type" [required]="true">
-          <pera-select
-            [options]="options"
-            [ngModel]="approvalType()"
-            (ngModelChange)="approvalType.set($event)"
-          />
-        </pera-form-field>
-        <pera-form-field label="Note">
-          <pera-textarea
-            [ngModel]="note()"
-            (ngModelChange)="note.set($event)"
-            placeholder="Optional note"
-            [rows]="2"
-          />
-        </pera-form-field>
-      </div>
-      <div peraModalFooter class="flex gap-2">
-        <pera-button variant="ghost" (click)="ref.close()">Cancel</pera-button>
-        <pera-button variant="primary" (click)="submit()">Approve</pera-button>
-      </div>
-    </pera-modal>
-  `,
-})
-export class TaskApproveModalComponent {
-  readonly ref = inject(PeraModalRef) as PeraModalRef<
-    { approvalType: ApprovalType; note: string } | undefined
-  >;
-  readonly options = APPROVAL_OPTIONS;
-  readonly approvalType = signal<ApprovalType>('ManagerApproval');
-  readonly note = signal('');
-
-  submit(): void {
-    this.ref.close({ approvalType: this.approvalType(), note: this.note().trim() });
-  }
-}
-
-/** Reject modal — RejectProjectTaskRequest { note (req), approvalType? } per api-docs/07. */
-@Component({
-  changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [
-    FormsModule,
-    PeraModalComponent,
-    PeraModalFooterDirective,
-    PeraFormFieldComponent,
-    PeraSelectComponent,
     PeraTextareaComponent,
     PeraButtonComponent,
   ],
@@ -108,14 +50,6 @@ export class TaskApproveModalComponent {
             [rows]="3"
           />
         </pera-form-field>
-        <pera-form-field label="Approval type">
-          <pera-select
-            [options]="options"
-            [ngModel]="approvalType()"
-            (ngModelChange)="approvalType.set($event)"
-            placeholder="Optional"
-          />
-        </pera-form-field>
       </div>
       <div peraModalFooter class="flex gap-2">
         <pera-button variant="ghost" (click)="ref.close()">Cancel</pera-button>
@@ -127,16 +61,12 @@ export class TaskApproveModalComponent {
   `,
 })
 export class TaskRejectModalComponent {
-  readonly ref = inject(PeraModalRef) as PeraModalRef<
-    { note: string; approvalType: ApprovalType | null } | undefined
-  >;
-  readonly options = APPROVAL_OPTIONS;
+  readonly ref = inject(PeraModalRef) as PeraModalRef<{ note: string } | undefined>;
   readonly note = signal('');
-  readonly approvalType = signal<ApprovalType | null>(null);
 
   submit(): void {
     if (!this.note().trim()) return;
-    this.ref.close({ note: this.note().trim(), approvalType: this.approvalType() });
+    this.ref.close({ note: this.note().trim() });
   }
 }
 
@@ -149,83 +79,93 @@ export class TaskRejectModalComponent {
 @Component({
   selector: 'app-task-status-actions',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CanDirective],
+  imports: [],
   template: `
-    <ng-container *peraCan="manageTasks">
-      <div class="flex items-center gap-1.5 flex-wrap">
-        @if (status() === 'Locked') {
-          <span
-            class="font-mono fs-label uppercase text-text-muted px-2 py-1.5 border border-border-soft bg-bg"
+    <div class="flex items-center gap-1.5 flex-wrap" data-task-actions>
+      @if (status() === 'Locked') {
+        <span
+          class="font-mono fs-label uppercase text-text-muted px-2 py-1.5 border border-border-soft bg-bg"
+        >
+          Locked — satisfy gates to unlock
+        </span>
+      }
+      @if (status() === 'Open' && canStart()) {
+        <button
+          type="button"
+          (click)="start()"
+          [disabled]="busy()"
+          class="px-2.5 py-1.5 border border-border bg-bg fs-label hover:bg-surface-muted disabled:opacity-50"
+          data-start
+        >
+          Start
+        </button>
+      }
+      @if (status() === 'InProgress' && canComplete()) {
+        <button
+          type="button"
+          (click)="complete()"
+          [disabled]="busy()"
+          class="px-2.5 py-1.5 bg-accent text-text-on-accent border border-accent fs-label hover:bg-accent-hover disabled:opacity-50 inline-flex items-center gap-1.5"
+          data-complete
+        >
+          <svg
+            width="11"
+            height="11"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.4"
           >
-            Locked — satisfy gates to unlock
-          </span>
-        }
-        @if (status() === 'Open' || status() === 'Rejected') {
-          <button
-            type="button"
-            (click)="start()"
-            [disabled]="busy()"
-            class="px-2.5 py-1.5 border border-border bg-bg fs-label hover:bg-surface-muted disabled:opacity-50"
-          >
-            Start
-          </button>
-        }
-        @if (status() === 'InProgress') {
-          <button
-            type="button"
-            (click)="requestApproval()"
-            [disabled]="busy()"
-            class="px-2.5 py-1.5 border border-border bg-bg fs-label hover:bg-surface-muted disabled:opacity-50"
-          >
-            Request approval
-          </button>
-          <button
-            type="button"
-            (click)="complete()"
-            [disabled]="busy()"
-            class="px-2.5 py-1.5 bg-accent text-text-on-accent border border-accent fs-label hover:bg-accent-hover disabled:opacity-50 inline-flex items-center gap-1.5"
-          >
-            <svg
-              width="11"
-              height="11"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2.4"
-            >
-              <path d="M5 12l4 4L19 6" />
-            </svg>
-            Mark complete
-          </button>
-        }
-        @if (status() === 'PendingApproval') {
-          <button
-            type="button"
-            (click)="approve()"
-            [disabled]="busy()"
-            class="px-2.5 py-1.5 border border-success bg-success-soft text-success fs-label hover:opacity-80 disabled:opacity-50"
-          >
-            Approve
-          </button>
-          <button
-            type="button"
-            (click)="reject()"
-            [disabled]="busy()"
-            class="px-2.5 py-1.5 border border-danger bg-danger-soft text-danger fs-label hover:opacity-80 disabled:opacity-50"
-          >
-            Reject
-          </button>
-        }
+            <path d="M5 12l4 4L19 6" />
+          </svg>
+          Mark complete
+        </button>
+      }
+      @if ((status() === 'PendingApproval' || status() === 'InProgress') && can('task.reject')) {
+        <button
+          type="button"
+          (click)="reject()"
+          [disabled]="busy()"
+          class="px-2.5 py-1.5 border border-danger bg-danger-soft text-danger fs-label hover:opacity-80 disabled:opacity-50"
+          data-reject
+        >
+          Reject
+        </button>
+      }
+      @if (isLive() && can('task.cancel')) {
+        <button
+          type="button"
+          (click)="cancel()"
+          [disabled]="busy()"
+          class="px-2.5 py-1.5 border border-border bg-bg fs-label hover:bg-surface-muted disabled:opacity-50"
+          data-cancel
+        >
+          {{ catalog.t('pt.cancel') }}
+        </button>
+      }
+      @if (isClosedTask() && can('task.reopen')) {
+        <button
+          type="button"
+          (click)="reopen()"
+          [disabled]="busy()"
+          class="px-2.5 py-1.5 border border-border bg-bg fs-label hover:bg-surface-muted disabled:opacity-50"
+          data-reopen
+        >
+          {{ catalog.t('pt.reopen') }}
+        </button>
+      }
+      @if (notStarted() && can('task.delete')) {
         <button
           type="button"
           (click)="remove()"
           [disabled]="busy()"
           class="px-2.5 py-1.5 border border-border bg-bg fs-label text-danger hover:bg-danger-soft hover:border-danger disabled:opacity-50"
+          data-delete
         >
           Delete
         </button>
-      </div>
-    </ng-container>
+      }
+    </div>
   `,
 })
 export class TaskStatusActionsComponent {
@@ -234,53 +174,70 @@ export class TaskStatusActionsComponent {
   readonly deleted = output<void>();
 
   private readonly tasksApi = inject(ProjectTaskService);
-  private readonly lifecycle = inject(TaskLifecycleService);
   private readonly errors = inject(ErrorHandlerService);
   private readonly toast = inject(ToastService);
   private readonly modal = inject(ModalService);
   private readonly confirm = inject(ConfirmService);
 
-  readonly manageTasks = PERM.stageTasks.manage;
+  private readonly access = inject(ProjectAccessStore);
+  protected readonly catalog = inject(CatalogService);
   readonly busy = signal(false);
+
+  /**
+   * crmp P-3/P-4: every button needs its route claim AND level AND an open project (canProjectAction).
+   * Start and complete also need the assignee, the `stage_tasks.manage` claim or the Manager level
+   * (`projects.tasks.NotAssignee`, dms TaskExecutors.cs:17-35). Delete only before the task starts
+   * (`projects.tasks.NotDeletable`).
+   */
+  can(action: ProjectAction): boolean {
+    return this.access.can(this.task().projectId, action);
+  }
+  readonly canStart = computed(() =>
+    this.access.canExecute(this.task().projectId, this.task(), 'task.start'),
+  );
+  readonly canComplete = computed(() =>
+    this.access.canExecute(this.task().projectId, this.task(), 'task.complete'),
+  );
+  readonly notStarted = computed(() => ['Open', 'Locked'].includes(this.status()));
+  readonly isLive = computed(() => !['Completed', 'Cancelled'].includes(this.status()));
+  readonly isClosedTask = computed(() =>
+    ['Completed', 'Cancelled', 'Rejected'].includes(this.status()),
+  );
 
   /** Backend exposes PendingApproval/Rejected beyond the local union — compare as string. */
   readonly status = computed(() => this.task().status as string);
 
+  // crmp A-2: the transitions are POSTs under the project (dms `TaskEndpoints.cs:81-123`). Request
+  // approval and Approve are gone: the backend has no such routes; approval runs through Approval
+  // gates decided in the approvals inbox (gap table REMOVED P-103/104).
   start(): void {
-    this.run(this.tasksApi.start(this.task().id), 'Task started');
+    const t = this.task();
+    this.run(this.tasksApi.start(t.projectId, t.id), 'Task started');
   }
 
   complete(): void {
-    this.run(this.tasksApi.complete(this.task().id), 'Task completed');
+    const t = this.task();
+    this.run(this.tasksApi.complete(t.projectId, t.id), 'Task completed');
   }
 
-  requestApproval(): void {
-    this.run(this.lifecycle.requestApproval(this.task().id), 'Approval requested');
+  cancel(): void {
+    const t = this.task();
+    this.run(this.tasksApi.cancel(t.projectId, t.id), this.catalog.t('pt.cancelled'));
   }
 
-  async approve(): Promise<void> {
-    const result = await this.modal
-      .open<{ approvalType: ApprovalType; note: string }>(TaskApproveModalComponent, { size: 'sm' })
-      .afterClosed();
-    if (!result) return;
-    this.run(
-      this.lifecycle.approve(this.task().id, result.approvalType, result.note || null),
-      'Task approved',
-    );
+  /** `projects.tasks.StageCompleted` (a task of a completed stage) arrives as its catalog message. */
+  reopen(): void {
+    const t = this.task();
+    this.run(this.tasksApi.reopen(t.projectId, t.id), this.catalog.t('pt.reopened'));
   }
 
   async reject(): Promise<void> {
     const result = await this.modal
-      .open<{
-        note: string;
-        approvalType: ApprovalType | null;
-      }>(TaskRejectModalComponent, { size: 'sm' })
+      .open<{ note: string }>(TaskRejectModalComponent, { size: 'sm' })
       .afterClosed();
     if (!result) return;
-    this.run(
-      this.lifecycle.reject(this.task().id, result.note, result.approvalType),
-      'Task rejected',
-    );
+    const t = this.task();
+    this.run(this.tasksApi.reject(t.projectId, t.id, result.note), 'Task rejected');
   }
 
   async remove(): Promise<void> {
@@ -292,7 +249,7 @@ export class TaskStatusActionsComponent {
     });
     if (!ok) return;
     this.busy.set(true);
-    this.tasksApi.remove(this.task().id).subscribe({
+    this.tasksApi.remove(this.task().projectId, this.task().id).subscribe({
       next: () => {
         this.busy.set(false);
         this.toast.show({ tone: 'success', message: 'Task deleted' });
@@ -305,10 +262,7 @@ export class TaskStatusActionsComponent {
     });
   }
 
-  private run(
-    call: ReturnType<TaskLifecycleService['requestApproval']>,
-    successMessage: string,
-  ): void {
+  private run(call: Observable<unknown>, successMessage: string): void {
     if (this.busy()) return;
     this.busy.set(true);
     call.subscribe({
@@ -319,9 +273,16 @@ export class TaskStatusActionsComponent {
       },
       error: (err: HttpErrorResponse) => {
         this.busy.set(false);
-        // tasks.StillLocked / CompletionBlocked / SubTasksIncomplete /
-        // MissingRequiredAttachments / ApprovalNotAuthorized etc. per api-docs/07.
-        this.toast.show({ tone: 'danger', message: friendly(this.errors.parse(err)) });
+        const parsed = this.errors.parse(err);
+        // The level or the project's state may have changed since load: re-read the access.
+        if (
+          parsed.code === 'projects.InsufficientLevel' ||
+          parsed.code === 'projects.Closed' ||
+          parsed.code === 'projects.tasks.NotAssignee'
+        ) {
+          this.access.refresh(this.task().projectId);
+        }
+        this.toast.show({ tone: 'danger', message: friendly(parsed) });
       },
     });
   }

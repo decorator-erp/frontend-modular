@@ -273,25 +273,22 @@ export class TaskFormDialogComponent {
     const v = this.form.getRawValue();
 
     const call = this.isEdit
-      ? this.tasks.update(this.data.taskId!, {
+      ? this.tasks.update(this.data.projectId, this.data.taskId!, {
           name: v.name.trim(),
           order: Number(v.order),
           weight: Number(v.weight),
           priority: v.priority,
-          estimatedStartDate: v.estimatedStartDate || null,
           dueDate: v.dueDate || null,
           description: v.description.trim() || null,
           notes: v.notes.trim() || null,
         } satisfies UpdateProjectTaskRequest)
-      : this.tasks.create({
-          projectId: this.data.projectId,
+      : this.tasks.create(this.data.projectId, {
           name: v.name.trim(),
           order: Number(v.order),
           weight: Number(v.weight),
           priority: v.priority,
           projectStageId: v.projectStageId || null,
           assignedToId: v.assignedToId || null,
-          startDate: v.estimatedStartDate || null,
           dueDate: v.dueDate || null,
           description: v.description.trim() || null,
           notes: v.notes.trim() || null,

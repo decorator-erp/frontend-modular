@@ -6,9 +6,10 @@ import { ErrorHandlerService, friendly } from '@platform/http/error-handler.serv
 import { ToastService } from '@platform/feedback/toast.service';
 import { MarkdownService } from '@shared/markdown/markdown.service';
 import { LocaleService } from '@platform/i18n';
+import { CatalogService } from '@platform/i18n/catalog.service';
 import { PERM } from '@platform/permissions';
-import { CanDirective } from '@platform/permissions';
 import { TaskComment } from '../../model/project.model';
+import { ProjectAccessStore } from '../../stores/project-access.store';
 import { formatShortDate } from '@shared/ui/status';
 import { ConfirmService, PeraAvatarComponent, PeraButtonComponent } from '@ds';
 
@@ -26,7 +27,7 @@ interface CommentVm extends TaskComment {
 }
 
 /**
- * Comments thread (A-06 pattern) — `/api/task-comments` per
+ * Comments thread (A-06 pattern) — `/api/projects/{projectId}/tasks/{taskId}/comments` (crmp A-2; was `/api/task-comments`) per
  * api-docs/09-documents-attachments-comments.md. Create/edit/delete gated by
  * Projects.ManageTasks; the backend additionally restricts edit/delete to the
  * author or task assignee (task_comments.NotAuthorized).
@@ -37,13 +38,16 @@ interface CommentVm extends TaskComment {
  * name/role/time header, the text, and a reactions row). Parent wraps this in a
  * `<pera-card>`, so we render the card BODY only — no outer border/header.
  */
+/** crmp A-4: one page of comments; the backend's own default when paged is 200. */
+export const COMMENT_PAGE_SIZE = 50;
+
 @Component({
   selector: 'app-comments-thread',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, CanDirective, PeraAvatarComponent, PeraButtonComponent],
+  imports: [FormsModule, PeraAvatarComponent, PeraButtonComponent],
   template: `
     <!-- Composer (top, per A-06 / design .composer) -->
-    <ng-container *peraCan="manageTasks">
+    @if (canAdd()) {
       <div class="flex gap-3 p-4 border-b border-border-soft">
         <pera-avatar [name]="composerName()" size="md" />
         <div class="flex-1 min-w-0 border border-border bg-surface">
@@ -69,7 +73,7 @@ interface CommentVm extends TaskComment {
           </div>
         </div>
       </div>
-    </ng-container>
+    }
 
     <!-- Comments (design .cmt) -->
     @for (c of comments(); track c.id) {
@@ -94,11 +98,17 @@ interface CommentVm extends TaskComment {
             <span
               class="ms-auto opacity-0 group-hover:opacity-100 flex items-center gap-1.5 fs-label text-text-muted uppercase transition-opacity"
             >
-              <ng-container *peraCan="manageTasks">
-                <button type="button" class="hover:text-accent" (click)="startEdit(c)">Edit</button>
+              @if (canChange(c, 'comment.edit')) {
+                <button type="button" class="hover:text-accent" (click)="startEdit(c)" data-edit>
+                  Edit
+                </button>
                 <span class="text-border">·</span>
-                <button type="button" class="hover:text-danger" (click)="remove(c)">Delete</button>
-              </ng-container>
+                @if (canChange(c, 'comment.delete')) {
+                  <button type="button" class="hover:text-danger" (click)="remove(c)" data-delete>
+                    Delete
+                  </button>
+                }
+              }
             </span>
           </div>
           @if (editingId() === c.id) {
@@ -142,9 +152,17 @@ interface CommentVm extends TaskComment {
         No comments yet. Be the first to add context.
       </p>
     }
+    @if (hasMore()) {
+      <div class="px-4 py-2">
+        <pera-button variant="ghost" size="sm" [disabled]="loadingMore()" (click)="loadMore()">
+          {{ loadingMore() ? catalog.t('projects.loadingMore') : catalog.t('projects.loadMore') }}
+        </pera-button>
+      </div>
+    }
   `,
 })
 export class CommentsThreadComponent implements OnInit {
+  readonly projectId = input.required<string>();
   readonly taskId = input.required<string>();
 
   private readonly api = inject(TaskCommentService);
@@ -155,6 +173,23 @@ export class CommentsThreadComponent implements OnInit {
   readonly locale = inject(LocaleService);
 
   readonly manageTasks = PERM.stageTasks.manage;
+  /** crmp P-6: add takes either execution claim (TaskEndpoints.cs:195); edit/delete route on read. */
+  readonly addClaims = [PERM.stageTasks.manage, PERM.stageTasks.complete];
+  readonly readClaim = PERM.stageTasks.read;
+  private readonly access = inject(ProjectAccessStore);
+
+  /** Add: Editor level and either claim (contract §2.17.2). */
+  canAdd(): boolean {
+    return this.access.can(this.projectId(), 'comment.add');
+  }
+
+  /**
+   * Edit/delete: Editor level AND the author or the `stage_tasks.manage` claim — the claim, not the
+   * Manager level (`projects.comments.NotAuthor`, dms TaskCommentHandlers.cs:87-107).
+   */
+  canChange(c: TaskComment, action: 'comment.edit' | 'comment.delete'): boolean {
+    return this.access.canComment(this.projectId(), c, action);
+  }
   readonly shortDate = formatShortDate;
 
   /** Avatar seed for the composer; falls back to a neutral label when no user. */
@@ -165,21 +200,55 @@ export class CommentsThreadComponent implements OnInit {
   readonly busy = signal(false);
   readonly editingId = signal<string | null>(null);
   readonly editDraft = signal('');
+  readonly hasMore = signal(false);
+  readonly loadingMore = signal(false);
+  protected readonly catalog = inject(CatalogService);
+  private page = 1;
 
   ngOnInit(): void {
     this.load();
   }
 
+  /**
+   * crmp A-4: comments are read a page at a time (opt-in paging, contract §1.6). A page shorter than
+   * the page size is the last one; "Load more" appends the next page.
+   */
   load(): void {
-    this.api.getByTask(this.taskId()).subscribe((list) => this.comments.set(list));
+    this.page = 1;
+    this.api
+      .getByTask(this.projectId(), this.taskId(), { pageNumber: 1, pageSize: COMMENT_PAGE_SIZE })
+      .subscribe((list) => {
+        this.comments.set(list);
+        this.hasMore.set(list.length === COMMENT_PAGE_SIZE);
+      });
+  }
+
+  loadMore(): void {
+    if (this.loadingMore() || !this.hasMore()) return;
+    this.loadingMore.set(true);
+    const next = this.page + 1;
+    this.api
+      .getByTask(this.projectId(), this.taskId(), { pageNumber: next, pageSize: COMMENT_PAGE_SIZE })
+      .subscribe({
+        next: (list) => {
+          this.page = next;
+          const seen = new Set(this.comments().map((c) => c.id));
+          this.comments.update((all) => [...all, ...list.filter((c) => !seen.has(c.id))]);
+          this.hasMore.set(list.length === COMMENT_PAGE_SIZE);
+          this.loadingMore.set(false);
+        },
+        error: (err: HttpErrorResponse) => {
+          this.loadingMore.set(false);
+          this.toast.show({ tone: 'danger', message: friendly(this.errors.parse(err)) });
+        },
+      });
   }
 
   submit(): void {
     const content = this.draft().trim();
     if (!content || this.busy()) return;
     this.busy.set(true);
-    // CreateTaskCommentRequest { taskId, content } per api-docs/09.
-    this.api.create({ taskId: this.taskId(), content }).subscribe({
+    this.api.create(this.projectId(), this.taskId(), content).subscribe({
       next: () => {
         this.draft.set('');
         this.busy.set(false);
@@ -201,7 +270,7 @@ export class CommentsThreadComponent implements OnInit {
     const content = this.editDraft().trim();
     if (!content || this.busy()) return;
     this.busy.set(true);
-    this.api.update(c.id, { content }).subscribe({
+    this.api.update(this.projectId(), this.taskId(), c.id, content).subscribe({
       next: () => {
         this.comments.update((list) =>
           list.map((x) =>
@@ -226,7 +295,7 @@ export class CommentsThreadComponent implements OnInit {
       tone: 'danger',
     });
     if (!ok) return;
-    this.api.remove(c.id).subscribe({
+    this.api.remove(this.projectId(), this.taskId(), c.id).subscribe({
       next: () => this.comments.update((list) => list.filter((x) => x.id !== c.id)),
       error: (err: HttpErrorResponse) =>
         this.toast.show({ tone: 'danger', message: friendly(this.errors.parse(err)) }),

@@ -12,17 +12,19 @@ import type { ClientProfile, ClientProfileContact, ClientProfileProject } from '
  * domain services (`CrmMeetingService.portal*`, `CrmItemService.portal*`; see
  * `crm-brief.service.ts` for `getMyBrief`).
  *
- * `getMyProfile` targets `GET /api/crm/portal/profile` (`CrmClientPortalEndpoints.cs`,
- * gated `portal.profile.view_own`) — the client's own `Client`/`CrmContact` rows and
- * every project they can see, in one call.
+ * `getMyProfile` targets `GET /api/crm/portal/profile` (`CrmPortalEndpoints.cs:53`,
+ * gated `crm.portal`; `PortalProfileResponse`, `PortalContracts.cs:146-160`) — the
+ * client's own identity, active contacts and active projects, in one call. Read-only:
+ * the backend maps no profile edit route.
  *
- * 009b #N-1: that route is still absent (Dependency 13), so the call 404s. The 404 is
- * `handled(404)`: `ClientProfileStore` turns it into `client.profileUnavailable`.
+ * crmp C-2: a 404 (`crm.portal.NotFound`, no linked client row) and a 403
+ * (`crm.portal.NotAClient`) are `handled`: `ClientProfileStore` turns each into its own
+ * catalog message.
  */
 @Injectable({ providedIn: 'root' })
 export class CrmClientPortalService extends ApiService {
   getMyProfile(): Observable<ClientProfile> {
-    return this.get<unknown>('/crm/portal/profile', undefined, { context: handled(404) }).pipe(
+    return this.get<unknown>('/crm/portal/profile', undefined, { context: handled(403, 404) }).pipe(
       map((r) => this.normalize(this.unwrap(r))),
     );
   }
@@ -32,8 +34,10 @@ export class CrmClientPortalService extends ApiService {
     return {
       client: {
         id: this.field<string>(client, 'id') ?? '',
+        name: this.field<string>(client, 'name') ?? '',
         firstName: this.field<string>(client, 'firstName') ?? '',
         lastName: this.field<string>(client, 'lastName') ?? '',
+        email: this.field<string | null>(client, 'email') ?? null,
         phoneNumber: this.field<string | null>(client, 'phoneNumber') ?? null,
         address: this.field<string | null>(client, 'address') ?? null,
       },
@@ -65,8 +69,9 @@ export class CrmClientPortalService extends ApiService {
       code: this.field<string>(source, 'code') ?? '',
       name: this.field<string>(source, 'name') ?? '',
       status: this.field<string>(source, 'status') ?? '',
-      productOwnerName: this.field<string | null>(source, 'productOwnerName') ?? null,
       progressPercentage: this.field<number>(source, 'progressPercentage') ?? 0,
+      activeStageId: this.field<string | null>(source, 'activeStageId') ?? null,
+      activeStageName: this.field<string | null>(source, 'activeStageName') ?? null,
       openPeriodId: this.field<string | null>(source, 'openPeriodId') ?? null,
     };
   }

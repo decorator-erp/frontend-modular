@@ -51,6 +51,7 @@ const CHIP_PANEL_MIN_WIDTH = 180;
       [disabled]="isDisabled()"
       [class]="classes()"
       [attr.aria-invalid]="error() ? 'true' : null"
+      [attr.aria-label]="accessibleName()"
       aria-haspopup="listbox"
       [attr.aria-expanded]="open()"
       (click)="toggle()"
@@ -113,6 +114,8 @@ export class PeraSelectComponent implements ControlValueAccessor {
   readonly placeholder = input('Select…');
   readonly disabled = input(false);
   readonly error = input<string | undefined>(undefined);
+  /** Accessible name for a control with no visible label (e.g. a grid cell). */
+  readonly ariaLabel = input<string | undefined>(undefined);
   readonly size = input<'sm' | 'md' | 'lg'>('md');
   /** `field` = full-width form control (default). `chip` = the prototype's `.selc`. */
   readonly variant = input<SelectVariant>('field');
@@ -122,6 +125,16 @@ export class PeraSelectComponent implements ControlValueAccessor {
   readonly activeIndex = signal(-1);
   private readonly cvaDisabled = signal(false);
   readonly isDisabled = computed(() => this.disabled() || this.cvaDisabled());
+
+  /**
+   * With an `ariaLabel`, the button's name would otherwise replace its content (the selected
+   * value), so the value is appended: "<label>: <value or placeholder>". Unset → no attribute,
+   * and the name stays the visible content.
+   */
+  readonly accessibleName = computed(() => {
+    const label = this.ariaLabel();
+    return label ? `${label}: ${this.selectedLabel() || this.placeholder()}` : null;
+  });
 
   readonly selectedLabel = computed(() => {
     const v = this.value();

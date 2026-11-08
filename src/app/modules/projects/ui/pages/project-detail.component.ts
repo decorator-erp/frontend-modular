@@ -11,6 +11,19 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { EMPTY, forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { ProjectService } from '../../data/project.service';
+import { ScopeOfWorkService } from '../../data/scope-of-work.service';
+import { friendlyMessage } from '@platform/errors/error-catalog';
+import { ScopeOfWorkStatus } from '../../model/scope-of-work.model';
+import { ProjectAccessStore } from '../../stores/project-access.store';
+import { ProjectAction } from '../../model/project-actions';
+import { ProjectClosedBannerComponent } from '../shared/project-closed-banner.component';
+import { ConfirmService, PeraAlertComponent } from '@ds';
+import { ErrorHandlerService, friendly } from '@platform/http/error-handler.service';
+import { injectReloadOnConflict } from '@platform/http/concurrency';
+import {
+  ChangeStatusDialogComponent,
+  ChangeStatusDialogData,
+} from '../dialogs/change-status-dialog.component';
 import { ProjectMemberService } from '../../data/project-member.service';
 import { StageTeam, StageTeamsService } from '../../data/stage-teams.service';
 import { LocaleService } from '@platform/i18n';
@@ -118,6 +131,8 @@ const STL_GRID = 'grid grid-cols-[minmax(0,1fr)_9rem_8rem_6rem_9rem] gap-3 items
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     CanDirective,
+    PeraAlertComponent,
+    ProjectClosedBannerComponent,
     PeraDonutComponent,
     PeraEmptyComponent,
     PeraEntityHeaderCardComponent,
@@ -135,6 +150,8 @@ export class ProjectDetailComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly projects = inject(ProjectService);
   private readonly membersApi = inject(ProjectMemberService);
+  private readonly scopeApi = inject(ScopeOfWorkService);
+  protected readonly access = inject(ProjectAccessStore);
   private readonly teamsApi = inject(StageTeamsService);
   private readonly docsApi = inject(ProjectDocumentsService);
   private readonly directory = inject(EmployeeService);
@@ -190,6 +207,40 @@ export class ProjectDetailComponent implements OnInit {
   readonly stages = computed(() => this.details()?.stages ?? []);
   readonly unstagedTasks = computed<ProjectTask[]>(() => this.details()?.unstagedTasks ?? []);
   readonly isStage = computed(() => this.project()?.workflowType === 'Stage');
+
+  /**
+   * crmp P-2 (D2): on a Stage project, stages are added by hand only after the scope of work is
+   * confirmed (409 `projects.stages.ScopeNotConfirmed`, contract §2.19 #125); a FreeStyle project has
+   * no stages (`projects.stages.WorkflowNotSupported`). `null` until the scope is read.
+   */
+  readonly scopeConfirmed = signal<boolean | null>(null);
+  /**
+   * Review B3 (CP-4): the backend also takes a project that already has stages (one built from a
+   * template) as settled — `Confirmed || ProjectStages.Any` (ManualStageHandlers.cs:63-71).
+   */
+  readonly stagesSettled = computed<boolean | null>(() => {
+    const confirmed = this.scopeConfirmed();
+    if (this.stages().length > 0) return true;
+    return confirmed;
+  });
+
+  /** Permission AND level AND open project (canProjectAction), read through the shared store. */
+  can(action: ProjectAction): boolean {
+    const id = this.project()?.id;
+    return !!id && this.access.can(id, action);
+  }
+
+  readonly canAddStage = computed(
+    () => this.isStage() && this.stagesSettled() === true && this.can('stage.create'),
+  );
+  /** The backend's own reason (`projects.stages.ScopeNotConfirmed`) from the error catalog, EN or AR. */
+  readonly scopeNotConfirmedMessage = computed(() =>
+    friendlyMessage('projects.stages.ScopeNotConfirmed', '', this.catalog.locale()),
+  );
+  /** A Manager on an unconfirmed Stage project sees why "New stage" is missing, with the SoW link. */
+  readonly scopeBlocksStages = computed(
+    () => this.isStage() && this.stagesSettled() === false && this.can('stage.create'),
+  );
   readonly activeStage = computed<ProjectStage | null>(
     () => this.stages().find((s) => s.status === 'Active') ?? null,
   );
@@ -396,12 +447,96 @@ export class ProjectDetailComponent implements OnInit {
       )
       .subscribe(({ details, members }) => {
         this.details.set(details);
+        this.access.seed(details.project);
+        this.loadScope(id);
         this.members.set(members);
         this.loading.set(false);
         this.resolveNames();
         this.loadStageHeads(id);
         this.loadRecentDocuments(id);
       });
+  }
+
+  readonly lifecycleBusy = signal(false);
+
+  /** crmp P-9: `PUT …/status`; StagesOpen / TasksOpen show inside the dialog. */
+  async changeStatus(): Promise<void> {
+    const p = this.project();
+    if (!p) return;
+    const data: ChangeStatusDialogData = {
+      projectId: p.id,
+      projectName: p.name,
+      current: p.status,
+    };
+    const changed = await this.modal
+      .open<ProjectStatus | undefined>(ChangeStatusDialogComponent, { size: 'sm', data })
+      .afterClosed();
+    if (changed) this.afterLifecycleChange(p.id);
+  }
+
+  /** crmp P-9: `PUT …/active?isActive=` — an inactive project is closed for work. */
+  toggleActive(): void {
+    const p = this.project();
+    if (!p || this.lifecycleBusy()) return;
+    this.lifecycleBusy.set(true);
+    const call = p.isActive ? this.projects.deactivate(p.id) : this.projects.activate(p.id);
+    call.subscribe({
+      next: () => {
+        this.lifecycleBusy.set(false);
+        this.afterLifecycleChange(p.id);
+      },
+      error: (err: HttpErrorResponse) => this.lifecycleFailed(p.id, err),
+    });
+  }
+
+  /** crmp P-9: `DELETE /projects/{id}`; NotDeletable shows the backend's reason. */
+  async deleteProject(): Promise<void> {
+    const p = this.project();
+    if (!p || this.lifecycleBusy()) return;
+    const ok = await this.confirmDialog.open({
+      title: this.catalog.t('plc.deleteTitle'),
+      body: this.catalog.t('plc.deleteBody', { name: p.name }),
+      confirmLabel: this.catalog.t('plc.delete'),
+      tone: 'danger',
+    });
+    if (!ok) return;
+    this.lifecycleBusy.set(true);
+    this.projects.remove(p.id).subscribe({
+      next: () => {
+        this.lifecycleBusy.set(false);
+        this.toast.show({ tone: 'success', message: this.catalog.t('plc.deleted') });
+        void this.router.navigate(['/projects']);
+      },
+      error: (err: HttpErrorResponse) => this.lifecycleFailed(p.id, err),
+    });
+  }
+
+  private afterLifecycleChange(id: string): void {
+    this.access.refresh(id);
+    this.load();
+  }
+
+  private lifecycleFailed(id: string, err: HttpErrorResponse): void {
+    this.lifecycleBusy.set(false);
+    if (this.reloadOnConflict(err, () => this.afterLifecycleChange(id))) return;
+    this.toast.show({ tone: 'danger', message: friendly(this.lifecycleErrors.parse(err)) });
+    this.access.refresh(id);
+  }
+
+  private readonly confirmDialog = inject(ConfirmService);
+  private readonly lifecycleErrors = inject(ErrorHandlerService);
+  private readonly reloadOnConflict = injectReloadOnConflict();
+
+  /** crmp P-2: whether the scope of work is confirmed (manual stages need it). */
+  private loadScope(id: string): void {
+    if (!this.isStage()) {
+      this.scopeConfirmed.set(false);
+      return;
+    }
+    this.scopeApi
+      .getScope(id)
+      .pipe(catchError(() => of(null)))
+      .subscribe((scope) => this.scopeConfirmed.set(scope?.status === ScopeOfWorkStatus.Confirmed));
   }
 
   /** Resolve employee ids → names for member avatars + task assignees. */

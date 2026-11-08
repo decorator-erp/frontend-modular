@@ -2,14 +2,15 @@ import { Injectable, inject } from '@angular/core';
 import { Observable, forkJoin, of } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 import { ApiService } from '@platform/http/api.service';
+import { handled } from '@platform/http/handled-errors';
 import { CrmLookupService } from './crm-lookup.service';
 import type { CreateSpaceRequest, CrmSpace, CrmSpaceType, UpdateSpaceRequest } from '../model';
 
 /**
  * Project-scoped space registry — `/api/crm/projects/{projectId}/spaces` and
  * `/api/crm/spaces/{spaceId}`. Reads `crm.spaces.read`, writes `crm.spaces.manage`.
- * 009b #N-6: only list, create, update and setActive have routes (`EP/CrmSpaceEndpoints.cs:25-71`);
- * reorder, delete and the provisioning reads are gone.
+ * crmp C-5: reorder (`PUT …/spaces/order`) and delete (`DELETE /spaces/{id}`) are back
+ * (`CrmSpaceEndpoints.cs:41,80`); the provisioning reads are still gone (009b #N-6).
  */
 @Injectable({ providedIn: 'root' })
 export class CrmSpaceService extends ApiService {
@@ -66,6 +67,28 @@ export class CrmSpaceService extends ApiService {
   /** `PUT /api/crm/spaces/{spaceId}/active` → `204` — `crm.spaces.manage`. */
   setActive(spaceId: string, isActive: boolean): Observable<void> {
     return this.put<void>(`/crm/spaces/${spaceId}/active`, { isActive });
+  }
+
+  /**
+   * `PUT /api/crm/projects/{projectId}/spaces/order` `{ spaceIds }` → `204` — `crm.spaces.manage`
+   * (`CrmSpaceEndpoints.cs:41`, `SpaceOrderRequest`). The FULL order: every space of the project,
+   * inactive ones included, exactly once — else 409 `crm.spaces.InvalidOrder` (handled: the
+   * caller reloads).
+   */
+  reorder(projectId: string, spaceIds: readonly string[]): Observable<void> {
+    return this.put<void>(
+      `/crm/projects/${projectId}/spaces/order`,
+      { spaceIds },
+      { context: handled(409) },
+    );
+  }
+
+  /**
+   * `DELETE /api/crm/spaces/{spaceId}` → `204` — `crm.spaces.manage` (`CrmSpaceEndpoints.cs:80`).
+   * 409 `crm.spaces.InUse` when anything references it: the caller offers deactivate instead.
+   */
+  remove(spaceId: string): Observable<void> {
+    return this.delete<void>(`/crm/spaces/${spaceId}`, undefined, { context: handled(404, 409) });
   }
 
   private normalizeSpace(source: unknown, types: readonly CrmSpaceType[]): CrmSpace {

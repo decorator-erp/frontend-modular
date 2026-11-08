@@ -8,6 +8,9 @@ import { ProjectTaskService } from '../../data/project-task.service';
 import { ProjectStageService } from '../../data/project-stage.service';
 import { ErrorHandlerService, friendly } from '@platform/http/error-handler.service';
 import { ToastService } from '@platform/feedback/toast.service';
+import { HttpErrorResponse } from '@angular/common/http';
+import { CatalogService } from '@platform/i18n/catalog.service';
+import { GateNotRecreatableError, GateRemovedError } from '../../data/project.service';
 import { ApprovalType, ConditionType, GateTrigger } from '../../model/project.model';
 import { ParsedApiError } from '@platform/types';
 import { ServerErrorsDirective, firstErrorMessage } from '@shared/forms';
@@ -37,6 +40,7 @@ export interface GateConditionFormDialogData {
     approvalType: ApprovalType | null;
     referencedTaskId: string | null;
     referencedStageId: string | null;
+    referencedDocumentId?: string | null;
   };
 }
 
@@ -177,6 +181,7 @@ export class GateConditionFormDialogComponent {
   private readonly stagesApi = inject(ProjectStageService);
   private readonly errorHandler = inject(ErrorHandlerService);
   private readonly toast = inject(ToastService);
+  private readonly catalog = inject(CatalogService);
   private readonly modalRef = inject(PeraModalRef) as PeraModalRef<boolean>;
   readonly data = inject(PERA_MODAL_DATA) as GateConditionFormDialogData;
 
@@ -285,34 +290,58 @@ export class GateConditionFormDialogComponent {
     this.serverError.set(null);
     const v = this.form.getRawValue();
 
-    let call;
-    if (this.isEdit) {
-      const svc = this.data.ownerKind === 'task' ? this.taskGates : this.stageGates;
-      call = svc.update(this.data.gateId!, { label: v.label.trim(), trigger: v.trigger });
-    } else {
-      const req = {
-        ownerId: this.data.ownerId,
-        conditionType: v.conditionType,
-        trigger: v.trigger,
-        label: v.label.trim(),
-        referencedTaskId: v.conditionType === 'Task' ? v.referencedTaskId : null,
-        referencedStageId: v.conditionType === 'Stage' ? v.referencedStageId : null,
-        approvalType: v.conditionType === 'Approval' ? v.approvalType : null,
-      };
-      // Stage gates bind projectStageId alongside ownerId (live API quirk).
-      call =
-        this.data.ownerKind === 'task'
-          ? this.taskGates.create(req)
-          : this.stageGates.create({ ...req, projectStageId: this.data.ownerId } as typeof req);
-    }
+    // crmp A-2: no update route — an edit deletes the gate and re-creates it with the same type and
+    // references (gap table REMOVED P-73/100).
+    const kind = this.isEdit ? this.data.initial : undefined;
+    const conditionType = kind?.conditionType ?? v.conditionType;
+    const req = {
+      conditionType,
+      trigger: v.trigger,
+      label: v.label.trim(),
+      referencedTaskId:
+        conditionType === 'Task' ? (kind?.referencedTaskId ?? v.referencedTaskId) : null,
+      referencedStageId:
+        conditionType === 'Stage' ? (kind?.referencedStageId ?? v.referencedStageId) : null,
+      referencedDocumentId: kind?.referencedDocumentId ?? null,
+      approvalType: conditionType === 'Approval' ? (kind?.approvalType ?? v.approvalType) : null,
+    };
+    const svc = this.data.ownerKind === 'task' ? this.taskGates : this.stageGates;
+    const call =
+      this.isEdit && this.data.gateId
+        ? svc.recreate(this.data.projectId, this.data.ownerId, this.data.gateId, req)
+        : svc.create(this.data.projectId, this.data.ownerId, req);
 
     call.subscribe({
       next: () => {
         this.toast.show({ tone: 'success', message: this.isEdit ? 'Gate saved' : 'Gate created' });
         this.modalRef.close(true);
       },
-      error: (err) => {
-        const parsed = this.errorHandler.parse(err);
+      error: (err: unknown) => {
+        if (err instanceof GateNotRecreatableError) {
+          this.serverError.set({
+            status: 400,
+            generalMessage: this.catalog.t('gates.notRecreatable'),
+            fieldErrors: {},
+            code: null,
+            raw: null,
+          });
+          this.submitting.set(false);
+          return;
+        }
+        if (err instanceof GateRemovedError) {
+          // R1-F4: the delete went through and the re-create did not — the old gate is gone.
+          const reason =
+            err.cause instanceof HttpErrorResponse
+              ? friendly(this.errorHandler.parse(err.cause))
+              : '';
+          this.toast.show({
+            tone: 'danger',
+            message: this.catalog.t('gates.removedNotRecreated', { reason }),
+          });
+          this.modalRef.close(true);
+          return;
+        }
+        const parsed = this.errorHandler.parse(err as HttpErrorResponse);
         this.serverError.set({ ...parsed, generalMessage: friendly(parsed) });
         this.submitting.set(false);
       },

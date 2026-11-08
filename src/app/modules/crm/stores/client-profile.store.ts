@@ -1,4 +1,5 @@
 import { computed, inject } from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
 import { patchState, signalStore, withComputed, withMethods, withState } from '@ngrx/signals';
 import { CrmClientPortalService } from '../data/crm-portal.service';
 import type { CatalogKey } from '@platform/i18n/catalog/en';
@@ -19,6 +20,13 @@ interface ClientProfileState {
   error: CatalogKey | null;
 }
 
+function profileErrorKey(err: unknown): CatalogKey {
+  const status = err instanceof HttpErrorResponse ? err.status : 0;
+  if (status === 404) return 'client.profileNoClient';
+  if (status === 403) return 'client.profileNotClient';
+  return 'client.profileUnavailable';
+}
+
 const INITIAL: ClientProfileState = {
   client: null,
   contacts: [],
@@ -31,10 +39,10 @@ const INITIAL: ClientProfileState = {
 /**
  * The signed-in client's own profile — feature-scoped, provided once by the client
  * shell so every nav destination (profile, scheduler, add-requirement) shares one
- * load. Backed by `CrmClientPortalService.getMyProfile()`, which targets **Dependency
- * 13** (not yet shipped — see that service's docblock and CLAUDE.md). Until the route
- * ships, `load()` fails and `error()` carries a friendly message rather than a raw
- * `404`/`403` — every consumer renders that alert instead of a broken form.
+ * load. Backed by `CrmClientPortalService.getMyProfile()` (`GET /api/crm/portal/profile`).
+ * crmp C-2: a failed `load()` sets `error()` to a catalog key — 404 (no linked client
+ * row) → `client.profileNoClient`, 403 (not a client login) → `client.profileNotClient`,
+ * anything else → `client.profileUnavailable` (retryable) — never a raw status.
  * **`rxMethod` is used nowhere in this repo and is not introduced here.**
  */
 export const ClientProfileStore = signalStore(
@@ -59,11 +67,11 @@ export const ClientProfileStore = signalStore(
             loading: false,
             loaded: true,
           }),
-        error: () =>
+        error: (err: unknown) =>
           patchState(store, {
             loading: false,
             loaded: true,
-            error: 'client.profileUnavailable',
+            error: profileErrorKey(err),
           }),
       });
     },

@@ -1,3 +1,5 @@
+import { ProjectAccessStore } from '../../stores/project-access.store';
+import { ProjectAction, ProjectLevel, canProjectAction } from '../../model/project-actions';
 import { NO_ERRORS_SCHEMA } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router, convertToParamMap } from '@angular/router';
@@ -7,7 +9,6 @@ import { ProjectStageService } from '../../data/project-stage.service';
 import { StageGateConditionService } from '../../data/stage-gate-condition.service';
 import { ProjectService } from '../../data/project.service';
 import { StageTeamsService } from '../../data/stage-teams.service';
-import { StageLifecycleService } from '../../data/stage-lifecycle.service';
 import { EmployeeService } from '@modules/people';
 import { BreadcrumbService } from '@platform/navigation/breadcrumb.service';
 import { ErrorHandlerService } from '@platform/http/error-handler.service';
@@ -44,6 +45,8 @@ describe('DmsStageDetailComponent', () => {
   let byProjectCalls: number;
   let granted: Set<string>;
   let theStage: ProjectStage;
+  let updates: unknown[];
+  let level: ProjectLevel;
 
   function providers() {
     return [
@@ -58,17 +61,31 @@ describe('DmsStageDetailComponent', () => {
             byProjectCalls++;
             return of([theStage]);
           },
-          activate: () => of(undefined),
           complete: () => of(undefined),
+          reject: () => of(undefined),
+          update: (_p: string, _s: string, req: unknown) => {
+            updates.push(req);
+            return of(undefined);
+          },
           remove: () => of(undefined),
         },
       },
       { provide: StageGateConditionService, useValue: { getByStage: () => of([]) } },
       { provide: ProjectService, useValue: { getById: () => of(null) } },
       { provide: StageTeamsService, useValue: { getByProjectStage: () => of([]) } },
+      // crmp P-2: the real gate (claim AND level AND open project) over this spec's grants.
       {
-        provide: StageLifecycleService,
-        useValue: { approve: () => of(undefined), reject: () => of(undefined) },
+        provide: ProjectAccessStore,
+        useValue: {
+          ensure: () => undefined,
+          project: () => () => null,
+          can: (_id: string, action: ProjectAction) =>
+            canProjectAction(
+              { myLevel: level, status: 'InProgress', isActive: true },
+              action,
+              (p) => granted.has(p),
+            ),
+        },
       },
       { provide: EmployeeService, useValue: { listPaged: () => of(null) } },
       { provide: BreadcrumbService, useValue: { set: () => undefined, clear: () => undefined } },
@@ -99,6 +116,8 @@ describe('DmsStageDetailComponent', () => {
   beforeEach(() => {
     detailsCalls = 0;
     byProjectCalls = 0;
+    updates = [];
+    level = 'Manager';
     granted = new Set();
     theStage = stage('Active');
   });
@@ -117,6 +136,46 @@ describe('DmsStageDetailComponent', () => {
     expect(c.submitBlocked()).toBe(false);
     c.stage.set(stage('Locked', ['Rejected']));
     expect(c.submitBlocked()).toBe(false);
+  });
+
+  // crmp review R1-F1: the stage PUT is a full replace (dms ManualStageHandlers.cs:183-184).
+  it('saving the description resends both planned dates so they are not cleared', () => {
+    granted = new Set([PERM.stages.manage]);
+    const c = makeLogic();
+    c.stage.set({
+      ...stage('Active'),
+      description: 'old',
+      notes: 'n',
+      estimatedStartDate: '2026-12-01T00:00:00Z',
+      estimatedEndDate: '2027-01-01T00:00:00Z',
+    } as ProjectStage);
+    c.descriptionDraft = 'new';
+    c.saveDescription();
+    expect(updates[0]).toEqual({
+      name: 'Design Phase',
+      order: 3,
+      description: 'new',
+      notes: 'n',
+      estimatedStartDate: '2026-12-01T00:00:00Z',
+      estimatedEndDate: '2027-01-01T00:00:00Z',
+    });
+  });
+
+  it('editing one planned date keeps the other', () => {
+    granted = new Set([PERM.stages.manage]);
+    const c = makeLogic();
+    c.stage.set({
+      ...stage('Active'),
+      description: null,
+      notes: null,
+      estimatedStartDate: '2026-12-01T00:00:00Z',
+      estimatedEndDate: '2027-01-01T00:00:00Z',
+    } as ProjectStage);
+    c.onSaveStartDate('2026-12-05');
+    expect(updates[0]).toMatchObject({
+      estimatedStartDate: '2026-12-05',
+      estimatedEndDate: '2027-01-01T00:00:00Z',
+    });
   });
 
   it('reload refetches the stage details and the project stage list', () => {
@@ -172,13 +231,40 @@ describe('DmsStageDetailComponent', () => {
   });
 
   it('shows lifecycle actions for ManageStages and enables in-place editing', () => {
-    granted = new Set([PERM.projects.read, PERM.stages.manage]);
+    // crmp P-2: complete and send back carry their own claims (StageEndpoints.cs:70,78).
+    granted = new Set([
+      PERM.projects.read,
+      PERM.stages.manage,
+      PERM.stages.complete,
+      PERM.stages.reject,
+    ]);
     theStage = stage('Active', ['Completed']);
     const fixture = render();
     const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
     expect(text).toContain('Submit for approval');
-    expect(text).toContain('Approve stage');
+    expect(text).toContain('Send back');
+    // crmp A-2: no approve route (gap table REMOVED P-76) — approval runs through Approval gates.
+    expect(text).not.toContain('Approve stage');
     expect((fixture.nativeElement as HTMLElement).querySelector('[data-rail-link]')).toBeTruthy();
     expect(fixture.componentInstance.canEditStage()).toBe(true);
   });
+
+  it.each(['Viewer', 'Editor'] as const)(
+    'crmp P-2: a %s with every stage claim sees no stage write and cannot edit in place',
+    (lvl) => {
+      level = lvl;
+      granted = new Set([
+        PERM.projects.read,
+        PERM.stages.manage,
+        PERM.stages.complete,
+        PERM.stages.reject,
+      ]);
+      theStage = stage('Active', ['Completed']);
+      const fixture = render();
+      const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
+      expect(text).not.toContain('Submit for approval');
+      expect(text).not.toContain('Send back');
+      expect(fixture.componentInstance.canEditStage()).toBe(false);
+    },
+  );
 });

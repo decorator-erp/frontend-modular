@@ -1,6 +1,15 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
+import { ToastService } from '@platform/feedback/toast.service';
+import { CatalogService } from '@platform/i18n/catalog.service';
+import {
+  GateNotRecreatableError,
+  GateRemovedError,
+  isRecreatable,
+} from '../../data/project.service';
+import { ProjectAccessStore } from '../../stores/project-access.store';
+import type { ProjectAction } from '../../model/project-actions';
 import { catchError, of } from 'rxjs';
 import { TaskGateConditionService } from '../../data/task-gate-condition.service';
 import { StageGateConditionService } from '../../data/stage-gate-condition.service';
@@ -77,6 +86,7 @@ const GATE_KIND: Record<ConditionType, string> = {
   CrmPeriodClosed: 'Requirement period',
   CrmBriefApproved: 'Brief approved',
   CrmItemsResolved: 'Requirements resolved',
+  DocumentApproved: 'Document approved',
 };
 
 const APPROVAL_LABEL: Record<ApprovalType, string> = {
@@ -282,12 +292,13 @@ const APPROVAL_LABEL: Record<ApprovalType, string> = {
 
       <div peraModalFooter class="flex items-center justify-between w-full gap-2">
         @if (mode() === 'view') {
-          @if (canManage()) {
+          @if (canDelete()) {
             <button
               type="button"
               class="fs-label text-danger hover:underline cursor-pointer disabled:opacity-50"
               [disabled]="busy()"
               (click)="remove()"
+              data-delete-gate
             >
               Delete gate
             </button>
@@ -295,12 +306,18 @@ const APPROVAL_LABEL: Record<ApprovalType, string> = {
             <span></span>
           }
           <div class="flex gap-2">
-            @if (canManage()) {
-              <pera-button variant="secondary" [disabled]="busy()" (click)="requestEditForm()"
-                >Edit</pera-button
-              >
-              @if (!isSatisfied()) {
-                <pera-button variant="primary" [loading]="busy()" (click)="markResolved()"
+            @if (canEdit() || canSatisfy()) {
+              @if (canEdit()) {
+                <pera-button variant="secondary" [disabled]="busy()" (click)="requestEditForm()"
+                  >Edit</pera-button
+                >
+              }
+              @if (canSatisfy()) {
+                <pera-button
+                  variant="primary"
+                  [loading]="busy()"
+                  (click)="markResolved()"
+                  data-satisfy
                   >Mark resolved</pera-button
                 >
               }
@@ -343,6 +360,41 @@ export class GateConditionModalComponent {
 
   /** Whichever gate the modal currently reflects (re-read after a save). */
   readonly canManage = computed(() => this.perms.can(this.data.managePermission));
+  private readonly access = inject(ProjectAccessStore);
+  private gateCan(op: 'create' | 'delete' | 'satisfy'): boolean {
+    const action =
+      `${this.data.ownerKind === 'task' ? 'taskGate' : 'stageGate'}.${op}` as ProjectAction;
+    return this.access.can(this.data.projectId, action);
+  }
+
+  /**
+   * crmp P-8: only a pending manual-check gate can be satisfied by hand
+   * (`gate_conditions.NotManuallySatisfiable`, contract §5.6); a satisfied gate, or an Approval gate
+   * still waiting for its decision, cannot be deleted (`gate_conditions.NotDeletable`). Each also
+   * needs its gates claim AND the Manager level (contract §2.17.2).
+   */
+  readonly canSatisfy = computed(() => {
+    const g = this.data.gate;
+    return (
+      !!g && g.conditionType === 'ManualCheck' && g.status === 'Pending' && this.gateCan('satisfy')
+    );
+  });
+  readonly deletable = computed(() => {
+    const g = this.data.gate;
+    if (!g) return false;
+    return g.status !== 'Satisfied' && !(g.conditionType === 'Approval' && g.status === 'Pending');
+  });
+  readonly canDelete = computed(() => this.deletable() && this.gateCan('delete'));
+  /** An edit deletes and re-creates (no update route), so it needs both, and a re-creatable gate. */
+  readonly canEdit = computed(() => {
+    const g = this.data.gate;
+    return (
+      !!g &&
+      this.canDelete() &&
+      this.gateCan('create') &&
+      isRecreatable({ ...g, approvalType: g.approvalType })
+    );
+  });
 
   // ---- view-mode derivations ----
   readonly isSatisfied = computed(() => this.data.gate?.isSatisfied ?? false);
@@ -470,6 +522,9 @@ export class GateConditionModalComponent {
     else this.close(false);
   }
 
+  private readonly toast = inject(ToastService);
+  private readonly catalog = inject(CatalogService);
+
   close(changed: boolean): void {
     this.modalRef.close(changed);
   }
@@ -505,7 +560,6 @@ export class GateConditionModalComponent {
   private createGate(): void {
     const conditionType = UI_TYPE_TO_CONDITION[this.uiType()];
     const req = {
-      ownerId: this.data.ownerId,
       conditionType,
       trigger: 'Complete' as const,
       label: this.label().trim(),
@@ -513,15 +567,13 @@ export class GateConditionModalComponent {
       referencedStageId: conditionType === 'Stage' ? this.referencedStageId() : null,
       approvalType: conditionType === 'Approval' ? this.approvalType() : null,
     };
-    // Live quirk: stage gates bind `projectStageId` alongside `ownerId`.
-    const call =
-      this.data.ownerKind === 'task'
-        ? this.taskGates.create(req)
-        : this.stageGates.create({ ...req, projectStageId: this.data.ownerId } as typeof req);
+    const svc = this.data.ownerKind === 'task' ? this.taskGates : this.stageGates;
+    const call = svc.create(this.data.projectId, this.data.ownerId, req);
     call.subscribe({
       next: (newId) => {
         // If the author pre-marked it satisfied, chain a satisfy on the new gate.
-        if (this.status() === 'sat' && newId) {
+        // P-8: only a manual check can be satisfied by hand (NotManuallySatisfiable otherwise).
+        if (this.status() === 'sat' && newId && conditionType === 'ManualCheck') {
           this.gateApi('satisfy', newId, { note: this.note().trim() || null }).subscribe({
             next: () => this.close(true),
             error: (err: HttpErrorResponse) => this.fail(err),
@@ -538,32 +590,75 @@ export class GateConditionModalComponent {
     const g = this.data.gate;
     if (!g) return;
     const wantsSatisfy = this.status() === 'sat' && !g.isSatisfied;
-    this.gateApi('update', g.id, { label: this.label().trim(), trigger: g.trigger }).subscribe({
-      next: () => {
-        if (wantsSatisfy) {
-          this.gateApi('satisfy', g.id, { note: this.note().trim() || null }).subscribe({
-            next: () => this.close(true),
-            error: (err: HttpErrorResponse) => this.fail(err),
-          });
-        } else {
-          this.close(true);
-        }
-      },
-      error: (err: HttpErrorResponse) => this.fail(err),
-    });
+    const satisfy = (id: string) =>
+      this.gateApi('satisfy', id, { note: this.note().trim() || null });
+    // crmp A-2: no update route. Only a changed label needs the delete + re-create; a bare satisfy
+    // keeps the gate (gap table REMOVED P-73/100).
+    if (this.label().trim() === g.label) {
+      if (!wantsSatisfy) {
+        this.close(true);
+        return;
+      }
+      satisfy(g.id).subscribe({
+        next: () => this.close(true),
+        error: (err: HttpErrorResponse) => this.fail(err),
+      });
+      return;
+    }
+    const svc = this.data.ownerKind === 'task' ? this.taskGates : this.stageGates;
+    svc
+      .recreate(this.data.projectId, this.data.ownerId, g.id, {
+        conditionType: g.conditionType,
+        trigger: g.trigger,
+        label: this.label().trim(),
+        referencedTaskId: g.referencedTaskId,
+        referencedStageId: g.referencedStageId,
+        referencedDocumentId: g.referencedDocumentId,
+        approvalType: g.approvalType,
+      })
+      .subscribe({
+        next: (newId) => {
+          if (wantsSatisfy && newId) {
+            satisfy(newId).subscribe({
+              next: () => this.close(true),
+              error: (err: HttpErrorResponse) => this.fail(err),
+            });
+          } else {
+            this.close(true);
+          }
+        },
+        error: (err: HttpErrorResponse) => this.fail(err),
+      });
   }
 
   /** Dispatch a gate call to the task or stage service by owner kind. */
-  private gateApi(op: 'satisfy' | 'remove' | 'update', id: string, body?: unknown) {
+  private gateApi(op: 'satisfy' | 'remove', id: string, body?: unknown) {
     const svc = this.data.ownerKind === 'task' ? this.taskGates : this.stageGates;
-    if (op === 'satisfy') return svc.satisfy(id, (body as { note?: string | null }) ?? {});
-    if (op === 'remove') return svc.remove(id);
-    return svc.update(id, body as { label: string; trigger: 'Unlock' | 'Complete' });
+    if (op === 'satisfy')
+      return svc.satisfy(this.data.projectId, id, (body as { note?: string | null }) ?? {});
+    return svc.remove(this.data.projectId, id);
   }
 
-  private fail(err: HttpErrorResponse): void {
+  private fail(err: unknown): void {
     this.busy.set(false);
-    this.errorMessage.set(friendly(this.errors.parse(err)));
+    if (err instanceof GateNotRecreatableError) {
+      this.errorMessage.set(this.catalog.t('gates.notRecreatable'));
+      return;
+    }
+    if (err instanceof GateRemovedError) {
+      // R1-F4: the delete went through and the re-create did not — the old gate is gone.
+      const reason =
+        err.cause instanceof HttpErrorResponse ? friendly(this.errors.parse(err.cause)) : '';
+      this.toast.show({
+        tone: 'danger',
+        message: this.catalog.t('gates.removedNotRecreated', { reason }),
+      });
+      this.close(true);
+      return;
+    }
+    this.errorMessage.set(
+      err instanceof HttpErrorResponse ? friendly(this.errors.parse(err)) : String(err),
+    );
   }
 
   private formatDate(iso: string): string {

@@ -19,6 +19,10 @@ import { LocaleService } from '@platform/i18n';
 import { ToastService } from '@platform/feedback/toast.service';
 import { ModalService, PeraEntityHeaderCardComponent } from '@ds';
 import { EmployeeService } from '@modules/people';
+import { ScopeOfWorkService } from '../../data/scope-of-work.service';
+import { ScopeOfWorkStatus } from '../../model/scope-of-work.model';
+
+let scopeStatus: ScopeOfWorkStatus = ScopeOfWorkStatus.Confirmed;
 import { ProjectDocumentsService } from '../../data/documents.service';
 import { PermissionsService } from '@platform/permissions';
 import { PERM } from '@platform/permissions';
@@ -94,6 +98,7 @@ function details(): ProjectDetails {
     ],
   };
   return {
+    myLevel: 'Manager',
     project: {
       id: 'p1',
       trackKey: 'p1',
@@ -116,6 +121,7 @@ function details(): ProjectDetails {
       actualEndDate: null,
       stageCount: 1,
       isActive: true,
+      myLevel: 'Manager',
     },
     stages: [stage],
     unstagedTasks: [],
@@ -160,8 +166,13 @@ describe('ProjectDetailComponent', () => {
       },
       {
         provide: EmployeeService,
-        useValue: { listPaged: () => of({ items: [{ id: 'po1', fullName: 'Sara Mohamed' }] }) },
+        useValue: {
+          listPaged: () => of({ items: [{ id: 'po1', fullName: 'Sara Mohamed' }] }),
+          getMe: () => of({ id: 'po1' }),
+        },
       },
+      // crmp P-2: the page reads the scope of work to decide whether stages can be added by hand.
+      { provide: ScopeOfWorkService, useValue: { getScope: () => of({ status: scopeStatus }) } },
       {
         provide: StageTeamsService,
         useValue: {
@@ -236,6 +247,16 @@ describe('ProjectDetailComponent', () => {
     PERM.documents.upload,
     PERM.activities.read,
   ];
+
+  it('sites (NEW-FEATURE-1): the "Site surveys" link renders with sites.read only', () => {
+    granted = new Set(ALL);
+    let el = render().nativeElement as HTMLElement;
+    expect(el.querySelector('[data-sites-link]')).toBeNull();
+    TestBed.resetTestingModule();
+    granted = new Set([...ALL, 'sites.read']);
+    el = render().nativeElement as HTMLElement;
+    expect(el.querySelector('[data-sites-link]')?.textContent).toContain('Site surveys');
+  });
 
   // 003 Batch 1: the header is now a `pera-entity-header-card`. The `.ph-title` /
   // `.ph-meta` / `.kpis` / `.dms-st--*` vocabulary these two tests located by was
@@ -625,6 +646,76 @@ describe('ProjectDetailComponent', () => {
       expect(fixture.componentInstance.loadError()).toBeNull();
       expect(el.querySelector('[data-load-state="error"]')).toBeNull();
       expect(el.querySelector('pera-entity-header-card')?.textContent).toContain('Marina Tower');
+    });
+  });
+
+  // crmp P-2 (D2): "New stage" needs stages.manage AND myLevel Manager AND a confirmed scope.
+  describe('crmp P-2 — manual stages after scope confirm', () => {
+    afterEach(() => (scopeStatus = ScopeOfWorkStatus.Confirmed));
+
+    it('a Manager with stages.manage on a confirmed Stage project sees New stage', () => {
+      granted = new Set([...ALL, PERM.stages.manage]);
+      const el = render().nativeElement as HTMLElement;
+      expect(el.querySelector('[data-new-stage]')).toBeTruthy();
+      expect(el.querySelector('[data-scope-not-confirmed]')).toBeNull();
+    });
+
+    it.each(['Viewer', 'Editor'] as const)('%s never sees New stage', (level) => {
+      granted = new Set([...ALL, PERM.stages.manage]);
+      data = { ...data, myLevel: level, project: { ...data.project, myLevel: level } };
+      const el = render().nativeElement as HTMLElement;
+      expect(el.querySelector('[data-new-stage]')).toBeNull();
+      expect(el.querySelector('[data-scope-not-confirmed]')).toBeNull();
+    });
+
+    it('before the scope is confirmed: no New stage, the backend reason and the scope link instead', () => {
+      scopeStatus = ScopeOfWorkStatus.Draft;
+      data = { ...data, stages: [] };
+      granted = new Set([...ALL, PERM.stages.manage]);
+      const el = render().nativeElement as HTMLElement;
+      expect(el.querySelector('[data-new-stage]')).toBeNull();
+      expect(el.querySelector('[data-scope-not-confirmed]')?.textContent).toContain(
+        'scope of work is confirmed',
+      );
+    });
+
+    it('B3 (CP-4): a project that already has stages (built from a template) takes New stage without a confirmed scope (ManualStageHandlers.cs:63-71)', () => {
+      scopeStatus = ScopeOfWorkStatus.Draft;
+      granted = new Set([...ALL, PERM.stages.manage]);
+      const el = render().nativeElement as HTMLElement;
+      expect(el.querySelector('[data-new-stage]')).toBeTruthy();
+      expect(el.querySelector('[data-scope-not-confirmed]')).toBeNull();
+    });
+  });
+
+  // crmp P-9: project lifecycle — claim AND Manager level; closed projects show the read-only banner.
+  describe('crmp P-9 — project lifecycle', () => {
+    const LIFECYCLE = [PERM.projects.changeStatus, PERM.projects.setActive, PERM.projects.delete];
+
+    it('a Manager with the claims sees change status, deactivate and delete', () => {
+      granted = new Set([...ALL, ...LIFECYCLE]);
+      const el = render().nativeElement as HTMLElement;
+      expect(el.querySelector('[data-change-status]')).toBeTruthy();
+      expect(el.querySelector('[data-toggle-active]')?.textContent).toContain('Deactivate');
+      expect(el.querySelector('[data-delete-project]')).toBeTruthy();
+    });
+
+    it.each(['Viewer', 'Editor'] as const)('%s sees no lifecycle action', (level) => {
+      granted = new Set([...ALL, ...LIFECYCLE]);
+      data = { ...data, myLevel: level, project: { ...data.project, myLevel: level } };
+      const el = render().nativeElement as HTMLElement;
+      expect(
+        el.querySelector('[data-change-status], [data-toggle-active], [data-delete-project]'),
+      ).toBeNull();
+    });
+
+    it('a Completed project shows the read-only banner and hides New stage', () => {
+      granted = new Set([...ALL, ...LIFECYCLE, PERM.stages.manage]);
+      data = { ...data, project: { ...data.project, status: 'Completed' } };
+      const el = render().nativeElement as HTMLElement;
+      expect(el.querySelector('app-project-closed-banner')).toBeTruthy(); // inert here; its own spec renders it
+      expect(el.querySelector('[data-new-stage]')).toBeNull();
+      expect(el.querySelector('[data-change-status]')).toBeTruthy();
     });
   });
 });

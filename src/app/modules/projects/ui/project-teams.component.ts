@@ -12,6 +12,8 @@ import { FormsModule } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { catchError, forkJoin, of } from 'rxjs';
+import { ProjectAccessStore } from '../stores/project-access.store';
+import type { ProjectAction } from '../model/project-actions';
 import { StageTeam, StageTeamsService } from '../data/stage-teams.service';
 import { EmployeeService } from '@modules/people';
 import { ProjectStageService } from '../data/project-stage.service';
@@ -19,10 +21,11 @@ import { DepartmentService } from '@modules/people';
 import { ErrorHandlerService, friendly } from '@platform/http/error-handler.service';
 import { ToastService } from '@platform/feedback/toast.service';
 import { PERM } from '@platform/permissions';
-import { CanDirective } from '@platform/permissions';
+import { CatalogService } from '@platform/i18n/catalog.service';
 import {
   ConfirmService,
   ModalService,
+  PeraAlertComponent,
   PERA_MODAL_DATA,
   PeraAvatarComponent,
   PeraButtonComponent,
@@ -195,7 +198,7 @@ export class NewTeamModalComponent {
     if (!stageId || !departmentId || this.submitting()) return;
     this.submitting.set(true);
     this.errorMessage.set('');
-    this.teamsApi.create(stageId, departmentId).subscribe({
+    this.teamsApi.create(this.data.projectId, stageId, departmentId).subscribe({
       next: () => this.ref.close(true),
       error: (err: HttpErrorResponse) => {
         this.submitting.set(false);
@@ -217,27 +220,41 @@ const NEW_TEAM_TAB = '__new__';
   selector: 'app-project-teams',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    CanDirective,
     PeraAvatarComponent,
     PeraEmptyComponent,
     PeraSkeletonComponent,
     PeraTabsComponent,
     PeraButtonComponent,
+    PeraAlertComponent,
   ],
   template: `
     @if (loading()) {
       <pera-skeleton [height]="240" rounded="md" />
+    } @else if (loadError() === 'notFound') {
+      <pera-empty
+        data-not-found
+        [title]="catalog.t('pm.notFound')"
+        [description]="catalog.t('pm.notFoundBody')"
+        iconName="search"
+      />
+    } @else if (loadError() === 'error') {
+      <pera-alert tone="danger" data-load-error>
+        {{ catalog.t('pteam.loadFailed') }}
+        <pera-button variant="ghost" size="sm" (click)="reload()">{{
+          catalog.t('pm.retry')
+        }}</pera-button>
+      </pera-alert>
     } @else if (teams().length === 0) {
       <pera-empty
         title="No stage teams yet"
         description="Create a team to assign a department to a stage."
       />
       <div class="mt-3 text-center">
-        <ng-container *peraCan="manageStageTeams">
+        @if (teamCan('team.create')) {
           <pera-button variant="primary" iconStart="plus" (click)="openNewTeam()"
             >New team</pera-button
           >
-        </ng-container>
+        }
       </div>
     } @else {
       <pera-tabs
@@ -256,7 +273,7 @@ const NEW_TEAM_TAB = '__new__';
                 Team head · {{ team.departmentName }}
               </div>
             </div>
-            <ng-container *peraCan="manageStageTeams">
+            @if (teamCan('team.head')) {
               <button
                 type="button"
                 (click)="changeHead(team)"
@@ -264,7 +281,7 @@ const NEW_TEAM_TAB = '__new__';
               >
                 Change head
               </button>
-            </ng-container>
+            }
           </div>
           <!-- Members -->
           <div class="border border-border bg-surface">
@@ -273,7 +290,7 @@ const NEW_TEAM_TAB = '__new__';
                 <h3 class="m-0 fs-body font-semibold">Members</h3>
                 <span class="font-mono fs-label text-text-muted">{{ team.memberCount }}</span>
               </div>
-              <ng-container *peraCan="manageStageTeams">
+              @if (teamCan('team.addMember')) {
                 <button
                   type="button"
                   (click)="addMember(team)"
@@ -291,7 +308,7 @@ const NEW_TEAM_TAB = '__new__';
                   </svg>
                   Add member
                 </button>
-              </ng-container>
+              }
             </div>
             @for (member of team.members; track member.id) {
               <div
@@ -309,7 +326,7 @@ const NEW_TEAM_TAB = '__new__';
                     }
                   </div>
                 </div>
-                <ng-container *peraCan="manageStageTeams">
+                @if (teamCan('team.removeMember') || teamCan('team.role')) {
                   <button
                     type="button"
                     class="border border-border bg-bg px-2 py-1 font-mono fs-label uppercase text-text-secondary cursor-pointer hover:bg-surface-muted transition-colors"
@@ -326,7 +343,7 @@ const NEW_TEAM_TAB = '__new__';
                       Remove
                     </button>
                   }
-                </ng-container>
+                }
               </div>
             } @empty {
               <p class="m-0 px-4 py-3 fs-caption text-text-muted">
@@ -341,6 +358,15 @@ const NEW_TEAM_TAB = '__new__';
 })
 export class ProjectTeamsComponent {
   readonly projectId = input.required<string>();
+  private readonly access = inject(ProjectAccessStore);
+
+  /**
+   * crmp P-7: team writes need `stage_teams.manage` AND the Manager level AND an open project
+   * (contract §2.17.2, #138-140); the `teams.*` refusals arrive as catalog messages.
+   */
+  teamCan(action: ProjectAction): boolean {
+    return this.access.can(this.projectId(), action);
+  }
 
   private readonly api = inject(StageTeamsService);
   private readonly errors = inject(ErrorHandlerService);
@@ -355,6 +381,9 @@ export class ProjectTeamsComponent {
   readonly manageStageTeams = PERM.stageTeams.manage;
 
   readonly loading = signal(true);
+  /** Review B6 (CP-7): the list read's failure — 404 (unknown/out-of-scope project) or anything else. */
+  readonly loadError = signal<'error' | 'notFound' | null>(null);
+  protected readonly catalog = inject(CatalogService);
   readonly teams = signal<StageTeam[]>([]);
   readonly activeTeamId = signal<string>('');
 
@@ -364,21 +393,32 @@ export class ProjectTeamsComponent {
 
   readonly tabDefs = computed<TabDef[]>(() => [
     ...this.teams().map((t) => ({ id: t.id, label: `${t.departmentName} (${t.memberCount})` })),
-    { id: NEW_TEAM_TAB, label: '+ New team', capability: this.manageStageTeams },
+    ...(this.teamCan('team.create')
+      ? [{ id: NEW_TEAM_TAB, label: '+ New team', capability: this.manageStageTeams }]
+      : []),
   ]);
 
   constructor() {
     effect(() => {
       const id = this.projectId();
       if (!id) return;
+      this.access.ensure(id);
       this.load(id);
     });
   }
 
   private load(id: string): void {
     this.loading.set(true);
+    this.loadError.set(null);
     forkJoin({
-      teams: this.api.getByProject(id).pipe(catchError(() => of([] as StageTeam[]))),
+      teams: this.api.getByProject(id).pipe(
+        catchError((err: unknown) => {
+          this.loadError.set(
+            err instanceof HttpErrorResponse && err.status === 404 ? 'notFound' : 'error',
+          );
+          return of([] as StageTeam[]);
+        }),
+      ),
       employees: this.directory
         .listPaged({ page: 1, pageSize: 500 })
         .pipe(catchError(() => of({ items: [] }))),
@@ -443,7 +483,7 @@ export class ProjectTeamsComponent {
       })
       .afterClosed();
     if (!result) return;
-    this.api.changeHead(team.id, result.employeeId).subscribe({
+    this.api.changeHead(this.projectId(), team.id, result.employeeId).subscribe({
       next: () => this.reload(),
       error: (err: HttpErrorResponse) => {
         // stage_teams.HeadRequired / NotAuthorizedToManage per api-docs/08.
@@ -487,7 +527,7 @@ export class ProjectTeamsComponent {
       tone: 'danger',
     });
     if (!ok) return;
-    this.api.removeMember(memberId).subscribe({
+    this.api.removeMember(this.projectId(), memberId).subscribe({
       next: () => this.reload(),
       error: (err: HttpErrorResponse) =>
         this.toast.show({ tone: 'danger', message: friendly(this.errors.parse(err)) }),

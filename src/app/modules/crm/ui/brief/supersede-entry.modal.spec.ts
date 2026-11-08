@@ -25,6 +25,7 @@ describe('CrmSupersedeEntryModalComponent (009b #15)', () => {
       projectTaskId: null,
       createdById: 'emp',
       isCurrent: true,
+      selections: [],
     };
     const supersedeSpace = vi.fn(() => of('E2'));
     TestBed.configureTestingModule({

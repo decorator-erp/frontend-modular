@@ -1,3 +1,4 @@
+import { handled } from '@platform/http/handled-errors';
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
@@ -53,6 +54,15 @@ export class StageTemplatesService extends ApiService {
     if (v === 1 || v === '1' || v === 'System') return 'System';
     if (v === 2 || v === '2' || v === 'Custom') return 'Custom';
     return null;
+  }
+
+  /**
+   * crmp P-11: `DELETE /api/stage-templates/{id}` (dms TemplateEndpoints.cs:52, `stages.manage`). A
+   * template a project was built from is 409 `stage_templates.InUse`; the caller shows it, so the
+   * global toast skips the 409.
+   */
+  remove(id: string): Observable<unknown> {
+    return this.delete(`/stage-templates/${id}`, undefined, { context: handled(409) });
   }
 
   update(id: string, req: UpdateStageTemplateRequest): Observable<unknown> {

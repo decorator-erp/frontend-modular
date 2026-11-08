@@ -1,3 +1,4 @@
+import type { ProjectLevel } from './project-actions';
 // ============================================================================
 // Project workflow domain — TypeScript mirror of the .NET backend DTOs/enums.
 //
@@ -43,7 +44,9 @@ export type ConditionType =
   | 'Budget'
   | 'CrmPeriodClosed'
   | 'CrmBriefApproved'
-  | 'CrmItemsResolved';
+  | 'CrmItemsResolved'
+  /** crmp review R1-F4: dms `Projects.Contracts/Enums.cs:100`. */
+  | 'DocumentApproved';
 export type GateTrigger = 'Unlock' | 'Complete';
 export type ApprovalType = 'ManagerApproval' | 'ClientReview';
 export type ProjectMemberAccess = 'Viewer' | 'Contributor' | 'Manager';
@@ -75,6 +78,11 @@ export interface Project {
   stageCount: number;
   /** ProjectResponse.IsActive — the soft-delete flag; `true` when absent (008b #4). */
   isActive: boolean;
+  /**
+   * crmp A-3: the caller's effective level on this project (`ProjectResponse.MyLevel`, contract
+   * §2.17.2; 1 Viewer, 2 Editor, 3 Manager). Viewer when absent, the least privilege.
+   */
+  myLevel: ProjectLevel;
   /** Financial block — present on enriched project responses (financial-queries spec). */
   financial?: ProjectFinancialBlock;
   /** Render-only `@for` key — synthetic when the server omitted `id`. Never send it. */
@@ -103,6 +111,11 @@ export interface GateSummary {
  * `taskCounts` counts every task of the project by status; `gates` summarises every gate.
  */
 export interface ProjectDetails {
+  /**
+   * The caller's level, at the top of `ProjectDetailsResponse` (not inside `project`, whose
+   * `ProjectDetailsProjectResponse` has none). The normalizer copies it onto `project.myLevel` too.
+   */
+  myLevel: ProjectLevel;
   project: Project;
   stages: ProjectStage[];
   unstagedTasks: ProjectTask[];
@@ -194,6 +207,8 @@ export interface ProjectSubTask {
   id: string;
   projectTaskId: string;
   title: string;
+  /** `ProjectSubTaskResponse.Description` (TaskContracts.cs:64); resent on edit (full replace). */
+  description?: string | null;
   order: number;
   isRequired: boolean;
   isDone: boolean;
@@ -209,9 +224,15 @@ export interface GateCondition {
   trigger: GateTrigger;
   referencedTaskId: string | null;
   referencedStageId: string | null;
+  /** crmp review R1-F4: the document a DocumentApproved gate waits on (`GateEndpoints.cs:78-81`). */
+  referencedDocumentId: string | null;
   approvalType: ApprovalType | null;
   label: string;
+  /** crmp A-2: the backend's GateStatus (1 Pending, 2 Satisfied, 3 Rejected). */
+  status: GateStatus;
   isSatisfied: boolean;
+  /** The approval an Approval gate waits on (null otherwise). */
+  approvalId: string | null;
   satisfiedById: string | null;
   satisfiedAt: string | null;
   satisfiedNote: string | null;
@@ -228,6 +249,8 @@ export interface ProjectMember {
   canExecuteTasks: boolean;
   /** Resolved client-side (response only exposes employeeId — docs §9.5). */
   employeeName?: string | null;
+  /** crmp P-1: `ProjectMemberResponse.AddedAtUtc` (dms `MemberContracts.cs:7`). */
+  addedAtUtc?: string | null;
 }
 
 export interface TaskComment {
@@ -276,11 +299,12 @@ export interface UpdateProjectStatusRequest {
   status: ProjectStatus;
 }
 
+/** `StageRequest` (dms `StageEndpoints.cs:93`); the project is in the route. */
 export interface CreateProjectStageRequest {
-  projectId: string;
   name: string;
   order: number;
-  stageId?: string | null;
+  /** The template stage to copy from (P-2: "optionally from a template stage"). */
+  templateStageId?: string | null;
   description?: string | null;
   notes?: string | null;
   estimatedStartDate?: string | null;
@@ -294,21 +318,15 @@ export interface UpdateProjectStageRequest {
   estimatedStartDate?: string | null;
   estimatedEndDate?: string | null;
 }
-export interface CompleteProjectStageRequest {
-  completedById?: string | null;
-  notes?: string | null;
-}
 
+/** `TaskRequest` (dms `TaskEndpoints.cs:228`); the project is in the route. */
 export interface CreateProjectTaskRequest {
-  projectId: string;
   name: string;
   order: number;
   weight: number;
   priority: TaskPriority;
   projectStageId?: string | null;
-  stageTaskId?: string | null;
   assignedToId?: string | null;
-  startDate?: string | null;
   dueDate?: string | null;
   description?: string | null;
   notes?: string | null;
@@ -319,57 +337,49 @@ export interface UpdateProjectTaskRequest {
   weight: number;
   priority: TaskPriority;
   dueDate?: string | null;
-  /** Planned start. Backend accepts it on update; only meaningful while the task is Open. */
-  estimatedStartDate?: string | null;
   description?: string | null;
   notes?: string | null;
 }
 
-export interface CreateStageGateConditionRequest {
-  ownerId: string; // stage id
+export type GateStatus = 'Pending' | 'Satisfied' | 'Rejected';
+
+/** Gate create body (dms `GateEndpoints.cs:78`); the stage or task is in the route. */
+export interface CreateGateConditionRequest {
   conditionType: ConditionType;
   trigger: GateTrigger;
   label: string;
   referencedTaskId?: string | null;
   referencedStageId?: string | null;
+  referencedDocumentId?: string | null;
   approvalType?: ApprovalType | null;
-}
-export interface UpdateGateConditionRequest {
-  label: string;
-  trigger: GateTrigger;
 }
 export interface SatisfyGateConditionRequest {
   note?: string | null;
 }
 
-/** Task gate condition create — same shape as the stage one; ownerId = task id. */
-export type CreateTaskGateConditionRequest = CreateStageGateConditionRequest;
-
+/** `SubTaskRequest` (dms `TaskEndpoints.cs:232`); the task id is in the route. */
 export interface CreateProjectSubTaskRequest {
-  projectTaskId: string;
   title: string;
+  description?: string | null;
   order: number;
   isRequired: boolean;
 }
 export interface UpdateProjectSubTaskRequest {
   title: string;
+  description?: string | null;
   order: number;
   isRequired: boolean;
 }
 
 /** Mirrors ProjectTaskDetailsResponse — task + its subtasks + its gate conditions. */
+/** `ProjectTaskDetailsResponse` (dms `Projects.Contracts/Tasks/TaskContracts.cs:57`). */
 export interface TaskDetails {
   task: ProjectTask;
   subTasks: ProjectSubTask[];
-  gateConditions: GateCondition[];
-}
-
-export interface CreateTaskCommentRequest {
-  taskId: string;
-  content: string;
-}
-export interface UpdateTaskCommentRequest {
-  content: string;
+  subTasksCount: number;
+  commentsCount: number;
+  /** Gate counts; the list itself is `GET …/tasks/{taskId}/gates`. */
+  gates: GateSummary;
 }
 
 export interface AddProjectMemberRequest {

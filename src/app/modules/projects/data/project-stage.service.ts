@@ -2,7 +2,6 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import {
-  CompleteProjectStageRequest,
   CreateProjectStageRequest,
   ProjectStage,
   UpdateProjectStageRequest,
@@ -15,8 +14,14 @@ import type {
 } from '@modules/finance';
 import { ApiService } from '@platform/http/api.service';
 import { ProjectService } from './project.service';
+import { toUtcDate } from '../model/utc-date';
 
-/** Generic, data-driven stage engine — `/api/project-stages`. */
+/**
+ * Project stages, nested under the project (crmp A-2; gap table P-20..25, P-77, E2):
+ * `/api/projects/{projectId}/stages` (dms `StageEndpoints.cs:24-78`). Writes need `stages.manage` and the
+ * Manager level. Activate and approve are REMOVED (P-24, P-76): Unlock and Approval gates replace them.
+ * The financial drill-downs below stay on `/api/project-stages/{id}/…` (Finance owns them).
+ */
 @Injectable({ providedIn: 'root' })
 export class ProjectStageService extends ApiService {
   private readonly projects = inject(ProjectService);
@@ -32,35 +37,54 @@ export class ProjectStageService extends ApiService {
     );
   }
 
-  getDetails(stageId: string): Observable<ProjectStage> {
-    return this.get<unknown>(`/project-stages/${stageId}/details`).pipe(
-      map((r) => this.projects.normalizeStage(this.unwrap(r), '')),
+  /** Was `GET /project-stages/{id}/details` (P-20): `GET /projects/{pid}/stages/{sid}` (StageEndpoints.cs:32). */
+  getDetails(projectId: string, stageId: string): Observable<ProjectStage> {
+    return this.get<unknown>(`/projects/${projectId}/stages/${stageId}`).pipe(
+      map((r) => this.projects.normalizeStage(this.unwrap(r), projectId)),
     );
   }
 
-  create(req: CreateProjectStageRequest): Observable<string> {
-    return this.post<unknown>('/project-stages', req).pipe(map((r) => this.unwrap<string>(r)));
+  /** `POST /projects/{pid}/stages` (`StageRequest`, StageEndpoints.cs:41,93) → `{ stageId }`. */
+  create(projectId: string, req: CreateProjectStageRequest): Observable<string> {
+    return this.post<unknown>(`/projects/${projectId}/stages`, this.body(req)).pipe(
+      map((r) => this.unwrapId(r, 'stageId')),
+    );
   }
 
-  update(stageId: string, req: UpdateProjectStageRequest): Observable<unknown> {
-    return this.put(`/project-stages/${stageId}`, req);
+  /** `PUT …/stages/{sid}` (StageEndpoints.cs:52). Omitted nullable text and dates are cleared. */
+  update(projectId: string, stageId: string, req: UpdateProjectStageRequest): Observable<unknown> {
+    return this.put(`/projects/${projectId}/stages/${stageId}`, this.body(req));
   }
 
-  remove(stageId: string): Observable<unknown> {
-    return this.delete(`/project-stages/${stageId}`);
+  /** `DELETE …/stages/{sid}` (StageEndpoints.cs:62): 409 `projects.stages.NotDeletable` once started. */
+  remove(projectId: string, stageId: string): Observable<unknown> {
+    return this.delete(`/projects/${projectId}/stages/${stageId}`);
   }
 
-  activate(stageId: string): Observable<unknown> {
-    return this.put(`/project-stages/${stageId}/activate`, {});
+  /** Was `PUT … {notes}` (P-25): `POST …/stages/{sid}/complete`, no body (StageEndpoints.cs:70). */
+  complete(projectId: string, stageId: string): Observable<unknown> {
+    return this.post(`/projects/${projectId}/stages/${stageId}/complete`, {});
   }
 
-  complete(stageId: string, req: CompleteProjectStageRequest = {}): Observable<unknown> {
-    return this.put(`/project-stages/${stageId}/complete`, req);
+  /** Was `PUT …/reject { note }` (P-77): `POST …/stages/{sid}/reject { reason }` (StageEndpoints.cs:78). */
+  reject(projectId: string, stageId: string, reason: string): Observable<unknown> {
+    return this.post(`/projects/${projectId}/stages/${stageId}/reject`, { reason });
   }
 
-  // NOTE: no skip() — backend exposes no PUT /project-stages/{id}/skip. A "Skip
-  // stage" affordance requires a backend gap ticket (CLAUDE_CODE_PROMPT.md Step 2).
-  // approve()/reject() live on StageLifecycleService (@shared/api).
+  private body(
+    req: CreateProjectStageRequest | UpdateProjectStageRequest,
+  ): Record<string, unknown> {
+    const create = req as CreateProjectStageRequest;
+    return {
+      name: req.name,
+      order: req.order,
+      description: req.description ?? null,
+      notes: req.notes ?? null,
+      estimatedStartDate: toUtcDate(req.estimatedStartDate),
+      estimatedEndDate: toUtcDate(req.estimatedEndDate),
+      ...('templateStageId' in req ? { templateStageId: create.templateStageId ?? null } : {}),
+    };
+  }
 
   // ---- financial query drilldowns (financial-queries spec) ----------------
   // All paths are /api/project-stages/{id}/... (ProjectStageFinancialEndpoints.cs).

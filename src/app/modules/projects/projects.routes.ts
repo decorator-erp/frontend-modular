@@ -78,4 +78,30 @@ export const projectsRoutes: Routes = [
         (m) => m.ScopeOfWorkPageComponent,
       ),
   },
+  // crmp P-1 (DEVIATION-4: the project page has no tabs): the members and their levels.
+  {
+    path: 'projects/:id/members',
+    canActivate: [PermissionGuard],
+    data: { permission: PERM.projects.read, breadcrumb: 'route.projectMembers' },
+    loadComponent: () =>
+      import('./ui/members/project-members-page.component').then(
+        (m) => m.ProjectMembersPageComponent,
+      ),
+  },
+  // crmp P-3: the project's tasks with stage, assignee and status filters.
+  {
+    path: 'projects/:id/tasks',
+    canActivate: [PermissionGuard],
+    data: { permission: PERM.stageTasks.read, breadcrumb: 'route.projectTasks' },
+    loadComponent: () =>
+      import('./ui/tasks/project-tasks-page.component').then((m) => m.ProjectTasksPageComponent),
+  },
+  // crmp P-7: the project's stage teams (the project page's "Manage team" already links here).
+  {
+    path: 'projects/:id/teams',
+    canActivate: [PermissionGuard],
+    data: { permission: PERM.stages.read, breadcrumb: 'route.projectTeams' },
+    loadComponent: () =>
+      import('./ui/teams/project-teams-page.component').then((m) => m.ProjectTeamsPageComponent),
+  },
 ];

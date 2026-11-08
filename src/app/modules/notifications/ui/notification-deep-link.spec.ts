@@ -4,8 +4,6 @@ import { ApprovalService } from '@modules/approvals';
 import { CrmBriefService } from '@modules/crm';
 import { CrmMeetingService } from '@modules/crm';
 import { InvoiceService } from '@modules/finance';
-import { ProjectStageService } from '@modules/projects';
-import { ProjectTaskService } from '@modules/projects';
 import { VariationService } from '@modules/finance';
 import { NotificationEntityType, NotificationType } from '../model/notification-enums';
 import {
@@ -18,6 +16,7 @@ import { NotificationDeepLink } from './notification-deep-link';
 function view(
   entityType: NotificationEntityType | null,
   entityId: string | null = 'e1',
+  projectId: string | null = null,
 ): NotificationView {
   return {
     id: 'n1',
@@ -27,14 +26,13 @@ function view(
     body: null,
     entityType,
     entityId,
+    projectId,
     createdAtUtc: '2026-07-08T09:00:00Z',
     isUnread: true,
   };
 }
 
 describe('NotificationDeepLink', () => {
-  let tasks: { getDetails: ReturnType<typeof vi.fn> };
-  let stages: { getDetails: ReturnType<typeof vi.fn> };
   let invoices: { getById: ReturnType<typeof vi.fn> };
   let variations: { getById: ReturnType<typeof vi.fn> };
   let approvals: { listPending: ReturnType<typeof vi.fn> };
@@ -43,8 +41,6 @@ describe('NotificationDeepLink', () => {
   let resolver: NotificationDeepLink;
 
   beforeEach(() => {
-    tasks = { getDetails: vi.fn().mockReturnValue(of({ task: { projectId: 'p1' } })) };
-    stages = { getDetails: vi.fn().mockReturnValue(of({ projectId: 'p2' })) };
     invoices = { getById: vi.fn().mockReturnValue(of({ projectId: 'p3' })) };
     variations = { getById: vi.fn().mockReturnValue(of({ projectId: 'p4' })) };
     approvals = { listPending: vi.fn().mockReturnValue(of([{ id: 'e1', projectId: 'p5' }])) };
@@ -53,8 +49,6 @@ describe('NotificationDeepLink', () => {
     TestBed.configureTestingModule({
       providers: [
         NotificationDeepLink,
-        { provide: ProjectTaskService, useValue: tasks },
-        { provide: ProjectStageService, useValue: stages },
         { provide: InvoiceService, useValue: invoices },
         { provide: VariationService, useValue: variations },
         { provide: ApprovalService, useValue: approvals },
@@ -70,25 +64,49 @@ describe('NotificationDeepLink', () => {
       '/projects',
       'proj1',
     ]);
-    expect(tasks.getDetails).not.toHaveBeenCalled();
+    expect(invoices.getById).not.toHaveBeenCalled();
   });
 
-  it('ProjectTask fetches the parent projectId and builds the nested route', async () => {
-    expect(await resolver.resolve(view(NotificationEntityType.ProjectTask, 't1'))).toEqual([
+  it('Site (SiteApproved/SiteRejected, crmp A-4) opens the survey without a fetch', async () => {
+    expect(await resolver.resolve(view(NotificationEntityType.Site, 'st1'))).toEqual([
+      '/sites',
+      'st1',
+    ]);
+  });
+
+  // crmp A-2: task and stage screens are nested under the project, and the notification now carries
+  // the parent project (dms NotificationResponse.ProjectId), so these open directly — no fetch.
+  it('ProjectTask opens the task under its project without a fetch', async () => {
+    expect(await resolver.resolve(view(NotificationEntityType.ProjectTask, 't1', 'p1'))).toEqual([
       '/projects',
       'p1',
       'tasks',
       't1',
     ]);
-    expect(tasks.getDetails).toHaveBeenCalledWith('t1');
+    expect(invoices.getById).not.toHaveBeenCalled();
+    expect(approvals.listPending).not.toHaveBeenCalled();
   });
 
-  it('ProjectStage builds the nested stage route', async () => {
-    expect(await resolver.resolve(view(NotificationEntityType.ProjectStage, 's1'))).toEqual([
+  it('ProjectStage opens the stage under its project without a fetch', async () => {
+    expect(await resolver.resolve(view(NotificationEntityType.ProjectStage, 's1', 'p1'))).toEqual([
       '/projects',
-      'p2',
+      'p1',
       'stages',
       's1',
+    ]);
+  });
+
+  // A row stored before the backend added the column has no project: there is nothing to build the
+  // nested route from, so it falls back rather than linking somewhere wrong.
+  it('ProjectTask with no projectId (an older notification) falls back', async () => {
+    expect(await resolver.resolve(view(NotificationEntityType.ProjectTask, 't1'))).toEqual([
+      '/notifications',
+    ]);
+  });
+
+  it('ProjectStage with no projectId (an older notification) falls back', async () => {
+    expect(await resolver.resolve(view(NotificationEntityType.ProjectStage, 's1'))).toEqual([
+      '/notifications',
     ]);
   });
 
@@ -236,15 +254,15 @@ describe('NotificationDeepLink', () => {
   });
 
   it('a missing entityId falls back without any fetch', async () => {
-    expect(await resolver.resolve(view(NotificationEntityType.ProjectTask, null))).toEqual([
+    expect(await resolver.resolve(view(NotificationEntityType.Invoice, null))).toEqual([
       '/notifications',
     ]);
-    expect(tasks.getDetails).not.toHaveBeenCalled();
+    expect(invoices.getById).not.toHaveBeenCalled();
   });
 
   it('a fetch failure (403/404/network) falls back gracefully — no dead link', async () => {
-    tasks.getDetails.mockReturnValue(throwError(() => new Error('403')));
-    expect(await resolver.resolve(view(NotificationEntityType.ProjectTask, 't1'))).toEqual([
+    invoices.getById.mockReturnValue(throwError(() => new Error('403')));
+    expect(await resolver.resolve(view(NotificationEntityType.Invoice, 'i1'))).toEqual([
       '/notifications',
     ]);
   });
@@ -264,19 +282,20 @@ describe('NotificationDeepLink', () => {
       id: 'n1',
       type: NotificationType.TaskAssigned,
       typeName: 'TaskAssigned',
-      title: 'You were assigned a task',
+      title: 'An invoice needs you',
       body: null,
-      entityType: 'ProjectTask', // ← string name, exactly as the REST list serializes it
-      entityId: 't1',
+      entityType: 'Invoice', // ← string name, exactly as the REST list serializes it
+      entityId: 'i1',
       createdAtUtc: '2026-07-08T09:00:00Z',
       readAtUtc: null,
     };
     expect(await resolver.resolve(mapNotification(wire))).toEqual([
-      '/projects',
-      'p1',
-      'tasks',
-      't1',
+      '/finance',
+      'projects',
+      'p3',
+      'invoices',
+      'i1',
     ]);
-    expect(tasks.getDetails).toHaveBeenCalledWith('t1');
+    expect(invoices.getById).toHaveBeenCalledWith('i1');
   });
 });

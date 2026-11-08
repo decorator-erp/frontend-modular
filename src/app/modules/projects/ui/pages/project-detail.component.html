@@ -29,7 +29,16 @@
     </div>
   } @else if (project(); as proj) {
     <!-- ============ Project header card ============ -->
-    <div class="px-8 pt-6">
+    <div class="px-8 pt-6 flex flex-col gap-3">
+      <app-project-closed-banner [project]="proj" />
+      @if (scopeBlocksStages()) {
+        <pera-alert tone="info" data-scope-not-confirmed>
+          {{ scopeNotConfirmedMessage() }}
+          <a class="underline" [routerLink]="['/projects', proj.id, 'scope-of-work']">{{
+            catalog.t('sow.title')
+          }}</a>
+        </pera-alert>
+      }
       <pera-entity-header-card
         kind="project"
         [name]="proj.name"
@@ -40,20 +49,50 @@
         [kpis]="headerKpis()"
       >
         <div headerActions class="flex items-center gap-2 shrink-0">
-          <button type="button" [class]="btnClass" *peraCan="perm.update" (click)="editProject()">
-            <svg
-              width="13"
-              height="13"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="1.7"
-              class="shrink-0"
+          <!-- crmp P-9: project lifecycle — claim AND Manager level (project housekeeping stays open when closed). -->
+          @if (can('project.status')) {
+            <button type="button" [class]="btnClass" (click)="changeStatus()" data-change-status>
+              {{ catalog.t('plc.changeStatus') }}
+            </button>
+          }
+          @if (can('project.active')) {
+            <button
+              type="button"
+              [class]="btnClass"
+              [disabled]="lifecycleBusy()"
+              (click)="toggleActive()"
+              data-toggle-active
             >
-              <path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" />
-            </svg>
-            Edit
-          </button>
+              {{ proj.isActive ? catalog.t('plc.deactivate') : catalog.t('plc.activate') }}
+            </button>
+          }
+          @if (can('project.delete')) {
+            <button
+              type="button"
+              [class]="btnClass"
+              [disabled]="lifecycleBusy()"
+              (click)="deleteProject()"
+              data-delete-project
+            >
+              {{ catalog.t('plc.delete') }}
+            </button>
+          }
+          @if (can('project.update')) {
+            <button type="button" [class]="btnClass" (click)="editProject()">
+              <svg
+                width="13"
+                height="13"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.7"
+                class="shrink-0"
+              >
+                <path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" />
+              </svg>
+              Edit
+            </button>
+          }
           <button type="button" [class]="btnClass" (click)="openDocuments()">
             <svg
               width="13"
@@ -95,21 +134,40 @@
             [routerLink]="['/projects', proj.id, 'scope-of-work']"
             >{{ catalog.t('sow.title') }}</a
           >
-          <button type="button" [class]="btnClass" *peraCan="perm.newStage" (click)="newStage()">
-            <svg
-              width="13"
-              height="13"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              class="shrink-0"
-            >
-              <path d="M12 5v14M5 12h14" />
-            </svg>
-            New stage
-          </button>
-          <ng-container *peraCan="perm.newTask">
+          <a
+            *peraCan="'sites.read'"
+            [class]="btnClass"
+            [routerLink]="['/sites']"
+            [queryParams]="{ projectId: proj.id }"
+            data-sites-link
+            >{{ catalog.t('sv.navSurveys') }}</a
+          >
+          <a [class]="btnClass" [routerLink]="['/projects', proj.id, 'tasks']" data-tasks-link>{{
+            catalog.t('projects.tasksLink')
+          }}</a>
+          <a
+            [class]="btnClass"
+            [routerLink]="['/projects', proj.id, 'members']"
+            data-members-link
+            >{{ catalog.t('projects.membersLink') }}</a
+          >
+          @if (canAddStage()) {
+            <button type="button" [class]="btnClass" (click)="newStage()" data-new-stage>
+              <svg
+                width="13"
+                height="13"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                class="shrink-0"
+              >
+                <path d="M12 5v14M5 12h14" />
+              </svg>
+              New stage
+            </button>
+          }
+          @if (can('task.create')) {
             @if (newTaskStage()) {
               <button type="button" [class]="btnPrimaryClass" (click)="newTask()">
                 <svg
@@ -126,7 +184,7 @@
                 New task
               </button>
             }
-          </ng-container>
+          }
         </div>
       </pera-entity-header-card>
     </div>

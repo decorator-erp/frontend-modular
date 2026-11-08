@@ -4,8 +4,10 @@ import { map } from 'rxjs/operators';
 import {
   ApprovalType,
   ConditionType,
+  CreateGateConditionRequest,
   CreateProjectRequest,
   GateCondition,
+  GateStatus,
   GateTrigger,
   Project,
   ProjectDetails,
@@ -34,6 +36,7 @@ import type {
   VariationResponse,
 } from '@modules/finance';
 import { ApiService } from '@platform/http/api.service';
+import { toProjectLevel } from '../model/project-actions';
 import { handled } from '@platform/http/handled-errors';
 import { PagedResult } from '@platform/types';
 
@@ -43,6 +46,38 @@ import { PagedResult } from '@platform/types';
  * core/http services. No mock fallback — failures surface through the error
  * interceptor.
  */
+/**
+ * crmp review R1-F4: a gate edit is a delete followed by a create (no update route). When the create
+ * fails after the delete went through, the old gate is gone; callers tell the user so and reload.
+ */
+export class GateRemovedError extends Error {
+  constructor(override readonly cause: unknown) {
+    super('gate removed, re-create failed');
+  }
+}
+
+/**
+ * crmp review R2-1: a gate the frontend cannot re-create faithfully. `GateConditionResponse` carries
+ * no `referencedDocumentId` (dms `Projects.Contracts/Gates/GateContracts.cs:8-11`), so a
+ * DocumentApproved gate read from the list cannot be rebuilt: its create would answer 400
+ * `gate_conditions.InvalidReference` (`DocumentApprovedHandler.cs:26-28`) after the delete went
+ * through. `recreate` refuses such a request before deleting anything.
+ */
+export class GateNotRecreatableError extends Error {
+  constructor() {
+    super('gate cannot be re-created');
+  }
+}
+
+/** True when the create body is complete enough to rebuild the gate after its delete. */
+export function isRecreatable(req: CreateGateConditionRequest): boolean {
+  // R3-1: a Budget gate opened by a finance variation is linked by VariationId, which the response
+  // does not carry either (dms GateCondition.cs:56; FinanceVariationIntegrationEventHandlers.cs:41-77),
+  // so a re-created Budget gate would lose that link. The frontend cannot tell which are linked.
+  if (req.conditionType === 'Budget') return false;
+  return req.conditionType !== 'DocumentApproved' || !!req.referencedDocumentId;
+}
+
 @Injectable({ providedIn: 'root' })
 export class ProjectService extends ApiService {
   getAll(page = 1, pageSize = 20): Observable<PagedResult<Project>> {
@@ -52,13 +87,12 @@ export class ProjectService extends ApiService {
   }
 
   /**
-   * A client's projects (008b #1). `GET /api/projects` has no `clientId` filter (008b N-2), so this
-   * reads the caller's first `pageSize` visible projects and filters on `clientId` here — a
-   * client's projects beyond that first page are missing.
+   * A client's projects (008b #1): `GET /api/projects?clientId=` (crmp A-2; gap table E8, dms
+   * `ProjectEndpoints.cs:26`). Was a client-side filter over the first page.
    */
   getByClient(clientId: string, pageSize = 100): Observable<Project[]> {
-    return this.get<unknown>('/projects', { pageNumber: 1, pageSize }).pipe(
-      map((response) => this.normalizePaged(response).items.filter((p) => p.clientId === clientId)),
+    return this.get<unknown>('/projects', { pageNumber: 1, pageSize, clientId }).pipe(
+      map((response) => this.normalizePaged(response).items),
     );
   }
 
@@ -93,8 +127,12 @@ export class ProjectService extends ApiService {
     return this.put(`/projects/${id}`, req);
   }
 
+  /**
+   * crmp P-9: `DELETE /api/projects/{id}` (ProjectEndpoints.cs:85). 409 `projects.NotDeletable` (with its
+   * reason) and 403 `projects.InsufficientLevel` are shown by the caller, so the global toast skips them.
+   */
   remove(id: string): Observable<unknown> {
-    return this.delete(`/projects/${id}`);
+    return this.delete(`/projects/${id}`, undefined, { context: handled(403, 409) });
   }
 
   /**
@@ -103,16 +141,19 @@ export class ProjectService extends ApiService {
    * Projects.Contracts `ProjectStatus` (Draft=1 … Cancelled=5).
    */
   setStatus(id: string, status: ProjectStatus): Observable<unknown> {
-    return this.put(`/projects/${id}/status?status=${this.statusInt(status)}`, null);
+    // crmp P-9: 409 StagesOpen / TasksOpen / InvalidStatusTransition / ConcurrentUpdate are shown inline.
+    return this.put(`/projects/${id}/status?status=${this.statusInt(status)}`, null, {
+      context: handled(403, 409),
+    });
   }
 
   /** `PUT /api/projects/{id}/active?isActive=true` → 204 (ProjectEndpoints.cs:67-68). */
   activate(id: string): Observable<unknown> {
-    return this.put(`/projects/${id}/active?isActive=true`, null);
+    return this.put(`/projects/${id}/active?isActive=true`, null, { context: handled(403, 409) });
   }
   /** `PUT /api/projects/{id}/active?isActive=false` → 204 (ProjectEndpoints.cs:67-68). */
   deactivate(id: string): Observable<unknown> {
-    return this.put(`/projects/${id}/active?isActive=false`, null);
+    return this.put(`/projects/${id}/active?isActive=false`, null, { context: handled(403, 409) });
   }
 
   // ---- financial query drilldowns (financial-queries spec) ----------------
@@ -203,6 +244,7 @@ export class ProjectService extends ApiService {
       actualEndDate: this.field<string | null>(source, 'actualEndDate', 'actualEndData') ?? null,
       stageCount: this.num(this.field(source, 'stageCount')),
       isActive: this.field<boolean>(source, 'isActive') ?? true,
+      myLevel: toProjectLevel(this.field(source, 'myLevel')),
       financial: this.field<ProjectFinancialBlock>(source, 'financial'),
     };
   }
@@ -276,6 +318,7 @@ export class ProjectService extends ApiService {
       id: this.field<string>(source, 'id') ?? '',
       projectTaskId: this.field<string>(source, 'projectTaskId') ?? taskId,
       title: this.field<string>(source, 'title', 'name') ?? '',
+      description: this.field<string>(source, 'description') ?? null,
       order: this.num(this.field(source, 'order')),
       isRequired: this.field<boolean>(source, 'isRequired') ?? false,
       isDone: this.field<boolean>(source, 'isDone') ?? false,
@@ -304,13 +347,14 @@ export class ProjectService extends ApiService {
       canManage: this.field<boolean>(source, 'canManage') ?? false,
       canExecuteTasks: this.field<boolean>(source, 'canExecuteTasks') ?? false,
       employeeName: this.field<string | null>(source, 'employeeName') ?? null,
+      addedAtUtc: this.field<string | null>(source, 'addedAtUtc') ?? null,
     };
   }
 
   normalizeGate(source: unknown): GateCondition {
     return {
       id: this.field<string>(source, 'id') ?? '',
-      ownerId: this.field<string>(source, 'ownerId') ?? '',
+      ownerId: this.field<string>(source, 'ownerId', 'projectStageId', 'projectTaskId') ?? '',
       conditionType: this.mapEnum<GateCondition['conditionType']>(
         this.field(source, 'conditionType'),
         this.CONDITION,
@@ -323,12 +367,20 @@ export class ProjectService extends ApiService {
       ),
       referencedTaskId: this.field<string | null>(source, 'referencedTaskId') ?? null,
       referencedStageId: this.field<string | null>(source, 'referencedStageId') ?? null,
+      referencedDocumentId: this.field<string | null>(source, 'referencedDocumentId') ?? null,
       approvalType: this.mapEnumNullable<GateCondition['approvalType'] & string>(
         this.field(source, 'approvalType'),
         this.APPROVAL,
       ),
       label: this.field<string>(source, 'label') ?? '',
-      isSatisfied: this.field<boolean>(source, 'isSatisfied') ?? false,
+      // crmp A-2: GateConditionResponse carries `status` (1 Pending, 2 Satisfied, 3 Rejected), not
+      // isSatisfied (gap table P-71/98; dms Projects.Contracts/Gates/GateContracts.cs:8).
+      status: this.mapEnum<GateStatus>(this.field(source, 'status'), this.GATE_STATUS, 'Pending'),
+      isSatisfied:
+        this.field<boolean>(source, 'isSatisfied') ??
+        this.mapEnum<GateStatus>(this.field(source, 'status'), this.GATE_STATUS, 'Pending') ===
+          'Satisfied',
+      approvalId: this.field<string | null>(source, 'approvalId') ?? null,
       satisfiedById: this.field<string | null>(source, 'satisfiedById') ?? null,
       satisfiedAt: this.field<string | null>(source, 'satisfiedAt') ?? null,
       satisfiedNote: this.field<string | null>(source, 'satisfiedNote') ?? null,
@@ -352,8 +404,10 @@ export class ProjectService extends ApiService {
     const unstagedTasks = (this.field<unknown[]>(source, 'unstagedTasks') ?? []).map((t) =>
       this.normalizeTask(t, project.id),
     );
+    const myLevel = toProjectLevel(this.field(source, 'myLevel'));
     return {
-      project,
+      myLevel,
+      project: { ...project, myLevel },
       stages,
       unstagedTasks,
       taskCounts: this.normalizeTaskCounts(this.field(source, 'taskCounts')),
@@ -368,7 +422,7 @@ export class ProjectService extends ApiService {
     }));
   }
 
-  private normalizeGateSummary(source: unknown): GateSummary {
+  normalizeGateSummary(source: unknown): GateSummary {
     return {
       total: this.num(this.field(source, 'total')),
       pending: this.num(this.field(source, 'pending')),
@@ -420,6 +474,11 @@ export class ProjectService extends ApiService {
     4: 'Urgent',
   };
   private readonly TRIGGER: Record<number, string> = { 1: 'Unlock', 2: 'Complete' };
+  private readonly GATE_STATUS: Record<number, string> = {
+    1: 'Pending',
+    2: 'Satisfied',
+    3: 'Rejected',
+  };
   private readonly CONDITION: Record<number, string> = {
     1: 'Task',
     2: 'Stage',
@@ -430,6 +489,7 @@ export class ProjectService extends ApiService {
     7: 'CrmPeriodClosed',
     8: 'CrmBriefApproved',
     9: 'CrmItemsResolved',
+    10: 'DocumentApproved',
   };
   private readonly APPROVAL: Record<number, string> = { 1: 'ManagerApproval', 2: 'ClientReview' };
 
@@ -462,6 +522,19 @@ export class ProjectService extends ApiService {
       )[v] ?? 1
     );
   }
+  /** `ProjectTaskStatus` (dms `Projects.Contracts/Enums.cs`) for the task list's `status` filter. */
+  taskStatusInt(v: ProjectTaskStatus): number {
+    const byName: Record<string, number> = {
+      Locked: 1,
+      Open: 2,
+      InProgress: 3,
+      Completed: 4,
+      PendingApproval: 5,
+      Rejected: 6,
+      Cancelled: 7,
+    };
+    return byName[v] ?? 2;
+  }
   priorityInt(v: TaskPriority): number {
     return ({ Low: 1, Medium: 2, High: 3, Urgent: 4 } as Record<string, number>)[v] ?? 2;
   }
@@ -481,11 +554,25 @@ export class ProjectService extends ApiService {
           CrmPeriodClosed: 7,
           CrmBriefApproved: 8,
           CrmItemsResolved: 9,
+          DocumentApproved: 10,
         } as Record<string, number>
       )[v] ?? 4
     );
   }
   approvalInt(v: ApprovalType): number {
     return v === 'ClientReview' ? 2 : 1;
+  }
+
+  /** `CreateGateRequest` (dms `GateEndpoints.cs:78`): enums as ints; the owner is in the route. */
+  gateBody(req: CreateGateConditionRequest): Record<string, unknown> {
+    return {
+      conditionType: this.conditionInt(req.conditionType),
+      trigger: this.triggerInt(req.trigger),
+      label: req.label,
+      referencedTaskId: req.referencedTaskId ?? null,
+      referencedStageId: req.referencedStageId ?? null,
+      referencedDocumentId: req.referencedDocumentId ?? null,
+      approvalType: req.approvalType ? this.approvalInt(req.approvalType) : null,
+    };
   }
 }

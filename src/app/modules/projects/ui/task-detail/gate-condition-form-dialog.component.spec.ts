@@ -14,7 +14,8 @@ import { PERA_MODAL_DATA, PeraModalRef } from '@ds';
 
 describe('GateConditionFormDialogComponent', () => {
   let created: Record<string, unknown> | null;
-  let updated: { id: string; req: unknown } | null;
+  let recreated: { projectId: string; ownerId: string; id: string; req: unknown } | null;
+  let createdRoute: { projectId: string; ownerId: string } | null;
   let closedWith: unknown;
   const modalRef = {
     close: (r: unknown) => {
@@ -24,7 +25,8 @@ describe('GateConditionFormDialogComponent', () => {
 
   function make(data: GateConditionFormDialogData): GateConditionFormDialogComponent {
     created = null;
-    updated = null;
+    recreated = null;
+    createdRoute = null;
     closedWith = undefined;
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({
@@ -33,19 +35,20 @@ describe('GateConditionFormDialogComponent', () => {
         {
           provide: TaskGateConditionService,
           useValue: {
-            create: (req: Record<string, unknown>) => {
+            create: (projectId: string, ownerId: string, req: Record<string, unknown>) => {
               created = req;
+              createdRoute = { projectId, ownerId };
               return of('g-new');
             },
-            update: (id: string, req: unknown) => {
-              updated = { id, req };
-              return of(undefined);
+            recreate: (projectId: string, ownerId: string, id: string, req: unknown) => {
+              recreated = { projectId, ownerId, id, req };
+              return of('g-re');
             },
           },
         },
         {
           provide: StageGateConditionService,
-          useValue: { create: () => of('s'), update: () => of(undefined) },
+          useValue: { create: () => of('s'), recreate: () => of('s') },
         },
         {
           provide: ProjectTaskService,
@@ -86,6 +89,7 @@ describe('GateConditionFormDialogComponent', () => {
     expect(created?.['conditionType']).toBe('Task');
     expect(created?.['referencedTaskId']).toBe('t2');
     expect(created?.['label']).toBe('Prior task done');
+    expect(createdRoute).toEqual({ projectId: 'p1', ownerId: 't1' });
     expect(closedWith).toBe(true);
   });
 
@@ -103,7 +107,7 @@ describe('GateConditionFormDialogComponent', () => {
     expect(created?.['referencedTaskId']).toBeNull();
   });
 
-  it('edit PUTs only label + trigger', () => {
+  it('edit deletes and re-creates the gate with its original type and references (crmp A-2: no update route)', () => {
     const c = make({
       mode: 'edit',
       ...base,
@@ -120,8 +124,20 @@ describe('GateConditionFormDialogComponent', () => {
     expect(c.isEdit).toBe(true);
     c.form.patchValue({ label: 'New label', trigger: 'Unlock' });
     c.submit();
-    expect(updated?.id).toBe('g1');
-    expect(updated?.req).toEqual({ label: 'New label', trigger: 'Unlock' });
+    expect(recreated).toEqual({
+      projectId: 'p1',
+      ownerId: 't1',
+      id: 'g1',
+      req: {
+        conditionType: 'Approval',
+        trigger: 'Unlock',
+        label: 'New label',
+        referencedTaskId: null,
+        referencedStageId: null,
+        referencedDocumentId: null,
+        approvalType: 'ManagerApproval',
+      },
+    });
     expect(created).toBeNull();
   });
 });

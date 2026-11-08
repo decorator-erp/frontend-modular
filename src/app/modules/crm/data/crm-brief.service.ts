@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable, forkJoin, of } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 import { ApiService } from '@platform/http/api.service';
+import { normalizeSpaceSelections } from './crm-storefront.service';
 import { handled } from '@platform/http/handled-errors';
 import { ApprovalState } from '../model/crm-enums';
 import type {
@@ -305,6 +306,8 @@ export class CrmBriefService extends ApiService {
       projectTaskId: this.field<string | null>(source, 'projectTaskId') ?? null,
       createdById: this.field<string>(source, 'createdById') ?? '',
       isCurrent: this.field<boolean>(source, 'isCurrent') ?? true,
+      // crmp C-6: the frozen storefront picks (#34 office, #84 portal; same shape as #110).
+      selections: normalizeSpaceSelections(this.field<unknown>(source, 'selections')),
     };
   }
 

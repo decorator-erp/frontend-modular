@@ -9,8 +9,8 @@ import {
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
+import { Observable } from 'rxjs';
 import { ProjectStageService } from '../../../data/project-stage.service';
-import { StageLifecycleService } from '../../../data/stage-lifecycle.service';
 import { ErrorHandlerService, friendly } from '@platform/http/error-handler.service';
 import { ToastService } from '@platform/feedback/toast.service';
 import { PERM } from '@platform/permissions';
@@ -117,16 +117,6 @@ export class StageNoteModalComponent {
   template: `
     <ng-container *peraCan="manageStages">
       <div class="flex items-center gap-1.5 flex-wrap">
-        @if (status() === 'Locked') {
-          <button
-            type="button"
-            (click)="activate()"
-            [disabled]="busy()"
-            class="px-2.5 py-1.5 bg-accent text-text-on-accent border border-accent fs-label hover:bg-accent-hover disabled:opacity-50"
-          >
-            Activate
-          </button>
-        }
         @if (status() === 'Active') {
           <button
             type="button"
@@ -148,14 +138,6 @@ export class StageNoteModalComponent {
           </button>
           <!-- TODO: no "Skip stage" — backend exposes no PUT /project-stages/{id}/skip.
                Needs a backend gap ticket before re-adding (CLAUDE_CODE_PROMPT.md Step 2). -->
-          <button
-            type="button"
-            (click)="approve()"
-            [disabled]="busy()"
-            class="px-2.5 py-1.5 border border-success bg-success-soft text-success fs-label hover:opacity-80 disabled:opacity-50"
-          >
-            Approve
-          </button>
           <button
             type="button"
             (click)="reject()"
@@ -183,7 +165,6 @@ export class StageActionsComponent {
   readonly deleted = output<void>();
 
   private readonly stagesApi = inject(ProjectStageService);
-  private readonly lifecycle = inject(StageLifecycleService);
   private readonly errors = inject(ErrorHandlerService);
   private readonly toast = inject(ToastService);
   private readonly modal = inject(ModalService);
@@ -194,42 +175,21 @@ export class StageActionsComponent {
 
   readonly status = computed(() => this.stage().status as string);
 
-  activate(): void {
-    this.run(this.stagesApi.activate(this.stage().id), 'Stage activated');
-  }
-
+  // crmp A-2: complete/reject are POSTs under the project; activate and approve are REMOVED
+  // (gap table P-24, P-76; dms `StageEndpoints.cs:70,78`).
   async complete(): Promise<void> {
-    const result = await this.openNote({
+    const ok = await this.confirm.open({
       title: 'Complete stage',
-      label: 'Notes',
-      required: false,
+      body: `Complete "${this.stage().name}"? Every task must be completed or cancelled first.`,
       confirmLabel: 'Complete stage',
     });
-    if (!result) return;
-    this.run(
-      this.stagesApi.complete(this.stage().id, { notes: result.note || null }),
-      'Stage completed',
-    );
+    if (!ok) return;
+    const s = this.stage();
+    this.run(this.stagesApi.complete(s.projectId, s.id), 'Stage completed');
   }
 
   // TODO: skip() removed — backend has no /project-stages/{id}/skip route.
   // Raise a backend gap ticket if a "Skip stage" transition is required.
-
-  async approve(): Promise<void> {
-    const result = await this.openNote({
-      title: 'Approve stage',
-      label: 'Note',
-      required: false,
-      confirmLabel: 'Approve',
-      withApprovalType: true,
-      approvalRequired: true,
-    });
-    if (!result || !result.approvalType) return;
-    this.run(
-      this.lifecycle.approve(this.stage().id, result.approvalType, result.note || null),
-      'Stage approved',
-    );
-  }
 
   async reject(): Promise<void> {
     const result = await this.openNote({
@@ -238,13 +198,10 @@ export class StageActionsComponent {
       required: true,
       confirmLabel: 'Reject',
       tone: 'danger',
-      withApprovalType: true,
     });
     if (!result) return;
-    this.run(
-      this.lifecycle.reject(this.stage().id, result.note, result.approvalType),
-      'Stage rejected',
-    );
+    const s = this.stage();
+    this.run(this.stagesApi.reject(s.projectId, s.id, result.note), 'Stage rejected');
   }
 
   async remove(): Promise<void> {
@@ -256,7 +213,7 @@ export class StageActionsComponent {
     });
     if (!ok) return;
     this.busy.set(true);
-    this.stagesApi.remove(this.stage().id).subscribe({
+    this.stagesApi.remove(this.stage().projectId, this.stage().id).subscribe({
       next: () => {
         this.busy.set(false);
         this.toast.show({ tone: 'success', message: 'Stage deleted' });
@@ -280,7 +237,7 @@ export class StageActionsComponent {
       .afterClosed();
   }
 
-  private run(call: ReturnType<ProjectStageService['activate']>, successMessage: string): void {
+  private run(call: Observable<unknown>, successMessage: string): void {
     if (this.busy()) return;
     this.busy.set(true);
     call.subscribe({

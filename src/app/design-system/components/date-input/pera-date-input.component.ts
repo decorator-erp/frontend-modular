@@ -38,6 +38,7 @@ const HEIGHT = { sm: 'h-7 fs-body-sm', md: 'h-8 text-sm', lg: 'h-10 text-sm' } a
       [disabled]="isDisabled()"
       [readonly]="readonly()"
       [attr.aria-invalid]="error() ? 'true' : null"
+      [attr.aria-label]="ariaLabel() || null"
       [class]="classes()"
       (input)="onInput($event)"
       (blur)="onTouched()"
@@ -49,6 +50,8 @@ export class PeraDateInputComponent implements ControlValueAccessor {
   readonly disabled = input(false);
   readonly readonly = input(false);
   readonly error = input<string | undefined>(undefined);
+  /** Accessible name for a control with no visible label (e.g. a grid cell). */
+  readonly ariaLabel = input<string | undefined>(undefined);
   /** ISO `YYYY-MM-DD`. */
   readonly min = input<string | null>(null);
   /** ISO `YYYY-MM-DD`. */

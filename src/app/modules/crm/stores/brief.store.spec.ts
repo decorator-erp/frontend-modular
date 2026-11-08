@@ -81,6 +81,7 @@ function space(over: Partial<BriefSpace> = {}): BriefSpace {
     projectTaskId: null,
     createdById: 'employee-1',
     isCurrent: true,
+    selections: [],
     ...over,
   };
 }

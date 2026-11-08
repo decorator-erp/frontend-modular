@@ -1,3 +1,5 @@
+import { of } from 'rxjs';
+import { CrmItemService } from '../../data/crm-item.service';
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
@@ -18,7 +20,16 @@ describe('CrmClientProfileComponent — requirements tab (009b #N-3)', () => {
     loadPortal.mockClear();
     TestBed.configureTestingModule({
       imports: [CrmClientProfileComponent],
-      providers: [provideRouter([])],
+      providers: [
+        provideRouter([]),
+        {
+          provide: CrmItemService,
+          useValue: {
+            listPortal: () =>
+              of({ items: [], totalCount: 0, page: 1, pageSize: 20, totalPages: 0 }),
+          },
+        },
+      ],
     });
     TestBed.overrideComponent(CrmClientProfileComponent, {
       set: {
@@ -38,7 +49,8 @@ describe('CrmClientProfileComponent — requirements tab (009b #N-3)', () => {
                   code: 'PRJ-1',
                   name: 'Villa',
                   status: 'InProgress',
-                  productOwnerName: null,
+                  activeStageId: 's1',
+                  activeStageName: 'Design',
                   progressPercentage: 0,
                   openPeriodId: null,
                 },
@@ -62,7 +74,18 @@ describe('CrmClientProfileComponent — requirements tab (009b #N-3)', () => {
     });
   });
 
-  it('renders the not-available state and loads no items', () => {
+  it('crmp C-2: the overview shows the status label (a ProjectStatus name) and the active stage', () => {
+    const fixture = TestBed.createComponent(CrmClientProfileComponent);
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('[data-testid="project-status"]')?.textContent?.trim()).toBe(
+      EN['projects.status.InProgress'],
+    );
+    expect(el.textContent).toContain(EN['client.activeStage']);
+    expect(el.textContent).toContain('Design');
+  });
+
+  it('crmp C-1: the Requirements tab hosts the portal items list (no "not available" state)', () => {
     const fixture = TestBed.createComponent(CrmClientProfileComponent);
     fixture.detectChanges();
     const el = fixture.nativeElement as HTMLElement;
@@ -72,8 +95,8 @@ describe('CrmClientProfileComponent — requirements tab (009b #N-3)', () => {
     tab.click();
     fixture.detectChanges();
 
-    expect(el.textContent).toContain('Your requirements list is not available yet.');
-    expect(loadPortal).not.toHaveBeenCalled();
+    expect(el.textContent).not.toContain('Your requirements list is not available yet.');
+    expect(el.querySelector('app-crm-portal-items')).toBeTruthy();
   });
 });
 
@@ -85,7 +108,8 @@ describe('CrmClientProfileComponent — ?projectId&tab deep link (crm-prod B1-fe
     code: `PRJ-${id}`,
     name,
     status: 'InProgress',
-    productOwnerName: null,
+    activeStageId: null,
+    activeStageName: null,
     progressPercentage: 0,
     openPeriodId: null,
   });
@@ -147,5 +171,56 @@ describe('CrmClientProfileComponent — ?projectId&tab deep link (crm-prod B1-fe
     const el = render({ projectId: 'X', tab: 'nope' });
     expect(loadAsClient).toHaveBeenCalledWith('P');
     expect(el.textContent).not.toContain(EN['client.briefNotSent']);
+  });
+});
+
+describe('CrmClientProfileComponent — error states (crmp C-2)', () => {
+  const load = vi.fn();
+  function render(errorKey: string): HTMLElement {
+    load.mockClear();
+    TestBed.configureTestingModule({
+      imports: [CrmClientProfileComponent],
+      providers: [provideRouter([])],
+    });
+    TestBed.overrideComponent(CrmClientProfileComponent, {
+      set: {
+        providers: [
+          {
+            provide: ClientProfileStore,
+            useValue: {
+              load,
+              loading: signal(false),
+              loaded: signal(true),
+              error: signal(errorKey),
+              client: signal(null),
+              contacts: signal([]),
+              projects: signal([]),
+              isSingleProject: signal(false),
+            },
+          },
+          { provide: BriefStore, useValue: { loadAsClient: vi.fn() } },
+          { provide: MeetingsStore, useValue: { loadPortal: vi.fn() } },
+        ],
+      },
+    });
+    const fixture = TestBed.createComponent(CrmClientProfileComponent);
+    fixture.detectChanges();
+    return fixture.nativeElement as HTMLElement;
+  }
+
+  it('a 404 shows the "no linked client" catalog message and no retry', () => {
+    const el = render('client.profileNoClient');
+    expect(el.textContent).toContain(EN['client.profileNoClient']);
+    expect(el.textContent).not.toContain(EN['client.profileRetry']);
+  });
+
+  it('any other failure offers a retry that reloads', () => {
+    const el = render('client.profileUnavailable');
+    const retry = [...el.querySelectorAll('button')].find(
+      (b) => b.textContent?.trim() === EN['client.profileRetry'],
+    ) as HTMLButtonElement;
+    load.mockClear();
+    retry.click();
+    expect(load).toHaveBeenCalledTimes(1);
   });
 });

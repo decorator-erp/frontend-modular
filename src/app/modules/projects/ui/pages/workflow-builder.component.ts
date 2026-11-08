@@ -1,3 +1,4 @@
+import { ProjectAccessStore } from '../../stores/project-access.store';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -12,7 +13,6 @@ import { ActivatedRoute } from '@angular/router';
 import { Project, ProjectStage, StageKind } from '../../model/project.model';
 import { ProjectService } from '../../data/project.service';
 import { ProjectStageService } from '../../data/project-stage.service';
-import { CanDirective } from '@platform/permissions';
 import { ConfirmService } from '@ds';
 import { ErrorHandlerService, friendly } from '@platform/http/error-handler.service';
 import { ToastService } from '@platform/feedback/toast.service';
@@ -29,7 +29,7 @@ import { PaletteChip } from '../workflow-builder/builder.types';
 @Component({
   selector: 'app-workflow-builder',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [BuilderCanvasComponent, StagePaletteComponent, StageConfigPanelComponent, CanDirective],
+  imports: [BuilderCanvasComponent, StagePaletteComponent, StageConfigPanelComponent],
   host: { class: 'block h-[calc(100vh-3rem)] flex flex-col bg-bg' },
   template: `
     <div class="h-12 border-b border-border flex items-center gap-3.5 px-4 bg-surface">
@@ -45,14 +45,15 @@ import { PaletteChip } from '../workflow-builder/builder.types';
         {{ stages().length }} stages · {{ gateCount() }} gates · {{ approvalCount() }} approvals
       </span>
       <div class="flex-1"></div>
-      <button
-        *peraCan="'stages.manage'"
-        type="button"
-        class="px-3 py-1.5 fs-label bg-accent text-on-accent border border-accent hover:bg-accent-hover"
-        (click)="addLast()"
-      >
-        + Add stage
-      </button>
+      @if (canAddStage()) {
+        <button
+          type="button"
+          class="px-3 py-1.5 fs-label bg-accent text-on-accent border border-accent hover:bg-accent-hover"
+          (click)="addLast()"
+        >
+          + Add stage
+        </button>
+      }
     </div>
     <div
       class="flex-1 grid min-h-0"
@@ -88,6 +89,12 @@ export class WorkflowBuilderComponent {
   private readonly destroyRef = inject(DestroyRef);
 
   readonly project = signal<Project | null>(null);
+  private readonly access = inject(ProjectAccessStore);
+  /** crmp review R2: adding a stage needs stages.manage AND the Manager level AND an open project. */
+  readonly canAddStage = computed(() => {
+    const id = this.project()?.id;
+    return !!id && this.access.can(id, 'stage.create');
+  });
   readonly stages = signal<ProjectStage[]>([]);
   readonly selectedId = signal<string | null>(null);
 
@@ -105,7 +112,10 @@ export class WorkflowBuilderComponent {
       this.projects
         .getById(projectId)
         .pipe(takeUntilDestroyed(this.destroyRef))
-        .subscribe((p) => this.project.set(p));
+        .subscribe((p) => {
+          this.project.set(p);
+          if (p) this.access.seed(p);
+        });
       this.reloadStages(projectId);
     }
   }
@@ -131,7 +141,7 @@ export class WorkflowBuilderComponent {
     if (!project) return;
     const nextOrder = (this.stages().reduce((max, s) => Math.max(max, s.order), 0) || 0) + 1;
     const name = `Stage ${nextOrder}`;
-    this.stagesApi.create({ projectId: project.id, name, order: nextOrder }).subscribe({
+    this.stagesApi.create(project.id, { name, order: nextOrder }).subscribe({
       next: (newId) => {
         this.feedback.show({ tone: 'success', message: `Stage "${name}" created` });
         if (typeof newId === 'string') this.selectedId.set(newId);
@@ -153,7 +163,7 @@ export class WorkflowBuilderComponent {
     const maxOrder = this.stages().reduce((m, s) => Math.max(m, s.order), 0);
     const targetOrder = maxOrder + 1;
     const name = chip.title === 'Task' ? `Stage ${this.stages().length + 1}` : `New ${chip.title}`;
-    this.stagesApi.create({ projectId: project.id, name, order: targetOrder }).subscribe({
+    this.stagesApi.create(project.id, { name, order: targetOrder }).subscribe({
       next: (newId) => {
         this.feedback.show({ tone: 'success', message: `${chip.title} stage added` });
         if (typeof newId === 'string') {
@@ -196,7 +206,7 @@ export class WorkflowBuilderComponent {
     const stage = this.stages().find((s) => s.id === id);
     if (!stage) return;
     this.stagesApi
-      .update(id, {
+      .update(stage.projectId, id, {
         name,
         order: stage.order,
         description: stage.description,
@@ -228,7 +238,8 @@ export class WorkflowBuilderComponent {
       tone: 'danger',
     });
     if (!ok) return;
-    this.stagesApi.remove(id).subscribe({
+    // R1-F11: the stage carries its own project id.
+    this.stagesApi.remove(stage.projectId, id).subscribe({
       next: () => {
         this.feedback.show({ tone: 'success', message: 'Stage deleted' });
         if (this.selectedId() === id) this.selectedId.set(null);

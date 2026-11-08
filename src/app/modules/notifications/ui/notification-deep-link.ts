@@ -4,8 +4,6 @@ import { ApprovalService } from '@modules/approvals';
 import { CrmMeetingService } from '@modules/crm';
 import { InvoiceService } from '@modules/finance';
 import { VariationService } from '@modules/finance';
-import { ProjectStageService } from '@modules/projects';
-import { ProjectTaskService } from '@modules/projects';
 import { NotificationEntityType } from '../model/notification-enums';
 import { NotificationView } from '../model/notification.model';
 
@@ -18,15 +16,14 @@ const FALLBACK: RouteCommands = ['/notifications'];
 /**
  * Resolves a notification to a route via **fetch-on-click** (never during list rendering). Most
  * entities are nested under a project whose id is NOT in the notification payload, so the parent
- * `projectId` is fetched from the entity's own GET-by-id. Any failure (403/404/network), an entity
+ * `projectId` is fetched from the entity's own GET-by-id. Tasks and stages are the exception: their
+ * notifications carry `projectId`, so they route without a fetch. Any failure (403/404/network), an entity
  * type with no screen, or a missing parent → graceful fallback to the notifications page (SC-002).
  *
  * Adding a future screen is a one-line `case`.
  */
 @Injectable({ providedIn: 'root' })
 export class NotificationDeepLink {
-  private readonly tasks = inject(ProjectTaskService);
-  private readonly stages = inject(ProjectStageService);
   private readonly invoices = inject(InvoiceService);
   private readonly variations = inject(VariationService);
   private readonly approvals = inject(ApprovalService);
@@ -42,17 +39,20 @@ export class NotificationDeepLink {
         case NotificationEntityType.Project:
           return ['/projects', id]; // single id — no fetch
 
-        case NotificationEntityType.ProjectTask: {
-          // getDetails returns TaskDetails { task, subTasks, gateConditions } — projectId is on task.
-          const details = await firstValueFrom(this.tasks.getDetails(id));
-          const projectId = details.task?.projectId;
-          return projectId ? ['/projects', projectId, 'tasks', id] : FALLBACK;
-        }
+        // crmp A-4: SiteApproved / SiteRejected (530/531) carry the survey id; the survey page
+        // reads its own project (Part 4, `/sites/:siteId`).
+        case NotificationEntityType.Site:
+          return ['/sites', id];
 
-        case NotificationEntityType.ProjectStage: {
-          const stage = await firstValueFrom(this.stages.getDetails(id));
-          return stage.projectId ? ['/projects', stage.projectId, 'stages', id] : FALLBACK;
-        }
+        // crmp A-2: task and stage screens are nested under the project, and the notification carries
+        // its parent project (dms `NotificationResponse.ProjectId`, on the REST list and the push), so
+        // the route is built directly — no fetch. A notification stored before the backend added the
+        // field has no project and falls back.
+        case NotificationEntityType.ProjectTask:
+          return view.projectId ? ['/projects', view.projectId, 'tasks', id] : FALLBACK;
+
+        case NotificationEntityType.ProjectStage:
+          return view.projectId ? ['/projects', view.projectId, 'stages', id] : FALLBACK;
 
         case NotificationEntityType.Invoice: {
           const invoice = await firstValueFrom(this.invoices.getById(id));

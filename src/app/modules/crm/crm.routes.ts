@@ -25,7 +25,8 @@ export const crmRoutes: Routes = [
   {
     path: 'my-work',
     canActivate: [PermissionGuard],
-    data: { permission: PERM.crm.designProfile.read },
+    // crmp C-3: the route reads crm.briefs.read (CrmMyWorkEndpoints.cs:25).
+    data: { permission: PERM.crm.briefs.read },
     loadComponent: () => import('./ui/my-work/my-work.component').then((m) => m.CrmMyWorkComponent),
   },
   {

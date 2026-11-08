@@ -11,7 +11,8 @@ import type { CreateProjectTaskRequest, UpdateProjectTaskRequest } from '../../m
 
 describe('TaskFormDialogComponent', () => {
   let created: CreateProjectTaskRequest | null;
-  let updated: { id: string; req: UpdateProjectTaskRequest } | null;
+  let updated: { projectId: string; id: string; req: UpdateProjectTaskRequest } | null;
+  let createdIn: string | null;
   let closedWith: unknown;
   const modalRef = {
     close: (r: unknown) => {
@@ -22,6 +23,7 @@ describe('TaskFormDialogComponent', () => {
   function make(data: TaskFormDialogData): TaskFormDialogComponent {
     created = null;
     updated = null;
+    createdIn = null;
     closedWith = undefined;
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({
@@ -30,12 +32,13 @@ describe('TaskFormDialogComponent', () => {
         {
           provide: ProjectTaskService,
           useValue: {
-            create: (req: CreateProjectTaskRequest) => {
+            create: (projectId: string, req: CreateProjectTaskRequest) => {
               created = req;
+              createdIn = projectId;
               return of('t-1');
             },
-            update: (id: string, req: UpdateProjectTaskRequest) => {
-              updated = { id, req };
+            update: (projectId: string, id: string, req: UpdateProjectTaskRequest) => {
+              updated = { projectId, id, req };
               return of(undefined);
             },
           },
@@ -62,7 +65,7 @@ describe('TaskFormDialogComponent', () => {
     return TestBed.createComponent(TaskFormDialogComponent).componentInstance;
   }
 
-  it('create posts the CreateProjectTaskRequest shape (startDate, projectStageId, numeric weight/order)', () => {
+  it('create posts the TaskRequest shape to the project route (projectStageId, numeric weight/order; crmp A-2: no start date)', () => {
     const c = make({ mode: 'create', projectId: 'p1', projectStageId: 's1', nextOrder: 20 });
     c.form.patchValue({
       name: 'Issue redlined floor plan',
@@ -70,15 +73,14 @@ describe('TaskFormDialogComponent', () => {
       dueDate: '2026-04-18',
     });
     c.submit();
+    expect(createdIn).toBe('p1');
     expect(created).toEqual({
-      projectId: 'p1',
       name: 'Issue redlined floor plan',
       order: 20,
       weight: 1,
       priority: 'Medium',
       projectStageId: 's1',
       assignedToId: null,
-      startDate: '2026-04-01',
       dueDate: '2026-04-18',
       description: null,
       notes: null,
@@ -86,7 +88,7 @@ describe('TaskFormDialogComponent', () => {
     expect(closedWith).toBe(true);
   });
 
-  it('edit PUTs the UpdateProjectTaskRequest shape (estimatedStartDate, no stage/assignee)', () => {
+  it('edit PUTs the TaskRequest shape on the project route (no stage/assignee; crmp A-2: no start date)', () => {
     const c = make({
       mode: 'edit',
       projectId: 'p1',
@@ -105,13 +107,13 @@ describe('TaskFormDialogComponent', () => {
     expect(c.isEdit).toBe(true);
     c.form.patchValue({ name: 'New name' });
     c.submit();
+    expect(updated?.projectId).toBe('p1');
     expect(updated?.id).toBe('t9');
     expect(updated?.req).toEqual({
       name: 'New name',
       order: 20,
       weight: 2,
       priority: 'High',
-      estimatedStartDate: '2026-04-01',
       dueDate: null,
       description: null,
       notes: null,

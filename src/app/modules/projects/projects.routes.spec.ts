@@ -19,7 +19,7 @@ import { isCatalogKey } from '@platform/i18n/catalog.service';
 describe('projectsRoutes', () => {
   const route = (path: string) => projectsRoutes.find((r) => r.path === path);
 
-  it('holds exactly the eight old entries, in the old order, then the scope-of-work route', () => {
+  it('holds exactly the eight old entries, in the old order, then the scope-of-work route, then the crmp routes', () => {
     expect(projectsRoutes.map((r) => r.path)).toEqual([
       'projects',
       'projects/new',
@@ -30,6 +30,9 @@ describe('projectsRoutes', () => {
       'dms/projects/:projectId/stages/:stageId',
       'projects/:projectId/workflow/builder',
       'projects/:id/scope-of-work',
+      'projects/:id/members',
+      'projects/:id/tasks',
+      'projects/:id/teams',
     ]);
   });
 
@@ -70,7 +73,7 @@ describe('projectsRoutes', () => {
     const crumbs = projectsRoutes
       .map((r) => r.data?.['breadcrumb'] as string | undefined)
       .filter((c): c is string => !!c);
-    expect(crumbs.length).toBe(8);
+    expect(crumbs.length).toBe(11); // 8 + crmp P-1 members, P-3 tasks, P-7 teams
     for (const crumb of crumbs) {
       expect(isCatalogKey(crumb)).toBe(true);
       if (!isCatalogKey(crumb)) continue;
@@ -94,5 +97,12 @@ describe('projectsRoutes', () => {
     expect(r.data).toEqual({ permission: PERM.scope.read, breadcrumb: 'route.scopeOfWork' });
     expect(PERM.scope.read).toBe('scope.read');
     expect(await r.loadComponent!()).toBe(ScopeOfWorkPageComponent);
+  });
+
+  it('crmp P-1: the members page is lazy and guarded on project.read', () => {
+    const r = route('projects/:id/members');
+    expect(r?.canActivate).toEqual([PermissionGuard]);
+    expect(r?.data).toEqual({ permission: 'project.read', breadcrumb: 'route.projectMembers' });
+    expect(r?.loadComponent).toBeTypeOf('function');
   });
 });
