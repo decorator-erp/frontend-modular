@@ -89,7 +89,7 @@ describe('ERROR_MESSAGES — Validation.General (sow FINDING-7-10)', () => {
 describe('SCOPE_ERROR_CODES (crm-prod FINDING-P2-9)', () => {
   it('names only codes with an EN and an AR message', () => {
     const codes = Object.values(SCOPE_ERROR_CODES);
-    expect(codes).toHaveLength(6);
+    expect(codes).toHaveLength(7); // LC-1 added tooManyItems (the convert wizard checks it before creating)
     for (const code of codes) {
       expect(code.startsWith('projects.scope.')).toBe(true);
       expect(ERROR_MESSAGES[code], code).toBeTruthy();

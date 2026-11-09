@@ -12,10 +12,10 @@ import { CrmDesignProfileComponent } from './ui/designer/design-profile.componen
 
 describe('crmPages — the lazy loaders app.routes.ts routes through', () => {
   // crmp P2-B: +1 projects/:projectId/portal (the Client portal tab).
-  it('resolves the routes loader to crmRoutes and its 11 children', async () => {
+  it('resolves the routes loader to crmRoutes and its 12 children (LC-1 added the convert wizard)', async () => {
     const routes = await crmPages.routes();
     expect(routes).toBe(crmRoutes);
-    expect(routes).toHaveLength(11);
+    expect(routes).toHaveLength(12);
   });
 
   it('crmp P2-B: the Client portal tab reads with crm.portal.manage OR clients.read', async () => {

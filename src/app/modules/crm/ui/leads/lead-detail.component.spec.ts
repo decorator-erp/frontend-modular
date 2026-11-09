@@ -2,7 +2,7 @@ import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { HttpErrorResponse, provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { provideRouter } from '@angular/router';
+import { provideRouter, Router } from '@angular/router';
 import { NEVER, of, throwError } from 'rxjs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ToastService } from '@platform/feedback/toast.service';
@@ -478,5 +478,16 @@ describe('CrmLeadDetailComponent — website leads (LI-1)', () => {
     const { fixture } = make();
 
     expect(rendered(fixture).querySelector('[data-testid="lead-notes"]')).toBeNull();
+  });
+});
+
+describe('CrmLeadDetailComponent — convert (LC-1)', () => {
+  it('Convert opens the convert wizard for this lead', () => {
+    const { c } = make();
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+
+    c.openConvert(lead);
+
+    expect(navigate).toHaveBeenCalledWith(['/crm/leads', 'L', 'convert']);
   });
 });

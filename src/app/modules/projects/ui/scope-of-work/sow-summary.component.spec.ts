@@ -445,3 +445,20 @@ function sowItemLike(id: string) {
     sourceMissing: false,
   };
 }
+
+describe('SowSummaryComponent — showConfirm (LC-1)', () => {
+  it('hides the confirm block when the host confirms the scope itself', () => {
+    TestBed.configureTestingModule({ imports: [SowSummaryComponent] });
+    const fixture = TestBed.createComponent(SowSummaryComponent);
+    fixture.componentRef.setInput('scope', scope());
+    fixture.componentRef.setInput('editable', true);
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('[data-confirm-block]')).not.toBeNull();
+
+    fixture.componentRef.setInput('showConfirm', false);
+    fixture.detectChanges();
+
+    expect(el.querySelector('[data-confirm-block]')).toBeNull();
+  });
+});

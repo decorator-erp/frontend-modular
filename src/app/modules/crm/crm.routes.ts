@@ -53,6 +53,16 @@ export const crmRoutes: Routes = [
       import('./ui/leads/lead-detail.component').then((m) => m.CrmLeadDetailComponent),
   },
   {
+    // LC-1: converting a lead sets up its client, project, scope of work and site survey.
+    path: 'leads/:leadId/convert',
+    canActivate: [PermissionGuard],
+    data: { permission: PERM.crm.leads.convert },
+    loadComponent: () =>
+      import('./ui/leads/convert/lead-convert-page.component').then(
+        (m) => m.LeadConvertPageComponent,
+      ),
+  },
+  {
     path: 'clients/:clientId',
     canActivate: [PermissionGuard],
     data: { permission: PERM.clients.read },

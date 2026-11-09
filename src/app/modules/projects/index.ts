@@ -46,3 +46,19 @@ export type { AccessArea, ProjectAccess } from './model/access-grant.model';
 // Future: dashboard (010).
 export { StageGateConditionService } from './data/stage-gate-condition.service';
 export { TaskGateConditionService } from './data/task-gate-condition.service';
+
+// LC-1: the lead-convert wizard (CRM) builds a project's scope of work before the project exists, then
+// creates and confirms it. The service and types are eager; the editor is a lazy loader, because a
+// component exported here would land in the initial bundle through app.routes.ts.
+export { ScopeOfWorkService } from './data/scope-of-work.service';
+export { ScopeOfWorkStatus } from './model/scope-of-work.model';
+export type {
+  ScopeOfWork,
+  ScopeOfWorkItem,
+  SowTemplateOption,
+  UpdateScopeOfWorkHeaderRequest,
+} from './model/scope-of-work.model';
+export type { SowItemUpdate } from './ui/scope-of-work/sow-items-table.component';
+export type { SowDraftEditorComponent } from './ui/scope-of-work/sow-draft-editor.component';
+export const loadSowDraftEditor = () =>
+  import('./ui/scope-of-work/sow-draft-editor.component').then((m) => m.SowDraftEditorComponent);

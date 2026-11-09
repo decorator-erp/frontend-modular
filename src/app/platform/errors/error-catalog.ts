@@ -1026,4 +1026,5 @@ export const SCOPE_ERROR_CODES = {
   negativeTotal: 'projects.scope.NegativeTotal',
   sourceStageNotFound: 'projects.scope.SourceStageNotFound',
   workflowNotSupported: 'projects.scope.WorkflowNotSupported',
+  tooManyItems: 'projects.scope.TooManyItems',
 } as const;
