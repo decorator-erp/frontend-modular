@@ -1,16 +1,17 @@
 :root {
-  /* Reference — palette (from design-system.md §30.2) */
-  --gray-50: #fafafa;
-  --gray-100: #f5f5f5;
-  --gray-200: #eaeaea;
-  --gray-300: #d6d6d6;
-  --gray-500: #757575;
-  --gray-700: #444444;
-  --gray-900: #111111;
-  --accent-500: #355e52;
-  --accent-600: #2a4d43;
-  --accent-700: #1f3a32;
-  --accent-50: #eaf0ee;
+  /* Reference — palette. RD-1 (2026-11): the owner's "Ocean Blue" pick from the
+     redesign gallery — blue-tinted neutrals and a sea-blue accent. Status hues unchanged. */
+  --gray-50: #f3f7fa;
+  --gray-100: #ebf2f7;
+  --gray-200: #d8e3ec;
+  --gray-300: #c3d1dd;
+  --gray-500: #607487;
+  --gray-700: #34495c;
+  --gray-900: #0c1a26;
+  --accent-500: #0b5f8a;
+  --accent-600: #094d70;
+  --accent-700: #073d59;
+  --accent-50: #e0eef6;
   --success-500: #2f7d5b;
   --warning-500: #b8741a;
   --danger-500: #b23a3a;
@@ -40,6 +41,18 @@
   --color-pending: var(--pending-500);
   --color-pending-soft: var(--pending-50);
   --color-focus-ring: var(--accent-500);
+
+  /* RD-1 — the dark brand sidebar (and the phone/tablet drawer). */
+  --sidebar-bg: #0b2233;
+  --sidebar-text: #c6d8e6;
+  --sidebar-muted: #7f97aa;
+  --sidebar-hover: rgba(198, 216, 230, 0.1);
+  --sidebar-line: rgba(198, 216, 230, 0.12);
+  --sidebar-active-bg: #136f9e;
+  --sidebar-active-text: #ffffff;
+  --sidebar-strong: #ffffff;
+  --brand: var(--accent-500);
+  --on-brand: #ffffff;
 
   /* Spacing — the prototype's ladder is 4/8/12/16/20/24/32/40/48/64.
      `--space-5` (card padding, desktop) and `--space-10` (major section break)
@@ -125,13 +138,15 @@
   --radius-md: 8px;
   --radius-lg: 12px;
   --radius-full: 9999px;
-  /* Flat surfaces (cards, panels, tables) are square in v2 — hairline border, no radius. */
-  --radius-card: 0;
+  /* RD-1: cards, panels and tables are soft rounded (the owner's pick) — was 0. */
+  --radius-card: 12px;
 
   /* Shadow */
   --shadow-sm: 0 1px 2px rgba(17, 17, 17, 0.04);
   --shadow-md: 0 4px 12px rgba(17, 17, 17, 0.06);
   --shadow-lg: 0 12px 32px rgba(17, 17, 17, 0.08);
+  /* RD-1 soft rounded cards: a light double shadow under every `rounded-card`. */
+  --shadow-card: 0 1px 2px rgba(12, 26, 38, 0.05), 0 6px 18px rgba(12, 26, 38, 0.06);
 
   /* Motion */
   --dur-fast: 120ms;
@@ -242,10 +257,10 @@
   /* Surfaces & ink */
   --bg: var(--color-bg);
   --surface: var(--color-surface);
-  --hover: #f8f8f8;
-  --selected: #f3f3f3;
+  --hover: #f0f5f9;
+  --selected: #e6eff6;
   --border: var(--color-border);
-  --border-soft: #f1f1f1;
+  --border-soft: #e4ecf2;
   --ink: var(--color-text-primary);
   --on-ink: rgba(255, 255, 255, 0.1);
   --on-ink-border: rgba(255, 255, 255, 0.22);
@@ -278,10 +293,15 @@
   --arabic: 'Noto Sans Arabic', 'Inter', system-ui, sans-serif;
   /* v2 DS migration (002): icon-only sidebar — was 216px, now 56px (permanent,
      no expand state per spec clarification Q3). Shell lays out from this token. */
-  --sidebar-w: 56px;
-  /* Mobile off-canvas drawer renders the sidebar labelled (research R3); this is
-     the overlay width only — the desktop rail always uses --sidebar-w. */
-  --sidebar-drawer-w: 224px;
+  /* RD-1: the dark brand sidebar. Full width on desktop, the icon rail when the
+     owner collapses it (and always on tablet), the drawer width on tablet/phone. */
+  --sidebar-w: 232px;
+  --sidebar-rail-w: 64px;
+  --sidebar-drawer-w: 272px;
+  /* Phone bottom tab bar (RD-1), excluding the safe-area inset. */
+  --tabbar-h: 64px;
+  /* The phone's home-indicator inset, so the tab bar clears it. */
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
   /* Page filter rail (clients / employees list pages) — a content column, not the
      nav sidebar. Tokenized to drop the raw 216px literal and decouple from --sidebar-w. */
   --filter-rail-w: 216px;
