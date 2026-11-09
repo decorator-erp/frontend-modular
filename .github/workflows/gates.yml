@@ -39,11 +39,11 @@ jobs:
         run: npm run lint:px-styles
 
       - name: test
-        # 300+ spec files: a vitest fork worker crossed Node's ~2 GB default heap on the runner
-        # (OOM, not a failing test). The runner has 16 GB, so give each worker 4 GB.
-        env:
-          NODE_OPTIONS: --max-old-space-size=4096
-        run: npm test -- --watch=false
+        # --isolate: the unit-test builder defaults to isolate=false, so each vitest worker keeps
+        # every spec file's module graph and, past 300 spec files, outgrew the small CI runner
+        # (a worker OOM, then a runner shutdown — never a failing test). Isolated, the suite peaks
+        # at ~3.75 GB instead of ~6.5 GB, at ~2.5x the test time. Local `npm test` is unchanged.
+        run: npm test -- --watch=false --isolate
 
       - name: TODO audit (printed, not gated)
         run: grep -rn "TODO(0" src/ || true
