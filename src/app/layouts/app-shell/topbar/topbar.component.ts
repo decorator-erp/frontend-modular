@@ -1,11 +1,4 @@
-import {
-  ChangeDetectionStrategy,
-  Component,
-  computed,
-  inject,
-  output,
-  signal,
-} from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { NavigationEnd, Router } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { filter, map, startWith } from 'rxjs/operators';
@@ -25,6 +18,7 @@ import {
   PeraTooltipDirective,
 } from '@ds';
 import { NotificationBellComponent } from '@modules/notifications';
+import { ShellLayoutService } from '../shell-layout.service';
 
 @Component({
   selector: 'app-topbar',
@@ -50,7 +44,8 @@ export class TopbarComponent {
   readonly locale = inject(LocaleService);
   readonly palette = inject(CommandPaletteService);
 
-  readonly menuToggle = output<void>();
+  /** RD-1: the navbar toggle and the phone layout. */
+  readonly layout = inject(ShellLayoutService);
 
   readonly menuOpen = signal(false);
 
@@ -69,6 +64,15 @@ export class TopbarComponent {
     return trail && trail.length
       ? trail
       : [{ label: this.catalog.label(this.currentBreadcrumb()) }];
+  });
+
+  /** On phones the breadcrumb trail collapses to its last crumb, shown as the page title. */
+  readonly pageTitle = computed(() => this.breadcrumbs().at(-1)?.label ?? 'PERA');
+
+  readonly toggleLabel = computed(() => {
+    if (this.layout.device() !== 'desktop')
+      return this.layout.drawerOpen() ? 'Close menu' : 'Open menu';
+    return this.layout.collapsed() ? 'Expand menu' : 'Collapse menu';
   });
 
   readonly userName = computed(() => this.auth.user()?.userName ?? '');

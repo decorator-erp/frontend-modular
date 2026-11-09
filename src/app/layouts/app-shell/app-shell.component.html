@@ -2,26 +2,46 @@
   class="min-h-screen h-screen bg-bg text-text-primary font-sans flex"
   [attr.dir]="locale.direction()"
 >
-  <app-sidebar class="hidden lg:block h-full shrink-0" />
+  <!-- RD-1: the docked dark sidebar — full or icon rail on desktop, rail on tablet, none on phone. -->
+  @if (layout.dockedMode(); as mode) {
+    @if (mode !== 'none') {
+      <app-sidebar
+        class="h-full shrink-0"
+        [mode]="mode"
+        [collapsible]="layout.device() === 'desktop'"
+        (toggleCollapse)="layout.toggle()"
+      />
+    }
+  }
 
-  @if (mobileDrawerOpen()) {
+  <!-- Tablet and phone: the full sidebar slides over the page. -->
+  @if (layout.drawerOpen() && layout.device() !== 'desktop') {
     <div
-      class="fixed inset-0 z-40 bg-black/40 lg:hidden"
-      (click)="closeMobileDrawer()"
+      class="fixed inset-0 z-40 bg-black/40"
+      data-shell-scrim
+      (click)="layout.closeDrawer()"
       aria-hidden="true"
     ></div>
     <app-sidebar
-      class="fixed inset-y-0 start-0 z-50 lg:hidden h-full shadow-lg"
-      [expanded]="true"
-      (navigate)="closeMobileDrawer()"
+      class="fixed inset-y-0 start-0 z-50 h-full shadow-lg"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Menu"
+      mode="full"
+      [drawer]="true"
+      (navigate)="layout.closeDrawer()"
+      (closed)="layout.closeDrawer()"
     />
   }
 
   <div class="flex-1 flex flex-col min-w-0 h-full">
-    <app-topbar (menuToggle)="toggleMobileDrawer()" />
+    <app-topbar />
     <main class="flex-1 overflow-auto">
       <router-outlet />
     </main>
+    @if (layout.device() === 'phone') {
+      <app-bottom-tabs class="shrink-0" [moreOpen]="layout.drawerOpen()" (more)="layout.toggle()" />
+    }
   </div>
 
   <pera-command-palette />

@@ -39,7 +39,7 @@ interface Destination {
 
       <!-- .e404-sug — 3-col suggestion grid -->
       <div
-        class="w-full max-w-[var(--w-prose)] grid grid-cols-1 md:grid-cols-3 border border-border bg-surface"
+        class="w-full max-w-[var(--w-prose)] grid grid-cols-1 md:grid-cols-3 border border-border bg-surface rounded-card"
       >
         <!-- Recent screens -->
         <div class="p-5 border-e border-border-soft last:border-e-0">
