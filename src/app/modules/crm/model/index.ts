@@ -151,9 +151,9 @@ export interface CrmClientChild {
 }
 
 /**
- * Anonymous public submission (`POST /api/crm/public/leads`) — creates the lead only.
- * `PublicLeadRequest(FirstName, LastName, Email?, Phone?, Notes?)` (`CrmPublicEndpoints.cs:80`):
- * no intake and no honeypot are bound (009b #8, D-a).
+ * Anonymous public submission (`POST /api/crm/public/leads`, LI-1): the lead and, when the client
+ * answered any project question, its intake — saved together as an unassigned Website lead.
+ * `PublicLeadRequest(FirstName, LastName, Email?, Phone?, Notes?, Intake?)` (`CrmPublicEndpoints.cs`).
  */
 export interface PublicLeadSubmissionRequest {
   firstName: string;
@@ -161,6 +161,8 @@ export interface PublicLeadSubmissionRequest {
   email: string | null;
   phone: string | null;
   notes: string | null;
+  /** `null` when every project question was left blank. */
+  intake: LeadIntakeRequest | null;
 }
 
 // ---------------------------------------------------------------------------

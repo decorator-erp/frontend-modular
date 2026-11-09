@@ -4,7 +4,8 @@ import { of, throwError } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
 import { EmployeeService } from '@modules/people';
 import { CrmLeadService } from '../../data/crm-lead.service';
-import { LeadStatus } from '../../model/crm-enums';
+import { LeadSource, LeadStatus } from '../../model/crm-enums';
+import { EN } from '@platform/i18n/catalog/en';
 import { CrmLeadsListComponent } from './leads-list.component';
 
 function make() {
@@ -74,5 +75,28 @@ describe('CrmLeadsListComponent — load failure (crm-prod M4)', () => {
     expect(leads.search).toHaveBeenCalledTimes(calls + 1);
     expect(el.querySelector('[data-testid="leads-load-error"]')).toBeNull();
     expect(el.textContent).toContain('No leads yet');
+  });
+});
+
+describe('CrmLeadsListComponent — unassigned leads (LI-1)', () => {
+  it("names an unassigned lead's owner Unassigned", () => {
+    const { component } = make();
+    const row = {
+      id: 'L',
+      firstName: 'Mona',
+      lastName: 'Adel',
+      email: null,
+      phone: null,
+      source: LeadSource.Website,
+      status: LeadStatus.New,
+      ownerId: null,
+      notes: null,
+      convertedClientId: null,
+      convertedAtUtc: null,
+    };
+
+    expect((component as unknown as { ownerName(r: typeof row): string }).ownerName(row)).toBe(
+      EN['leads.unassigned'],
+    );
   });
 });

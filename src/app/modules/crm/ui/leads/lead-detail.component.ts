@@ -151,6 +151,16 @@ const INTAKE_FIELD_MAP: Record<string, string> = {
                   >{{ catalog.t('brief.fOwner') }}: {{ ownerName(lead.ownerId) }}</span
                 >
               </div>
+              @if (lead.notes) {
+                <div data-testid="lead-notes" class="flex flex-col gap-0.5 mt-1">
+                  <span class="fs-label uppercase tracking-wide text-text-muted">{{
+                    catalog.t('brief.fNotes')
+                  }}</span>
+                  <p class="fs-body-sm text-text-primary whitespace-pre-line m-0">
+                    {{ lead.notes }}
+                  </p>
+                </div>
+              }
               @if (lead.convertedClientId) {
                 <a
                   data-testid="lead-client-link"
@@ -639,7 +649,9 @@ export class CrmLeadDetailComponent {
     return LEAD_SOURCE_KEYS[source as keyof typeof LEAD_SOURCE_KEYS];
   }
 
-  protected ownerName(ownerId: string): string {
+  /** LI-1: a website lead arrives unassigned. */
+  protected ownerName(ownerId: string | null): string {
+    if (!ownerId) return this.catalog.t('leads.unassigned');
     return this.owners()[ownerId] ?? '—';
   }
 

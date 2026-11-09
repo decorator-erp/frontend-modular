@@ -7,6 +7,7 @@ import { ToastService } from '@platform/feedback/toast.service';
 import { PERA_MODAL_DATA, PeraModalRef } from '@ds';
 import { CrmLeadService, type CrmLead } from '../../../data/crm-lead.service';
 import { LeadSource, LeadStatus } from '../../../model/crm-enums';
+import { EN } from '@platform/i18n/catalog/en';
 import { CrmLeadFormComponent } from './lead-form.component';
 
 function problem(code: string): HttpErrorResponse {
@@ -89,5 +90,69 @@ describe('CrmLeadFormComponent — edit mode (crm-prod H3)', () => {
       ownerId: 'E1',
     });
     expect(close).toHaveBeenCalledWith(true);
+  });
+});
+
+describe('CrmLeadFormComponent — unassigned leads (LI-1)', () => {
+  function makeWith(api: Record<string, unknown>, data?: unknown) {
+    TestBed.configureTestingModule({
+      imports: [CrmLeadFormComponent],
+      providers: [
+        { provide: CrmLeadService, useValue: api },
+        {
+          provide: EmployeeService,
+          useValue: { listPaged: () => of({ items: [{ id: 'E1', fullName: 'Sara Nabil' }] }) },
+        },
+        { provide: ToastService, useValue: { show: () => undefined } },
+        { provide: PeraModalRef, useValue: { close: () => undefined } },
+        ...(data ? [{ provide: PERA_MODAL_DATA, useValue: data }] : []),
+      ],
+    });
+    return TestBed.createComponent(CrmLeadFormComponent).componentInstance;
+  }
+
+  it('creates a lead with no owner as ownerId null', () => {
+    const api = { create: vi.fn().mockReturnValue(of('L')) };
+    const c = makeWith(api);
+    c.form.patchValue({ firstName: 'Mona', lastName: 'Adel' });
+    c.submit();
+
+    expect(api.create).toHaveBeenCalledWith(expect.objectContaining({ ownerId: null }));
+  });
+
+  it('offers Unassigned first among the owners', () => {
+    const c = makeWith({});
+    const options = (
+      c as unknown as { ownerOptions(): { value: unknown; label: string }[] }
+    ).ownerOptions();
+
+    expect(options[0]).toEqual({ value: null, label: EN['leads.unassigned'] });
+    expect(options[1]).toEqual({ value: 'E1', label: 'Sara Nabil' });
+  });
+
+  it('edits an unassigned website lead and assigns it', () => {
+    const api = { update: vi.fn().mockReturnValue(of(undefined)) };
+    const c = makeWith(api, {
+      lead: {
+        id: 'L',
+        firstName: 'Mona',
+        lastName: 'Adel',
+        email: null,
+        phone: null,
+        source: LeadSource.Website,
+        status: LeadStatus.New,
+        ownerId: null,
+        notes: null,
+        convertedClientId: null,
+        convertedAtUtc: null,
+      },
+    });
+    expect(c.form.controls.ownerId.value).toBeNull();
+    expect(c.form.valid).toBe(true);
+
+    c.form.patchValue({ ownerId: 'E1' });
+    c.submit();
+
+    expect(api.update).toHaveBeenCalledWith('L', expect.objectContaining({ ownerId: 'E1' }));
   });
 });

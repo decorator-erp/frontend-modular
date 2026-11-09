@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { type Observable, catchError, of } from 'rxjs';
 import { CrmLeadService, type CrmLead } from '../../../data/crm-lead.service';
@@ -109,11 +109,7 @@ export interface EditLeadDialogData {
             [error]="errorOf('source')"
           />
         </pera-form-field>
-        <pera-form-field
-          [label]="catalog.t('brief.fOwner')"
-          [required]="true"
-          [error]="errorOf('ownerId')"
-        >
+        <pera-form-field [label]="catalog.t('brief.fOwner')" [error]="errorOf('ownerId')">
           <pera-select
             formControlName="ownerId"
             [options]="ownerOptions()"
@@ -154,7 +150,12 @@ export class CrmLeadFormComponent {
     ] as const
   ).map((value) => ({ value: String(value), label: this.catalog.t(SOURCE_KEYS[value]) }));
 
-  protected readonly ownerOptions = signal<SelectOption[]>([]);
+  /** LI-1: a lead may be unassigned, so "Unassigned" (`null`) leads the list. */
+  private readonly employeeOptions = signal<SelectOption[]>([]);
+  protected readonly ownerOptions = computed<SelectOption[]>(() => [
+    { value: null, label: this.catalog.t('leads.unassigned') },
+    ...this.employeeOptions(),
+  ]);
 
   readonly form = this.fb.nonNullable.group({
     firstName: ['', [Validators.required, Validators.maxLength(100)]],
@@ -162,7 +163,7 @@ export class CrmLeadFormComponent {
     phone: ['', [PeraValidators.phone]],
     email: ['', [PeraValidators.email]],
     source: [String(LeadSource.Website), [Validators.required]],
-    ownerId: [null as string | null, [Validators.required]],
+    ownerId: [null as string | null],
     notes: ['', [Validators.maxLength(2000)]],
   });
 
@@ -186,7 +187,7 @@ export class CrmLeadFormComponent {
       .listPaged({ page: 1, pageSize: 500, isActive: true })
       .pipe(catchError(() => of(null)))
       .subscribe((paged) =>
-        this.ownerOptions.set(
+        this.employeeOptions.set(
           (paged?.items ?? []).map((e) => ({ value: e.id, label: e.fullName })),
         ),
       );
@@ -217,7 +218,7 @@ export class CrmLeadFormComponent {
       email: v.email.trim() || null,
       phone: v.phone.trim() || null,
       notes: v.notes.trim() || null,
-      ownerId: v.ownerId ?? '',
+      ownerId: v.ownerId || null,
     };
     const lead = this.editLead;
 

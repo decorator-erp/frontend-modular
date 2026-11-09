@@ -21,7 +21,8 @@ export interface CrmLead {
   phone: string | null;
   source: LeadSource;
   status: LeadStatus;
-  ownerId: string;
+  /** LI-1: `null` for an unassigned lead — every lead from the public intake form starts so. */
+  ownerId: string | null;
   notes: string | null;
   convertedClientId: string | null;
   convertedAtUtc: string | null;
@@ -46,8 +47,8 @@ export interface CreateLeadRequest {
   email?: string | null;
   phone?: string | null;
   notes?: string | null;
-  /** Required: an active HR employee (400 `crm.leads.OwnerNotFound`). */
-  ownerId: string;
+  /** An active HR employee (400 `crm.leads.OwnerNotFound`), or `null` to leave the lead unassigned (LI-1). */
+  ownerId: string | null;
 }
 
 /**
@@ -58,8 +59,8 @@ export interface UpdateLeadRequest {
   firstName: string;
   lastName: string;
   source: LeadSource;
-  /** Required: an active HR employee (400 `crm.leads.OwnerNotFound` when it changes). */
-  ownerId: string;
+  /** An active HR employee (400 `crm.leads.OwnerNotFound` when it changes), or `null` for unassigned (LI-1). */
+  ownerId: string | null;
   email?: string | null;
   phone?: string | null;
   notes?: string | null;
@@ -248,7 +249,7 @@ export class CrmLeadService extends ApiService {
       phone: this.field<string | null>(source, 'phone') ?? null,
       source: this.field<number>(source, 'source') ?? LeadSource.Other,
       status: this.field<number>(source, 'status') ?? LeadStatus.New,
-      ownerId: this.field<string>(source, 'ownerId') ?? '',
+      ownerId: this.field<string | null>(source, 'ownerId') || null,
       notes: this.field<string | null>(source, 'notes') ?? null,
       convertedClientId: this.field<string | null>(source, 'convertedClientId') ?? null,
       convertedAtUtc: this.field<string | null>(source, 'convertedAtUtc') ?? null,
