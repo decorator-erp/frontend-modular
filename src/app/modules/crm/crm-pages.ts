@@ -4,7 +4,7 @@
 // so a class exported from it lands in the initial bundle, while each loader keeps its page in its
 // own lazy chunk exactly as the old app's `import('./features/crm/…')` did.
 export const crmPages = {
-  // The office shell's `crm` child: its 11 children and their route-level stores stay lazy.
+  // The office shell's `crm` child: its 12 children and their route-level stores stay lazy.
   routes: () => import('./crm.routes').then((m) => m.crmRoutes),
   intake: () => import('./ui/public/intake-page.component').then((m) => m.IntakePageComponent),
   clientProfile: () =>

@@ -13,7 +13,7 @@ import {
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { ErrorHandlerService, friendly } from '@platform/http/error-handler.service';
 import { CatalogService } from '@platform/i18n/catalog.service';
 import type { CatalogKey } from '@platform/i18n/catalog/en';
@@ -57,7 +57,6 @@ import {
   UNIT_TYPE_KEYS,
 } from '../brief/brief-head.component';
 import { LeadDetailStore } from '../../stores/lead-detail.store';
-import { CrmConvertLeadComponent, type ConvertLeadDialogData } from './convert-lead.component';
 import {
   CrmLeadFormComponent,
   type EditLeadDialogData,
@@ -398,6 +397,7 @@ export class CrmLeadDetailComponent {
   private readonly fb = inject(FormBuilder);
   private readonly errors = inject(ErrorHandlerService);
   private readonly modal = inject(ModalService);
+  private readonly router = inject(Router);
   private readonly confirm = inject(ConfirmService);
   private readonly toast = inject(ToastService);
   private readonly directory = inject(EmployeeService);
@@ -689,12 +689,9 @@ export class CrmLeadDetailComponent {
     return control && control.touched && control.errors ? firstErrorMessage(control.errors) : '';
   }
 
-  async openConvert(lead: CrmLead): Promise<void> {
-    const data: ConvertLeadDialogData = { leadId: lead.id, lead };
-    const ok = await this.modal
-      .open<boolean>(CrmConvertLeadComponent, { size: 'md', data })
-      .afterClosed();
-    if (ok) this.store.load(lead.id);
+  /** LC-1: converting sets up the client, project, scope of work and site — a page, not a dialog. */
+  openConvert(lead: CrmLead): void {
+    void this.router.navigate(['/crm/leads', lead.id, 'convert']);
   }
 
   save(): void {

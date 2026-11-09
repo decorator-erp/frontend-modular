@@ -161,7 +161,7 @@ type HeaderField = 'duration' | 'start' | 'adjustment' | 'adjustmentNote' | 'not
           {{ catalog.t('sow.readOnlyFooter') }}
         </p>
       </div>
-    } @else {
+    } @else if (showConfirm()) {
       <div class="${CARD}" data-confirm-block>
         @if (blockingTexts().length) {
           <ul class="m-0 ps-5 flex flex-col gap-1 fs-body-sm text-warning" data-blocking-reasons>
@@ -205,6 +205,11 @@ export class SowSummaryComponent {
   readonly confirmError = input<string | null>(null);
   /** FINDING-7-1: the header as last sent and not yet reloaded (the store's `headerDraft`). */
   readonly draft = input<UpdateScopeOfWorkHeaderRequest | null>(null);
+  /**
+   * LC-1: the confirm block. The lead-convert wizard edits a scope that doesn't exist yet and
+   * confirms it as part of its own Create, so it hides the block.
+   */
+  readonly showConfirm = input(true);
 
   /** One full header, ready for `PUT …/scope-of-work` (B9). */
   readonly headerChange = output<UpdateScopeOfWorkHeaderRequest>();

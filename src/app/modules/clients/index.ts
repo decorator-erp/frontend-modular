@@ -11,4 +11,4 @@ export { ClientService } from './data/client.service';
 export { ClientSearchService } from './data/client-search.service';
 
 // Future: crm (stores/client-hub.store).
-export type { ClientResponse } from './model/client.model';
+export type { ClientResponse, CreateClientRequest } from './model/client.model';
