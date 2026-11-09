@@ -99,7 +99,7 @@ import {
  * encapsulation and carries zero raw pixels — the Batch 4a de-port (FR-018).
  * Tailwind sees these literals when it scans the file.
  */
-const PANEL = 'bg-surface border border-border flex flex-col min-w-0';
+const PANEL = 'bg-surface border border-border rounded-card flex flex-col min-w-0';
 const PANEL_HEAD = 'px-5 py-3 border-b border-border flex items-center justify-between gap-3';
 const PANEL_TITLE = 'm-0 font-medium text-text-primary';
 const COUNT_CHIP = 'font-mono text-text-muted px-1.5 py-px bg-selected';

@@ -102,7 +102,7 @@ import {
           <ol class="flex flex-col gap-2 m-0 p-0 list-none">
             @for (s of visible(); track s.id; let first = $first, last = $last) {
               <li
-                class="flex items-center gap-3 p-3 border border-border bg-surface"
+                class="flex items-center gap-3 p-3 border border-border bg-surface rounded-card"
                 [class.opacity-60]="!s.isAvailable"
                 data-testid="share-row"
               >

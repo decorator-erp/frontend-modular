@@ -60,7 +60,7 @@ type PortalTab = 'sections' | 'shared' | 'updates' | 'preview';
           }}</pera-alert>
         }
         <pera-tabs [tabs]="tabs()" [activeId]="tab()" (activeChange)="select($event)" />
-        <div class="bg-surface border border-border p-4">
+        <div class="bg-surface border border-border rounded-card p-4">
           @switch (tab()) {
             @case ('sections') {
               <app-crm-portal-settings-panel

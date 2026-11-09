@@ -7,7 +7,7 @@ import type { BadgeTone } from '@platform/types/presentation';
 export type { BadgeTone } from '@platform/types/presentation';
 
 const TONE_CLASSES: Record<BadgeTone, string> = {
-  neutral: 'bg-surface-muted text-text-secondary border border-border',
+  neutral: 'bg-surface-muted text-text-secondary',
   success: 'bg-success-soft text-success',
   warning: 'bg-warning-soft text-warning',
   danger: 'bg-danger-soft text-danger',

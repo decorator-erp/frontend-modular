@@ -60,7 +60,7 @@ function statusClass(status: string): string {
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'block' },
   template: `
-    <div class="border border-border bg-surface overflow-x-auto">
+    <div class="border border-border bg-surface rounded-card overflow-x-auto">
       <!-- Axis header -->
       <div class="grid border-b border-border" [style.grid-template-columns]="gridColumns()">
         <div

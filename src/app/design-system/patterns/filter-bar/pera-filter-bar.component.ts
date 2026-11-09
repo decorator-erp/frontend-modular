@@ -66,7 +66,9 @@ interface ActiveChip {
   template: `
     <!-- The prototype's .fbar: one compact flex row — search, then content-sized
          facet chips, then "Clear all" pushed to the inline-end. -->
-    <div class="flex flex-wrap items-center gap-2 border border-border bg-surface px-3 py-2.5">
+    <div
+      class="flex flex-wrap items-center gap-2 border border-border bg-surface rounded-lg px-3 py-2.5"
+    >
       @if (search()) {
         <pera-input
           [inline]="true"

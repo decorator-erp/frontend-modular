@@ -81,7 +81,7 @@ const SOON_MS = 3 * 24 * 60 * 60 * 1000;
         <ul class="flex flex-col gap-2 m-0 p-0 list-none">
           @for (row of rows(); track row.trackKey) {
             <li
-              class="flex flex-col gap-2 p-3 border border-border bg-surface"
+              class="flex flex-col gap-2 p-3 border border-border bg-surface rounded-card"
               data-testid="mywork-row"
             >
               <div class="flex items-center justify-between gap-3">

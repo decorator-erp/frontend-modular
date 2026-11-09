@@ -30,7 +30,8 @@ import {
  * `default` preserves the table's original rhythm. `compact` matches the hubs
  * prototype (`DMS Module Hubs.dc.html`): --fs-caption cell text and cell padding
  * snapped to the spacing ladder (8px block / 12px inline). `comfortable` is the
- * roomy variant the density toggle offers.
+ * roomy variant the density toggle offers — and, since RD-1, the default: taller rows, zebra
+ * stripes and an accent hover (the owner's "comfortable tables" pick).
  */
 type Density = 'default' | 'comfortable' | 'compact';
 
@@ -157,7 +158,7 @@ const HEADER_LABEL = 'uppercase tracking-wide fs-label font-semibold text-text-m
       </div>
     } @else if (error()) {
       <div
-        class="border border-border bg-surface px-6 py-10 flex flex-col items-center text-center gap-2"
+        class="border border-border bg-surface rounded-card px-6 py-10 flex flex-col items-center text-center gap-2"
         role="alert"
       >
         <pera-icon name="x" [size]="20" class="text-danger" />
@@ -174,7 +175,7 @@ const HEADER_LABEL = 'uppercase tracking-wide fs-label font-semibold text-text-m
       />
     } @else {
       <!-- Desktop table -->
-      <div class="max-md:hidden overflow-x-auto border border-border bg-surface">
+      <div class="max-md:hidden overflow-x-auto border border-border bg-surface rounded-card">
         <table class="w-full border-collapse text-sm">
           <thead>
             <tr class="border-b border-border">
@@ -240,10 +241,16 @@ const HEADER_LABEL = 'uppercase tracking-wide fs-label font-semibold text-text-m
           <tbody>
             @for (row of rows(); track rowKey(row, $index)) {
               <tr
-                class="border-b border-border last:border-b-0 hover:bg-hover transition-colors"
+                class="border-b last:border-b-0 transition-colors"
                 [class.cursor-pointer]="hasRowClick()"
+                [class.border-border]="effectiveDensity() !== 'comfortable'"
+                [class.hover:bg-hover]="effectiveDensity() !== 'comfortable'"
                 [class.h-8]="effectiveDensity() === 'default'"
-                [class.h-10]="effectiveDensity() === 'comfortable'"
+                [class.h-11]="effectiveDensity() === 'comfortable'"
+                [class.odd:bg-surface-muted/60]="effectiveDensity() === 'comfortable'"
+                [class.border-transparent]="effectiveDensity() === 'comfortable'"
+                [class.hover:bg-accent-soft]="effectiveDensity() === 'comfortable'"
+                [attr.data-density]="effectiveDensity()"
                 (click)="rowClick.emit(row)"
               >
                 @if (selectable()) {
@@ -298,7 +305,7 @@ const HEADER_LABEL = 'uppercase tracking-wide fs-label font-semibold text-text-m
       <div class="md:hidden flex flex-col gap-2">
         @for (row of rows(); track rowKey(row, $index)) {
           <div
-            class="bg-surface border border-border p-3 flex flex-col gap-2"
+            class="bg-surface border border-border rounded-card p-3 flex flex-col gap-2"
             (click)="rowClick.emit(row)"
           >
             <div class="flex items-start justify-between gap-2">
@@ -388,7 +395,7 @@ const HEADER_LABEL = 'uppercase tracking-wide fs-label font-semibold text-text-m
         (backdropClick)="closeMenu()"
         (detach)="closeMenu()"
       >
-        <div class="bg-surface border border-border shadow-md py-1 min-w-40" role="menu">
+        <div class="bg-surface border border-border rounded-lg shadow-md py-1 min-w-40" role="menu">
           @for (action of allowedRowActions(); track action.label) {
             @if (!action.visible || action.visible(row)) {
               <button
@@ -426,7 +433,8 @@ export class PeraDataTableComponent<T> {
   readonly bulkActions = input<TableBulkAction[]>([]);
   readonly rowActions = input<TableRowAction<T>[]>([]);
   /** Row rhythm. `default` is today's behaviour; `compact` matches the prototype. */
-  readonly density = input<Density>('default');
+  /** RD-1: tables are comfortable by default (taller rows, zebra stripes); users can still switch. */
+  readonly density = input<Density>('comfortable');
   readonly hasRowClick = input(false);
   readonly hasRetry = input(false);
   /** Stable key — persists density + hidden columns to localStorage and shows the tools row. */

@@ -34,7 +34,7 @@ import { CdkConnectedOverlay, CdkOverlayOrigin } from '@angular/cdk/overlay';
       (overlayKeydown)="onKeydown($event)"
     >
       <div
-        class="bg-surface border border-border shadow-md py-1 max-h-80 overflow-auto font-mono text-xs leading-normal"
+        class="bg-surface border border-border rounded-lg shadow-md py-1 max-h-80 overflow-auto font-mono text-xs leading-normal"
         role="menu"
         (click)="onPanelClick()"
       >

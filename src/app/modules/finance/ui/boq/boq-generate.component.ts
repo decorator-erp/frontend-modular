@@ -40,7 +40,7 @@ export interface BoqGenerateData {
     <form
       [formGroup]="form"
       (ngSubmit)="submit()"
-      class="flex flex-col gap-4 p-5 min-w-[var(--w-dialog)] bg-surface border border-border"
+      class="flex flex-col gap-4 p-5 min-w-[var(--w-dialog)] bg-surface border border-border rounded-card"
     >
       <h2 class="m-0 fs-body font-semibold">Generate BOQ snapshot</h2>
       @if (alert(); as a) {

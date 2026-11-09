@@ -27,7 +27,7 @@ import { CdkConnectedOverlay, CdkOverlayOrigin } from '@angular/cdk/overlay';
       (overlayKeydown)="onKeydown($event)"
     >
       <div
-        class="bg-surface border border-border shadow-md p-3 max-w-xs text-xs leading-normal"
+        class="bg-surface border border-border rounded-lg shadow-md p-3 max-w-xs text-xs leading-normal"
         role="dialog"
       >
         <ng-content></ng-content>

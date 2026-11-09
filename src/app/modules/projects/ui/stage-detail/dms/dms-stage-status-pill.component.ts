@@ -2,13 +2,13 @@ import { ChangeDetectionStrategy, Component, computed, input } from '@angular/co
 
 /** Tone per `StageStatus`, plus the task statuses the tasks panel reuses this pill for. */
 const STATUS_TONE: Record<string, string> = {
-  Active: 'bg-info-soft border-info text-info',
-  InProgress: 'bg-info-soft border-info text-info',
-  Completed: 'bg-success-soft border-success text-success',
-  Rejected: 'bg-danger-soft border-danger text-danger',
-  Cancelled: 'bg-danger-soft border-danger text-danger',
-  PendingApproval: 'bg-pending-soft border-pending text-pending',
-  Locked: 'bg-surface-muted border-border text-text-secondary',
+  Active: 'bg-info-soft text-info',
+  InProgress: 'bg-info-soft text-info',
+  Completed: 'bg-success-soft text-success',
+  Rejected: 'bg-danger-soft text-danger',
+  Cancelled: 'bg-danger-soft text-danger',
+  PendingApproval: 'bg-pending-soft text-pending',
+  Locked: 'bg-surface-muted text-text-secondary',
 };
 
 const DOT_TONE: Record<string, string> = {
@@ -21,7 +21,7 @@ const DOT_TONE: Record<string, string> = {
   Locked: 'bg-text-secondary',
 };
 
-const OPEN_TONE = 'bg-surface-muted border-border-strong text-text-secondary';
+const OPEN_TONE = 'bg-surface-muted text-text-secondary';
 
 /** Public so callers (e.g. the dependencies rows) can label a status without the pill. */
 export const STAGE_STATUS_LABEL: Record<string, string> = {
@@ -48,7 +48,7 @@ export const STAGE_STATUS_LABEL: Record<string, string> = {
   host: { class: 'inline-flex' },
   template: `
     <span
-      class="inline-flex items-center gap-1.5 border font-medium whitespace-nowrap leading-tight {{
+      class="inline-flex items-center gap-1.5 rounded-full font-medium whitespace-nowrap leading-tight {{
         toneClass()
       }} {{ sizeClass() }}"
     >

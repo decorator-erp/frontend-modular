@@ -200,7 +200,7 @@
     <!-- Mobile: accordion per role -->
     <div class="md:hidden flex flex-col gap-3 p-4">
       @for (role of visibleRoles(); track role.id) {
-        <div class="border border-border bg-surface">
+        <div class="border border-border bg-surface rounded-card">
           <div class="px-4 py-3 border-b border-border">
             <h2 class="m-0 fs-body font-semibold">{{ role.name }}</h2>
             @if (isLocked(role)) {

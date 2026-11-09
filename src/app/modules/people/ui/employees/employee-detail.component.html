@@ -202,7 +202,7 @@
       <div class="px-8 py-6 grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_var(--w-rail)] gap-6">
         <div class="flex flex-col gap-5">
           <!-- Contact panel -->
-          <section class="border border-border bg-surface">
+          <section class="border border-border bg-surface rounded-card">
             <div class="px-5 py-3.5 border-b border-border">
               <h3 class="m-0 fs-body font-semibold">Contact</h3>
             </div>
@@ -236,7 +236,7 @@
           </section>
 
           <!-- Workload panel -->
-          <section class="border border-border bg-surface">
+          <section class="border border-border bg-surface rounded-card">
             <div class="px-5 py-3.5 border-b border-border">
               <h3 class="m-0 fs-body font-semibold">Workload</h3>
             </div>
@@ -268,7 +268,7 @@
 
         <!-- Right rail — Org context -->
         <div class="flex flex-col gap-5">
-          <section class="border border-border bg-surface">
+          <section class="border border-border bg-surface rounded-card">
             <div class="px-5 py-3.5 border-b border-border">
               <h3 class="m-0 fs-body font-semibold">Org context</h3>
             </div>
@@ -301,7 +301,7 @@
           <button
             type="button"
             (click)="openProject(project.projectId)"
-            class="text-start border border-border bg-surface p-4 hover:bg-surface-muted hover:border-border-strong cursor-pointer transition-colors"
+            class="text-start border border-border bg-surface rounded-card p-4 hover:bg-surface-muted hover:border-border-strong cursor-pointer transition-colors"
           >
             <div class="font-mono fs-label text-text-muted">
               {{ project.code || project.projectId.slice(0, 6).toUpperCase() }}

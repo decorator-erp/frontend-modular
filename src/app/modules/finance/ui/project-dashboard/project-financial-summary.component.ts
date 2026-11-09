@@ -71,24 +71,58 @@ import { ProjectFinancialStore } from '../../stores/project-financial.store';
           <pera-skeleton [height]="120" />
         } @else if (totals(); as t) {
           <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-            <pera-kpi-tile caption="Effective cap" [value]="fmt(t.effectiveCap)" />
-            <pera-kpi-tile caption="Allocated" [value]="fmt(t.allocatedAmount)" />
-            <pera-kpi-tile caption="Committed" [value]="fmt(t.committedAmount)" />
+            <pera-kpi-tile
+              caption="Effective cap"
+              icon="lock"
+              tone="accent"
+              [value]="fmt(t.effectiveCap)"
+            />
+            <pera-kpi-tile
+              caption="Allocated"
+              icon="wallet"
+              tone="accent"
+              [value]="fmt(t.allocatedAmount)"
+            />
+            <pera-kpi-tile
+              caption="Committed"
+              icon="file-text"
+              tone="info"
+              [value]="fmt(t.committedAmount)"
+            />
             <pera-kpi-tile
               caption="Actual"
+              icon="trending-up"
+              tone="warning"
               [value]="fmt(t.actualAmount)"
               [progress]="pct(t.actualAmount, t.effectiveCap)"
             />
             <pera-kpi-tile
               caption="Available"
+              icon="check-circle"
+              tone="success"
               [value]="fmt(t.availableAmount)"
               [progress]="pct(t.availableAmount, t.effectiveCap)"
             />
-            <pera-kpi-tile caption="Earnings" [value]="fmt(t.earnings)" />
+            <pera-kpi-tile
+              caption="Earnings"
+              icon="trending-up"
+              tone="success"
+              [value]="fmt(t.earnings)"
+            />
           </div>
           <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            <pera-kpi-tile caption="Client paid" [value]="fmt(t.clientPaidAmount)" />
-            <pera-kpi-tile caption="Vendor paid" [value]="fmt(t.vendorPaidAmount)" />
+            <pera-kpi-tile
+              caption="Client paid"
+              icon="inbox"
+              tone="success"
+              [value]="fmt(t.clientPaidAmount)"
+            />
+            <pera-kpi-tile
+              caption="Vendor paid"
+              icon="briefcase"
+              tone="info"
+              [value]="fmt(t.vendorPaidAmount)"
+            />
             <pera-kpi-tile
               caption="Collection"
               [value]="pctText(t.collectionPercent)"

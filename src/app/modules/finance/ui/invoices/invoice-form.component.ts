@@ -69,7 +69,9 @@ import {
 
       <form [formGroup]="form" (ngSubmit)="submit()" class="flex flex-col gap-5">
         <!-- HEADER section -->
-        <section class="border border-border bg-surface p-5 grid grid-cols-1 md:grid-cols-2 gap-3">
+        <section
+          class="border border-border bg-surface rounded-card p-5 grid grid-cols-1 md:grid-cols-2 gap-3"
+        >
           <pera-form-field label="Type" [required]="true">
             <div class="flex gap-2">
               @for (t of types; track t) {
@@ -124,7 +126,7 @@ import {
         </section>
 
         <!-- LINES section -->
-        <section class="border border-border bg-surface" formArrayName="lines">
+        <section class="border border-border bg-surface rounded-card" formArrayName="lines">
           <header class="px-5 py-3 border-b border-border flex items-center justify-between">
             <h3 class="m-0 fs-body-sm font-semibold">Lines</h3>
             <pera-button type="button" variant="secondary" iconStart="plus" (click)="addLine()"

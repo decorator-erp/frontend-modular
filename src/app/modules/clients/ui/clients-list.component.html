@@ -41,7 +41,6 @@
              deliberately NOT passed: those are permission-gated mutations (D3). -->
         <div class="p-6">
           <pera-data-table
-            density="compact"
             [columns]="columns()"
             [rows]="sortedRows()"
             [rowId]="rowId"
@@ -80,13 +79,11 @@
 
 <ng-template #statusTpl let-row>
   <span
-    class="inline-flex items-center gap-1.5 font-mono font-medium px-1.5 py-0.5 border"
+    class="inline-flex items-center gap-1.5 font-medium px-2.5 py-0.5 rounded-full"
     [style.fontSize]="'var(--fs-micro)'"
     [class.text-success]="row.isActive"
-    [class.border-success]="row.isActive"
     [class.bg-success-soft]="row.isActive"
     [class.text-text-muted]="!row.isActive"
-    [class.border-border]="!row.isActive"
     [class.bg-bg]="!row.isActive"
   >
     <span

@@ -24,7 +24,7 @@ import { CrmPortalLightboxComponent, type PortalLightboxData } from './portal-li
           <li>
             <button
               type="button"
-              class="group flex flex-col w-full text-start border border-border bg-surface cursor-pointer
+              class="group flex flex-col w-full text-start border border-border bg-surface rounded-card cursor-pointer
                      outline-none focus-visible:outline-2 focus-visible:outline-accent"
               [attr.aria-label]="
                 catalog.t('cportal.openPhoto', { name: item.title || item.fileName })

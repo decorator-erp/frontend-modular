@@ -76,20 +76,15 @@
                 </div>
               </div>
               <span
-                class="shrink-0 inline-flex items-center gap-1.5 font-mono fs-micro font-medium px-1.5 py-0.5 border bg-bg"
+                class="shrink-0 inline-flex items-center gap-1.5 fs-micro font-medium px-2.5 py-0.5 rounded-full bg-surface-muted"
                 [class.text-text-muted]="row.status === 'Draft'"
-                [class.border-border]="row.status === 'Draft'"
                 [class.text-info]="row.status === 'InProgress'"
-                [class.border-info]="row.status === 'InProgress'"
                 [class.bg-info-soft]="row.status === 'InProgress'"
                 [class.text-warning]="row.status === 'OnHold'"
-                [class.border-warning]="row.status === 'OnHold'"
                 [class.bg-warning-soft]="row.status === 'OnHold'"
                 [class.text-success]="row.status === 'Completed'"
-                [class.border-success]="row.status === 'Completed'"
                 [class.bg-success-soft]="row.status === 'Completed'"
                 [class.text-danger]="row.status === 'Cancelled'"
-                [class.border-danger]="row.status === 'Cancelled'"
                 [class.bg-danger-soft]="row.status === 'Cancelled'"
               >
                 <span
@@ -144,7 +139,6 @@
            `imports:`, so `columns()` had no consumer. Both are now live. -->
       <div class="p-6">
         <pera-data-table
-          density="compact"
           [columns]="columns()"
           [rows]="rows()"
           [rowId]="rowId"
@@ -175,21 +169,16 @@
 
 <ng-template #statusTpl let-row>
   <span
-    class="inline-flex items-center gap-1.5 font-mono font-medium px-1.5 py-0.5 border bg-bg"
+    class="inline-flex items-center gap-1.5 font-medium px-2.5 py-0.5 rounded-full bg-surface-muted"
     [style.fontSize]="'var(--fs-micro)'"
     [class.text-text-muted]="row.status === 'Draft'"
-    [class.border-border]="row.status === 'Draft'"
     [class.text-info]="row.status === 'InProgress'"
-    [class.border-info]="row.status === 'InProgress'"
     [class.bg-info-soft]="row.status === 'InProgress'"
     [class.text-warning]="row.status === 'OnHold'"
-    [class.border-warning]="row.status === 'OnHold'"
     [class.bg-warning-soft]="row.status === 'OnHold'"
     [class.text-success]="row.status === 'Completed'"
-    [class.border-success]="row.status === 'Completed'"
     [class.bg-success-soft]="row.status === 'Completed'"
     [class.text-danger]="row.status === 'Cancelled'"
-    [class.border-danger]="row.status === 'Cancelled'"
     [class.bg-danger-soft]="row.status === 'Cancelled'"
   >
     <span

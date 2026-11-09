@@ -11,22 +11,17 @@ import { taskStatusLabel } from '@shared/ui/status';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <span
-      class="inline-flex items-center gap-1.5 px-2.5 py-1 border fs-label font-medium leading-tight whitespace-nowrap tabular-nums"
+      class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full fs-label font-medium leading-tight whitespace-nowrap tabular-nums"
       [class.cursor-pointer]="select()"
       [class.bg-info-soft]="s() === 'InProgress'"
-      [class.border-info]="s() === 'InProgress'"
       [class.text-info]="s() === 'InProgress'"
       [class.bg-success-soft]="s() === 'Completed'"
-      [class.border-success]="s() === 'Completed'"
       [class.text-success]="s() === 'Completed'"
       [class.bg-danger-soft]="s() === 'Rejected'"
-      [class.border-danger]="s() === 'Rejected'"
       [class.text-danger]="s() === 'Rejected'"
       [class.bg-pending-soft]="s() === 'PendingApproval'"
-      [class.border-pending]="s() === 'PendingApproval'"
       [class.text-pending]="s() === 'PendingApproval'"
       [class.bg-surface-muted]="isNeutral()"
-      [class.border-border]="isNeutral()"
       [class.text-text-secondary]="isNeutral()"
     >
       <span

@@ -39,7 +39,7 @@ const ADJUSTMENT_MAX = 1_000_000_000_000;
 const ADJUSTMENT_NOTE_MAX = 500;
 const NOTES_MAX = 2000;
 
-const CARD = 'bg-surface border border-border p-5 flex flex-col gap-3 min-w-0';
+const CARD = 'bg-surface border border-border rounded-card p-5 flex flex-col gap-3 min-w-0';
 const HEADING = 'm-0 fs-h3 font-semibold text-text-primary';
 
 type HeaderField = 'duration' | 'start' | 'adjustment' | 'adjustmentNote' | 'notes';

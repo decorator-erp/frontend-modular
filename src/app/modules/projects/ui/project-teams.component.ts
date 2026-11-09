@@ -284,7 +284,7 @@ const NEW_TEAM_TAB = '__new__';
             }
           </div>
           <!-- Members -->
-          <div class="border border-border bg-surface">
+          <div class="border border-border bg-surface rounded-card">
             <div class="px-4 py-3 border-b border-border flex items-center justify-between">
               <div class="flex items-baseline gap-2.5">
                 <h3 class="m-0 fs-body font-semibold">Members</h3>

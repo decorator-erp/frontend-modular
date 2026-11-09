@@ -22,16 +22,22 @@ import { PeraKpiTileComponent } from '@ds';
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
       <pera-kpi-tile
         [caption]="catalog.t('kpi.pend')"
+        icon="check-circle"
+        tone="pending"
         [value]="pendingApprovals()"
         [message]="pendMessage()"
       />
       <pera-kpi-tile
         [caption]="catalog.t('kpi.meet')"
+        icon="calendar"
+        tone="info"
         [value]="upcomingMeetings()"
         [message]="meetMessage()"
       />
       <pera-kpi-tile
         [caption]="catalog.t('kpi.unconf')"
+        icon="alert-circle"
+        tone="warning"
         [value]="unconfirmedDraft() + unconfirmedPending()"
         [message]="unconfMessage()"
       />

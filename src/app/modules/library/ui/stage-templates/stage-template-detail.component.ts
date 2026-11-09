@@ -102,7 +102,10 @@ const byOrder = <T extends { order: number }>(a: T, b: T) => a.order - b.order;
       } @else {
         <div class="p-6 flex flex-col gap-4" data-stages>
           @for (n of nodes(); track n.stage.id) {
-            <section class="border border-border bg-surface" [attr.data-stage]="n.stage.id">
+            <section
+              class="border border-border bg-surface rounded-card"
+              [attr.data-stage]="n.stage.id"
+            >
               <header class="px-4 py-3 border-b border-border flex items-start gap-3">
                 <span class="font-mono fs-label text-text-muted pt-0.5">{{
                   t('tplx.order', { n: n.stage.order })
