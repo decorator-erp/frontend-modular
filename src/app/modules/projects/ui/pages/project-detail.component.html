@@ -49,7 +49,7 @@
         [meta]="headerMeta()"
         [kpis]="headerKpis()"
       >
-        <div headerActions class="flex items-center gap-2 shrink-0">
+        <div headerActions class="flex flex-wrap items-center justify-end gap-2">
           <!-- crmp P-9: project lifecycle — claim AND Manager level (project housekeeping stays open when closed). -->
           @if (can('project.status')) {
             <button type="button" [class]="btnClass" (click)="changeStatus()" data-change-status>

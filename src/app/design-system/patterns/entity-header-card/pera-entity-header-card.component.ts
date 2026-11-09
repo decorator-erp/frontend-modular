@@ -76,10 +76,12 @@ export interface EntityHeaderMeta {
   host: { class: 'block' },
   template: `
     <div class="bg-surface border border-border rounded-lg p-4 flex flex-col gap-4">
-      <div class="flex items-start gap-4">
+      <!-- The row wraps: with many actions they drop to their own line rather than squeezing the
+           name and meta (which then truncated to blank). The identity column keeps a minimum width. -->
+      <div class="flex flex-wrap items-start gap-4">
         <pera-avatar size="lg" [name]="avatar()?.name ?? name()" [src]="avatar()?.src" />
 
-        <div class="flex flex-col gap-1 min-w-0 flex-1">
+        <div data-header-identity class="flex flex-col gap-1 min-w-64 flex-1">
           <div class="flex flex-wrap items-center gap-2">
             <span
               class="font-semibold text-text-primary truncate"
@@ -127,7 +129,10 @@ export interface EntityHeaderMeta {
           }
         </div>
 
-        <div class="flex items-center gap-2 shrink-0">
+        <div
+          data-header-actions
+          class="flex flex-wrap items-center justify-end gap-2 max-w-full ms-auto"
+        >
           <ng-content select="[headerActions]" />
         </div>
       </div>

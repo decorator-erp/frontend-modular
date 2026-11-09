@@ -120,4 +120,22 @@ describe('PeraEntityHeaderCardComponent', () => {
     f.detectChanges();
     expect((f.nativeElement as HTMLElement).querySelector('button')).toBeNull();
   });
+
+  // Many actions (the project page has ~11) used to sit in a `shrink-0`, no-wrap box beside the name and
+  // squeeze that column to nothing: the name and every meta value truncated to blank. jsdom has no layout,
+  // so these pin the rules the layout depends on; the browser check is in the change's report.
+  it('lets many actions wrap instead of squeezing the name and meta', () => {
+    const f = TestBed.createComponent(ActionsHostComponent);
+    f.detectChanges();
+    const el = f.nativeElement as HTMLElement;
+    const actions = el.querySelector<HTMLElement>('[data-header-actions]')!;
+    const identity = el.querySelector<HTMLElement>('[data-header-identity]')!;
+    const row = identity.parentElement!;
+
+    expect(actions.classList).toContain('flex-wrap');
+    expect(actions.classList).not.toContain('shrink-0');
+    expect(actions.classList).toContain('max-w-full');
+    expect(identity.classList).toContain('min-w-64');
+    expect(row.classList).toContain('flex-wrap');
+  });
 });
