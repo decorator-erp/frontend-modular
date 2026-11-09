@@ -13,7 +13,11 @@ import { CatalogService } from '@platform/i18n/catalog.service';
 import type { CatalogKey } from '@platform/i18n/catalog/en';
 import { LocaleService, type Locale } from '@platform/i18n';
 import { ProjectSector } from '../../model/crm-enums';
-import type { PublicLeadSubmissionRequest } from '../../model';
+import type {
+  LeadIntakeRequest,
+  PublicLeadSubmissionRequest,
+  ResidentialIntakeRequest,
+} from '../../model';
 import {
   AREA_SQM_MAX,
   AREA_SQM_MIN,
@@ -25,6 +29,9 @@ import {
   PeraButtonComponent,
   PeraFormFieldComponent,
   PeraInputComponent,
+  PeraSegmentedComponent,
+  PeraSelectComponent,
+  PeraTextareaComponent,
   SegmentedOption,
   SelectOption,
 } from '@ds';
@@ -50,7 +57,15 @@ type Phase =
   selector: 'app-intake-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
   providers: [PublicIntakeStore],
-  imports: [ReactiveFormsModule, PeraButtonComponent, PeraFormFieldComponent, PeraInputComponent],
+  imports: [
+    ReactiveFormsModule,
+    PeraButtonComponent,
+    PeraFormFieldComponent,
+    PeraInputComponent,
+    PeraSegmentedComponent,
+    PeraSelectComponent,
+    PeraTextareaComponent,
+  ],
   template: `
     <div
       class="min-h-screen bg-bg text-text-primary font-sans flex items-center justify-center px-5 py-8"
@@ -326,11 +341,139 @@ type Phase =
                     </pera-form-field>
                   </div>
                 } @else {
-                  <!-- 009b #8 (D-a): the public route binds no intake, so the project
-                       questions are hidden; the office captures them on the lead. -->
-                  <p class="fs-body-sm text-text-secondary leading-relaxed m-0">
-                    {{ catalog.t('public.projectLater') }}
-                  </p>
+                  <!-- LI-1: the client answers the project questions; they are saved as the
+                       lead's intake. Every question is optional. -->
+                  <div class="flex flex-col gap-5">
+                    <p class="fs-body-sm text-text-secondary leading-relaxed m-0">
+                      {{ catalog.t('public.projectIntro') }}
+                    </p>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-5">
+                      <pera-form-field
+                        [label]="catalog.t('intake.fJobTitle')"
+                        [error]="errorText('jobTitle')"
+                      >
+                        <pera-input formControlName="jobTitle" [error]="errorText('jobTitle')" />
+                      </pera-form-field>
+                      <pera-form-field
+                        [label]="catalog.t('intake.fSector')"
+                        [error]="errorText('projectSector')"
+                      >
+                        <pera-select
+                          formControlName="projectSector"
+                          [options]="sectorOptions()"
+                          [placeholder]="catalog.t('intake.selectSector')"
+                          [error]="errorText('projectSector')"
+                        />
+                      </pera-form-field>
+                      <pera-form-field
+                        class="sm:col-span-2"
+                        [label]="catalog.t('intake.fResidence')"
+                        [error]="errorText('clientAddress')"
+                      >
+                        <pera-input
+                          formControlName="clientAddress"
+                          [error]="errorText('clientAddress')"
+                        />
+                      </pera-form-field>
+                      <pera-form-field
+                        class="sm:col-span-2"
+                        [label]="catalog.t('intake.fUnitAddress')"
+                        [error]="errorText('unitAddress')"
+                      >
+                        <pera-input
+                          formControlName="unitAddress"
+                          [error]="errorText('unitAddress')"
+                        />
+                      </pera-form-field>
+                      <pera-form-field
+                        [label]="catalog.t('brief.fArea')"
+                        [error]="errorText('areaSqm')"
+                      >
+                        <pera-input
+                          type="number"
+                          formControlName="areaSqm"
+                          dir="ltr"
+                          [error]="errorText('areaSqm')"
+                        />
+                      </pera-form-field>
+                    </div>
+
+                    @if (isResidential()) {
+                      <div
+                        data-testid="intake-residential"
+                        class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-5"
+                      >
+                        <pera-form-field [label]="catalog.t('intake.fUnit')">
+                          <pera-select
+                            formControlName="unitType"
+                            [options]="unitTypeOptions()"
+                            [placeholder]="catalog.t('intake.selectUnit')"
+                          />
+                        </pera-form-field>
+                        <pera-form-field [label]="catalog.t('intake.fCondition')">
+                          <pera-select
+                            formControlName="unitCondition"
+                            [options]="unitConditionOptions()"
+                            [placeholder]="catalog.t('intake.selectUnit')"
+                          />
+                        </pera-form-field>
+                        <pera-form-field [label]="catalog.t('intake.fLicense')">
+                          <pera-segmented formControlName="isLicensed" [options]="yesNoOptions()" />
+                        </pera-form-field>
+                        <pera-form-field [label]="catalog.t('intake.fTenure')">
+                          <pera-segmented formControlName="isRented" [options]="tenureOptions()" />
+                        </pera-form-field>
+                        <pera-form-field
+                          class="sm:col-span-2"
+                          [label]="catalog.t('brief.fFinishingPurpose')"
+                        >
+                          <pera-select
+                            formControlName="finishingPurpose"
+                            [options]="finishingOptions()"
+                            [placeholder]="catalog.t('intake.selectFinishing')"
+                          />
+                        </pera-form-field>
+                      </div>
+                    }
+
+                    <pera-form-field [label]="catalog.t('intake.usedDesignerBefore')">
+                      <pera-segmented
+                        formControlName="usedDesignerBefore"
+                        [options]="yesNoOptions()"
+                      />
+                    </pera-form-field>
+                    @if (usedBefore()) {
+                      <pera-form-field [label]="catalog.t('brief.fExperience')">
+                        <pera-segmented
+                          formControlName="designerExperience"
+                          [options]="experienceOptions()"
+                        />
+                      </pera-form-field>
+                    }
+                    @if (hasExperience()) {
+                      <pera-form-field
+                        [label]="catalog.t('intake.fReason')"
+                        [error]="errorText('designerExperienceReason')"
+                      >
+                        <pera-textarea
+                          formControlName="designerExperienceReason"
+                          [rows]="2"
+                          [placeholder]="catalog.t('intake.reasonPh')"
+                        />
+                      </pera-form-field>
+                    }
+
+                    <pera-form-field
+                      [label]="catalog.t('public.notes')"
+                      [error]="errorText('notes')"
+                    >
+                      <pera-textarea
+                        formControlName="notes"
+                        [rows]="3"
+                        [placeholder]="catalog.t('public.notesPh')"
+                      />
+                    </pera-form-field>
+                  </div>
                 }
 
                 <div class="flex items-center gap-4 pt-1 border-t border-border">
@@ -394,7 +537,10 @@ export class IntakePageComponent {
     if (s === 'rateLimited') return 'rateLimited';
     if (s === 'tooLarge') return 'tooLarge';
     if (s === 'unavailable') return 'unavailable';
-    if (s === 'error' && Object.keys(this.store.fieldErrors()).length === 0) return 'failure';
+    // A 400 whose field errors name no control on this page (a project answer arrives as
+    // `intake`) has nothing to show inline: show the failure message instead of a silent form.
+    if (s === 'error' && !Object.keys(this.store.fieldErrors()).some((k) => this.form.get(k)))
+      return 'failure';
     return 'form';
   });
 
@@ -461,6 +607,7 @@ export class IntakePageComponent {
       isLicensed: [null as boolean | null],
       isRented: [null as boolean | null],
       finishingPurpose: [''],
+      notes: ['', [Validators.maxLength(INTAKE_LIMITS.notes)]],
     },
     { validators: intakeDesignerRulesValidator() },
   );
@@ -570,15 +717,48 @@ export class IntakePageComponent {
     this.store.submit(this.buildBody());
   }
 
-  /** `PublicLeadRequest` binds exactly these five fields (009b #8, D-a). */
+  /**
+   * LI-1: the details, the notes and the project answers. The answers travel as `intake` only
+   * when at least one was given; residential details only for the Residential sector, and the
+   * designer experience and reason only with "used a designer before" = yes (the server's rules).
+   */
   private buildBody(): PublicLeadSubmissionRequest {
     const v = this.form.getRawValue();
+    const sector = v.projectSector ? (Number(v.projectSector) as ProjectSector) : null;
+    const usedBefore = v.usedDesignerBefore;
+
+    const residential: ResidentialIntakeRequest | null =
+      sector === ProjectSector.Residential
+        ? {
+            unitType: v.unitType ? Number(v.unitType) : null,
+            unitCondition: v.unitCondition ? Number(v.unitCondition) : null,
+            isLicensed: v.isLicensed,
+            isRented: v.isRented,
+            finishingPurpose: v.finishingPurpose ? Number(v.finishingPurpose) : null,
+          }
+        : null;
+
+    const intake: LeadIntakeRequest = {
+      jobTitle: v.jobTitle.trim() || null,
+      clientAddress: v.clientAddress.trim() || null,
+      sector,
+      unitAddress: v.unitAddress.trim() || null,
+      areaSqm: String(v.areaSqm).trim() ? Number(v.areaSqm) : null,
+      usedDesignerBefore: usedBefore,
+      designerExperience: usedBefore === true ? v.designerExperience : null,
+      designerExperienceReason:
+        usedBefore === true ? v.designerExperienceReason.trim() || null : null,
+      residential,
+    };
+    const answered = Object.values(intake).some((x) => x !== null);
+
     return {
       firstName: v.firstName.trim(),
       lastName: v.lastName.trim(),
       email: v.email.trim() || null,
       phone: v.phone.trim() || null,
-      notes: null,
+      notes: v.notes.trim() || null,
+      intake: answered ? intake : null,
     };
   }
 }

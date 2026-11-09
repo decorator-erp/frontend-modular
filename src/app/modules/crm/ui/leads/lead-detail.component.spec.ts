@@ -7,6 +7,7 @@ import { NEVER, of, throwError } from 'rxjs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ToastService } from '@platform/feedback/toast.service';
 import { AR } from '@platform/i18n/catalog/ar';
+import { EN } from '@platform/i18n/catalog/en';
 import { ERROR_MESSAGES } from '@platform/errors/error-catalog';
 import { errorInterceptor } from '@platform/http/error.interceptor';
 import { HANDLED_ERROR_STATUSES } from '@platform/http/handled-errors';
@@ -450,5 +451,32 @@ describe('CrmLeadDetailComponent — owner lookup (FINDING-P2-14)', () => {
     flushLead();
     expect(employeeGets()).toHaveLength(0);
     expect(toast.show).not.toHaveBeenCalled();
+  });
+});
+
+describe('CrmLeadDetailComponent — website leads (LI-1)', () => {
+  it('shows an unassigned lead as Unassigned, with no employee lookup', () => {
+    const lookupById = vi.fn();
+    TestBed.overrideProvider(EmployeeService, { useValue: { lookupById } });
+    const { fixture } = make(undefined, { lead: { ...lead, ownerId: null } });
+
+    expect(rendered(fixture).querySelector('[data-testid="lead-owner"]')?.textContent).toContain(
+      EN['leads.unassigned'],
+    );
+    expect(lookupById).not.toHaveBeenCalled();
+  });
+
+  it("shows the client's notes", () => {
+    const { fixture } = make(undefined, { lead: { ...lead, notes: 'Call after 5pm' } });
+
+    expect(rendered(fixture).querySelector('[data-testid="lead-notes"]')?.textContent).toContain(
+      'Call after 5pm',
+    );
+  });
+
+  it('shows no notes block when the lead has none', () => {
+    const { fixture } = make();
+
+    expect(rendered(fixture).querySelector('[data-testid="lead-notes"]')).toBeNull();
   });
 });

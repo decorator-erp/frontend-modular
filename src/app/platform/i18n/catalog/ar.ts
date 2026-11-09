@@ -878,7 +878,6 @@ export const AR: Partial<Record<CatalogKey, string>> = {
   'public.tryAgain': 'المحاولة مجدداً',
   'public.failTitle': 'حدث خطأ ما',
   'public.failMsg': 'تعذّر إرسال طلبك الآن. الرجاء المحاولة مجدداً.',
-  'public.projectLater': 'سنسألك عن مشروعك عندما نتواصل معك. أرسل بياناتك للبدء.',
   'public.tooLargeTitle': 'الطلب طويل بعض الشيء',
   'public.tooLargeMsg': 'طلبك أكبر من أن يُرسَل. الرجاء اختصاره والمحاولة مجدداً.',
   'public.unavailableTitle': 'الطلبات الإلكترونية غير متاحة',
@@ -2384,4 +2383,9 @@ export const AR: Partial<Record<CatalogKey, string>> = {
   'pwd.err.policy': 'كلمة المرور الجديدة لا تستوفي قواعد كلمات المرور.',
   'pwd.err.rateLimited': 'محاولات كثيرة جدًا. انتظر دقيقة ثم حاول مرة أخرى.',
   'pwd.err.generic': 'تعذّر تغيير كلمة المرور. حاول مرة أخرى.',
+  // LI-1: the public form asks the project questions; website leads arrive unassigned
+  'public.projectIntro': 'أخبرنا عن مشروعك. كل الأسئلة اختيارية — أجب عمّا تستطيع.',
+  'public.notes': 'هل هناك شيء آخر يجب أن نعرفه؟',
+  'public.notesPh': 'أفضل وقت للاتصال، الميزانية، الموعد المتوقع…',
+  'leads.unassigned': 'غير مُسند',
 };

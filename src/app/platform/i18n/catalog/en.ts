@@ -938,8 +938,6 @@ export const EN = {
   'public.tryAgain': 'Try again',
   'public.failTitle': 'Something went wrong',
   'public.failMsg': 'We couldn’t send your request just now. Please try again.',
-  'public.projectLater':
-    'We’ll ask about your project when we contact you. Send your details to get started.',
   'public.tooLargeTitle': 'That’s a bit too long',
   'public.tooLargeMsg': 'Your request is too large to send. Please shorten it and try again.',
   'public.unavailableTitle': 'Online requests are unavailable',
@@ -2480,6 +2478,12 @@ export const EN = {
   'pwd.err.policy': "The new password doesn't meet the password rules.",
   'pwd.err.rateLimited': 'Too many attempts. Wait a minute and try again.',
   'pwd.err.generic': 'Could not change the password. Try again.',
+  // LI-1: the public form asks the project questions; website leads arrive unassigned
+  'public.projectIntro':
+    'Tell us about your project. Every question is optional — answer what you can.',
+  'public.notes': 'Anything else we should know?',
+  'public.notesPh': 'Best time to call, budget, timeline…',
+  'leads.unassigned': 'Unassigned',
 } as const;
 
 /** The key set of record. Every catalog lookup is typed against this. */

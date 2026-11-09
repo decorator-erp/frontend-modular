@@ -5,7 +5,14 @@ import { describe, expect, it, vi } from 'vitest';
 import { PublicIntakeApi } from '../data/crm-public-intake.service';
 import { PublicIntakeStore } from './public-intake.store';
 
-const body = { firstName: 'Mona', lastName: 'Adel', email: null, phone: null, notes: null };
+const body = {
+  firstName: 'Mona',
+  lastName: 'Adel',
+  email: null,
+  phone: null,
+  notes: null,
+  intake: null,
+};
 
 function make(result: Observable<unknown>) {
   TestBed.configureTestingModule({

@@ -8,16 +8,21 @@ import { AbstractControl, FormGroup, ValidationErrors, ValidatorFn } from '@angu
  * `ExperienceReasonWithoutExperience`).
  */
 
-/** Max string lengths (backend column limits). Single source of truth for both forms. */
+/**
+ * Max string lengths — the backend's validators and column limits (`CrmLeadValidationRules`,
+ * `CrmLeadIntakeDataValidator`). Single source of truth for both forms. LI-1 aligned them: several
+ * were larger than the server's, so a value the form accepted came back as a 400.
+ */
 export const INTAKE_LIMITS = {
-  jobTitle: 200,
-  clientAddress: 500,
-  unitAddress: 500,
-  designerExperienceReason: 2000,
-  firstName: 100,
-  lastName: 100,
-  email: 200,
-  phone: 50,
+  jobTitle: 128,
+  clientAddress: 512,
+  unitAddress: 512,
+  designerExperienceReason: 1000,
+  firstName: 128,
+  lastName: 128,
+  email: 256,
+  phone: 32,
+  notes: 2000,
 } as const;
 
 /** `area_sqm` is `numeric(8,2)` — reject an oversized value client-side, not as an opaque 400. */

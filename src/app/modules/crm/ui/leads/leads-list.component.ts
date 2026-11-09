@@ -300,7 +300,7 @@ export class CrmLeadsListComponent implements OnInit {
       key: 'owner',
       header: this.catalog.t('leads.colOwner'),
       minWidth: 140,
-      value: (r) => this.owners()[r.ownerId] ?? '—',
+      value: (r) => this.ownerName(r),
     },
   ]);
 
@@ -328,7 +328,9 @@ export class CrmLeadsListComponent implements OnInit {
     if (typeof localStorage !== 'undefined') localStorage.setItem('pera.leads.view', v);
   }
 
+  /** LI-1: a website lead arrives unassigned. */
   protected ownerName(row: CrmLead): string {
+    if (!row.ownerId) return this.catalog.t('leads.unassigned');
     return this.owners()[row.ownerId] ?? '—';
   }
   protected isConverted(row: CrmLead): boolean {
