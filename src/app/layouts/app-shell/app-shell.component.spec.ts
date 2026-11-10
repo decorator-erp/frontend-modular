@@ -34,3 +34,46 @@ describe('AppShellComponent — the app-wide NotificationStore (005)', () => {
     expect(created).toHaveBeenCalledTimes(1);
   });
 });
+
+/**
+ * RD-1 regression: the shell listens to every keydown for Ctrl/⌘+B and Escape. An Angular event
+ * binding that RETURNS false calls preventDefault — and the handler returned false for every other
+ * key, so nothing could be typed into any form inside the app.
+ */
+describe('AppShellComponent — the document keydown listener (RD-1 fix)', () => {
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      providers: [provideRouter([]), { provide: NotificationStore, useValue: {} }],
+    });
+    TestBed.overrideComponent(AppShellComponent, { set: { imports: [], template: '' } });
+  });
+
+  const press = (init: KeyboardEventInit, target: EventTarget = document) => {
+    const e = new KeyboardEvent('keydown', { ...init, bubbles: true, cancelable: true });
+    target.dispatchEvent(e);
+    return e;
+  };
+
+  it('never blocks ordinary typing, in a form field or anywhere else', () => {
+    const fixture = TestBed.createComponent(AppShellComponent);
+    fixture.detectChanges();
+    const input = document.createElement('input');
+    document.body.appendChild(input);
+
+    expect(press({ key: 'a' }, input).defaultPrevented).toBe(false);
+    expect(press({ key: 'Backspace' }, input).defaultPrevented).toBe(false);
+    expect(press({ key: '1' }).defaultPrevented).toBe(false);
+    // Ctrl+B inside a field is "bold" — left alone too.
+    expect(press({ key: 'b', ctrlKey: true }, input).defaultPrevented).toBe(false);
+
+    input.remove();
+    fixture.destroy();
+  });
+
+  it('still takes Ctrl+B outside a field for the navbar toggle', () => {
+    const fixture = TestBed.createComponent(AppShellComponent);
+    fixture.detectChanges();
+    expect(press({ key: 'b', ctrlKey: true }).defaultPrevented).toBe(true);
+    fixture.destroy();
+  });
+});

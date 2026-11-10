@@ -21,7 +21,7 @@ import { ShellLayoutService } from './shell-layout.service';
     TopbarComponent,
     BottomTabsComponent,
   ],
-  host: { '(document:keydown)': 'layout.handleKey($event)' },
+  host: { '(document:keydown)': 'onKeydown($event)' },
   templateUrl: './app-shell.component.html',
 })
 export class AppShellComponent {
@@ -36,4 +36,13 @@ export class AppShellComponent {
   // Instantiate the notification store app-wide so its onInit wires the real-time connection
   // lifecycle (start on auth, resync on reconnect, teardown on logout) before any bell UI exists.
   private readonly notifications = inject(NotificationStore);
+
+  /**
+   * Ctrl/⌘+B and Escape for the navbar. Deliberately returns nothing: an Angular event binding whose
+   * handler returns `false` calls preventDefault, which blocked typing in every form of the app.
+   * `handleKey` calls preventDefault itself, only for the keys it uses.
+   */
+  onKeydown(event: KeyboardEvent): void {
+    this.layout.handleKey(event);
+  }
 }
