@@ -1,9 +1,16 @@
 # DEP-1: serves PERA's Angular build and proxies the API on the same address, so the app's
 # same-origin /api and /hubs calls need no CORS.
 #
-# SITE_ADDRESS ":80" = plain HTTP on the VPS IP. Set it to a domain (e.g. app.example.com) whose DNS
-# points at the VPS and Caddy fetches and renews an HTTPS certificate automatically.
-{$SITE_ADDRESS::80} {
+# This container publishes no port. The VPS's shared edge Caddy (the only one on 80/443, which also
+# terminates HTTPS once a domain is added) reaches it as pera-web:80 over the `edge` Docker network.
+{
+	# Keep the edge's X-Forwarded-For/-Proto: only Docker's private networks can reach this server.
+	servers {
+		trusted_proxies static private_ranges
+	}
+}
+
+:80 {
 	encode zstd gzip
 
 	# The API: REST, the SignalR hub (WebSockets pass through) and the health probe.
@@ -13,7 +20,12 @@
 			# Uploads go up to FileStorage:MaxUploadBytes (50 MB) plus multipart overhead.
 			max_size 55MB
 		}
-		reverse_proxy api:8080
+		reverse_proxy api:8080 {
+			# Hand the API exactly one X-Forwarded-For entry: the real client, as resolved through the
+			# trusted edge. Appending the edge's own address would make every caller look like the edge
+			# to the API (it uses only the last entry, ForwardLimit 1) and share one rate-limit bucket.
+			header_up X-Forwarded-For {client_ip}
+		}
 	}
 
 	handle {

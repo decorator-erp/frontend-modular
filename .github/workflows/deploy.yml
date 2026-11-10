@@ -2,7 +2,7 @@
 #
 # - Pull request: build only (proves the Dockerfile still builds). Nothing is pushed.
 # - Push to main (a merged PR): build, push ghcr.io/<owner>/pera-web:{latest,<sha>}, then SSH to the
-#   VPS and run /opt/pera/deploy.sh.
+#   VPS and run /srv/pera/deploy.sh.
 #
 # The deploy step runs only when the repository has the VPS_HOST secret. Secrets: VPS_HOST, VPS_USER,
 # VPS_SSH_KEY. Runbook: dms-docs/backend/dms-modular/hosting/deploy-hostinger.md.
@@ -77,4 +77,4 @@ jobs:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
-          script: /opt/pera/deploy.sh
+          script: /srv/pera/deploy.sh
