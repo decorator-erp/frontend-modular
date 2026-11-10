@@ -41,7 +41,9 @@ import { CatalogService } from '@platform/i18n/catalog.service';
         ></button>
 
         <!-- panel -->
-        <div class="relative mt-[12vh] w-full max-w-xl bg-surface border border-border shadow-lg">
+        <div
+          class="relative mt-[12vh] w-full max-w-xl bg-surface border border-border rounded-lg shadow-lg"
+        >
           <div class="flex items-center gap-2 px-3.5 py-2.5 border-b border-border">
             <pera-icon name="search" [size]="15" class="text-text-muted shrink-0" />
             <input

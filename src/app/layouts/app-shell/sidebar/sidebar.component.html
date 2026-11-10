@@ -1,114 +1,112 @@
-<!-- App-shell sidebar. Desktop: permanently icon-only at --sidebar-w (56px). -->
-<!-- Mobile off-canvas drawer passes [expanded]="true" for a labelled rail (research R3). -->
+<!-- RD-1 dark brand sidebar. `mode` full = labelled (desktop, and the tablet/phone drawer);
+     rail = the 64px icon rail (desktop collapsed, and always on tablet). -->
 <aside
-  class="h-full flex flex-col bg-surface border-e border-border"
-  [style.width]="expanded() ? 'var(--sidebar-drawer-w)' : 'var(--sidebar-w)'"
+  class="h-full flex flex-col bg-sidebar text-sidebar-text overflow-hidden transition-[width] duration-200 ease-out motion-reduce:transition-none"
+  [style.width]="width()"
+  [attr.data-mode]="full() ? 'full' : 'rail'"
 >
-  <!-- ============ brand mark ============ -->
+  <!-- ============ brand ============ -->
   <div
-    style="height: var(--topbar-h)"
-    class="flex items-center gap-2.5 border-b border-border shrink-0"
-    [class.justify-center]="!expanded()"
-    [class.px-4]="expanded()"
-    aria-label="PERA"
+    class="h-[var(--topbar-h)] flex items-center gap-2.5 border-b border-sidebar-line shrink-0"
+    [class.justify-center]="!full()"
+    [class.px-4]="full()"
   >
-    <span class="relative w-icon-xs h-icon-xs shrink-0" aria-hidden="true">
-      <span
-        class="absolute inset-0 border-[length:var(--hairline-strong)] border-text-primary"
-      ></span>
-      <span class="absolute top-1/2 inset-x-0 h-px bg-text-primary"></span>
-      <span
-        class="absolute start-1/2 inset-y-0 w-px bg-text-primary -translate-x-[calc(var(--hairline)*0.5)]"
-      ></span>
-    </span>
-    @if (expanded()) {
-      <span class="flex flex-col min-w-0 leading-none">
-        <span class="font-semibold fs-body tracking-tight">PERA</span>
-        <span class="font-mono fs-micro uppercase tracking-[0.06em] text-text-muted mt-1"
+    <span
+      class="w-icon-lg h-icon-lg rounded-md bg-brand text-on-brand grid place-items-center font-bold fs-caption shrink-0"
+      aria-hidden="true"
+      >P</span
+    >
+    @if (full()) {
+      <span class="flex flex-col min-w-0 flex-1 leading-none">
+        <span class="font-semibold fs-body tracking-tight text-sidebar-strong">PERA</span>
+        <span class="fs-micro uppercase tracking-[0.06em] text-sidebar-muted mt-1 truncate"
           >Atelier PERA · Studio</span
         >
       </span>
     }
+    @if (drawer()) {
+      <button
+        type="button"
+        data-sidebar-close
+        class="inline-flex items-center justify-center w-icon-lg h-icon-lg rounded-md text-sidebar-text hover:bg-sidebar-hover cursor-pointer outline-none focus-visible:outline-2 focus-visible:outline-sidebar-active-text"
+        aria-label="Close menu"
+        (click)="closed.emit()"
+      >
+        <pera-icon name="x" [size]="16" />
+      </button>
+    }
   </div>
 
-  <!-- ============ search — opens command palette ============ -->
+  <!-- ============ search — opens the command palette ============ -->
   <button
     type="button"
     (click)="palette.openPalette()"
-    class="my-3 flex items-center border border-border bg-bg cursor-pointer hover:border-border-strong outline-none focus-visible:outline-2 focus-visible:outline-accent"
-    [class.mx-3]="expanded()"
-    [class.gap-2]="expanded()"
-    [class.px-2.5]="expanded()"
-    [class.py-1.5]="expanded()"
-    [class.mx-2]="!expanded()"
-    [class.justify-center]="!expanded()"
-    [class.h-9]="!expanded()"
-    [peraTooltip]="expanded() ? '' : 'Search (⌘K)'"
+    class="my-3 flex items-center rounded-md border border-sidebar-line bg-sidebar-hover text-sidebar-muted cursor-pointer hover:text-sidebar-strong outline-none focus-visible:outline-2 focus-visible:outline-sidebar-active-text"
+    [class.mx-3]="full()"
+    [class.gap-2]="full()"
+    [class.px-2.5]="full()"
+    [class.py-1.5]="full()"
+    [class.mx-2.5]="!full()"
+    [class.justify-center]="!full()"
+    [class.h-9]="!full()"
+    [peraTooltip]="full() ? '' : 'Search (⌘K)'"
     aria-label="Search"
   >
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      stroke-width="2"
-      class="text-text-muted shrink-0"
-    >
-      <circle cx="11" cy="11" r="7" />
-      <path d="M21 21l-4.3-4.3" />
-    </svg>
-    @if (expanded()) {
-      <span class="flex-1 min-w-0 truncate fs-label text-text-muted text-start">Search…</span>
-      <pera-kbd>⌘K</pera-kbd>
+    <pera-icon name="search" [size]="14" />
+    @if (full()) {
+      <span class="flex-1 min-w-0 truncate fs-label text-start">Search…</span>
+      <pera-kbd [onAccent]="true">⌘K</pera-kbd>
     }
   </button>
 
   <!-- ============ grouped nav ============ -->
-  <nav class="flex-1 overflow-y-auto px-2 flex flex-col gap-3" aria-label="Main">
+  <nav
+    class="flex-1 overflow-y-auto overflow-x-hidden flex flex-col gap-3"
+    [class.px-3]="full()"
+    [class.px-2.5]="!full()"
+    aria-label="Main"
+  >
     @for (section of sections; track section.title; let first = $first) {
-      <div class="flex flex-col gap-px" [attr.aria-label]="section.title">
-        @if (expanded()) {
-          <div class="px-2.5 py-2 font-mono fs-micro uppercase tracking-[0.08em] text-text-muted">
+      <div class="flex flex-col gap-0.5" [attr.aria-label]="section.title">
+        @if (full()) {
+          <div
+            class="px-2.5 pt-1 pb-1.5 fs-micro font-semibold uppercase tracking-[0.08em] text-sidebar-muted"
+          >
             {{ section.title }}
           </div>
         } @else if (!first) {
-          <div class="mx-2 my-1 h-px bg-border" aria-hidden="true"></div>
+          <div class="mx-1.5 my-1 h-px bg-sidebar-line" aria-hidden="true"></div>
         }
         @for (item of section.items; track item.route) {
           @if (canAccess(item)) {
             <a
               [routerLink]="item.route"
-              routerLinkActive="bg-accent-soft text-accent"
-              #rla="routerLinkActive"
-              class="relative flex items-center gap-2.5 py-2 fs-caption text-text-secondary hover:bg-surface-muted hover:text-text-primary outline-none focus-visible:outline-2 focus-visible:outline-accent"
-              [class.px-2.5]="expanded()"
-              [class.justify-center]="!expanded()"
-              [peraTooltip]="expanded() ? '' : item.label"
+              routerLinkActive="bg-sidebar-active text-sidebar-active-text font-semibold"
+              data-nav-item
+              class="flex items-center gap-2.5 py-2 rounded-md fs-caption text-sidebar-text hover:bg-sidebar-hover hover:text-sidebar-strong outline-none focus-visible:outline-2 focus-visible:outline-sidebar-active-text"
+              [class.px-2.5]="full()"
+              [class.justify-center]="!full()"
+              [peraTooltip]="full() ? '' : item.label"
               [attr.aria-label]="item.label"
               (click)="onNavigate()"
             >
-              <!-- active rail — 2px accent bar, no layout shift -->
-              @if (rla.isActive) {
-                <span class="absolute inset-y-1 start-0 w-0.5 bg-accent" aria-hidden="true"></span>
-              }
-              <pera-icon [name]="item.icon" [size]="expanded() ? 13 : 16" />
-              @if (expanded()) {
+              <pera-icon [name]="item.icon" [size]="full() ? 15 : 17" />
+              @if (full()) {
                 <span class="flex-1 truncate">{{ item.label }}</span>
               }
             </a>
           } @else {
             <!-- Rendered but disabled — the capability gate doubles as the tooltip text. -->
             <span
-              class="flex items-center gap-2.5 py-2 fs-caption text-text-secondary opacity-50 cursor-not-allowed select-none"
-              [class.px-2.5]="expanded()"
-              [class.justify-center]="!expanded()"
+              class="flex items-center gap-2.5 py-2 fs-caption text-sidebar-muted opacity-60 cursor-not-allowed select-none"
+              [class.px-2.5]="full()"
+              [class.justify-center]="!full()"
               [peraTooltip]="'Requires ' + item.capability"
               [attr.aria-label]="item.label + ' — requires ' + item.capability"
               [attr.aria-disabled]="true"
             >
-              <pera-icon [name]="item.icon" [size]="expanded() ? 13 : 16" />
-              @if (expanded()) {
+              <pera-icon [name]="item.icon" [size]="full() ? 15 : 17" />
+              @if (full()) {
                 <span class="flex-1 truncate">{{ item.label }}</span>
               }
             </span>
@@ -118,28 +116,48 @@
     }
   </nav>
 
+  <!-- ============ collapse toggle (desktop only) ============ -->
+  @if (collapsible()) {
+    <button
+      type="button"
+      data-sidebar-toggle
+      class="mx-3 mt-2 flex items-center gap-2.5 py-1.5 rounded-md fs-caption text-sidebar-muted hover:bg-sidebar-hover hover:text-sidebar-strong cursor-pointer outline-none focus-visible:outline-2 focus-visible:outline-sidebar-active-text shrink-0"
+      [class.px-2.5]="full()"
+      [class.justify-center]="!full()"
+      [class.mx-2.5]="!full()"
+      [peraTooltip]="full() ? '' : 'Expand menu (Ctrl+B)'"
+      [attr.aria-label]="full() ? 'Collapse menu' : 'Expand menu'"
+      [attr.aria-expanded]="full()"
+      (click)="toggleCollapse.emit()"
+    >
+      <pera-icon name="panel-left" [size]="16" />
+      @if (full()) {
+        <span class="flex-1 text-start">Collapse menu</span>
+        <pera-kbd [onAccent]="true">Ctrl B</pera-kbd>
+      }
+    </button>
+  }
+
   <!-- ============ user menu ============ -->
   <button
     type="button"
     cdkOverlayOrigin
     #userMenuOrigin="cdkOverlayOrigin"
-    class="flex items-center gap-2.5 px-3 py-3 border-t border-border cursor-pointer hover:bg-surface-muted outline-none focus-visible:outline-2 focus-visible:outline-accent shrink-0"
-    [class.justify-center]="!expanded()"
+    class="m-2.5 flex items-center gap-2.5 p-2 rounded-lg cursor-pointer hover:bg-sidebar-hover outline-none focus-visible:outline-2 focus-visible:outline-sidebar-active-text shrink-0"
+    [class.justify-center]="!full()"
     (click)="menuOpen.set(!menuOpen())"
     [attr.aria-expanded]="menuOpen()"
-    [peraTooltip]="expanded() ? '' : userName()"
+    [peraTooltip]="full() ? '' : userName()"
     [attr.aria-label]="userName() + ' — account menu'"
     aria-haspopup="menu"
   >
     <pera-avatar [name]="userName()" size="sm" />
-    @if (expanded()) {
+    @if (full()) {
       <div class="flex flex-col min-w-0 flex-1 leading-tight text-start">
-        <div class="fs-caption font-medium truncate">{{ userName() }}</div>
-        <div class="font-mono fs-micro uppercase tracking-[0.03em] text-text-muted truncate">
-          {{ userEmail() }}
-        </div>
+        <div class="fs-caption font-medium truncate text-sidebar-strong">{{ userName() }}</div>
+        <div class="fs-micro text-sidebar-muted truncate">{{ userEmail() }}</div>
       </div>
-      <span class="font-mono fs-body text-text-muted">⋯</span>
+      <pera-icon name="more-horizontal" [size]="16" class="text-sidebar-muted" />
     }
   </button>
 
@@ -152,7 +170,7 @@
     (backdropClick)="menuOpen.set(false)"
     (detach)="menuOpen.set(false)"
   >
-    <div class="bg-surface border border-border py-1 min-w-44 shadow-lg" role="menu">
+    <div class="bg-surface border border-border rounded-lg py-1 min-w-44 shadow-lg" role="menu">
       <button
         type="button"
         role="menuitem"

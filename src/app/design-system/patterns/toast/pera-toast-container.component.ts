@@ -40,7 +40,7 @@ const TONE_EDGE: Record<ToastTone, string> = {
       @for (toast of toasts.items(); track toast.id) {
         <div
           class="pointer-events-auto flex items-start gap-2.5 px-3 py-2.5 rounded-md shadow-md
-                 bg-surface border border-border border-s-4 {{ edge(toast.tone) }}"
+                 bg-surface border border-border rounded-lg border-s-4 {{ edge(toast.tone) }}"
           role="status"
         >
           <pera-icon [name]="icon(toast.tone)" [size]="16" class="mt-0.5 {{ text(toast.tone) }}" />

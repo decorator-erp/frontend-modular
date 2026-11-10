@@ -69,7 +69,7 @@ const ROW_ADDED = 'bg-surface text-text-primary border-border hover:bg-surface-m
       @for (s of stages(); track s.id) {
         <div
           [attr.data-stage-row]="s.id"
-          class="flex flex-wrap items-center gap-x-4 gap-y-2 px-3.5 py-3 border border-border bg-surface"
+          class="flex flex-wrap items-center gap-x-4 gap-y-2 px-3.5 py-3 border border-border bg-surface rounded-card"
         >
           <div class="flex-1 min-w-48 flex flex-col gap-0.5">
             <strong class="text-sm text-text-primary">{{ s.name }}</strong>

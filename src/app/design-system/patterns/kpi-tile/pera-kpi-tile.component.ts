@@ -2,6 +2,18 @@ import { NgTemplateOutlet } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 import { PeraTrendArrowComponent } from '../../components/trend-arrow/pera-trend-arrow.component';
 import { PeraProgressBarComponent } from '../../components/progress-bar/pera-progress-bar.component';
+import { PeraIconComponent } from '../../components/icon/pera-icon.component';
+
+export type KpiTone = 'accent' | 'info' | 'success' | 'warning' | 'danger' | 'pending';
+
+const CHIP_TONES: Record<KpiTone, string> = {
+  accent: 'bg-accent-soft text-accent',
+  info: 'bg-info-soft text-info',
+  success: 'bg-success-soft text-success',
+  warning: 'bg-warning-soft text-warning',
+  danger: 'bg-danger-soft text-danger',
+  pending: 'bg-pending-soft text-pending',
+};
 
 /**
  * `pera-kpi-tile` — a single metric tile: a caption (label), the big metric
@@ -32,7 +44,7 @@ import { PeraProgressBarComponent } from '../../components/progress-bar/pera-pro
 @Component({
   selector: 'pera-kpi-tile',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [NgTemplateOutlet, PeraTrendArrowComponent, PeraProgressBarComponent],
+  imports: [NgTemplateOutlet, PeraTrendArrowComponent, PeraProgressBarComponent, PeraIconComponent],
   host: { class: 'block' },
   template: `
     @if (drillTo() !== undefined) {
@@ -54,9 +66,30 @@ import { PeraProgressBarComponent } from '../../components/progress-bar/pera-pro
       <!-- The label tier: UPPERCASE is applied here, so every caller writes its
            caption in Sentence case (FR-008 / SC-006). Matches the prototype's
            .kt .k / .ki .k rules. -->
-      <span class="uppercase tracking-wide text-text-muted" [style.fontSize]="'var(--fs-label)'">{{
-        caption()
-      }}</span>
+      @if (icon()) {
+        <!-- RD-1 "icon and trend": the caption with a coloured icon chip at the end. -->
+        <span class="flex items-start justify-between gap-2 min-w-0">
+          <span
+            class="uppercase tracking-wide text-text-muted truncate"
+            [style.fontSize]="'var(--fs-label)'"
+            >{{ caption() }}</span
+          >
+          <span
+            data-kpi-icon
+            class="w-8 h-8 rounded-lg grid place-items-center shrink-0"
+            [class]="chipClass()"
+            aria-hidden="true"
+          >
+            <pera-icon [name]="icon()!" [size]="15" />
+          </span>
+        </span>
+      } @else {
+        <span
+          class="uppercase tracking-wide text-text-muted"
+          [style.fontSize]="'var(--fs-label)'"
+          >{{ caption() }}</span
+        >
+      }
       <span class="text-2xl font-semibold text-text-primary tabular-nums">
         {{ value() }}
         @if (frac()) {
@@ -65,7 +98,7 @@ import { PeraProgressBarComponent } from '../../components/progress-bar/pera-pro
       </span>
 
       @if (trend() !== undefined) {
-        <pera-trend-arrow [value]="trend()!" />
+        <pera-trend-arrow [value]="trend()!" [variant]="icon() ? 'chip' : 'inline'" />
       }
 
       @if (sparkline()?.length) {
@@ -111,8 +144,15 @@ export class PeraKpiTileComponent {
   /** An optional muted caption line beneath the value/trend/sparkline/progress block. */
   readonly message = input<string | null>(null);
 
+  /** RD-1: an icon for the tile's coloured chip; with it, the trend shows as a soft pill. */
+  readonly icon = input<string | null>(null);
+  /** The icon chip's colour. */
+  readonly tone = input<KpiTone>('accent');
+
   /** Emitted with `drillTo` when a drillable tile is activated. */
   readonly drill = output<unknown>();
+
+  protected readonly chipClass = computed(() => CHIP_TONES[this.tone()]);
 
   /**
    * Sparkline points normalised to the `0 0 100 24` viewBox: x spreads evenly

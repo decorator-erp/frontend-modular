@@ -107,4 +107,31 @@ describe('PeraKpiTileComponent', () => {
     expect(el.querySelector('button')).toBeNull();
     expect(el.querySelector('div')).toBeTruthy();
   });
+
+  it('RD-1: an icon adds a coloured chip and turns the trend into a soft pill', () => {
+    const f = TestBed.createComponent(PeraKpiTileComponent);
+    f.componentRef.setInput('caption', 'Open leads');
+    f.componentRef.setInput('value', 37);
+    f.componentRef.setInput('trend', 12);
+    f.componentRef.setInput('icon', 'target');
+    f.componentRef.setInput('tone', 'info');
+    f.detectChanges();
+    const el = f.nativeElement as HTMLElement;
+    const chip = el.querySelector('[data-kpi-icon]')!;
+    expect(chip).toBeTruthy();
+    expect(chip.className).toContain('bg-info-soft');
+    expect(chip.getAttribute('aria-hidden')).toBe('true');
+    expect(el.querySelector('[data-variant="chip"]')).toBeTruthy();
+  });
+
+  it('RD-1: without an icon the tile keeps its plain caption and inline trend', () => {
+    const f = TestBed.createComponent(PeraKpiTileComponent);
+    f.componentRef.setInput('caption', 'Allocated');
+    f.componentRef.setInput('value', '1.2M');
+    f.componentRef.setInput('trend', -3);
+    f.detectChanges();
+    const el = f.nativeElement as HTMLElement;
+    expect(el.querySelector('[data-kpi-icon]')).toBeNull();
+    expect(el.querySelector('[data-variant="inline"]')).toBeTruthy();
+  });
 });

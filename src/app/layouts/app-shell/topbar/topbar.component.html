@@ -1,31 +1,47 @@
-<!-- Translated from prototype topbar — .topbar / .bcrumb / .tb-spacer / .tb-search / .tb-actions / .tb-icon-btn / .pip -->
+<!-- RD-1 topbar: the navbar toggle, breadcrumbs (the page title on phones), search, actions. -->
 <header
   style="height: var(--topbar-h)"
-  class="sticky top-0 z-30 flex items-center gap-6 px-8 bg-surface border-b border-border"
+  class="sticky top-0 z-30 flex items-center gap-2 md:gap-4 px-3 md:px-6 lg:px-8 bg-surface border-b border-border"
 >
-  <!-- Mobile menu toggle -->
-  <button
-    type="button"
-    class="lg:hidden inline-flex p-1.5 text-text-secondary hover:bg-surface-muted cursor-pointer outline-none focus-visible:outline-2 focus-visible:outline-accent"
-    aria-label="Open navigation"
-    (click)="menuToggle.emit()"
-  >
-    <pera-icon name="menu" [size]="18" />
-  </button>
+  @if (layout.device() === 'phone') {
+    <span
+      class="w-icon-lg h-icon-lg rounded-md bg-brand text-on-brand grid place-items-center font-bold fs-caption shrink-0"
+      aria-hidden="true"
+      >P</span
+    >
+    <h1 class="m-0 flex-1 min-w-0 truncate fs-body font-semibold" data-topbar-title>
+      {{ pageTitle() }}
+    </h1>
+  } @else {
+    <!-- The navbar toggle (Ctrl/⌘+B): collapses the sidebar on desktop, opens the drawer on tablet. -->
+    <button
+      type="button"
+      data-nav-toggle
+      class="inline-flex items-center justify-center w-8 h-8 rounded-md border border-border text-text-primary hover:bg-surface-muted cursor-pointer outline-none focus-visible:outline-2 focus-visible:outline-accent shrink-0"
+      [class.bg-accent-soft]="!layout.expanded()"
+      [class.text-accent]="!layout.expanded()"
+      [peraTooltip]="toggleLabel() + ' (Ctrl+B)'"
+      [attr.aria-label]="toggleLabel()"
+      [attr.aria-pressed]="layout.expanded()"
+      (click)="layout.toggle()"
+    >
+      <pera-icon name="panel-left" [size]="16" />
+    </button>
 
-  <!-- .bcrumb -->
-  <div class="flex items-center gap-2 text-text-secondary">
-    <pera-breadcrumbs [items]="breadcrumbs()" />
-  </div>
+    <!-- .bcrumb -->
+    <div class="flex items-center gap-2 text-text-secondary min-w-0">
+      <pera-breadcrumbs [items]="breadcrumbs()" />
+    </div>
+  }
 
   <!-- .tb-spacer -->
-  <div class="flex-1"></div>
+  <div class="flex-1 max-md:hidden"></div>
 
   <!-- .tb-search — opens the ⌘K command palette -->
   <button
     type="button"
     (click)="palette.openPalette()"
-    class="hidden md:inline-flex items-center gap-2 px-2.5 py-1.5 border border-border bg-bg w-64 text-start cursor-pointer hover:border-border-strong outline-none focus-visible:outline-2 focus-visible:outline-accent"
+    class="hidden lg:inline-flex items-center gap-2 px-2.5 py-1.5 rounded-md border border-border bg-bg w-64 text-start cursor-pointer hover:border-border-strong outline-none focus-visible:outline-2 focus-visible:outline-accent"
   >
     <svg
       width="13"
@@ -45,8 +61,18 @@
     <pera-kbd>⌘K</pera-kbd>
   </button>
 
+  <!-- Below desktop the search box is an icon button. -->
+  <button
+    type="button"
+    class="lg:hidden inline-flex items-center justify-center w-icon-lg h-icon-lg rounded-md text-text-secondary hover:bg-surface-muted cursor-pointer outline-none focus-visible:outline-2 focus-visible:outline-accent"
+    aria-label="Search"
+    (click)="palette.openPalette()"
+  >
+    <pera-icon name="search" [size]="16" />
+  </button>
+
   <!-- .tb-actions -->
-  <div class="flex items-center gap-1">
+  <div class="flex items-center gap-0.5 md:gap-1">
     <!-- Theme toggle -->
     <button
       type="button"
@@ -96,7 +122,7 @@
     (backdropClick)="menuOpen.set(false)"
     (detach)="menuOpen.set(false)"
   >
-    <div class="bg-surface border border-border py-1 min-w-44 shadow-lg" role="menu">
+    <div class="bg-surface border border-border rounded-lg py-1 min-w-44 shadow-lg" role="menu">
       <button
         type="button"
         role="menuitem"

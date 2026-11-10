@@ -82,7 +82,9 @@ const DAY_MS = 86_400_000;
     </div>
 
     <!-- KPI summary across the workflow -->
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-0 border border-border bg-surface mb-4">
+    <div
+      class="grid grid-cols-2 md:grid-cols-4 gap-0 border border-border bg-surface rounded-card mb-4"
+    >
       <div class="px-5 py-3.5">
         <div class="font-mono fs-micro uppercase tracking-[0.06em] text-text-muted">Stages</div>
         <div class="fs-h2 font-semibold leading-none tabular-nums mt-1">

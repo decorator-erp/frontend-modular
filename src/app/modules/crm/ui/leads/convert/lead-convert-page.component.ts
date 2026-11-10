@@ -143,7 +143,7 @@ const EMPTY_HEADER: UpdateScopeOfWorkHeaderRequest = {
         }
 
         <!-- step strip -->
-        <ol class="m-0 p-0 list-none grid grid-cols-5 border border-border bg-surface">
+        <ol class="m-0 p-0 list-none grid grid-cols-5 border border-border bg-surface rounded-card">
           @for (s of stepIndex(); track s.n) {
             <li
               class="flex items-center gap-2 px-3 py-2 fs-body-sm border-e border-border last:border-e-0"

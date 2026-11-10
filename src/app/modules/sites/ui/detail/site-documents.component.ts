@@ -154,7 +154,7 @@ interface KindGroup {
                 <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                   @for (d of g.links; track d.id) {
                     <div
-                      class="flex gap-3 p-3 border border-border bg-surface"
+                      class="flex gap-3 p-3 border border-border bg-surface rounded-card"
                       [attr.data-link]="d.id"
                     >
                       <div

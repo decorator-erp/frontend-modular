@@ -51,10 +51,23 @@ describe('PeraDataTableComponent', () => {
     expect(text).toEqual(['Name', 'Department']);
   });
 
-  it('defaults density to `default` and leaves the original rhythm untouched', () => {
+  it('RD-1: defaults to comfortable rows — taller, zebra-striped, accent hover', () => {
     const f = table();
-    expect(f.componentInstance.effectiveDensity()).toBe('default');
-    const cell = (f.nativeElement as HTMLElement).querySelector('tbody td')!;
+    expect(f.componentInstance.effectiveDensity()).toBe('comfortable');
+    const row = (f.nativeElement as HTMLElement).querySelector('tbody tr')!;
+    expect(row.className).toContain('h-11');
+    expect(row.className).toContain('odd:bg-surface-muted/60');
+    expect(row.className).toContain('hover:bg-accent-soft');
+    const cell = row.querySelector('td')!;
+    expect(cell.className).toContain('text-sm');
+  });
+
+  it('`default` density keeps the original rhythm untouched', () => {
+    const f = table('default');
+    const row = (f.nativeElement as HTMLElement).querySelector('tbody tr')!;
+    expect(row.className).toContain('h-8');
+    expect(row.className).not.toContain('odd:bg-surface-muted/60');
+    const cell = row.querySelector('td')!;
     expect(cell.className).toContain('text-sm');
     expect(cell.getAttribute('style') ?? '').not.toContain('--space-');
   });

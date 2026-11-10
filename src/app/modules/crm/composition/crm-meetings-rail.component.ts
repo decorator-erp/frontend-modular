@@ -18,7 +18,7 @@ import { PeriodStore } from '../stores/period.store';
   imports: [PeraButtonComponent, PeraEmptyComponent],
   host: { class: 'block' },
   template: `
-    <div class="bg-surface border border-border">
+    <div class="bg-surface border border-border rounded-card">
       <div class="px-4 py-3 border-b border-border flex items-center justify-between gap-2">
         <span class="font-semibold fs-body-sm text-text-primary">{{
           catalog.t('sched.emLinked')

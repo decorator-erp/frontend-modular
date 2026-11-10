@@ -1,30 +1,59 @@
 [data-theme='dark'] {
-  --color-bg: #0b0b0c;
-  --color-surface: #131316;
-  --color-surface-muted: #1a1a1e;
-  --color-border: #26262b;
-  --color-border-strong: #34343a;
-  --color-text-primary: #f5f5f5;
-  --color-text-secondary: #c7c7cc;
-  --color-text-muted: #8e8e93;
-  --color-accent: #6fa897;
-  --color-accent-hover: #88bbab;
-  --color-accent-pressed: #5a9686;
-  --color-accent-soft: #1b2a26;
+  --color-bg: #081018;
+  --color-surface: #0f1923;
+  --color-surface-muted: #15212d;
+  --color-border: #213140;
+  --color-border-strong: #2e4255;
+  --color-text-primary: #eaf3fa;
+  --color-text-secondary: #b8cad9;
+  --color-text-muted: #8095a7;
+  --color-accent: #5cb3e0;
+  --color-accent-hover: #7cc3e8;
+  --color-accent-pressed: #479fcc;
+  --color-accent-soft: #11293a;
   --color-pending: #9d86d6;
   --color-pending-soft: rgba(107, 79, 184, 0.22);
+  /* RD-1: on-accent text is dark on the light-blue dark-mode accent (white fails contrast). */
+  --color-text-on-accent: #04131d;
+  --color-focus-ring: #5cb3e0;
+
+  /* RD-1 — dark brand sidebar, dark mode. */
+  --sidebar-bg: #050b11;
+  --sidebar-text: #b8cad9;
+  --sidebar-muted: #6b8193;
+  --sidebar-hover: rgba(184, 202, 217, 0.08);
+  --sidebar-line: rgba(184, 202, 217, 0.1);
+  --sidebar-active-bg: #164a66;
+  --sidebar-active-text: #eaf6fd;
+  --brand: #5cb3e0;
+  --on-brand: #04131d;
+  --shadow-card: 0 0 0 1px #1a2734;
+
+  /* RD-1: Tailwind's bg-*-soft utilities read the -50 ramp, which had no dark
+     value — status badges showed pastel pills on dark surfaces. */
+  --success-50: rgba(47, 125, 91, 0.2);
+  --warning-50: rgba(184, 116, 26, 0.2);
+  --danger-50: rgba(178, 58, 58, 0.22);
+  --info-50: rgba(58, 110, 165, 0.22);
+  /* RD-1: the status and accent hues lifted for dark surfaces, so badge text and
+     chart marks stay readable (the light-mode 500s fall under 3:1 on #0f1923). */
+  --success-500: #5fbf8f;
+  --warning-500: #e0a14a;
+  --danger-500: #ef7c7c;
+  --info-500: #7fb0e8;
+  --accent-500: #5cb3e0;
 
   /* Kit alias layer — dark overrides (Phase 1). Tokens that alias --color-*
      (--bg, --surface, --border, --ink, --primary*, --accent, --on-accent)
      flow through the overrides above automatically; only the literal kit
      tokens need restating here. */
-  --hover: #222222;
-  --selected: #2a2a2a;
-  --border-soft: #232323;
+  --hover: #16222e;
+  --selected: #1a2a39;
+  --border-soft: #1a2734;
   --on-ink: rgba(0, 0, 0, 0.08);
   --on-ink-border: rgba(0, 0, 0, 0.18);
   --on-ink-text: rgba(0, 0, 0, 0.7);
-  --primary-light: rgba(53, 94, 82, 0.22);
+  --primary-light: #11293a;
 
   --success-bg: rgba(47, 125, 91, 0.16);
   --warning-bg: rgba(184, 116, 26, 0.16);

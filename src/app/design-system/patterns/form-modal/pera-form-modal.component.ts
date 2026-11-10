@@ -31,7 +31,7 @@ const WIDTHS = { sm: 440, md: 560, lg: 620, xl: 760 } as const;
       cdkTrapFocusAutoCapture
       novalidate
       (submit)="onSubmit($event)"
-      class="bg-surface border border-border shadow-lg flex flex-col max-h-[88vh] max-w-[92vw]"
+      class="bg-surface border border-border rounded-lg shadow-lg flex flex-col max-h-[88vh] max-w-[92vw]"
       [style.width.px]="width()"
       role="dialog"
       aria-modal="true"

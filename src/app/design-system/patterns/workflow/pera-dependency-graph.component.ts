@@ -21,7 +21,7 @@ export interface DependencyEdge {
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'block' },
   template: `
-    <ul class="m-0 p-0 list-none border border-border bg-surface">
+    <ul class="m-0 p-0 list-none border border-border bg-surface rounded-card">
       @for (edge of edges(); track $index) {
         <li
           class="flex items-center gap-2 px-4 py-2 border-b border-border-soft last:border-b-0 font-mono fs-label"

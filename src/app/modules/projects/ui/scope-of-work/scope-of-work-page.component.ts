@@ -107,7 +107,7 @@ const TOGGLE_BUTTON =
         }
         <div class="grid gap-5 items-start lg:grid-cols-3">
           <section
-            class="bg-surface border border-border p-5 flex flex-col gap-4 min-w-0 lg:col-span-2"
+            class="bg-surface border border-border rounded-card p-5 flex flex-col gap-4 min-w-0 lg:col-span-2"
             aria-labelledby="sow-items-heading"
           >
             <div class="flex items-center justify-between gap-3 flex-wrap">

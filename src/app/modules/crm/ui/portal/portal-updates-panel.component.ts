@@ -86,7 +86,7 @@ type LoadState = 'loading' | 'ready' | 'error';
           <ul class="flex flex-col gap-2 m-0 p-0 list-none">
             @for (u of updates(); track u.id) {
               <li
-                class="flex flex-col gap-2 p-3 border border-border bg-surface"
+                class="flex flex-col gap-2 p-3 border border-border bg-surface rounded-card"
                 data-testid="update-row"
               >
                 <div class="flex flex-wrap items-center justify-between gap-2">

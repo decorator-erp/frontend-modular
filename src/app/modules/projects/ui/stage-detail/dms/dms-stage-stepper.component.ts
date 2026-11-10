@@ -17,7 +17,7 @@ import { formatShortDate } from '@shared/ui/status';
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [RouterLink],
   template: `
-    <div class="flex items-stretch border border-border bg-surface overflow-hidden">
+    <div class="flex items-stretch border border-border bg-surface rounded-card overflow-hidden">
       @for (st of steps(); track st.id) {
         <a
           class="relative flex-1 block min-w-0 px-3.5 py-3 border-e border-border last:border-e-0

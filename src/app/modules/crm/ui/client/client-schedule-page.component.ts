@@ -57,7 +57,7 @@ import { CrmClientSchedulerComponent } from './client-scheduler.component';
             <button
               type="button"
               (click)="pickedProjectId.set(p.id)"
-              class="text-start p-3 border border-border bg-surface cursor-pointer fs-body-sm
+              class="text-start p-3 border border-border bg-surface rounded-card cursor-pointer fs-body-sm
                      outline-none focus-visible:outline-2 focus-visible:outline-accent"
             >
               {{ p.name }}

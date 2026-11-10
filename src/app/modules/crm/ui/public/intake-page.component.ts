@@ -72,7 +72,7 @@ type Phase =
       [attr.dir]="locale.direction()"
     >
       <div
-        class="relative w-full max-w-[var(--w-form)] grid grid-cols-1 md:grid-cols-[var(--w-panel)_1fr] bg-surface border border-border"
+        class="relative w-full max-w-[var(--w-form)] grid grid-cols-1 md:grid-cols-[var(--w-panel)_1fr] bg-surface border border-border rounded-card"
       >
         <!-- theme/lang controls -->
         <div class="absolute top-3 end-3 z-10 flex items-center gap-1">

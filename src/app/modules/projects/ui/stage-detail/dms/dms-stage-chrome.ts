@@ -15,7 +15,7 @@
  */
 
 /** Panel shell — the shared card chrome every gated section sits in. */
-export const PNL = 'border border-border bg-surface';
+export const PNL = 'border border-border bg-surface rounded-card';
 
 /** Panel header row. */
 export const PNL_H = 'px-4 py-3 border-b border-border flex justify-between items-center gap-2.5';

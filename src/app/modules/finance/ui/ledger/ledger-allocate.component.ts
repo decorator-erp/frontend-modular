@@ -53,7 +53,7 @@ export interface LedgerAllocateData {
     <form
       [formGroup]="form"
       (ngSubmit)="submit()"
-      class="flex flex-col gap-4 p-5 min-w-[var(--w-dialog)] bg-surface border border-border"
+      class="flex flex-col gap-4 p-5 min-w-[var(--w-dialog)] bg-surface border border-border rounded-card"
     >
       <h2 class="m-0 fs-body font-semibold">Allocate to invoice</h2>
 

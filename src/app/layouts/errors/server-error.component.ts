@@ -8,7 +8,7 @@ import { Router } from '@angular/router';
     <!-- Translated from G-08 in PERA App - Utility.html (.err-wrap / .err-state.err-type / .err-brand / .err-ref / .err-acts) -->
     <div class="bg-bg flex-1 overflow-y-auto p-10">
       <div
-        class="max-w-[var(--w-prose)] mx-auto p-10 border border-border bg-surface border-s-[length:var(--border-accent)] border-s-danger"
+        class="max-w-[var(--w-prose)] mx-auto p-10 border border-border bg-surface rounded-card border-s-[length:var(--border-accent)] border-s-danger"
       >
         <!-- .err-brand -->
         <div class="flex items-center gap-2 mb-7">

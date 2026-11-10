@@ -48,7 +48,7 @@ interface TaskRollupRow {
   template: `
     <app-crm-period-card />
 
-    <div class="bg-surface border border-border">
+    <div class="bg-surface border border-border rounded-card">
       <div class="px-4 py-3 border-b border-border font-semibold fs-body-sm text-text-primary">
         {{ catalog.t('ws.rollupTitle') }}
         <span class="fs-caption text-text-muted font-normal">{{ catalog.t('ws.rollupSub') }}</span>
@@ -72,7 +72,7 @@ interface TaskRollupRow {
       </div>
     </div>
 
-    <div class="bg-surface border border-border">
+    <div class="bg-surface border border-border rounded-card">
       <div class="px-4 py-3 border-b border-border font-semibold fs-body-sm text-text-primary">
         {{ catalog.t('ws.tasksTitle') }}
       </div>

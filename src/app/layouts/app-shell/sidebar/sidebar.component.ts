@@ -1,7 +1,6 @@
 import {
   ChangeDetectionStrategy,
   Component,
-  Injector,
   computed,
   inject,
   input,
@@ -11,7 +10,6 @@ import {
 import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { CdkConnectedOverlay, CdkOverlayOrigin } from '@angular/cdk/overlay';
 import { AuthStore } from '@platform/auth/auth.store';
-import { PermissionsService } from '@platform/permissions';
 import {
   CommandPaletteService,
   PeraAvatarComponent,
@@ -19,8 +17,8 @@ import {
   PeraKbdComponent,
   PeraTooltipDirective,
 } from '@ds';
-import { loadMyAccessGrantsStore } from '@modules/projects';
 import { NAV_SECTIONS, NavItem } from '../nav-config';
+import { NavAccessService } from '../nav-access.service';
 
 @Component({
   selector: 'app-sidebar',
@@ -40,25 +38,34 @@ import { NAV_SECTIONS, NavItem } from '../nav-config';
 export class SidebarComponent {
   private readonly auth = inject(AuthStore);
   private readonly router = inject(Router);
-  private readonly permissions = inject(PermissionsService);
-  private readonly injector = inject(Injector);
-  /** crmp P1-B: the caller's grants, once the lazy store has loaded (null until then). */
-  private readonly myGrants = signal<{
-    hasAny(): boolean;
-    opensArea(area: 'Sites'): boolean;
-  } | null>(null);
+  private readonly access = inject(NavAccessService);
   readonly palette = inject(CommandPaletteService);
 
   /**
-   * Labelled mode. The desktop rail is permanently icon-only at 56px (v2 DS
-   * migration 002, clarification Q3 — no user-facing expand toggle). The mobile
-   * off-canvas drawer passes `expanded=true` so touch users still get nav labels
-   * (research R3); the desktop `--sidebar-w` token never changes.
+   * RD-1: `full` is the labelled dark sidebar (desktop, and inside the tablet/phone drawer);
+   * `rail` is the 64px icon rail (desktop collapsed by the owner's toggle, and always on tablet).
    */
-  readonly expanded = input(false);
+  readonly mode = input<'full' | 'rail'>('full');
+  /** Rendered inside the tablet/phone drawer: drawer width, a close button, no collapse toggle. */
+  readonly drawer = input(false);
+  /** Shows the "Collapse menu" toggle at the foot of the sidebar (desktop only). */
+  readonly collapsible = input(false);
 
-  /** Emitted after a nav link is clicked (lets the mobile drawer close). */
+  /** Emitted after a nav link is clicked (lets the drawer close). */
   readonly navigate = output<void>();
+  /** The foot toggle was pressed. */
+  readonly toggleCollapse = output<void>();
+  /** The drawer's close button was pressed. */
+  readonly closed = output<void>();
+
+  readonly full = computed(() => this.mode() === 'full');
+  readonly width = computed(() =>
+    this.drawer()
+      ? 'var(--sidebar-drawer-w)'
+      : this.full()
+        ? 'var(--sidebar-w)'
+        : 'var(--sidebar-rail-w)',
+  );
 
   readonly sections = NAV_SECTIONS;
   readonly menuOpen = signal(false);
@@ -66,20 +73,8 @@ export class SidebarComponent {
   readonly userName = computed(() => this.auth.user()?.userName ?? '');
   readonly userEmail = computed(() => this.auth.user()?.email ?? '');
 
-  constructor() {
-    // crmp P1-B: "Shared with me" shows only when the caller has grants (one read per user).
-    void loadMyAccessGrantsStore().then((Store) => {
-      const store = this.injector.get(Store);
-      store.ensure();
-      this.myGrants.set(store);
-    });
-  }
-
   canAccess(item: NavItem): boolean {
-    const grants = this.myGrants();
-    if (item.when === 'accessGrants' && !grants?.hasAny()) return false;
-    if (!item.capability || this.permissions.can(item.capability)) return true;
-    return !!item.grantArea && !!grants?.opensArea(item.grantArea);
+    return this.access.canAccess(item);
   }
 
   onNavigate(): void {

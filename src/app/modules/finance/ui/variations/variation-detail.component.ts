@@ -75,7 +75,7 @@ import {
           <pera-alert tone="danger" class="block mb-4">{{ a }}</pera-alert>
         }
 
-        <section class="border border-border bg-surface p-5 mb-5">
+        <section class="border border-border bg-surface rounded-card p-5 mb-5">
           <dl class="m-0 grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 fs-caption">
             <dt class="font-mono fs-micro uppercase text-text-muted">Amount</dt>
             <dd class="m-0 tabular-nums">{{ v.amount }}</dd>
@@ -101,7 +101,7 @@ import {
         </section>
 
         @if (v.status === 'Draft') {
-          <section class="border border-border bg-surface p-5 mb-5">
+          <section class="border border-border bg-surface rounded-card p-5 mb-5">
             <h3 class="m-0 mb-3 fs-body-sm font-semibold">Description</h3>
             <form [formGroup]="descForm" (ngSubmit)="saveDescription()" class="flex flex-col gap-3">
               <pera-form-field label="Description" [required]="true">
@@ -115,7 +115,7 @@ import {
             </form>
           </section>
         } @else if (v.description) {
-          <section class="border border-border bg-surface p-5 mb-5">
+          <section class="border border-border bg-surface rounded-card p-5 mb-5">
             <h3 class="m-0 mb-3 fs-body-sm font-semibold">Description</h3>
             <div
               class="md-out m-0 fs-caption text-text-secondary leading-relaxed"
@@ -125,7 +125,7 @@ import {
         }
 
         <!-- Lifecycle action row — every action always visible, disabled with reason when not allowed -->
-        <section class="border border-border bg-surface p-5">
+        <section class="border border-border bg-surface rounded-card p-5">
           <h3 class="m-0 mb-3 fs-body-sm font-semibold">Lifecycle</h3>
           <div class="flex flex-wrap gap-2">
             <button

@@ -50,7 +50,7 @@ export const COMMENT_PAGE_SIZE = 50;
     @if (canAdd()) {
       <div class="flex gap-3 p-4 border-b border-border-soft">
         <pera-avatar [name]="composerName()" size="md" />
-        <div class="flex-1 min-w-0 border border-border bg-surface">
+        <div class="flex-1 min-w-0 border border-border bg-surface rounded-card">
           <textarea
             placeholder="Add a comment… use @ to mention a teammate"
             rows="2"

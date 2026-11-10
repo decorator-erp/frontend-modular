@@ -64,7 +64,7 @@ export interface VariationRaiseData {
     <form
       [formGroup]="form"
       (ngSubmit)="submit()"
-      class="flex flex-col gap-4 p-5 min-w-[var(--w-dialog-lg)] bg-surface border border-border"
+      class="flex flex-col gap-4 p-5 min-w-[var(--w-dialog-lg)] bg-surface border border-border rounded-card"
     >
       <h2 class="m-0 fs-body font-semibold">Raise variation</h2>
       @if (alert(); as a) {

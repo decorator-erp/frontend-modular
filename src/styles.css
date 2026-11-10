@@ -38,6 +38,18 @@
   --color-border-soft: var(--border-soft);
   --color-on-accent: var(--on-accent);
 
+  /* RD-1 dark brand sidebar: bg-sidebar, text-sidebar-text, bg-sidebar-active… */
+  --color-sidebar: var(--sidebar-bg);
+  --color-sidebar-text: var(--sidebar-text);
+  --color-sidebar-muted: var(--sidebar-muted);
+  --color-sidebar-hover: var(--sidebar-hover);
+  --color-sidebar-line: var(--sidebar-line);
+  --color-sidebar-active: var(--sidebar-active-bg);
+  --color-sidebar-active-text: var(--sidebar-active-text);
+  --color-sidebar-strong: var(--sidebar-strong);
+  --color-brand: var(--brand);
+  --color-on-brand: var(--on-brand);
+
   --color-success: var(--success-500);
   --color-success-soft: var(--success-50);
   --color-warning: var(--warning-500);
@@ -68,6 +80,7 @@
   --shadow-sm: var(--shadow-sm);
   --shadow-md: var(--shadow-md);
   --shadow-lg: var(--shadow-lg);
+  --shadow-card: var(--shadow-card);
 
   --font-sans: var(--font-sans);
   --font-mono: var(--font-mono);
@@ -98,4 +111,13 @@ body {
 table,
 .tabular-nums {
   font-variant-numeric: tabular-nums;
+}
+
+/* RD-1 soft rounded cards. Every flat surface in the app is drawn as
+ * `bg-surface border border-border rounded-card`; giving the radius utility its
+ * companion shadow and the softer hairline turns all of them into soft cards
+ * without editing each call site. */
+.rounded-card {
+  border-color: var(--border-soft);
+  box-shadow: var(--shadow-card);
 }

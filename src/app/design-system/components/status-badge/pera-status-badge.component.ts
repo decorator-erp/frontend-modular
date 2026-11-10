@@ -38,11 +38,12 @@ const TONE_CLASSES: Record<StatusBadgeTone, string> = {
 export class PeraStatusBadgeComponent {
   readonly tone = input<StatusBadgeTone>('neutral');
   readonly label = input.required<string>();
-  readonly dot = input(true);
+  /** RD-1 soft filled badges: no dot by default (the fill carries the state). */
+  readonly dot = input(false);
 
   readonly classes = computed(() =>
     [
-      'inline-flex items-center gap-1.5 px-2 py-0.5 text-xs font-medium whitespace-nowrap rounded-full',
+      'inline-flex items-center gap-1.5 px-2.5 py-0.5 text-xs font-medium whitespace-nowrap rounded-full',
       TONE_CLASSES[this.tone()],
     ].join(' '),
   );

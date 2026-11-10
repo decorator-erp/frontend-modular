@@ -56,7 +56,9 @@ import {
           <pera-alert tone="danger" class="block mb-4">{{ a }}</pera-alert>
         }
 
-        <section class="grid grid-cols-2 md:grid-cols-4 border border-border bg-surface mb-5">
+        <section
+          class="grid grid-cols-2 md:grid-cols-4 border border-border bg-surface rounded-card mb-5"
+        >
           <div class="p-4 border-r border-border">
             <div class="font-mono fs-label uppercase text-text-muted mb-1">Total</div>
             <div class="fs-h3 font-semibold tabular-nums">{{ inv.totalAmount }}</div>
@@ -79,7 +81,7 @@ import {
           </div>
         </section>
 
-        <section class="border border-border bg-surface mb-5">
+        <section class="border border-border bg-surface rounded-card mb-5">
           <header class="px-5 py-3 border-b border-border">
             <h3 class="m-0 fs-body-sm font-semibold">Lines</h3>
           </header>
@@ -114,7 +116,7 @@ import {
         </section>
 
         @if (inv.note) {
-          <section class="border border-border bg-surface p-5 mb-5">
+          <section class="border border-border bg-surface rounded-card p-5 mb-5">
             <div class="font-mono fs-label uppercase text-text-muted mb-2">Note</div>
             <p class="m-0 fs-caption text-text-secondary whitespace-pre-wrap">{{ inv.note }}</p>
           </section>

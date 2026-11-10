@@ -97,7 +97,7 @@ const TYPE_CARDS: { value: LedgerType; label: string; hint: string }[] = [
         <!-- LEFT: form -->
         <div class="flex flex-col gap-5">
           <!-- Movement section: type cards -->
-          <section class="border border-border bg-surface p-5">
+          <section class="border border-border bg-surface rounded-card p-5">
             <h3 class="m-0 mb-3 fs-body-sm font-semibold">1. Movement</h3>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-2.5">
               @for (c of typeCards; track c.value) {
@@ -119,7 +119,7 @@ const TYPE_CARDS: { value: LedgerType; label: string; hint: string }[] = [
           </section>
 
           @if (form.value.type) {
-            <section class="border border-border bg-surface p-5 flex flex-col gap-3">
+            <section class="border border-border bg-surface rounded-card p-5 flex flex-col gap-3">
               <h3 class="m-0 fs-body-sm font-semibold">2. Details</h3>
 
               <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -208,7 +208,7 @@ const TYPE_CARDS: { value: LedgerType; label: string; hint: string }[] = [
 
         <!-- RIGHT: live summary -->
         <aside class="flex flex-col gap-3">
-          <section class="border border-border bg-surface p-4">
+          <section class="border border-border bg-surface rounded-card p-4">
             <h4 class="m-0 mb-2 font-mono fs-label uppercase text-text-muted">Summary</h4>
             <dl class="m-0 grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 fs-caption">
               <dt class="text-text-muted">Type</dt>
@@ -220,7 +220,7 @@ const TYPE_CARDS: { value: LedgerType; label: string; hint: string }[] = [
             </dl>
           </section>
           @if (pickedLine(); as l) {
-            <section class="border border-border bg-surface p-4">
+            <section class="border border-border bg-surface rounded-card p-4">
               <h4 class="m-0 mb-2 font-mono fs-label uppercase text-text-muted">Budget line</h4>
               <div class="fs-caption font-medium">{{ l.name }}</div>
               <div class="fs-label text-text-muted mb-2">{{ l.costCategoryName }}</div>

@@ -34,11 +34,36 @@
          compact notation so the large numerals fit narrow columns; the full
          precision is preserved in the tables below. -->
     <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 items-start">
-      <pera-kpi-tile caption="Allocated" [value]="fmtCompact(d.budget.totalAllocated)" />
-      <pera-kpi-tile caption="Committed" [value]="fmtCompact(d.budget.totalCommitted)" />
-      <pera-kpi-tile caption="Actual" [value]="fmtCompact(d.budget.totalActual)" />
-      <pera-kpi-tile caption="Available" [value]="fmtCompact(d.budget.totalAvailable)" />
-      <pera-kpi-tile caption="Client paid" [value]="fmtCompact(d.collection.totalClientPayments)" />
+      <pera-kpi-tile
+        caption="Allocated"
+        icon="wallet"
+        tone="accent"
+        [value]="fmtCompact(d.budget.totalAllocated)"
+      />
+      <pera-kpi-tile
+        caption="Committed"
+        icon="file-text"
+        tone="info"
+        [value]="fmtCompact(d.budget.totalCommitted)"
+      />
+      <pera-kpi-tile
+        caption="Actual"
+        icon="trending-up"
+        tone="warning"
+        [value]="fmtCompact(d.budget.totalActual)"
+      />
+      <pera-kpi-tile
+        caption="Available"
+        icon="check-circle"
+        tone="success"
+        [value]="fmtCompact(d.budget.totalAvailable)"
+      />
+      <pera-kpi-tile
+        caption="Client paid"
+        icon="inbox"
+        tone="success"
+        [value]="fmtCompact(d.collection.totalClientPayments)"
+      />
       <!-- The prototype's `.statc`: big value + progress bar + breakdown rows.
            The three breakdown rows are DERIVED from `invoices.byStatus[]` via
            `invoiceRollup()` — the server sends buckets, not these figures. -->

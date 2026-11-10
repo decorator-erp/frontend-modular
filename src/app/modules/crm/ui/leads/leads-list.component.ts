@@ -142,7 +142,7 @@ const STATUS_ORDER: LeadStatus[] = [
             <button
               type="button"
               (click)="open(row)"
-              class="text-start bg-surface border border-border p-4 flex flex-col gap-2.5 cursor-pointer hover:bg-surface-muted transition-colors outline-none focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2"
+              class="text-start bg-surface border border-border rounded-card p-4 flex flex-col gap-2.5 cursor-pointer hover:bg-surface-muted transition-colors outline-none focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2"
               [class.opacity-60]="isConverted(row)"
             >
               <!-- Header: intake dot (hidden until DTO carries it) + name + phone · status -->
@@ -208,7 +208,6 @@ const STATUS_ORDER: LeadStatus[] = [
         </div>
       } @else {
         <pera-data-table
-          density="compact"
           [columns]="columns()"
           [rows]="rows()"
           [rowId]="rowId"
