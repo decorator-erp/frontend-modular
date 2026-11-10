@@ -1,3 +1,4 @@
+import { LoginCredentialsComponent } from '@shared/ui/login-credentials.component';
 import {
   viewChild,
   ViewContainerRef,
@@ -101,6 +102,7 @@ const EMPTY_HEADER: UpdateScopeOfWorkHeaderRequest = {
   changeDetection: ChangeDetectionStrategy.OnPush,
   providers: [LeadConvertRunner],
   imports: [
+    LoginCredentialsComponent,
     ReactiveFormsModule,
     RouterLink,
     PeraAlertComponent,
@@ -345,83 +347,108 @@ const EMPTY_HEADER: UpdateScopeOfWorkHeaderRequest = {
               </div>
             }
             @case (5) {
-              <div class="flex flex-col gap-4" data-testid="convert-step-review">
-                <dl
-                  class="m-0 grid grid-cols-1 sm:grid-cols-[max-content_1fr] gap-x-6 gap-y-2 fs-body-sm"
-                >
-                  <dt class="text-text-muted">{{ catalog.t('convert.stepClient') }}</dt>
-                  <dd class="m-0">{{ reviewClient() }}</dd>
-                  <dt class="text-text-muted">{{ catalog.t('convert.stepProject') }}</dt>
-                  <dd class="m-0">
-                    <span dir="ltr">{{ projectForm.controls.code.value }}</span> ·
-                    {{ projectForm.controls.name.value }}
-                  </dd>
-                  <dt class="text-text-muted">{{ catalog.t('convert.stepScope') }}</dt>
-                  <dd class="m-0">
-                    {{
-                      catalog.t('convert.reviewScope', {
-                        stages: scopeItems().length,
-                        days: scopeHeader().durationDays ?? 0,
-                        total: totalText(),
-                      })
-                    }}
-                  </dd>
-                  <dt class="text-text-muted">{{ catalog.t('convert.stepSite') }}</dt>
-                  <dd class="m-0">{{ siteForm.controls.address.value || '—' }}</dd>
-                </dl>
-                <p class="fs-caption text-text-muted m-0">{{ catalog.t('convert.carryNote') }}</p>
+              @if (doneProjectId() && runner.issuedLogin(); as login) {
+                <!-- LC-2: the new client's sign-in details, shown once after a successful convert. -->
+                <div class="flex flex-col gap-3" data-testid="convert-credentials">
+                  <h2 class="m-0 fs-h3 font-semibold">{{ catalog.t('creds.title') }}</h2>
+                  <app-login-credentials [login]="login" />
+                </div>
+              } @else {
+                <div class="flex flex-col gap-4" data-testid="convert-step-review">
+                  <dl
+                    class="m-0 grid grid-cols-1 sm:grid-cols-[max-content_1fr] gap-x-6 gap-y-2 fs-body-sm"
+                  >
+                    <dt class="text-text-muted">{{ catalog.t('convert.stepClient') }}</dt>
+                    <dd class="m-0">{{ reviewClient() }}</dd>
+                    <dt class="text-text-muted">{{ catalog.t('convert.stepProject') }}</dt>
+                    <dd class="m-0">
+                      <span dir="ltr">{{ projectForm.controls.code.value }}</span> ·
+                      {{ projectForm.controls.name.value }}
+                    </dd>
+                    <dt class="text-text-muted">{{ catalog.t('convert.stepScope') }}</dt>
+                    <dd class="m-0">
+                      {{
+                        catalog.t('convert.reviewScope', {
+                          stages: scopeItems().length,
+                          days: scopeHeader().durationDays ?? 0,
+                          total: totalText(),
+                        })
+                      }}
+                    </dd>
+                    <dt class="text-text-muted">{{ catalog.t('convert.stepSite') }}</dt>
+                    <dd class="m-0">{{ siteForm.controls.address.value || '—' }}</dd>
+                  </dl>
+                  <p class="fs-caption text-text-muted m-0">{{ catalog.t('convert.carryNote') }}</p>
 
-                <ul class="m-0 p-0 list-none flex flex-col gap-1.5" data-testid="convert-progress">
-                  @for (p of progressRows(); track p.step) {
-                    <li class="flex items-center gap-2 fs-body-sm">
-                      <span
-                        class="w-2 h-2 rounded-full shrink-0"
-                        [class.bg-success]="p.state === 'done'"
-                        [class.bg-accent]="p.state === 'running'"
-                        [class.bg-danger]="p.state === 'failed'"
-                        [class.bg-border-strong]="p.state === 'pending'"
-                      ></span>
-                      <span [class.text-text-muted]="p.state === 'pending'">{{ p.label }}</span>
-                    </li>
+                  <ul
+                    class="m-0 p-0 list-none flex flex-col gap-1.5"
+                    data-testid="convert-progress"
+                  >
+                    @for (p of progressRows(); track p.step) {
+                      <li class="flex items-center gap-2 fs-body-sm">
+                        <span
+                          class="w-2 h-2 rounded-full shrink-0"
+                          [class.bg-success]="p.state === 'done'"
+                          [class.bg-accent]="p.state === 'running'"
+                          [class.bg-danger]="p.state === 'failed'"
+                          [class.bg-border-strong]="p.state === 'pending'"
+                        ></span>
+                        <span [class.text-text-muted]="p.state === 'pending'">{{ p.label }}</span>
+                      </li>
+                    }
+                  </ul>
+                  @if (runner.error(); as message) {
+                    <pera-alert tone="danger" data-testid="convert-error">{{ message }}</pera-alert>
                   }
-                </ul>
-                @if (runner.error(); as message) {
-                  <pera-alert tone="danger" data-testid="convert-error">{{ message }}</pera-alert>
-                }
-              </div>
+                </div>
+              }
             }
           }
         </pera-card>
 
-        <div class="flex items-center gap-3">
-          @if (step() > 1) {
-            <pera-button variant="tertiary" [disabled]="runner.running()" (click)="back()">{{
-              catalog.t('convert.back')
-            }}</pera-button>
-          }
-          <span class="flex-1"></span>
-          @if (step() < 5) {
-            <pera-button variant="primary" (click)="next()">{{
-              catalog.t('convert.next')
-            }}</pera-button>
-          } @else {
+        @if (doneProjectId(); as projectId) {
+          <div class="flex items-center gap-3">
+            <span class="flex-1"></span>
             <pera-button
               variant="primary"
-              data-testid="convert-create"
-              [loading]="runner.running()"
-              [disabled]="missingPermissions().length > 0"
-              (click)="create()"
-              >{{
-                catalog.t(runner.failedStep() ? 'convert.retry' : 'convert.create')
-              }}</pera-button
+              data-testid="convert-open-project"
+              (click)="openProject(projectId)"
+              >{{ catalog.t('creds.openProject') }}</pera-button
             >
-          }
-        </div>
+          </div>
+        } @else {
+          <div class="flex items-center gap-3">
+            @if (step() > 1) {
+              <pera-button variant="tertiary" [disabled]="runner.running()" (click)="back()">{{
+                catalog.t('convert.back')
+              }}</pera-button>
+            }
+            <span class="flex-1"></span>
+            @if (step() < 5) {
+              <pera-button variant="primary" (click)="next()">{{
+                catalog.t('convert.next')
+              }}</pera-button>
+            } @else {
+              <pera-button
+                variant="primary"
+                data-testid="convert-create"
+                [loading]="runner.running()"
+                [disabled]="missingPermissions().length > 0"
+                (click)="create()"
+                >{{
+                  catalog.t(runner.failedStep() ? 'convert.retry' : 'convert.create')
+                }}</pera-button
+              >
+            }
+          </div>
+        }
       }
     </div>
   `,
 })
 export class LeadConvertPageComponent {
+  /** LC-2: set once the conversion finished and a new client login waits to be shown. */
+  readonly doneProjectId = signal<string | null>(null);
   private readonly fb = inject(FormBuilder);
   private readonly leads = inject(CrmLeadService);
   private readonly stageTemplates = inject(StageTemplatesService);
@@ -444,8 +471,6 @@ export class LeadConvertPageComponent {
   readonly existingClientId = new FormControl<string | null>(null);
   protected readonly existingTouched = signal(false);
   readonly clientOptions = signal<SelectOption[]>([]);
-  /** Generated once: the portal login's first password, until the invitation flow exists (gap-03). */
-  private readonly password = cryptoRandomPassword(16);
   readonly clientForm = this.fb.nonNullable.group({
     firstName: ['', [Validators.required, PeraValidators.trimmedLength(1, 80)]],
     lastName: ['', [Validators.required, PeraValidators.trimmedLength(1, 80)]],
@@ -722,7 +747,10 @@ export class LeadConvertPageComponent {
                 phone: c.phone.trim(),
                 address: c.address.trim(),
                 notes: c.notes.trim() || undefined,
-                password: this.password,
+                // The portal login's first password, until the invitation flow exists (gap-03).
+                // LC-2: fresh on every Create/Retry, so a refused password is never sent twice.
+                // Once the client exists the runner skips this step, so a new one costs nothing.
+                password: cryptoRandomPassword(16),
               },
             },
       project: {
@@ -747,6 +775,15 @@ export class LeadConvertPageComponent {
     const projectId = await this.runner.run(this.plan());
     if (!projectId) return;
     this.toast.show({ tone: 'success', message: this.catalog.t('convert.done') });
+    // LC-2: a new client got a portal login — show its details once before leaving the page.
+    if (this.runner.issuedLogin()) {
+      this.doneProjectId.set(projectId);
+      return;
+    }
+    void this.router.navigate(['/projects', projectId]);
+  }
+
+  openProject(projectId: string): void {
     void this.router.navigate(['/projects', projectId]);
   }
 

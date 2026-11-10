@@ -192,4 +192,17 @@ describe('DashboardStore (DB-1)', () => {
     store.load();
     expect(store.nothingToShow()).toBe(true);
   });
+
+  it('LC-2: without an employee record (an admin), gathering work is not requested — no 403', async () => {
+    const api = setupDashboard(MANAGER);
+    api.employees.getMe.mockReturnValueOnce(throwError(() => new Error('404')));
+    const store = TestBed.inject(DashboardStore);
+    store.load();
+    await settle();
+
+    expect(api.gathering.list).not.toHaveBeenCalled();
+    expect(store.gathering()).toEqual({ loading: false, error: false, data: [] });
+    // The one /employees/me answer is shared by the tasks and gathering widgets.
+    expect(api.employees.getMe).toHaveBeenCalledTimes(1);
+  });
 });

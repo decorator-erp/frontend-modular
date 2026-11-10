@@ -108,8 +108,20 @@ export class DashboardStore {
   readonly gathering = signal<WidgetState<MyGatheringWorkItem[]>>(idle());
   readonly leads = signal<WidgetState<CrmLeadStatusCounts>>(idle());
 
+  /** `/employees/me`, asked once per load and shared by the widgets that need it; null = no record. */
+  private me: Promise<{ id: string; fullName: string } | null> | null = null;
+
+  private myEmployee(): Promise<{ id: string; fullName: string } | null> {
+    // No employee record (a 404 or 403) simply means no work of my own.
+    this.me ??= firstValueFrom(this.employees.getMe({ context: handled(403, 404) })).catch(
+      () => null,
+    );
+    return this.me;
+  }
+
   /** Fires every call the user's permissions allow, all at once. */
   load(): void {
+    this.me = null;
     this.displayName.set(this.auth.user()?.userName ?? '');
     const c = this.can();
     if (c.projects) void this.loadProjects(c.tasks);
@@ -153,10 +165,7 @@ export class DashboardStore {
   private async loadTasks(projects: Project[]): Promise<void> {
     this.tasks.set(loading());
     try {
-      // No employee record (a 404 or 403) simply means no tasks of my own.
-      const me = await firstValueFrom(this.employees.getMe({ context: handled(403, 404) })).catch(
-        () => null,
-      );
+      const me = await this.myEmployee();
       if (me?.fullName) this.displayName.set(me.fullName);
       if (!me?.id || !projects.length) {
         this.tasks.set({ loading: false, error: false, data: [] });
@@ -198,6 +207,12 @@ export class DashboardStore {
   private async loadGathering(): Promise<void> {
     this.gathering.set(loading());
     try {
+      // Gathering work is an employee's own; without a record the server answers 403
+      // crm.mywork.NotAnEmployee, so don't ask (an admin account has no employee record).
+      if (!(await this.myEmployee())) {
+        this.gathering.set({ loading: false, error: false, data: [] });
+        return;
+      }
       const rows = await firstValueFrom(this.gatheringApi.list());
       this.gathering.set({
         loading: false,

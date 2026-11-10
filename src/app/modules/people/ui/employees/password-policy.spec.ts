@@ -23,11 +23,11 @@ describe('password policy (006b-2 #23)', () => {
     }
   });
 
-  it('why the re-draw exists: cryptoRandomPassword(16) alone sometimes has no symbol', () => {
-    // p(no symbol) ≈ (56/64)^16 ≈ 0.12 per draw, so 500 draws miss it with p ≈ 10^-28.
+  it('LC-2: cryptoRandomPassword(16) now always has a symbol, so the re-draw is only a safety net', () => {
+    // Before LC-2, p(no symbol) ≈ (56/64)^16 ≈ 0.12 per draw; the generator now places one of each class.
     const misses = Array.from({ length: 500 }, () => cryptoRandomPassword(16)).filter(
       (pw) => !meetsPasswordPolicy(pw),
     );
-    expect(misses.length).toBeGreaterThan(0);
+    expect(misses).toEqual([]);
   });
 });

@@ -2497,4 +2497,17 @@ export const AR: Partial<Record<CatalogKey, string>> = {
   'login.stDrawing': 'اللوحة',
   'login.stDrawingVal': 'A-101 · مسقط',
   'login.stScale': 'المقياس',
+  // LC-2 — a new client's sign-in details, shown once
+  'creds.title': 'تم إنشاء حساب دخول العميل',
+  'creds.body':
+    'شارك بيانات الدخول هذه مع العميل. يمكنه تسجيل الدخول إلى بوابة العملاء وتغيير كلمة المرور.',
+  'creds.email': 'بريد الدخول',
+  'creds.password': 'كلمة المرور المؤقتة',
+  'creds.copy': 'نسخ',
+  'creds.copied': 'تم النسخ',
+  'creds.copyBoth': 'نسخ الاثنين',
+  'creds.once': 'تظهر كلمة المرور هذه الآن فقط — انسخها قبل الإغلاق.',
+  'creds.later': 'إرسالها إلى العميل بالبريد تلقائياً سيأتي في تحديث لاحق.',
+  'creds.openProject': 'فتح المشروع',
+  'creds.done': 'تم',
 };

@@ -59,6 +59,7 @@ describe('ERROR_MESSAGES — employees, departments, users (006b-2 #28)', () => 
     'employees.AlreadyInAnotherDepartment',
     'employees.EndDateBeforeHireDate',
     'employees.WeakPassword',
+    'crm.clients.WeakPassword',
     'departments.RemoveHeadFirst',
     'users.DuplicatedEmail',
   ])('carries %s', (code) => {

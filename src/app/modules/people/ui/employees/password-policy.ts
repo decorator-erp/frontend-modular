@@ -16,9 +16,9 @@ export function meetsPasswordPolicy(password: string): boolean {
 }
 
 /**
- * A temporary password the server will accept. `cryptoRandomPassword(16)` guarantees lower, upper
- * and digit but NOT a symbol (roughly one draw in eight has none), so draw again until the policy
- * holds. The bound is never reached in practice (each draw passes with p ≈ 0.88).
+ * A temporary password the server will accept. Since LC-2 `cryptoRandomPassword(16)` always meets the
+ * policy (it used to miss the symbol in roughly one draw in eight); the check-and-redraw stays as a
+ * safety net should the generator or the policy ever drift apart.
  */
 export function policyPassword(): string {
   for (let attempt = 0; attempt < 64; attempt++) {

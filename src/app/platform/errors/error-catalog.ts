@@ -32,6 +32,9 @@ export const ERROR_MESSAGES: Record<string, string> = {
   'clients.DeleteFailed': 'Could not delete the client.',
   'clients.ActivatedFailed': 'Could not activate the client. Please try again.',
   'clients.DeactivatedFailed': 'Could not deactivate the client. Please try again.',
+  // LC-2: dms checks the portal login's password before provisioning (was users.CreateFailed).
+  'crm.clients.WeakPassword':
+    'The client’s temporary password did not meet the password rules. Try again.',
 
   // From api-docs/03-employees.md
   'employees.NotFound': 'Employee not found.',

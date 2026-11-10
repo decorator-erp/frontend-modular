@@ -12,6 +12,7 @@ import { ErrorHandlerService, friendly } from '@platform/http/error-handler.serv
 import { CatalogService } from '@platform/i18n/catalog.service';
 import { CrmLeadService } from '../data/crm-lead.service';
 import { CrmSiteSurveyService } from '../data/crm-site-survey.service';
+import type { IssuedLogin } from '@shared/ui/login-credentials.component';
 import {
   CONVERT_STEPS,
   type ConvertPlan,
@@ -54,6 +55,11 @@ export class LeadConvertRunner {
   readonly failedStep = signal<ConvertStep | null>(null);
   /** The failed step's message, localized. */
   readonly error = signal<string | null>(null);
+  /**
+   * LC-2: the portal login this runner created for a new client — email and temporary password —
+   * so the wizard can show it once. In memory only: never written to storage.
+   */
+  readonly issuedLogin = signal<IssuedLogin | null>(null);
 
   /** What a previous run already created for this lead (empty when nothing, or storage is unavailable). */
   progressOf(leadId: string): ConvertProgress {
@@ -77,10 +83,15 @@ export class LeadConvertRunner {
     const run: Record<ConvertStep, () => Promise<void>> = {
       client: async () => {
         if (progress.clientId) return;
-        progress.clientId =
-          plan.client.mode === 'existing'
-            ? plan.client.clientId
-            : await firstValueFrom(this.clients.create(plan.client.request));
+        if (plan.client.mode === 'existing') {
+          progress.clientId = plan.client.clientId;
+          return;
+        }
+        progress.clientId = await firstValueFrom(this.clients.create(plan.client.request));
+        this.issuedLogin.set({
+          email: plan.client.request.email,
+          password: plan.client.request.password,
+        });
       },
       project: async () => {
         if (progress.projectId) return;

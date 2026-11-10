@@ -204,12 +204,27 @@ describe('LeadConvertRunner (LC-1)', () => {
     expect(sessionStorage.getItem('pera.leadConvert.L1')).toBeNull();
   });
 
+  it('LC-2: remembers the new client login it created (email and password) so the wizard can show it', async () => {
+    const { runner } = setup();
+    expect(runner.issuedLogin()).toBeNull();
+
+    await runner.run(plan());
+
+    expect(runner.issuedLogin()).toEqual({
+      email: 'mona@example.com',
+      password: 'Pw!12345678abcd',
+    });
+    // In memory only — the saved progress never holds the password.
+    expect(JSON.stringify(sessionStorage)).not.toContain('Pw!12345678abcd');
+  });
+
   it('uses a picked existing client: no client is created and the lead converts into it', async () => {
     const { runner, clients, projects, leads } = setup();
 
     await runner.run(plan({ client: { mode: 'existing', clientId: 'C9' } }));
 
     expect(clients.create).not.toHaveBeenCalled();
+    expect(runner.issuedLogin()).toBeNull();
     expect(projects.create).toHaveBeenCalledWith(expect.objectContaining({ clientId: 'C9' }));
     expect(leads.convert).toHaveBeenCalledWith('L1', { existingClientId: 'C9' });
   });
