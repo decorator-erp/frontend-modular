@@ -444,8 +444,6 @@ export class LeadConvertPageComponent {
   readonly existingClientId = new FormControl<string | null>(null);
   protected readonly existingTouched = signal(false);
   readonly clientOptions = signal<SelectOption[]>([]);
-  /** Generated once: the portal login's first password, until the invitation flow exists (gap-03). */
-  private readonly password = cryptoRandomPassword(16);
   readonly clientForm = this.fb.nonNullable.group({
     firstName: ['', [Validators.required, PeraValidators.trimmedLength(1, 80)]],
     lastName: ['', [Validators.required, PeraValidators.trimmedLength(1, 80)]],
@@ -722,7 +720,10 @@ export class LeadConvertPageComponent {
                 phone: c.phone.trim(),
                 address: c.address.trim(),
                 notes: c.notes.trim() || undefined,
-                password: this.password,
+                // The portal login's first password, until the invitation flow exists (gap-03).
+                // LC-2: fresh on every Create/Retry, so a refused password is never sent twice.
+                // Once the client exists the runner skips this step, so a new one costs nothing.
+                password: cryptoRandomPassword(16),
               },
             },
       project: {

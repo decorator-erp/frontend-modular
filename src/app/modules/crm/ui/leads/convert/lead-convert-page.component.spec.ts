@@ -252,6 +252,25 @@ describe('LeadConvertPageComponent (LC-1)', () => {
     });
   });
 
+  it('LC-2: every plan (Create, then Retry) carries a fresh password the backend accepts', () => {
+    const { c } = make();
+    const pw = () => {
+      const plan = c.plan();
+      return plan.client.mode === 'new' ? plan.client.request.password : '';
+    };
+    const first = pw();
+    const second = pw();
+
+    // A refused password is never sent twice; the runner skips the client step once it exists.
+    expect(second).not.toBe(first);
+    for (const p of [first, second]) {
+      expect(p).toMatch(/[a-z]/);
+      expect(p).toMatch(/[A-Z]/);
+      expect(p).toMatch(/[0-9]/);
+      expect(p).toMatch(/[^A-Za-z0-9]/);
+    }
+  });
+
   it('uses an existing client when one is picked', () => {
     const { c } = make();
     c.clientMode.set('existing');
