@@ -1,109 +1,182 @@
-<!-- Translated from G-10 in PERA App - Utility.html — preserves email+password binding from existing component -->
+<!-- LG-1: the floor-plan sign-in page (the owner's pick from the sign-in design gallery). A clean card
+     over an architectural floor plan that draws itself in, with a drawing title block. The form
+     bindings (email, password, remember, server errors, submit) are unchanged. -->
 <div
-  class="grid grid-cols-1 lg:grid-cols-[60fr_40fr] grid-rows-[1fr_auto] min-h-screen bg-bg text-text-primary font-sans"
+  class="relative min-h-screen bg-bg text-text-primary font-sans overflow-hidden grid place-items-center px-4 py-10"
   [attr.dir]="locale.direction()"
 >
-  <!-- ============ FORM PANE (left, 60fr) ============ -->
-  <section class="flex flex-col pt-12 lg:pt-12 px-6 lg:px-16 pb-9">
-    <!-- Brand mark — translated from .login-mark -->
-    <header class="flex items-center gap-2 mb-12">
-      <span class="relative w-icon-xs h-icon-xs shrink-0" aria-hidden="true">
-        <span
-          class="absolute inset-0 border-[length:var(--hairline-strong)] border-text-primary"
-        ></span>
-        <span class="absolute top-1/2 inset-x-0 h-px bg-text-primary"></span>
-        <span
-          class="absolute start-1/2 inset-y-0 w-px bg-text-primary -translate-x-[calc(var(--hairline)*0.5)]"
-        ></span>
+  <!-- ============ the floor plan (decorative) ============ -->
+  <svg
+    class="login-plan absolute inset-0 w-full h-full text-accent pointer-events-none"
+    viewBox="0 0 1200 760"
+    preserveAspectRatio="xMidYMid slice"
+    aria-hidden="true"
+    focusable="false"
+  >
+    <g class="plan-wall draw">
+      <path d="M150 120 H1050 V640 H150 Z" />
+      <path d="M620 120 V330 M620 400 V640" />
+      <path d="M150 390 H420 M490 390 H620" />
+      <path d="M620 330 H840 M900 330 H1050" />
+      <path d="M840 470 V640" />
+    </g>
+    <g class="plan-thin draw">
+      <path d="M420 390 A70 70 0 0 1 490 320" />
+      <line x1="420" y1="390" x2="420" y2="320" />
+      <path d="M840 330 A60 60 0 0 0 900 390" />
+      <line x1="900" y1="330" x2="900" y2="390" />
+      <path d="M620 330 A70 70 0 0 1 690 400" />
+      <line x1="620" y1="400" x2="690" y2="400" />
+      <line x1="300" y1="116" x2="460" y2="116" />
+      <line x1="300" y1="124" x2="460" y2="124" />
+      <line x1="760" y1="636" x2="960" y2="636" />
+      <line x1="760" y1="644" x2="960" y2="644" />
+      <rect x="200" y="180" width="200" height="80" rx="10" />
+      <rect x="230" y="290" width="140" height="60" rx="6" />
+      <circle cx="520" cy="230" r="34" />
+      <rect x="700" y="160" width="300" height="46" />
+      <rect x="700" y="230" width="60" height="70" />
+      <rect x="190" y="440" width="170" height="150" rx="6" />
+      <rect x="190" y="440" width="170" height="36" />
+      <rect x="880" y="500" width="120" height="100" rx="40" />
+      <circle cx="700" cy="560" r="22" />
+    </g>
+    <g class="plan-dim">
+      <line x1="150" y1="80" x2="1050" y2="80" />
+      <line x1="150" y1="70" x2="150" y2="90" />
+      <line x1="1050" y1="70" x2="1050" y2="90" />
+      <line x1="110" y1="120" x2="110" y2="640" />
+      <line x1="100" y1="120" x2="120" y2="120" />
+      <line x1="100" y1="640" x2="120" y2="640" />
+    </g>
+    <text class="plan-label" x="580" y="72" direction="ltr">11 400</text>
+    <text class="plan-label" x="70" y="390" transform="rotate(-90 70 390)" direction="ltr">
+      6 600
+    </text>
+    <text class="plan-room" x="330" y="230">{{ catalog.t('login.rmLiving') }}</text>
+    <text class="plan-room" x="820" y="280">{{ catalog.t('login.rmKitchen') }}</text>
+    <text class="plan-room" x="260" y="530">{{ catalog.t('login.rmBedroom') }}</text>
+    <text class="plan-room" x="900" y="460">{{ catalog.t('login.rmBath') }}</text>
+    <text class="plan-room" x="680" y="520">{{ catalog.t('login.rmEntry') }}</text>
+  </svg>
+
+  <!-- Corner brand (desktop) -->
+  <div class="hidden lg:flex absolute top-6 start-7 items-center gap-2.5" aria-hidden="true">
+    <span
+      class="w-icon-lg h-icon-lg rounded-md bg-brand text-on-brand grid place-items-center font-bold fs-caption"
+      >P</span
+    >
+    <span class="font-semibold fs-body tracking-tight">PERA</span>
+  </div>
+
+  <!-- ============ the sign-in card ============ -->
+  <main
+    class="relative z-10 w-full max-w-[var(--w-dialog-lg)] bg-surface border border-border rounded-2xl shadow-lg px-6 py-7 md:px-10 md:py-9 flex flex-col gap-5"
+  >
+    <header class="flex items-center gap-2.5">
+      <span
+        class="w-8 h-8 rounded-lg bg-brand text-on-brand grid place-items-center font-bold fs-body shrink-0"
+        aria-hidden="true"
+        >P</span
+      >
+      <span class="flex flex-col leading-tight">
+        <span class="font-semibold fs-body tracking-tight">PERA</span>
+        <span class="fs-micro uppercase tracking-[0.08em] text-text-muted">{{
+          catalog.t('login.tag')
+        }}</span>
       </span>
-      <span class="text-base font-semibold leading-none">PERA</span>
     </header>
 
-    <!-- Form area — max-width matches prototype's .login-area (--w-auth) -->
     <form
-      class="max-w-[var(--w-auth)] flex flex-col"
+      class="flex flex-col gap-4"
       [formGroup]="form"
       [serverErrors]="serverError()"
       (ngSubmit)="submit()"
       novalidate
     >
-      <h1 class="fs-h1 font-semibold tracking-tight leading-tight m-0 mb-1.5">Sign in to PERA.</h1>
-      <p class="fs-body-sm text-text-secondary m-0 mb-6 leading-snug">
-        Use your work email to continue.
-      </p>
+      <div class="flex flex-col gap-1">
+        <h1 class="m-0 fs-h1 font-semibold tracking-tight leading-tight">
+          {{ catalog.t('login.title') }}
+        </h1>
+        <p class="m-0 fs-body-sm text-text-secondary">{{ catalog.t('login.sub') }}</p>
+      </div>
 
       @if (serverError()?.generalMessage && !errorHandler.isFieldError(serverError())) {
         <div
           role="alert"
-          class="flex items-start gap-2 bg-danger-soft border border-border border-s-[length:var(--border-accent)] border-s-danger px-3 py-2.5 fs-body-sm text-text-primary mb-3"
+          class="flex items-start gap-2.5 rounded-lg bg-danger-soft px-3 py-2.5 fs-body-sm text-text-primary"
         >
-          <svg
-            width="14"
-            height="14"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            aria-hidden="true"
-            class="mt-0.5 shrink-0 text-danger"
-          >
-            <circle cx="12" cy="12" r="10" />
-            <line x1="12" y1="8" x2="12" y2="12" />
-            <line x1="12" y1="16" x2="12.01" y2="16" />
-          </svg>
+          <pera-icon name="alert-circle" [size]="16" class="mt-0.5 shrink-0 text-danger" />
           <span>{{ serverError()!.generalMessage }}</span>
         </div>
       }
 
-      <!-- Field — mono uppercase label like prototype's .login-field -->
-      <label class="flex flex-col gap-1 mb-3">
-        <span class="font-mono fs-label text-text-muted tracking-[0.02em] uppercase"
-          >Work email</span
+      <label class="flex flex-col gap-1.5">
+        <span class="fs-caption font-semibold text-text-secondary">{{
+          catalog.t('login.email')
+        }}</span>
+        <span
+          class="flex items-center gap-2 h-11 px-3 rounded-lg border border-border bg-surface text-text-muted focus-within:border-accent focus-within:ring-2 focus-within:ring-accent/20 has-[[aria-invalid=true]]:border-danger"
         >
-        <input
-          formControlName="email"
-          type="email"
-          autocomplete="email"
-          placeholder="you@yourstudio.com"
-          class="border border-border bg-bg px-3 py-2.5 fs-body-sm font-sans text-text-primary outline-none focus:border-accent aria-invalid:border-danger"
-          [attr.aria-invalid]="!!errorOf('email') || null"
-        />
+          <pera-icon name="inbox" [size]="15" />
+          <input
+            formControlName="email"
+            type="email"
+            autocomplete="email"
+            [placeholder]="catalog.t('login.emailPh')"
+            class="flex-1 min-w-0 bg-transparent border-0 outline-none fs-body-sm text-text-primary"
+            [attr.aria-invalid]="!!errorOf('email') || null"
+          />
+        </span>
         @if (errorOf('email')) {
-          <span class="text-danger fs-label mt-0.5">{{ errorOf('email') }}</span>
+          <span class="text-danger fs-label">{{ errorOf('email') }}</span>
         }
       </label>
 
-      <label class="flex flex-col gap-1 mb-3">
-        <span class="font-mono fs-label text-text-muted tracking-[0.02em] uppercase">Password</span>
-        <input
-          formControlName="password"
-          type="password"
-          autocomplete="current-password"
-          class="border border-border bg-bg px-3 py-2.5 fs-body-sm font-sans text-text-primary outline-none focus:border-accent aria-invalid:border-danger"
-          [attr.aria-invalid]="!!errorOf('password') || null"
-        />
-        @if (errorOf('password')) {
-          <span class="text-danger fs-label mt-0.5">{{ errorOf('password') }}</span>
-        }
-      </label>
-
-      <div class="flex items-center justify-between fs-caption mb-3">
-        <label class="inline-flex items-center gap-2 cursor-pointer">
-          <input type="checkbox" formControlName="remember" class="accent-accent" />
-          <span class="text-text-secondary">Remember me</span>
-        </label>
-        <a
-          routerLink="/forgot-password"
-          class="font-mono fs-label text-text-muted hover:text-accent"
+      <label class="flex flex-col gap-1.5">
+        <span class="fs-caption font-semibold text-text-secondary">{{
+          catalog.t('login.password')
+        }}</span>
+        <span
+          class="flex items-center gap-2 h-11 px-3 rounded-lg border border-border bg-surface text-text-muted focus-within:border-accent focus-within:ring-2 focus-within:ring-accent/20 has-[[aria-invalid=true]]:border-danger"
         >
-          Forgot password?
+          <pera-icon name="lock" [size]="15" />
+          <input
+            formControlName="password"
+            [type]="showPassword() ? 'text' : 'password'"
+            autocomplete="current-password"
+            class="flex-1 min-w-0 bg-transparent border-0 outline-none fs-body-sm text-text-primary"
+            [attr.aria-invalid]="!!errorOf('password') || null"
+          />
+          <button
+            type="button"
+            data-toggle-password
+            class="inline-flex items-center justify-center w-7 h-7 rounded-md hover:bg-surface-muted cursor-pointer outline-none focus-visible:outline-2 focus-visible:outline-accent"
+            [attr.aria-label]="showPassword() ? catalog.t('login.hide') : catalog.t('login.show')"
+            [attr.aria-pressed]="showPassword()"
+            (click)="showPassword.set(!showPassword())"
+          >
+            <pera-icon [name]="showPassword() ? 'eye-off' : 'eye'" [size]="15" />
+          </button>
+        </span>
+        @if (errorOf('password')) {
+          <span class="text-danger fs-label">{{ errorOf('password') }}</span>
+        }
+      </label>
+
+      <div class="flex items-center justify-between gap-3 fs-caption">
+        <label class="inline-flex items-center gap-2 cursor-pointer text-text-secondary">
+          <input type="checkbox" formControlName="remember" class="accent-accent w-4 h-4" />
+          {{ catalog.t('login.remember') }}
+        </label>
+        <a routerLink="/forgot-password" class="font-semibold text-accent hover:underline">
+          {{ catalog.t('login.forgot') }}
         </a>
       </div>
 
-      <!-- Primary button — width:400px from prototype -->
       <button
         type="submit"
-        class="inline-flex items-center justify-center gap-2 w-full max-w-[var(--w-auth)] px-3.5 py-3 fs-body-sm font-medium bg-accent text-text-on-accent hover:bg-accent-hover focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2 disabled:opacity-45 disabled:cursor-not-allowed transition-colors"
+        class="inline-flex items-center justify-center gap-2 w-full h-11 rounded-lg fs-body-sm font-semibold bg-accent text-text-on-accent hover:bg-accent-hover focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2 disabled:opacity-45 disabled:cursor-not-allowed transition-colors cursor-pointer"
         [disabled]="submitting()"
       >
         @if (submitting()) {
@@ -112,110 +185,70 @@
             class="w-3.5 h-3.5 rounded-full border-2 border-current border-t-transparent animate-spin"
           ></span>
         }
-        Sign in
+        {{ catalog.t('login.submit') }}
       </button>
 
       <!-- New-client intake CTA — a prospective client submits a project request -->
       <a
         routerLink="/intake"
-        class="flex items-center justify-between gap-2.5 px-3.5 py-2.5 border border-border bg-bg fs-body-sm text-text-primary text-start w-full max-w-[var(--w-auth)] mt-6 cursor-pointer transition-colors hover:bg-surface-muted hover:border-border-strong focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2"
+        class="flex items-center gap-3 px-3.5 py-3 rounded-xl border border-dashed border-border fs-body-sm text-text-secondary hover:border-accent hover:bg-accent-soft transition-colors focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2"
       >
-        <span class="inline-flex items-center gap-2.5">
-          <svg
-            class="w-icon-sm h-icon-sm shrink-0 text-text-muted"
-            viewBox="0 0 18 18"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.4"
-            aria-hidden="true"
-          >
-            <rect x="3.5" y="2.5" width="11" height="13" rx="1" />
-            <path d="M6.5 2.5h5v2h-5z" />
-            <path d="M6 8.5h6M6 11.5h4" />
-          </svg>
-          <span>New client? Start a project request</span>
+        <span
+          class="w-8 h-8 rounded-lg bg-accent-soft text-accent grid place-items-center shrink-0"
+          aria-hidden="true"
+        >
+          <pera-icon name="file-text" [size]="16" />
         </span>
-        <span aria-hidden="true" class="text-text-muted">→</span>
+        <span class="flex flex-col min-w-0">
+          <span class="font-semibold text-text-primary">{{ catalog.t('login.ctaTitle') }}</span>
+          <span>{{ catalog.t('login.ctaBody') }}</span>
+        </span>
+        <pera-icon name="arrow-right" [size]="16" class="ms-auto text-accent rtl:-scale-x-100" />
       </a>
     </form>
-  </section>
 
-  <!-- ============ BRAND PANE (right, 40fr) — dark, translated from .login-brand-pane ============ -->
-  <aside
-    class="hidden lg:flex flex-col items-center justify-center p-12 bg-text-primary text-bg row-start-1 lg:col-start-2"
+    <!-- Footer: language + links -->
+    <footer class="flex flex-wrap items-center gap-3 fs-caption text-text-muted">
+      <div
+        class="inline-flex rounded-full border border-border p-0.5"
+        role="group"
+        aria-label="Language"
+      >
+        <button
+          type="button"
+          class="px-3 py-0.5 rounded-full cursor-pointer"
+          [class.bg-text-primary]="locale.locale() === 'en'"
+          [class.text-bg]="locale.locale() === 'en'"
+          [attr.aria-pressed]="locale.locale() === 'en'"
+          (click)="locale.locale() === 'ar' && locale.toggle()"
+        >
+          English
+        </button>
+        <button
+          type="button"
+          class="px-3 py-0.5 rounded-full cursor-pointer"
+          [class.bg-text-primary]="locale.locale() === 'ar'"
+          [class.text-bg]="locale.locale() === 'ar'"
+          [attr.aria-pressed]="locale.locale() === 'ar'"
+          (click)="locale.locale() === 'en' && locale.toggle()"
+        >
+          العربية
+        </button>
+      </div>
+      <span class="hidden sm:inline">© 2026 Atelier PERA</span>
+      <span class="ms-auto">{{ catalog.t('login.privacy') }} · {{ catalog.t('login.help') }}</span>
+    </footer>
+  </main>
+
+  <!-- Drawing title block (desktop) -->
+  <div
+    class="hidden lg:grid absolute bottom-6 end-7 z-10 grid-cols-[auto_auto] gap-x-4 gap-y-0.5 rounded-md border border-border bg-surface px-3 py-2 fs-label text-text-muted"
     aria-hidden="true"
   >
-    <!-- Brand mark (white outline variant) -->
-    <span class="relative w-11 h-11 mb-4" aria-hidden="true">
-      <span class="absolute inset-0 border-2 border-white/55"></span>
-      <span class="absolute top-1/2 inset-x-0 h-[var(--hairline-strong)] bg-white/55"></span>
-      <span
-        class="absolute start-1/2 inset-y-0 w-[var(--hairline-strong)] bg-white/55 -translate-x-[calc(var(--hairline-strong)*0.5)]"
-      ></span>
-    </span>
-    <p class="text-sm text-white/65 text-center max-w-[var(--w-column-lg)] leading-relaxed m-0">
-      The operating system for interior design firms.
-    </p>
-    <!-- Photo plate — translated from .photo-plate (diagonal stripe pattern + framed) -->
-    <div
-      class="w-full aspect-[4/3] border border-white/10 mt-7 flex items-center justify-center text-white/25 font-mono fs-micro"
-      style="
-        background-image: repeating-linear-gradient(
-          135deg,
-          rgba(255, 255, 255, 0.03) 0 var(--space-3),
-          transparent var(--space-3) var(--space-6)
-        );
-      "
-    >
-      [ Studio photograph · monochrome plate ]
-    </div>
-  </aside>
-
-  <!-- ============ FOOTER STRIP — spans both columns, translated from .login-footer-strip ============ -->
-  <footer
-    class="col-span-full row-start-2 border-t border-border bg-bg py-3 px-6 lg:px-16 flex items-center gap-4 flex-wrap"
-  >
-    <!-- Locale toggle — .locale-tog -->
-    <div class="inline-flex border border-border">
-      <button
-        type="button"
-        class="px-2.5 py-1 font-mono fs-micro cursor-pointer border-e border-border last:border-e-0"
-        [class.bg-text-primary]="locale.locale() === 'en'"
-        [class.text-bg]="locale.locale() === 'en'"
-        [class.text-text-secondary]="locale.locale() !== 'en'"
-        (click)="locale.locale() === 'ar' && locale.toggle()"
-      >
-        English
-      </button>
-      <button
-        type="button"
-        class="px-2.5 py-1 font-mono fs-micro cursor-pointer"
-        [class.bg-text-primary]="locale.locale() === 'ar'"
-        [class.text-bg]="locale.locale() === 'ar'"
-        [class.text-text-secondary]="locale.locale() !== 'ar'"
-        (click)="locale.locale() === 'en' && locale.toggle()"
-      >
-        العربية
-      </button>
-    </div>
-
-    <!-- Region tog — visual only for now -->
-    <div class="inline-flex border border-border">
-      <span class="px-2.5 py-1 font-mono fs-micro bg-text-primary text-bg border-e border-border"
-        >KSA</span
-      >
-      <span class="px-2.5 py-1 font-mono fs-micro text-text-secondary border-e border-border"
-        >UAE</span
-      >
-      <span class="px-2.5 py-1 font-mono fs-micro text-text-secondary">International</span>
-    </div>
-
-    <!-- Footer links — .footer-links -->
-    <nav class="flex gap-3.5 ms-auto font-mono fs-micro">
-      <a href="#" class="text-text-muted hover:text-accent">Status</a>
-      <a href="#" class="text-text-muted hover:text-accent">Privacy</a>
-      <a href="#" class="text-text-muted hover:text-accent">Terms</a>
-      <a href="#" class="text-text-muted hover:text-accent">Docs</a>
-    </nav>
-  </footer>
+    <span>{{ catalog.t('login.stProject') }}</span
+    ><b class="text-text-primary">PERA</b> <span>{{ catalog.t('login.stDrawing') }}</span
+    ><b class="text-text-primary">{{ catalog.t('login.stDrawingVal') }}</b>
+    <span>{{ catalog.t('login.stScale') }}</span
+    ><b class="text-text-primary">1:50</b>
+  </div>
 </div>
