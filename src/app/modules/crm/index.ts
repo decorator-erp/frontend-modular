@@ -20,3 +20,11 @@ export { CrmBriefService } from './data/crm-brief.service';
 // sites (crmp P2-B: the "Share with client" action and "Shared" badge on a survey's photo cards).
 // A lazy loader plus the kind ints, so nothing from crm's UI enters the sites or initial bundle.
 export { crmPortalShareAction, PORTAL_SHARE_KIND } from './composition/portal-share-action';
+
+// dashboard (DB-1: the home dashboard's "Needs attention", "My gathering work" and leads widgets).
+// Services only — no crm UI enters the dashboard or the initial bundle.
+export { CrmApprovalsService } from './data/crm-approvals.service';
+export { CrmMyGatheringWorkService } from './data/crm-my-gathering-work.service';
+export type { MyGatheringWorkItem } from './data/crm-my-gathering-work.service';
+export { CrmLeadService } from './data/crm-lead.service';
+export type { CrmLeadStatusCounts, PendingApproval } from './model';

@@ -6,6 +6,8 @@ export { NotificationBellComponent } from './ui/notification-bell.component';
 
 // layouts/app-shell (instantiated app-wide so its onInit wires the real-time lifecycle).
 export { NotificationStore } from './ui/notification.store';
+// dashboard (DB-1: the recent-notifications widget).
+export type { NotificationView } from './model/notification.model';
 
 // app.routes.ts — single-page route, exported per the recipe's single-page exception.
 export { NotificationsPageComponent } from './ui/notifications-page.component';

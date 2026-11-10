@@ -30,7 +30,7 @@ export class GlobalActionsSource implements CommandSource, OnDestroy {
       label: 'Open approvals queue',
       icon: 'check-circle',
       hint: 'go',
-      run: () => void this.router.navigateByUrl('/dashboard'),
+      run: () => void this.router.navigateByUrl('/approvals'),
     },
     {
       id: 'a:open-dashboard',
