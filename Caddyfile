@@ -1,0 +1,37 @@
+# DEP-1: serves PERA's Angular build and proxies the API on the same address, so the app's
+# same-origin /api and /hubs calls need no CORS.
+#
+# SITE_ADDRESS ":80" = plain HTTP on the VPS IP. Set it to a domain (e.g. app.example.com) whose DNS
+# points at the VPS and Caddy fetches and renews an HTTPS certificate automatically.
+{$SITE_ADDRESS::80} {
+	encode zstd gzip
+
+	# The API: REST, the SignalR hub (WebSockets pass through) and the health probe.
+	@api path /api/* /hubs/* /health
+	handle @api {
+		request_body {
+			# Uploads go up to FileStorage:MaxUploadBytes (50 MB) plus multipart overhead.
+			max_size 55MB
+		}
+		reverse_proxy api:8080
+	}
+
+	handle {
+		root * /srv
+		# Hashed bundles never change: cache for a year. index.html must always be fresh.
+		@hashed path_regexp \.[0-9a-zA-Z]{8,}\.(js|css|woff2?|ttf|svg|png|jpg|webp)$
+		header @hashed Cache-Control "public, max-age=31536000, immutable"
+		@index path / /index.html
+		header @index Cache-Control "no-cache"
+		# Single-page app: unknown paths load index.html and the Angular router takes over.
+		try_files {path} /index.html
+		file_server
+	}
+
+	header {
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+		X-Frame-Options SAMEORIGIN
+		-Server
+	}
+}
