@@ -1,3 +1,4 @@
+import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { of } from 'rxjs';
@@ -57,9 +58,15 @@ const templateStages = [
 ];
 
 function make(
-  opts: { can?: (p: string) => boolean; lead?: CrmLead; run?: ReturnType<typeof vi.fn> } = {},
+  opts: {
+    can?: (p: string) => boolean;
+    lead?: CrmLead;
+    run?: ReturnType<typeof vi.fn>;
+    issuedLogin?: { email: string; password: string } | null;
+  } = {},
 ) {
   const run = opts.run ?? vi.fn().mockResolvedValue('P1');
+  const issuedLogin = signal(opts.issuedLogin ?? null);
   TestBed.configureTestingModule({
     imports: [LeadConvertPageComponent],
     providers: [
@@ -102,6 +109,7 @@ function make(
             failedStep: () => null,
             error: () => null,
             progressOf: () => ({}),
+            issuedLogin,
           },
         },
       ],
@@ -110,7 +118,7 @@ function make(
   const fixture = TestBed.createComponent(LeadConvertPageComponent);
   fixture.componentRef.setInput('leadId', 'L1');
   fixture.detectChanges();
-  return { fixture, c: fixture.componentInstance, run };
+  return { fixture, c: fixture.componentInstance, run, issuedLogin };
 }
 
 const text = (fixture: { detectChanges(): void; nativeElement: unknown }) => {
@@ -304,6 +312,40 @@ describe('LeadConvertPageComponent (LC-1)', () => {
     await c.create();
 
     expect(run).toHaveBeenCalledWith(expect.objectContaining({ leadId: 'L1' }));
+    expect(navigate).toHaveBeenCalledWith(['/projects', 'P1']);
+  });
+
+  it('LC-2: a new client login is shown once — email and password — before opening the project', async () => {
+    const { c, fixture } = make({
+      issuedLogin: { email: 'mona@example.com', password: 'Tmp!Pass2wordX9' },
+    });
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    c.projectForm.patchValue({ code: 'MON-1' });
+    c.addStage('TS1');
+    c.onHeader({
+      durationDays: 90,
+      plannedStartDate: null,
+      adjustmentAmount: 0,
+      adjustmentNote: null,
+      notes: null,
+    });
+
+    c.step.set(5); // Create is pressed on the review step.
+    await c.create();
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+
+    expect(navigate).not.toHaveBeenCalled();
+    expect(el.querySelector('[data-testid="convert-credentials"]')).not.toBeNull();
+    expect(el.querySelector('[data-value="email"]')?.textContent?.trim()).toBe('mona@example.com');
+    expect(el.querySelector('[data-value="password"]')?.textContent?.trim()).toBe(
+      'Tmp!Pass2wordX9',
+    );
+    expect(el.querySelector('[data-testid="convert-create"]')).toBeNull();
+
+    el.querySelector<HTMLElement>(
+      '[data-testid="convert-open-project"] button, [data-testid="convert-open-project"]',
+    )!.click();
     expect(navigate).toHaveBeenCalledWith(['/projects', 'P1']);
   });
 

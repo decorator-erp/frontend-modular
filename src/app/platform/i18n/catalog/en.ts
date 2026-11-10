@@ -2593,6 +2593,19 @@ export const EN = {
   'login.stDrawing': 'Drawing',
   'login.stDrawingVal': 'A-101 · Plan',
   'login.stScale': 'Scale',
+  // LC-2 — a new client's sign-in details, shown once
+  'creds.title': 'Client login created',
+  'creds.body':
+    'Share these sign-in details with the client. They can sign in to the client portal and change the password.',
+  'creds.email': 'Login email',
+  'creds.password': 'Temporary password',
+  'creds.copy': 'Copy',
+  'creds.copied': 'Copied',
+  'creds.copyBoth': 'Copy both',
+  'creds.once': 'This password is shown only now — copy it before you close this.',
+  'creds.later': 'Emailing it to the client automatically is coming in a later update.',
+  'creds.openProject': 'Open the project',
+  'creds.done': 'Done',
 } as const;
 
 /** The key set of record. Every catalog lookup is typed against this. */
