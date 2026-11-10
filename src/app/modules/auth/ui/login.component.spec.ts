@@ -80,3 +80,34 @@ describe('LoginComponent — sign-in failure messages (002b A4)', () => {
     expect(text).toBe('Invalid email or password.');
   });
 });
+
+describe('LoginComponent — the floor-plan page (LG-1)', () => {
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({
+      imports: [LoginComponent],
+      providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])],
+    }).compileComponents();
+  });
+
+  it('the eye button shows and hides the password', () => {
+    const fixture = TestBed.createComponent(LoginComponent);
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    const input = el.querySelector<HTMLInputElement>('input[formControlName="password"]')!;
+    const eye = el.querySelector<HTMLButtonElement>('[data-toggle-password]')!;
+    expect(input.type).toBe('password');
+    expect(eye.getAttribute('aria-pressed')).toBe('false');
+    eye.click();
+    fixture.detectChanges();
+    expect(input.type).toBe('text');
+    expect(eye.getAttribute('aria-pressed')).toBe('true');
+  });
+
+  it('keeps the new-client project request and the forgot-password link', () => {
+    const fixture = TestBed.createComponent(LoginComponent);
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('a[href="/intake"]')).not.toBeNull();
+    expect(el.querySelector('a[href="/forgot-password"]')).not.toBeNull();
+  });
+});

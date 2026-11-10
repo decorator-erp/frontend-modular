@@ -17,7 +17,13 @@ export type { ProjectWithCode } from './data/project-search.service';
 // Future: crm (009) — brief page, dashboard, scheduler, client hub, meetings rail, quick create;
 // dashboard (010).
 export { ProjectService } from './data/project.service';
-export type { CreateProjectRequest, Project } from './model/project.model';
+export type {
+  CreateProjectRequest,
+  Project,
+  ProjectStatus,
+  ProjectTask,
+  ProjectTaskStatus,
+} from './model/project.model';
 
 // Future: crm (009) — brief attachments.
 export { DocumentFoldersService, ProjectDocumentsService } from './data/documents.service';

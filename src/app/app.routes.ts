@@ -1,3 +1,4 @@
+import { loadDashboardPage } from '@modules/dashboard';
 import { Routes } from '@angular/router';
 import { AuthGuard } from '@platform/auth/auth.guard';
 import { ClientOnlyGuard, NotClientGuard } from '@platform/auth/client-shell.guard';
@@ -75,8 +76,13 @@ export const routes: Routes = [
       import('./layouts/app-shell/app-shell.component').then((m) => m.AppShellComponent),
     children: [
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
-      // TODO(010): 'dashboard' -> loadComponent: features/dashboard/dashboard.component
-      //   -> DashboardComponent, data.breadcrumb = 'Dashboard'
+      // DB-1: the home dashboard. No capability guard — every office user lands here; each widget
+      // shows only with its own permission (modules/dashboard/data/dashboard.store.ts).
+      {
+        path: 'dashboard',
+        loadComponent: loadDashboardPage,
+        data: { breadcrumb: 'route.dashboard' },
+      },
       //
       // People (spec 006): profile, employees, employees/:id, roles, permissions, departments.
       // Spread here, at the first of the six old positions; every path is a distinct literal, so

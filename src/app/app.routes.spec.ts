@@ -1,3 +1,4 @@
+import { loadDashboardPage } from '@modules/dashboard';
 import { Route } from '@angular/router';
 import { PERM } from '@platform/permissions';
 import { NAV_ITEMS, NavItem } from './layouts/app-shell/nav-config';
@@ -165,6 +166,15 @@ describe('app.routes — the 004 shell skeleton', () => {
     expect(index!.pathMatch).toBe('full');
   });
 
+  it('DB-1: serves the dashboard itself — no capability guard, the widgets gate themselves', async () => {
+    const dashboard = shellChildren().find((r) => r.path === 'dashboard');
+    expect(dashboard).toBeTruthy();
+    expect(dashboard!.canActivate ?? []).toHaveLength(0);
+    expect(dashboard!.data?.['breadcrumb']).toBe('route.dashboard');
+    const cmp = await (dashboard!.loadComponent as () => Promise<unknown>)();
+    expect(cmp).toBe(await loadDashboardPage());
+  });
+
   // Real (non-stub) office-shell children. Stubs are comments, so this counts only
   // what is wired. Last updated: spec 005, which ran AFTER 006 (charter ORDER-EXCEPTION-1):
   // 006 set _AT_006 = 10 first, and 005 renamed it and added its own routes on top. Every spec
@@ -176,8 +186,8 @@ describe('app.routes — the 004 shell skeleton', () => {
   // projects/:id/scope-of-work. crmp: +3 projects/:id/members, /tasks, /teams (P-1, P-3, P-7).
   // sites (NEW-FEATURE-1): +1 sites loadChildren. crmp P1-B: +1 projects/:id/access,
   // +1 projects/shared-with-me. sync F1: +1 library/stage-templates/:id. sync F3: +1
-  // library/file-templates.
-  const EXPECTED_SHELL_CHILDREN_AT_009 = 39;
+  // library/file-templates. DB-1: +1 dashboard.
+  const EXPECTED_SHELL_CHILDREN_AT_009 = 40;
 
   it('has exactly the expected number of real (non-stub) shell children', () => {
     expect(shellChildren()).toHaveLength(EXPECTED_SHELL_CHILDREN_AT_009);
