@@ -20,7 +20,9 @@
 			# Uploads go up to FileStorage:MaxUploadBytes (50 MB) plus multipart overhead.
 			max_size 55MB
 		}
-		reverse_proxy api:8080 {
+		# pera-api, never plain "api": this container also sits on the VPS's shared `edge` network,
+		# where other sites' API containers answer to "api" too, and Docker DNS may pick theirs.
+		reverse_proxy pera-api:8080 {
 			# Hand the API exactly one X-Forwarded-For entry: the real client, as resolved through the
 			# trusted edge. Appending the edge's own address would make every caller look like the edge
 			# to the API (it uses only the last entry, ForwardLimit 1) and share one rate-limit bucket.
