@@ -18,6 +18,7 @@ import {
   PeraTooltipDirective,
 } from '@ds';
 import { NotificationBellComponent } from '@modules/notifications';
+import { CanDirective } from '@platform/permissions';
 import { ShellLayoutService } from '../shell-layout.service';
 
 @Component({
@@ -32,6 +33,7 @@ import { ShellLayoutService } from '../shell-layout.service';
     PeraKbdComponent,
     PeraTooltipDirective,
     NotificationBellComponent,
+    CanDirective,
   ],
   templateUrl: './topbar.component.html',
 })

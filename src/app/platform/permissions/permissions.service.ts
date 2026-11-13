@@ -11,6 +11,12 @@ export class PermissionsService {
     return perms.filter(Boolean).some((p) => this.authStore.can(p));
   }
 
+  /** UI-1: true only when the caller holds EVERY listed permission (an action that calls two APIs). */
+  canAll(permissions: string[]): boolean {
+    const perms = permissions.filter(Boolean);
+    return perms.length > 0 && perms.every((p) => this.authStore.can(p));
+  }
+
   hasRole(role: string | string[]): boolean {
     const roles = Array.isArray(role) ? role : [role];
     return roles.filter(Boolean).some((r) => this.authStore.hasRole(r));

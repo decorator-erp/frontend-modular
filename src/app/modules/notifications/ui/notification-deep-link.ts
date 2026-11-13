@@ -1,4 +1,5 @@
 import { inject, Injectable, Injector } from '@angular/core';
+import { PERM, PermissionsService } from '@platform/permissions';
 import { Router, UrlTree } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { ApprovalService } from '@modules/approvals';
@@ -37,6 +38,8 @@ export class NotificationDeepLink {
   private readonly approvals = inject(ApprovalService);
   private readonly meetings = inject(CrmMeetingService);
   private readonly router = inject(Router);
+  /** UI-1: each lookup below needs a read permission; without it, open the fallback, no 403 toast. */
+  private readonly permissions = inject(PermissionsService);
   // Read lazily: only the client portal branch needs the caller's role.
   private readonly injector = inject(Injector);
 
@@ -81,6 +84,7 @@ export class NotificationDeepLink {
           return view.projectId ? ['/projects', view.projectId, 'stages', id] : FALLBACK;
 
         case NotificationEntityType.Invoice: {
+          if (!this.permissions.can(PERM.finance.read)) return FALLBACK;
           const invoice = await firstValueFrom(this.invoices.getById(id));
           return invoice.projectId
             ? ['/finance', 'projects', invoice.projectId, 'invoices', id]
@@ -88,6 +92,7 @@ export class NotificationDeepLink {
         }
 
         case NotificationEntityType.Variation: {
+          if (!this.permissions.can(PERM.finance.read)) return FALLBACK;
           const variation = await firstValueFrom(this.variations.getById(id));
           return variation.projectId
             ? ['/finance', 'projects', variation.projectId, 'variations', id]
@@ -100,6 +105,7 @@ export class NotificationDeepLink {
           // (verified against the backend working tree) — the CRM-specific entity types below
           // (DesignBrief/RequirementItem/BriefSpace) are never used for these today. `subjectType`
           // routes to the entry's OWN screen instead of just the parent project.
+          if (!this.permissions.can(PERM.approvals.read)) return FALLBACK;
           const pending = await firstValueFrom(this.approvals.listPending());
           const match = pending.find((p) => p.id === id || p.subjectId === id);
           if (!match?.projectId) return FALLBACK;
@@ -109,6 +115,7 @@ export class NotificationDeepLink {
         case NotificationEntityType.Meeting: {
           // Live and working: every CrmMeeting* notification (500–508) carries the meeting's own
           // id as entityId (verified against the backend working tree).
+          if (!this.permissions.can(PERM.crm.meetings.read)) return FALLBACK;
           const meeting = await firstValueFrom(this.meetings.getById(id));
           return meeting.projectId ? ['/crm/projects', meeting.projectId, 'scheduler'] : FALLBACK;
         }
@@ -121,6 +128,7 @@ export class NotificationDeepLink {
           // `entityId` = the APPROVAL's own id. If a future path ever raises one of these three
           // directly, `entityId` would be the SUBJECT's own id instead — matched here by
           // `subjectId`, not `id`, since that is what "direct" would mean.
+          if (!this.permissions.can(PERM.approvals.read)) return FALLBACK;
           const pending = await firstValueFrom(this.approvals.listPending());
           const match = pending.find((p) => p.subjectId === id);
           if (!match?.projectId) return FALLBACK;

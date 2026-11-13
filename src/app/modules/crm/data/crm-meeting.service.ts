@@ -37,6 +37,18 @@ export class CrmMeetingService extends ApiService {
   }
 
   /**
+   * UI-1: `GET /portal/meetings/free-slots?projectId&fromUtc&toUtc` — the same flat free windows for a
+   * client on their own project. Permission `crm.meetings.request_own`; 404 `crm.portal.NotFound` for a
+   * project that is not the caller's. The office route above needs `crm.meetings.read`, which the
+   * Client role does not hold.
+   */
+  portalFreeSlots(projectId: string, fromUtc: string, toUtc: string): Observable<FreeSlot[]> {
+    return this.get<unknown>('/crm/portal/meetings/free-slots', { projectId, fromUtc, toUtc }).pipe(
+      map((r) => this.unwrapArray<unknown>(r).map((s) => this.normalizeFreeSlot(s))),
+    );
+  }
+
+  /**
    * `POST /propose` → `201 { meetingId }` (009b #20). Permission `crm.meetings.schedule`; the proposer
    * is the caller's token. 400 `crm.meetings.SlotTooLong` / `InvalidSlotRange` / `NoSlotsProvided`,
    * 404 `crm.periods.NotFound`, 409 `crm.periods.NotOpen`; 403 `crm.access.NotAnEmployee` is handled

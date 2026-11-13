@@ -92,7 +92,7 @@ const PROJECT_REFRESH_CODES = new Set([
       }
     </pera-page-header>
 
-    <div class="px-8 py-6 flex flex-col gap-4">
+    <div class="px-4 md:px-6 lg:px-8 py-6 flex flex-col gap-4">
       <p class="m-0 fs-body-sm text-text-secondary">{{ t('sv.listSub') }}</p>
 
       @if (store.projectsLoading()) {

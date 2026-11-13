@@ -61,7 +61,7 @@ const ROLE_KEYS: Record<ContactRole, CatalogKey> = {
       <div
         [formGroup]="form"
         [serverErrors]="serverError()"
-        class="grid grid-cols-2 gap-x-4 gap-y-4"
+        class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-4"
       >
         <pera-form-field
           [label]="catalog.t('brief.fFirst')"

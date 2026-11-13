@@ -210,14 +210,14 @@ export class DmsStageFilesComponent implements OnInit {
   private readonly perms = inject(PermissionsService);
 
   private readonly access = inject(ProjectAccessStore);
-  /** crmp P1-B: a grantee's `stage_tasks.manage` comes from the grant, for this stage. */
-  readonly canManage = computed(() =>
+  /** UI-1: deleting a file needs `documents.delete` (Documents area, this stage, for a grantee). */
+  readonly canDelete = computed(() =>
     claimCheck(
       this.access.project(this.projectId())()?.myAccess,
-      'StagesAndTasks',
+      'Documents',
       (p) => this.perms.can(p),
       this.stageId(),
-    )(PERM.stageTasks.manage),
+    )(PERM.documents.delete),
   );
   private readonly attachments = signal<TaskAttachment[]>([]);
 
@@ -321,7 +321,7 @@ export class DmsStageFilesComponent implements OnInit {
       taskId: this.stageId(),
       folderName: f.name,
       files: this.allTiles().filter((t) => f.kinds.includes(t.kind)),
-      canManage: this.canManage(),
+      canDelete: this.canDelete(),
     };
     void this.modal
       .open<boolean>(FilesFolderModalComponent, { size: 'lg', data })

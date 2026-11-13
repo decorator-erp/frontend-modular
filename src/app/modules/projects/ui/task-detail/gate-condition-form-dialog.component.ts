@@ -89,10 +89,10 @@ const TRIGGER_OPTIONS: SegmentedOption[] = [
       <div
         [formGroup]="form"
         [serverErrors]="serverError()"
-        class="grid grid-cols-2 gap-x-4 gap-y-4"
+        class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-4"
       >
         @if (!isEdit) {
-          <pera-form-field class="col-span-2" label="Condition type" [required]="true">
+          <pera-form-field class="sm:col-span-2" label="Condition type" [required]="true">
             <pera-segmented
               formControlName="conditionType"
               [options]="typeOptions()"
@@ -102,7 +102,7 @@ const TRIGGER_OPTIONS: SegmentedOption[] = [
 
           @if (condType() === 'Task') {
             <pera-form-field
-              class="col-span-2"
+              class="sm:col-span-2"
               label="Referenced task"
               [required]="true"
               hint="Must be completed before this gate is satisfied."
@@ -118,7 +118,7 @@ const TRIGGER_OPTIONS: SegmentedOption[] = [
           }
           @if (condType() === 'Stage') {
             <pera-form-field
-              class="col-span-2"
+              class="sm:col-span-2"
               label="Referenced stage"
               [required]="true"
               hint="Must be completed before this gate is satisfied."
@@ -134,7 +134,7 @@ const TRIGGER_OPTIONS: SegmentedOption[] = [
           }
           @if (condType() === 'Approval') {
             <pera-form-field
-              class="col-span-2"
+              class="sm:col-span-2"
               label="Approval type"
               [required]="true"
               [error]="errorOf('approvalType')"
@@ -149,7 +149,7 @@ const TRIGGER_OPTIONS: SegmentedOption[] = [
           }
         }
 
-        <pera-form-field class="col-span-2" label="Trigger" [required]="true">
+        <pera-form-field class="sm:col-span-2" label="Trigger" [required]="true">
           <pera-segmented
             formControlName="trigger"
             [options]="triggerOptions"
@@ -158,7 +158,7 @@ const TRIGGER_OPTIONS: SegmentedOption[] = [
         </pera-form-field>
 
         <pera-form-field
-          class="col-span-2"
+          class="sm:col-span-2"
           label="Label"
           [required]="true"
           [error]="errorOf('label')"

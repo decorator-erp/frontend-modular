@@ -83,7 +83,7 @@ import { CrmPeriodCardComponent } from './period-card.component';
             catalog.t('nav.projectPage')
           }}</a>
         </div>
-        <div actions class="flex items-center gap-2">
+        <div actions class="flex flex-wrap items-center gap-2">
           @if (store.isOpen()) {
             <pera-button
               variant="secondary"
@@ -161,6 +161,7 @@ import { CrmPeriodCardComponent } from './period-card.component';
   `,
 })
 export class CrmDashboardComponent implements OnInit {
+  private readonly perms = inject(PermissionsService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly projects = inject(ProjectService);
@@ -253,9 +254,12 @@ export class CrmDashboardComponent implements OnInit {
     const id = this.route.snapshot.paramMap.get('projectId') ?? '';
     this.projectId.set(id);
     this.store.load(id);
-    this.projects.getById(id).subscribe((p) => this.project.set(p));
-    this.itemService.listByProject(id).subscribe((items) => this.allItems.set(items));
-    this.meetings.load(id);
+    // UI-1: each extra read only with its permission (the page itself needs crm.periods.read).
+    if (this.perms.can(PERM.projects.read))
+      this.projects.getById(id).subscribe((p) => this.project.set(p));
+    if (this.perms.can(PERM.crm.items.read))
+      this.itemService.listByProject(id).subscribe((items) => this.allItems.set(items));
+    if (this.perms.can(PERM.crm.meetings.read)) this.meetings.load(id);
   }
 
   protected openScheduler(): void {

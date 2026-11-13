@@ -50,7 +50,7 @@ const STATS: { key: RollupStatus; label: string; dot: string }[] = [
         <span class="h-full bg-danger" [style.width.%]="weightPct('Rejected')"></span>
       </div>
 
-      <div class="grid grid-cols-5 border-t border-border mt-3.5 bg-border gap-px">
+      <div class="grid grid-cols-3 sm:grid-cols-5 border-t border-border mt-3.5 bg-border gap-px">
         @for (st of stats; track st.key) {
           <button
             type="button"

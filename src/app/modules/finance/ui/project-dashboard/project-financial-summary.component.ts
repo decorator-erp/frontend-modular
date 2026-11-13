@@ -57,7 +57,7 @@ import { ProjectFinancialStore } from '../../stores/project-financial.store';
       subtitle="Totals, per-stage budgets, cost categories and monthly cashflow."
     />
 
-    <div class="px-8 py-6 flex flex-col gap-6">
+    <div class="px-4 md:px-6 lg:px-8 py-6 flex flex-col gap-6">
       @if (store.error()) {
         <pera-alert tone="danger" title="Couldn't load the financial summary">{{
           store.error()

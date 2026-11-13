@@ -1,7 +1,4 @@
-<div
-  class="min-h-screen h-screen bg-bg text-text-primary font-sans flex"
-  [attr.dir]="locale.direction()"
->
+<div class="min-h-dvh h-dvh bg-bg text-text-primary font-sans flex" [attr.dir]="locale.direction()">
   <!-- RD-1: the docked dark sidebar — full or icon rail on desktop, rail on tablet, none on phone. -->
   @if (layout.dockedMode(); as mode) {
     @if (mode !== 'none') {

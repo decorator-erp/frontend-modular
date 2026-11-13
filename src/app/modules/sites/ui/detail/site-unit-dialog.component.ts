@@ -74,10 +74,14 @@ export function cairoToday(now = new Date()): string {
       (submitted)="submit()"
       (cancelled)="close()"
     >
-      <div [formGroup]="form" class="grid grid-cols-2 gap-x-4 gap-y-4" data-unit-form>
+      <div
+        [formGroup]="form"
+        class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-4"
+        data-unit-form
+      >
         @if (isCreate) {
           <pera-form-field
-            class="col-span-2"
+            class="sm:col-span-2"
             [label]="t('sv.project')"
             [required]="true"
             [error]="err('projectId')"
@@ -86,7 +90,7 @@ export function cairoToday(now = new Date()): string {
           </pera-form-field>
         }
         <pera-form-field
-          class="col-span-2"
+          class="sm:col-span-2"
           [label]="t('sv.address')"
           [hint]="t('sv.addressHint')"
           [error]="err('address')"
@@ -135,13 +139,13 @@ export function cairoToday(now = new Date()): string {
           <pera-select formControlName="isRented" [options]="opts.bool" />
         </pera-form-field>
         <pera-form-field
-          class="col-span-2"
+          class="sm:col-span-2"
           [label]="t('sv.f.utilityMetersNote')"
           [error]="err('utilityMetersNote')"
         >
           <pera-textarea formControlName="utilityMetersNote" dir="auto" [rows]="2" />
         </pera-form-field>
-        <pera-form-field class="col-span-2" [label]="t('sv.f.notes')" [error]="err('notes')">
+        <pera-form-field class="sm:col-span-2" [label]="t('sv.f.notes')" [error]="err('notes')">
           <pera-textarea formControlName="notes" dir="auto" [rows]="3" />
         </pera-form-field>
       </div>

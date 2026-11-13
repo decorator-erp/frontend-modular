@@ -35,7 +35,9 @@ export const peopleRoutes: Routes = [
   {
     path: 'permissions',
     canActivate: [PermissionGuard],
-    data: { permission: 'permissions.manage', breadcrumb: 'Permissions' },
+    // UI-1: the role matrix needs roles.read, the per-user overrides need permissions.manage —
+    // either opens the page, which shows only the part the caller may use.
+    data: { permission: ['permissions.manage', 'roles.read'], breadcrumb: 'Permissions' },
     loadComponent: () =>
       import('./ui/permissions/permissions.component').then((m) => m.PermissionsComponent),
   },

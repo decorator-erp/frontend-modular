@@ -206,9 +206,14 @@ const PORTAL_TABS: PortalClientTab[] = ['progress', 'files', 'gallery', 'tasks',
                   </dl>
 
                   <div class="flex items-center gap-2 pt-2">
-                    <pera-button variant="secondary" size="sm" (click)="requestMeeting(project)">{{
-                      catalog.t('nav.cSched')
-                    }}</pera-button>
+                    <!-- UI-1: the schedule route needs crm.meetings.view_own. -->
+                    <pera-button
+                      *peraCan="PERM.crm.meetings.viewOwn"
+                      variant="secondary"
+                      size="sm"
+                      (click)="requestMeeting(project)"
+                      >{{ catalog.t('nav.cSched') }}</pera-button
+                    >
                     <!-- 009b #46: the portal item route needs requirements.submit_own. -->
                     <pera-button
                       *peraCan="PERM.requirements.submitOwn"

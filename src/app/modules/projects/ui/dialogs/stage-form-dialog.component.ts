@@ -79,7 +79,7 @@ export interface StageFormDialogData {
       <div
         [formGroup]="form"
         [serverErrors]="serverError()"
-        class="grid grid-cols-2 gap-x-4 gap-y-4"
+        class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-4"
       >
         @if (!isEdit) {
           <!-- crmp P-2 (D2): optionally copy a template stage (StageRequest.templateStageId). -->
@@ -130,14 +130,14 @@ export interface StageFormDialogData {
             [error]="endDateError()"
           />
         </pera-form-field>
-        <pera-form-field class="col-span-2" label="Description" [error]="errorOf('description')">
+        <pera-form-field class="sm:col-span-2" label="Description" [error]="errorOf('description')">
           <pera-textarea
             formControlName="description"
             [rows]="3"
             [error]="errorOf('description')"
           />
         </pera-form-field>
-        <pera-form-field class="col-span-2" label="Notes" [error]="errorOf('notes')">
+        <pera-form-field class="sm:col-span-2" label="Notes" [error]="errorOf('notes')">
           <pera-textarea formControlName="notes" [rows]="2" [error]="errorOf('notes')" />
         </pera-form-field>
       </div>

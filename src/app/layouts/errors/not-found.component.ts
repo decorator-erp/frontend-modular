@@ -16,7 +16,7 @@ interface Destination {
   template: `
     <!-- Translated from G-07 in PERA App - Utility.html (.e404-wrap / .e404-mark / .e404-h / .e404-sub / .e404-sug) -->
     <div
-      class="bg-bg flex-1 flex flex-col items-center justify-center px-8 py-14 min-h-[var(--h-panel)]"
+      class="bg-bg flex-1 flex flex-col items-center justify-center px-4 md:px-6 lg:px-8 py-14 min-h-[var(--h-panel)]"
     >
       <!-- .e404-mark — light grey PERA mark -->
       <span class="relative w-9 h-9 mb-4" aria-hidden="true">

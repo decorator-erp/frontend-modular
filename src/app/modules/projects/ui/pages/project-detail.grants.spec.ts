@@ -79,7 +79,13 @@ describe('ProjectDetailComponent — grantees (crmp P1-B)', () => {
         },
         { provide: ToastService, useValue: { show: () => undefined } },
         { provide: LocaleService, useValue: { locale: signal<'en' | 'ar'>('en') } },
-        { provide: PermissionsService, useValue: { can: (k: string) => token.includes(k) } },
+        {
+          provide: PermissionsService,
+          useValue: {
+            can: (k: string) => token.includes(k),
+            canAll: (ks: string[]) => ks.every((k) => token.includes(k)),
+          },
+        },
         {
           provide: ActivatedRoute,
           useValue: { snapshot: { paramMap: convertToParamMap({ id: 'p1' }) } },
@@ -177,7 +183,8 @@ describe('ProjectDetailComponent — grantees (crmp P1-B)', () => {
   it('members keep the token gating and see no banner', () => {
     const { el } = render(
       { source: 'Member', level: 'Manager', areas: [], stageIds: [], expiresAtUtc: null },
-      ['project.read', 'sites.read'],
+      // UI-1: the Tasks link also needs stage_tasks.read.
+      ['project.read', 'sites.read', 'stage_tasks.read'],
     );
     expect(el.querySelector('[data-grant-banner]')).toBeNull();
     expect(el.querySelector('[data-sites-link]')).not.toBeNull();

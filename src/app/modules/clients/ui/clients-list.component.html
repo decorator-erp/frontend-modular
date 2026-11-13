@@ -9,7 +9,7 @@
       (status() === 'all' ? 'TOTAL' : status() === 'active' ? 'ACTIVE' : 'INACTIVE')
     "
   >
-    <div actions class="flex gap-2 items-center">
+    <div actions class="flex flex-wrap gap-2 items-center">
       <ng-container *peraCan="'clients.create'">
         <pera-button variant="primary" iconStart="plus" (click)="openAdd()">New client</pera-button>
       </ng-container>

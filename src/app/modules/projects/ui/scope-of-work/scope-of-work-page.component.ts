@@ -76,7 +76,7 @@ const TOGGLE_BUTTON =
         </div>
       }
     </pera-page-header>
-    <div class="px-8 py-6 flex flex-col gap-5">
+    <div class="px-4 md:px-6 lg:px-8 py-6 flex flex-col gap-5">
       @if (store.error(); as error) {
         <pera-alert tone="danger">{{ error }}</pera-alert>
       }

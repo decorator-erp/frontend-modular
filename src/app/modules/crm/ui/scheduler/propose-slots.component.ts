@@ -77,7 +77,7 @@ const TYPE_KEYS: Record<MeetingType, CatalogKey> = {
           <pera-input formControlName="title" [error]="errorOf('title')" />
         </pera-form-field>
 
-        <div class="grid grid-cols-2 gap-x-4 gap-y-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-4">
           <pera-form-field [label]="catalog.t('common.type')">
             <pera-select formControlName="type" [options]="typeOptions" />
           </pera-form-field>

@@ -184,7 +184,7 @@ export interface FilePreviewData {
     `
       :host {
         display: block;
-        height: 100vh;
+        height: 100dvh;
         width: 100vw;
         max-width: 1100px;
       }
@@ -194,6 +194,14 @@ export interface FilePreviewData {
         grid-template-columns: 1fr 380px;
         height: 100%;
         background: var(--surface);
+      }
+      /* RS-1: on a phone the preview and its details stack (side by side the details panel left the preview almost no width). */
+      @media (max-width: 47.9375rem) {
+        .pv-shell {
+          grid-template-columns: minmax(0, 1fr);
+          grid-template-rows: minmax(40%, 1fr) auto;
+          overflow-y: auto;
+        }
       }
       .pv-canvas {
         background: var(--color-border-soft);

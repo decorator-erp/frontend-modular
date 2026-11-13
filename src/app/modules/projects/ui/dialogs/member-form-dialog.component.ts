@@ -67,11 +67,11 @@ export interface MemberFormDialogData {
       <div
         [formGroup]="form"
         [serverErrors]="serverError()"
-        class="grid grid-cols-2 gap-x-4 gap-y-4"
+        class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-4"
       >
         @if (!isEdit) {
           <pera-form-field
-            class="col-span-2"
+            class="sm:col-span-2"
             label="Employee"
             [required]="true"
             [error]="errorOf('employeeId')"
@@ -84,7 +84,7 @@ export interface MemberFormDialogData {
             />
           </pera-form-field>
           <pera-form-field
-            class="col-span-2"
+            class="sm:col-span-2"
             label="Stage team"
             [required]="true"
             [error]="errorOf('stageTeamId')"
@@ -97,7 +97,7 @@ export interface MemberFormDialogData {
             />
           </pera-form-field>
         }
-        <pera-form-field class="col-span-2" label="Role" [required]="true">
+        <pera-form-field class="sm:col-span-2" label="Role" [required]="true">
           <pera-segmented formControlName="role" [options]="roleOptions" ariaLabel="Role" />
         </pera-form-field>
       </div>

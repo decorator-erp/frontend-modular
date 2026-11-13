@@ -101,10 +101,10 @@ function weightPositive(control: AbstractControl): ValidationErrors | null {
       <div
         [formGroup]="form"
         [serverErrors]="serverError()"
-        class="grid grid-cols-2 gap-x-4 gap-y-4"
+        class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-4"
       >
         <pera-form-field
-          class="col-span-2"
+          class="sm:col-span-2"
           label="Task name"
           [required]="true"
           [error]="errorOf('name')"
@@ -118,7 +118,7 @@ function weightPositive(control: AbstractControl): ValidationErrors | null {
 
         @if (!isEdit && stageOptions().length) {
           <pera-form-field
-            class="col-span-2"
+            class="sm:col-span-2"
             label="Stage"
             [required]="true"
             hint="Required for Stage projects"
@@ -145,7 +145,7 @@ function weightPositive(control: AbstractControl): ValidationErrors | null {
           <pera-input type="number" formControlName="weight" [error]="errorOf('weight')" />
         </pera-form-field>
 
-        <pera-form-field class="col-span-2" label="Priority" [required]="true">
+        <pera-form-field class="sm:col-span-2" label="Priority" [required]="true">
           <pera-segmented
             formControlName="priority"
             [options]="priorityOptions"
@@ -154,7 +154,7 @@ function weightPositive(control: AbstractControl): ValidationErrors | null {
         </pera-form-field>
 
         @if (!isEdit) {
-          <pera-form-field class="col-span-2" label="Assignee" hint="optional">
+          <pera-form-field class="sm:col-span-2" label="Assignee" hint="optional">
             <pera-select
               formControlName="assignedToId"
               [options]="assigneeOptions()"
@@ -167,14 +167,14 @@ function weightPositive(control: AbstractControl): ValidationErrors | null {
           <pera-date-input formControlName="dueDate" [error]="errorOf('dueDate')" />
         </pera-form-field>
 
-        <pera-form-field class="col-span-2" label="Description" [error]="errorOf('description')">
+        <pera-form-field class="sm:col-span-2" label="Description" [error]="errorOf('description')">
           <pera-textarea
             formControlName="description"
             [rows]="3"
             [error]="errorOf('description')"
           />
         </pera-form-field>
-        <pera-form-field class="col-span-2" label="Notes" [error]="errorOf('notes')">
+        <pera-form-field class="sm:col-span-2" label="Notes" [error]="errorOf('notes')">
           <pera-textarea formControlName="notes" [rows]="2" [error]="errorOf('notes')" />
         </pera-form-field>
       </div>

@@ -11,7 +11,7 @@ import {
 import { ActivatedRoute } from '@angular/router';
 import { BudgetLineService } from '../../data/budget-line.service';
 import { BudgetLineResponse } from '../../model/budget-line.model';
-import { CanDirective, PERM } from '@platform/permissions';
+import { CanDirective, PERM, PermissionsService } from '@platform/permissions';
 import { LocaleService } from '@platform/i18n';
 import { MoneyService } from '@shared/ui/money.service';
 import {
@@ -41,7 +41,7 @@ import { BudgetLineFormComponent, BudgetLineFormData } from './budget-line-form.
         </ng-container>
       </div>
     </pera-page-header>
-    <div class="px-8 py-6">
+    <div class="px-4 md:px-6 lg:px-8 py-6">
       <pera-data-table
         [columns]="columns()"
         [rows]="lines()"
@@ -50,8 +50,8 @@ import { BudgetLineFormComponent, BudgetLineFormData } from './budget-line-form.
           title: 'No budget lines yet',
           description: 'Add your first allocation to start tracking commitments and actuals.',
         }"
-        [hasRowClick]="true"
-        (rowClick)="openEdit($event)"
+        [hasRowClick]="canManage"
+        (rowClick)="canManage && openEdit($event)"
       />
     </div>
 
@@ -101,6 +101,8 @@ export class BudgetLinesListComponent implements OnInit {
 
   readonly Number = Number;
   readonly manageBudget = PERM.finance.manageBudget;
+  /** UI-1: a row opens the allocation editor (PUT …/allocation, finance.manage_budget) only for a manager. */
+  protected readonly canManage = inject(PermissionsService).can(PERM.finance.manageBudget);
   readonly projectId = signal('');
   readonly loading = signal(true);
   readonly lines = signal<BudgetLineResponse[]>([]);

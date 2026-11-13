@@ -66,7 +66,8 @@ describe('AttachmentsPanelComponent (files browser)', () => {
         { provide: ModalService, useValue: modal },
         {
           provide: PermissionsService,
-          useValue: { can: (p: string) => (p === PERM.stageTasks.manage ? canManage : true) },
+          // UI-1: Upload needs documents.upload.
+          useValue: { can: (p: string) => (p === PERM.documents.upload ? canManage : true) },
         },
       ],
     });
@@ -129,12 +130,12 @@ describe('AttachmentsPanelComponent (files browser)', () => {
     expect(text).toContain('1 folder');
   });
 
-  it('hides Upload without manage-tasks permission', () => {
+  it('hides Upload without documents.upload', () => {
     const fixture = make([att()], { canManage: false });
     expect(fixture.nativeElement.textContent).not.toContain('Upload');
   });
 
-  it('shows Upload with manage-tasks permission', () => {
+  it('shows Upload with documents.upload', () => {
     const fixture = make([att()], { canManage: true });
     expect(fixture.nativeElement.textContent).toContain('Upload');
   });

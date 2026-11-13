@@ -93,7 +93,13 @@ export function setupDashboard(perms: string[]) {
   TestBed.configureTestingModule({
     providers: [
       DashboardStore,
-      { provide: PermissionsService, useValue: { can: (p: string) => perms.includes(p) } },
+      {
+        provide: PermissionsService,
+        useValue: {
+          can: (p: string) => perms.includes(p),
+          canAll: (ps: string[]) => ps.every((p) => perms.includes(p)),
+        },
+      },
       { provide: AuthStore, useValue: { user: () => ({ userName: 'mona@example.com' }) } },
       { provide: ProjectService, useValue: projects },
       { provide: ProjectTaskService, useValue: tasks },

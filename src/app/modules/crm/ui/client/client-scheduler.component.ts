@@ -161,7 +161,8 @@ export class CrmClientSchedulerComponent {
       loaded = true;
       const fromUtc = new Date().toISOString();
       const toUtc = new Date(Date.now() + 30 * 86_400_000).toISOString();
-      this.meetings.loadFreeSlots(projectId, fromUtc, toUtc);
+      // UI-1: the client's own free-slots route, not the office one (a 403 for the Client role).
+      this.meetings.loadFreeSlots(projectId, fromUtc, toUtc, true);
       this.meetings.loadPortal(projectId);
     });
 

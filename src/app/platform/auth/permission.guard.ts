@@ -5,10 +5,12 @@ import { AuthStore } from './auth.store';
 export const PermissionGuard: CanActivateFn = (route) => {
   const authStore = inject(AuthStore);
   const router = inject(Router);
-  const permission = route.data['permission'] as string | undefined;
+  // UI-1: a list means "any of these" (a page whose parts need different permissions).
+  const permission = route.data['permission'] as string | string[] | undefined;
+  const required = Array.isArray(permission) ? permission : permission ? [permission] : [];
 
   // `permission` is a live backend claim string (PERM.*) — check it directly.
-  if (!permission || authStore.can(permission)) {
+  if (required.length === 0 || required.some((p) => authStore.can(p))) {
     return true;
   }
 

@@ -64,7 +64,7 @@ export interface VariationRaiseData {
     <form
       [formGroup]="form"
       (ngSubmit)="submit()"
-      class="flex flex-col gap-4 p-5 min-w-[var(--w-dialog-lg)] bg-surface border border-border rounded-card"
+      class="flex flex-col gap-4 p-5 w-[min(var(--w-dialog-lg),92vw)] max-h-[85dvh] overflow-y-auto bg-surface border border-border rounded-card"
     >
       <h2 class="m-0 fs-body font-semibold">Raise variation</h2>
       @if (alert(); as a) {
@@ -96,7 +96,7 @@ export interface VariationRaiseData {
             placeholder="Pick a task"
           />
         </pera-form-field>
-        <div class="grid grid-cols-2 gap-3">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <pera-form-field label="Budgeted amount" [required]="true">
             <pera-money-input formControlName="budgetedAmount" />
           </pera-form-field>

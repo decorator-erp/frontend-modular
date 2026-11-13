@@ -31,7 +31,7 @@ const WIDTHS = { sm: 440, md: 560, lg: 620, xl: 760 } as const;
       cdkTrapFocusAutoCapture
       novalidate
       (submit)="onSubmit($event)"
-      class="bg-surface border border-border rounded-lg shadow-lg flex flex-col max-h-[88vh] max-w-[92vw]"
+      class="bg-surface border border-border rounded-lg shadow-lg flex flex-col max-h-[88dvh] max-w-[92vw]"
       [style.width.px]="width()"
       role="dialog"
       aria-modal="true"
@@ -93,7 +93,7 @@ const WIDTHS = { sm: 440, md: 560, lg: 620, xl: 760 } as const;
 
       <!-- footer -->
       <footer
-        class="flex items-center gap-3.5 px-[var(--space-5)] py-3.5 border-t border-border shrink-0"
+        class="flex flex-wrap items-center gap-x-3.5 gap-y-2 px-[var(--space-5)] py-3.5 border-t border-border shrink-0"
       >
         @if (permission()) {
           <div

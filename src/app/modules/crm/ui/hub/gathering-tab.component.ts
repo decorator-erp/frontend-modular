@@ -1,3 +1,4 @@
+import { CanDirective } from '@platform/permissions';
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { CatalogService } from '@platform/i18n/catalog.service';
@@ -25,7 +26,13 @@ import { PeriodStore } from '../../stores/period.store';
 @Component({
   selector: 'app-client-hub-gathering-tab',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, PeraCardComponent, PeraEmptyComponent, PeraStatusBadgeComponent],
+  imports: [
+    CanDirective,
+    RouterLink,
+    PeraCardComponent,
+    PeraEmptyComponent,
+    PeraStatusBadgeComponent,
+  ],
   template: `
     @if (!hub.selectedProjectId()) {
       <pera-empty
@@ -83,16 +90,19 @@ import { PeriodStore } from '../../stores/period.store';
                  and be middle-clickable. -->
             <div class="flex items-center gap-3 flex-wrap pt-1">
               <a
+                *peraCan="'crm.briefs.read'"
                 class="fs-caption text-accent hover:underline"
                 [routerLink]="['/crm/projects', projectId(), 'brief']"
                 >{{ catalog.t('hub.manageBrief') }}</a
               >
               <a
+                *peraCan="'crm.spaces.read'"
                 class="fs-caption text-accent hover:underline"
                 [routerLink]="['/crm/projects', projectId(), 'spaces']"
                 >{{ catalog.t('space.title') }}</a
               >
               <a
+                *peraCan="'crm.items.read'"
                 class="fs-caption text-accent hover:underline"
                 [routerLink]="['/crm/projects', projectId(), 'items']"
                 >{{ catalog.t('nav.items') }}</a
