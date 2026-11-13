@@ -267,7 +267,8 @@ export class StageGatesModalComponent {
       ownerId: this.data.stageId,
       ownerName: this.data.stageName,
       projectId: this.data.projectId,
-      managePermission: PERM.stages.manage,
+      // UI-1: stage gate routes need stages.manage_gates.
+      managePermission: PERM.stages.manageGates,
       ...partial,
     };
     const dirty = await this.modal

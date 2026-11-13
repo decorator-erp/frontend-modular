@@ -123,7 +123,8 @@ import {
         }
 
         <section class="flex gap-2">
-          <ng-container *peraCan="manageInvoice">
+          <!-- UI-1: PUT /api/invoices/{id}/cancel needs finance.cancel_invoice. -->
+          <ng-container *peraCan="cancelInvoice">
             <pera-button
               variant="danger"
               [disabled]="inv.status !== 'Open' || busy()"
@@ -145,6 +146,7 @@ export class InvoiceDetailComponent implements OnInit {
   private readonly router = inject(Router);
 
   readonly manageInvoice = PERM.finance.manageInvoice;
+  readonly cancelInvoice = PERM.finance.cancelInvoice;
   readonly loading = signal(true);
   readonly busy = signal(false);
   readonly alert = signal<string | null>(null);

@@ -302,19 +302,21 @@ type TaskFilter = 'all' | RollupStatus;
                         Add task
                       </button>
                     }
-                    <button type="button" [class]="BT_SEC_SM" (click)="openDocs()">
-                      <svg
-                        width="13"
-                        height="13"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="1.7"
-                      >
-                        <path d="M3 7h6l2 2h10v9a2 2 0 0 1-2 2H3z" />
-                      </svg>
-                      Documentation
-                    </button>
+                    @if (docsReadable()) {
+                      <button type="button" [class]="BT_SEC_SM" (click)="openDocs()">
+                        <svg
+                          width="13"
+                          height="13"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="1.7"
+                        >
+                          <path d="M3 7h6l2 2h10v9a2 2 0 0 1-2 2H3z" />
+                        </svg>
+                        Documentation
+                      </button>
+                    }
                     @if (stageCan('stage.delete')) {
                       <button
                         type="button"
@@ -637,6 +639,12 @@ export class DmsStageDetailComponent implements OnInit, OnDestroy {
       this.stageId(),
     )(PERM.projects.read),
   );
+  /** UI-1: the documents browser reads GET …/documents (documents.read; a Documents grant for a grantee). */
+  readonly docsReadable = computed(() =>
+    claimCheck(this.access.project(this.projectId())()?.myAccess, 'Documents', (p) =>
+      this.perms.can(p),
+    )(PERM.documents.read),
+  );
   protected readonly canManageStages = PERM.stages.manage;
   protected readonly manageTasks = PERM.stageTasks.manage;
   protected readonly activitiesRead = PERM.activities.read;
@@ -793,6 +801,8 @@ export class DmsStageDetailComponent implements OnInit, OnDestroy {
         this.failed.set(true);
       },
     });
+    // UI-1: GET …/stages/{s}/gates needs stages.manage_gates — no request (and no 403 toast) without it.
+    if (!this.perms.can(PERM.stages.manageGates)) return;
     this.stageGates
       .getByStage(this.projectId(), this.stageId())
       .pipe(catchError(() => of([] as GateCondition[])))

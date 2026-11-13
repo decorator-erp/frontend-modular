@@ -19,9 +19,19 @@ describe('libraryRoutes — the 005 library routes', () => {
     ]);
   });
 
+  // UI-1: the stage-template pages read GET /api/stage-templates (stages.read).
   it.each([
     ['library/stage-templates', 'Stage templates', StageTemplatesListComponent],
     ['library/stage-templates/:id', 'Stage template', StageTemplateDetailComponent],
+  ])('%s: PermissionGuard stages.read, breadcrumb %s', async (path, breadcrumb, cmp) => {
+    const r = libraryRoutes.find((x) => x.path === path);
+    expect(r).toBeTruthy();
+    expect(r!.canActivate).toEqual([PermissionGuard]);
+    expect(r!.data).toEqual({ permission: 'stages.read', breadcrumb });
+    expect(await r!.loadComponent!()).toBe(cmp);
+  });
+
+  it.each([
     ['library/boq-catalog', 'BOQ catalog', BoqCatalogComponent],
     ['library/materials', 'Materials', MaterialsLibraryComponent],
     ['library/materials/:id', 'Material', MaterialDetailComponent],

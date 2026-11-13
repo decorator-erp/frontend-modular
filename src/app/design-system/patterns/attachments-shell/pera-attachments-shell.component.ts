@@ -244,6 +244,8 @@ export type AttachmentView = 'grid' | 'list';
               <button class="ak" (click)="bulkDownload.emit(selectedIdsArray())">Download</button>
               @if (canManage() && !selectionLocked()) {
                 <button class="ak" (click)="bulkMove.emit(selectedIdsArray())">Move</button>
+              }
+              @if (deleteAllowed() && !selectionLocked()) {
                 <button
                   class="ak solid"
                   (click)="bulkDelete.emit(selectedIdsArray()); clearSelection()"
@@ -331,7 +333,7 @@ export type AttachmentView = 'grid' | 'list';
                       <path d="M8 11V7a4 4 0 0 1 8 0v4" />
                     </svg>
                   </span>
-                } @else if (canManage()) {
+                } @else if (deleteAllowed()) {
                   <button
                     type="button"
                     class="at-act"
@@ -987,6 +989,12 @@ export class PeraAttachmentsShellComponent {
   readonly uploadHint = input<string>('PDF, JPG, PNG, DWG — up to 25 MB each.');
   /** When false, all mutating controls (upload, new folder, delete, move) are hidden. */
   readonly canManage = input<boolean>(true);
+  /**
+   * UI-1: deleting needs its own permission (documents.delete) — not the upload one. Unset keeps the
+   * old behaviour (delete follows `canManage`).
+   */
+  readonly canDelete = input<boolean | null>(null);
+  readonly deleteAllowed = computed(() => this.canDelete() ?? this.canManage());
   /** Tooltip / accessible label for a locked row's lock glyph (caller supplies the copy). */
   readonly lockedLabel = input<string>('Locked');
 

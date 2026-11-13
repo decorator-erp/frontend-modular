@@ -1,5 +1,6 @@
 import { Injectable, inject } from '@angular/core';
-import { Observable } from 'rxjs';
+import { Observable, of } from 'rxjs';
+import { PERM, PermissionsService } from '@platform/permissions';
 import { DepartmentResponse, RoleResponse } from '../model/people.model';
 import { CachedQuery } from '@platform/http/cached-query';
 import { DepartmentService } from './department.service';
@@ -22,15 +23,20 @@ import { RoleService } from './role.service';
 export class LookupCache {
   private readonly departmentsApi = inject(DepartmentService);
   private readonly rolesApi = inject(RoleService);
+  private readonly perms = inject(PermissionsService);
 
   private readonly departmentsQuery = new CachedQuery(() => this.departmentsApi.getAll());
   private readonly rolesQuery = new CachedQuery(() => this.rolesApi.getAll());
 
+  /** UI-1: GET /api/departments needs departments.read — an empty list (no 403 toast) without it. */
   departments(): Observable<DepartmentResponse[]> {
+    if (!this.perms.can(PERM.departments.read)) return of([]);
     return this.departmentsQuery.get();
   }
 
+  /** UI-1: GET /api/roles needs roles.read — an empty list without it. */
   roles(): Observable<RoleResponse[]> {
+    if (!this.perms.can(PERM.roles.read)) return of([]);
     return this.rolesQuery.get();
   }
 

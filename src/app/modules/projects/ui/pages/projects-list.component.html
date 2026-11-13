@@ -6,7 +6,14 @@
     [count]="totalCount() + ' ' + (totalCount() === 1 ? 'PROJECT' : 'PROJECTS')"
   >
     <div actions class="flex gap-2 items-center">
-      <pera-button variant="primary" iconStart="plus" (click)="openNew()">New project</pera-button>
+      <!-- UI-1: POST /api/projects needs project.create. -->
+      <pera-button
+        *peraCan="'project.create'"
+        variant="primary"
+        iconStart="plus"
+        (click)="openNew()"
+        >New project</pera-button
+      >
     </div>
 
     <div toolbar class="flex items-start gap-2.5 flex-wrap w-full">

@@ -1,3 +1,4 @@
+import { PERM, PermissionsService } from '@platform/permissions';
 import { computed, inject } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { patchState, signalStore, withComputed, withMethods, withState } from '@ngrx/signals';
@@ -70,6 +71,7 @@ export const ClientHubStore = signalStore(
       projectApi = inject(ProjectService),
       contactApi = inject(CrmContactService),
       noteApi = inject(CrmNoteService),
+      perms = inject(PermissionsService),
     ) => ({
       load(clientId: string): void {
         if (store.loading()) return;
@@ -90,23 +92,32 @@ export const ClientHubStore = signalStore(
                   : 'hub.loadError',
             }),
         });
-        projectApi.getByClient(clientId).subscribe({
-          next: (projects) =>
-            patchState(store, (s) => ({
-              projects,
-              selectedProjectId:
-                s.selectedProjectId ?? (projects.length === 1 ? projects[0].id : null),
-            })),
-          error: () => undefined,
-        });
-        contactApi.getForClient(clientId).subscribe({
-          next: (contacts) => patchState(store, { contacts }),
-          error: () => undefined,
-        });
-        noteApi.getForClient(clientId).subscribe({
-          next: (notes) => patchState(store, { notes }),
-          error: () => undefined,
-        });
+        // UI-1: read only with PERM.projects.read — no 403 toast otherwise.
+        if (perms.can(PERM.projects.read)) {
+          projectApi.getByClient(clientId).subscribe({
+            next: (projects) =>
+              patchState(store, (s) => ({
+                projects,
+                selectedProjectId:
+                  s.selectedProjectId ?? (projects.length === 1 ? projects[0].id : null),
+              })),
+            error: () => undefined,
+          });
+        }
+        // UI-1: read only with PERM.crm.contacts.read — no 403 toast otherwise.
+        if (perms.can(PERM.crm.contacts.read)) {
+          contactApi.getForClient(clientId).subscribe({
+            next: (contacts) => patchState(store, { contacts }),
+            error: () => undefined,
+          });
+        }
+        // UI-1: read only with PERM.crm.notes.read — no 403 toast otherwise.
+        if (perms.can(PERM.crm.notes.read)) {
+          noteApi.getForClient(clientId).subscribe({
+            next: (notes) => patchState(store, { notes }),
+            error: () => undefined,
+          });
+        }
       },
 
       selectProject(projectId: string | null): void {

@@ -1,3 +1,4 @@
+import { PERM, PermissionsService } from '@platform/permissions';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -59,6 +60,7 @@ export class DmsStageTeamComponent implements OnInit {
 
   private readonly teamsApi = inject(StageTeamsService);
   private readonly directory = inject(EmployeeService);
+  private readonly perms = inject(PermissionsService);
   protected readonly members = signal<TeamMember[]>([]);
 
   protected readonly PNL = PNL;
@@ -80,13 +82,18 @@ export class DmsStageTeamComponent implements OnInit {
   ngOnInit(): void {
     // crmp review R1-F3: StageTeamMemberResponse carries no employee name (dms TeamContracts.cs:7), so
     // names come from the employee directory, the way project-teams resolves them.
+    // UI-1: each team's members come from GET …/teams/{id}/members, which needs stage_teams.manage;
+    // the names come from the employee directory (employees.read). Without them, nothing is fetched.
+    if (!this.perms.can(PERM.stageTeams.manage)) return;
     forkJoin({
       teams: this.teamsApi
         .getByProjectStage(this.projectId(), this.stageId())
         .pipe(catchError(() => of([]))),
-      directory: this.directory
-        .listPaged({ page: 1, pageSize: 500 })
-        .pipe(catchError(() => of({ items: [] as { id: string; fullName: string }[] }))),
+      directory: this.perms.can(PERM.employees.read)
+        ? this.directory
+            .listPaged({ page: 1, pageSize: 500 })
+            .pipe(catchError(() => of({ items: [] as { id: string; fullName: string }[] })))
+        : of({ items: [] as { id: string; fullName: string }[] }),
     }).subscribe(({ teams, directory }) => {
       const names = new Map((directory?.items ?? []).map((e) => [e.id, e.fullName]));
       const seen = new Set<string>();

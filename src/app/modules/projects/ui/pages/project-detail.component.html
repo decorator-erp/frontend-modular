@@ -94,7 +94,8 @@
               Edit
             </button>
           }
-          @if (covers('Documents')) {
+          <!-- UI-1: the documents browser reads GET …/documents, which needs documents.read. -->
+          @if (covers('Documents') && areaCan('Documents', PERM.documents.read)) {
             <button type="button" [class]="btnClass" (click)="openDocuments()">
               <svg
                 width="13"
@@ -150,7 +151,8 @@
               >{{ catalog.t('sv.navSurveys') }}</a
             >
           }
-          @if (shows('StagesAndTasks')) {
+          <!-- UI-1: the tasks page needs stage_tasks.read. -->
+          @if (shows('StagesAndTasks') && listCan('StagesAndTasks', PERM.stageTasks.read)) {
             <a [class]="btnClass" [routerLink]="['/projects', proj.id, 'tasks']" data-tasks-link>{{
               catalog.t('projects.tasksLink')
             }}</a>

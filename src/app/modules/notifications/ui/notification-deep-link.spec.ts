@@ -1,3 +1,4 @@
+import { PermissionsService } from '@platform/permissions';
 import { TestBed } from '@angular/core/testing';
 import { of, throwError } from 'rxjs';
 import { ApprovalService } from '@modules/approvals';
@@ -48,6 +49,7 @@ describe('NotificationDeepLink', () => {
     briefs = { getBrief: vi.fn().mockReturnValue(of({ head: {}, spaces: [] })) };
     TestBed.configureTestingModule({
       providers: [
+        { provide: PermissionsService, useValue: { can: () => true, canAll: () => true } },
         NotificationDeepLink,
         { provide: InvoiceService, useValue: invoices },
         { provide: VariationService, useValue: variations },

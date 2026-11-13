@@ -109,7 +109,8 @@
                   <h3 class="m-0 fs-body font-semibold">Members</h3>
                   <span class="font-mono fs-label text-text-muted">{{ members().length }}</span>
                 </div>
-                <ng-container *peraCan="'roles.manage'">
+                <!-- UI-1: the assign dialog lists people from the employee directory (employees.read). -->
+                <ng-container *peraCanAll="['roles.manage', 'employees.read']">
                   <button
                     type="button"
                     (click)="openAssign(role)"

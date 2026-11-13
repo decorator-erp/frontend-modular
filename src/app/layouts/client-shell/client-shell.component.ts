@@ -16,7 +16,8 @@ interface ClientNavItem {
 }
 
 const NAV_ITEMS: ClientNavItem[] = [
-  { path: '/portal', icon: 'user', labelKey: 'nav.cProfile' },
+  // UI-1: the profile route requires `crm.portal` (app.routes.ts) — no entry without it.
+  { path: '/portal', icon: 'user', labelKey: 'nav.cProfile', permission: PERM.crm.portal },
   // FINDING-5-14: the route requires `crm.meetings.view_own` (app.routes.ts) — no entry without it.
   {
     path: '/portal/schedule',

@@ -249,7 +249,7 @@ const FOLDERS: FolderDef[] = [
             </svg>
             Documentation
           </button>
-          @if (canManage()) {
+          @if (canUpload()) {
             <button type="button" class="afp-bt" (click)="picker.click()">
               <svg
                 width="13"
@@ -323,14 +323,18 @@ export class AttachmentsPanelComponent implements OnInit {
   private readonly perms = inject(PermissionsService);
 
   private readonly access = inject(ProjectAccessStore);
-  /**
-   * crmp P1-B: a grantee's `stage_tasks.manage` comes from the grant. The panel has no stage id, so
-   * a stage-limited grant manages nothing here (conservative; the backend decides).
-   */
-  readonly canManage = computed(() =>
-    claimCheck(this.access.project(this.projectId())()?.myAccess, 'StagesAndTasks', (p) =>
+
+  /** UI-1: POST /api/project-tasks/{t}/documents needs `documents.upload` (Documents area for a grantee). */
+  readonly canUpload = computed(() =>
+    claimCheck(this.access.project(this.projectId())()?.myAccess, 'Documents', (p) =>
       this.perms.can(p),
-    )(PERM.stageTasks.manage),
+    )(PERM.documents.upload),
+  );
+  /** UI-1: deleting a task file needs `documents.delete`. */
+  readonly canDelete = computed(() =>
+    claimCheck(this.access.project(this.projectId())()?.myAccess, 'Documents', (p) =>
+      this.perms.can(p),
+    )(PERM.documents.delete),
   );
 
   readonly FOLDERS = FOLDERS;
@@ -397,7 +401,7 @@ export class AttachmentsPanelComponent implements OnInit {
       taskId: this.taskId(),
       folderName: f.name,
       files: this.allTiles().filter((t) => f.kinds.includes(t.kind)),
-      canManage: this.canManage(),
+      canDelete: this.canDelete(),
     };
     void this.modal
       .open<boolean>(FilesFolderModalComponent, { size: 'lg', data })

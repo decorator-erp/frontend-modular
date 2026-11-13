@@ -11,7 +11,7 @@ import { switchMap } from 'rxjs/operators';
 import { DepartmentService } from '../../data/department.service';
 import { ErrorHandlerService, friendly } from '@platform/http/error-handler.service';
 import { ToastService } from '@platform/feedback/toast.service';
-import { CanDirective, PERM } from '@platform/permissions';
+import { CanDirective, PERM, PermissionsService } from '@platform/permissions';
 import { DepartmentResponse, EmployeeListResponse } from '../../model/people.model';
 import { EmployeeService } from '../../data/employee.service';
 import {
@@ -48,6 +48,7 @@ import { PickEmployeeDialogComponent } from './pick-employee-dialog.component';
   templateUrl: './departments-list.component.html',
 })
 export class DepartmentsListComponent implements OnInit {
+  private readonly perms = inject(PermissionsService);
   private readonly api = inject(DepartmentService);
   private readonly directory = inject(EmployeeService);
   private readonly modal = inject(ModalService);
@@ -86,11 +87,24 @@ export class DepartmentsListComponent implements OnInit {
   /** Candidates for the "assign head" picker. */
   readonly employeeOptions = signal<SelectOption[]>([]);
 
+  /**
+   * UI-1: assign needs assign_department_head and the employee list; replacing a head also needs
+   * unassign_department_head (the change removes the current head first).
+   */
+  canSetHead(d: DepartmentResponse): boolean {
+    return (
+      this.perms.canAll([PERM.departments.assignDepartmentHead, PERM.employees.read]) &&
+      (!this.hasHead(d) || this.perms.can(PERM.departments.unassignDepartmentHead))
+    );
+  }
+
   /** The single wording for "this department has no head" — there used to be three. */
   readonly NO_HEAD = 'No head assigned';
 
   ngOnInit(): void {
     this.load();
+    // UI-1: the head picker and head names come from the employee list (employees.read).
+    if (!this.perms.can(PERM.employees.read)) return;
     this.directory.listPaged({ pageSize: 1000, isActive: true }).subscribe({
       next: (paged) => {
         this.employeeNames.set(new Map(paged.items.map((e) => [e.id, e.fullName])));
@@ -131,6 +145,12 @@ export class DepartmentsListComponent implements OnInit {
     this.selectedId.set(d.id);
     this.membersLoading.set(true);
     this.membersNotFound.set(false);
+    // UI-1: GET …/members needs departments.view_users — the section is hidden without it.
+    if (!this.perms.can(PERM.departments.viewUsers)) {
+      this.members.set([]);
+      this.membersLoading.set(false);
+      return;
+    }
     this.api.getMembers(d.id).subscribe({
       next: (list) => {
         this.members.set(list);

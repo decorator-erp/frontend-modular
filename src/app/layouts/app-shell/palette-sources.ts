@@ -2,6 +2,7 @@ import { Injectable, OnDestroy, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { CommandItem, CommandPaletteService, CommandSource, fuzzyMatch } from '@ds';
 import { ProjectSearchService, ProjectWithCode } from '@modules/projects';
+import { PERM, PermissionsService } from '@platform/permissions';
 
 /**
  * Static verb-indexed actions registered against the command palette.
@@ -17,9 +18,13 @@ export class GlobalActionsSource implements CommandSource, OnDestroy {
   private readonly router = inject(Router);
   private readonly palette = inject(CommandPaletteService);
 
-  private readonly items: CommandItem[] = [
+  private readonly permissions = inject(PermissionsService);
+
+  /** UI-1: an entry with a `permission` is offered only to a caller who holds it. */
+  private readonly items: (CommandItem & { permission?: string })[] = [
     {
       id: 'a:new-project',
+      permission: PERM.projects.create,
       label: 'New project',
       icon: 'plus',
       hint: 'go',
@@ -27,6 +32,7 @@ export class GlobalActionsSource implements CommandSource, OnDestroy {
     },
     {
       id: 'a:open-approvals',
+      permission: PERM.approvals.read,
       label: 'Open approvals queue',
       icon: 'check-circle',
       hint: 'go',
@@ -41,6 +47,7 @@ export class GlobalActionsSource implements CommandSource, OnDestroy {
     },
     {
       id: 'a:open-projects',
+      permission: PERM.projects.read,
       label: 'Browse projects',
       icon: 'briefcase',
       hint: 'go',
@@ -48,6 +55,7 @@ export class GlobalActionsSource implements CommandSource, OnDestroy {
     },
     {
       id: 'a:open-finance',
+      permission: PERM.finance.read,
       label: 'Open finance studio',
       icon: 'briefcase',
       hint: 'go',
@@ -55,6 +63,7 @@ export class GlobalActionsSource implements CommandSource, OnDestroy {
     },
     {
       id: 'a:cost-categories',
+      permission: PERM.finance.read,
       label: 'Manage cost categories',
       icon: 'folder',
       hint: 'go',
@@ -62,6 +71,7 @@ export class GlobalActionsSource implements CommandSource, OnDestroy {
     },
     {
       id: 'a:open-employees',
+      permission: PERM.employees.read,
       label: 'Browse employees',
       icon: 'users',
       hint: 'go',
@@ -69,6 +79,7 @@ export class GlobalActionsSource implements CommandSource, OnDestroy {
     },
     {
       id: 'a:open-clients',
+      permission: PERM.clients.read,
       label: 'Browse clients',
       icon: 'user',
       hint: 'go',
@@ -76,6 +87,7 @@ export class GlobalActionsSource implements CommandSource, OnDestroy {
     },
     {
       id: 'a:open-audit',
+      permission: PERM.audit.read,
       label: 'Open audit log',
       icon: 'file-text',
       hint: 'go',
@@ -99,7 +111,9 @@ export class GlobalActionsSource implements CommandSource, OnDestroy {
   }
 
   search(query: string): CommandItem[] {
-    return this.items.filter((i) => fuzzyMatch(i.label, query));
+    return this.items
+      .filter((i) => !i.permission || this.permissions.can(i.permission))
+      .filter((i) => fuzzyMatch(i.label, query));
   }
 }
 
@@ -118,6 +132,7 @@ export class ProjectsCommandSource implements CommandSource, OnDestroy {
   private readonly router = inject(Router);
   private readonly palette = inject(CommandPaletteService);
   private readonly api = inject(ProjectSearchService);
+  private readonly permissions = inject(PermissionsService);
 
   private cache: ProjectWithCode[] = [];
   private lastLoadedAt = 0;
@@ -133,6 +148,8 @@ export class ProjectsCommandSource implements CommandSource, OnDestroy {
   }
 
   search(query: string): CommandItem[] {
+    // UI-1: GET /api/projects needs `project.read` — no search, and no 403 toast, without it.
+    if (!this.permissions.can(PERM.projects.read)) return [];
     this.refreshIfStale();
     return this.cache
       .filter((p) => fuzzyMatch(`${p.code} ${p.name}`, query))
@@ -147,6 +164,7 @@ export class ProjectsCommandSource implements CommandSource, OnDestroy {
   }
 
   private refreshIfStale(): void {
+    if (!this.permissions.can(PERM.projects.read)) return;
     const now = Date.now();
     if (now - this.lastLoadedAt < this.TTL_MS && this.cache.length) return;
     this.lastLoadedAt = now;

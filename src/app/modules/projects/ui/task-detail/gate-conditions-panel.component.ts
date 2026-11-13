@@ -10,7 +10,7 @@ import {
 } from '@angular/core';
 import { TaskGateConditionService } from '../../data/task-gate-condition.service';
 import { StageGateConditionService } from '../../data/stage-gate-condition.service';
-import { PERM } from '@platform/permissions';
+import { PermissionsService, PERM } from '@platform/permissions';
 import { ApprovalType, ConditionType, GateCondition } from '../../model/project.model';
 import { ModalService } from '@ds';
 import {
@@ -146,12 +146,13 @@ export class GateConditionsPanelComponent implements OnInit {
   private readonly taskGates = inject(TaskGateConditionService);
   private readonly stageGates = inject(StageGateConditionService);
   private readonly modal = inject(ModalService);
+  private readonly perms = inject(PermissionsService);
 
   readonly gates = signal<GateCondition[]>([]);
 
-  /** Task gates: Projects.ManageTasks · Stage gates: Projects.ManageStages (api-docs/08). */
+  /** UI-1: gate routes (read and write) need the manage-gates permission of the owner's kind. */
   readonly managePermission = computed(() =>
-    this.ownerKind() === 'task' ? PERM.stageTasks.manage : PERM.stages.manage,
+    this.ownerKind() === 'task' ? PERM.stageTasks.manageGates : PERM.stages.manageGates,
   );
 
   satisfiedCount(): number {
@@ -188,6 +189,8 @@ export class GateConditionsPanelComponent implements OnInit {
   }
 
   load(): void {
+    // UI-1: GET …/gates needs the manage-gates permission — no request (and no 403 toast) without it.
+    if (!this.perms.can(this.managePermission())) return;
     const call =
       this.ownerKind() === 'task'
         ? this.taskGates.getByTask(this.projectId(), this.ownerId())

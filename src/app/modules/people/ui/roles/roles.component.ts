@@ -17,7 +17,7 @@ import { LookupCache } from '../../data/lookup.cache';
 import { PermissionService } from '../../data/permission.service';
 import { ToastService } from '@platform/feedback/toast.service';
 import { ErrorHandlerService, friendly } from '@platform/http/error-handler.service';
-import { CanDirective, PERM } from '@platform/permissions';
+import { CanAllDirective, CanDirective, PERM } from '@platform/permissions';
 import { RoleResponse } from '../../model/people.model';
 import { EmployeeService } from '../../data/employee.service';
 import { EmployeeListItem } from '../../model/employee.model';
@@ -43,6 +43,7 @@ import { isSystemRole } from './role-policy';
   imports: [
     RouterLink,
     CanDirective,
+    CanAllDirective,
     PeraAvatarComponent,
     PeraBadgeComponent,
     PeraButtonComponent,

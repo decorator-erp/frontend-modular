@@ -166,6 +166,8 @@ export class ProjectDetailComponent implements OnInit {
   private readonly docsApi = inject(ProjectDocumentsService);
   private readonly directory = inject(EmployeeService);
   private readonly perms = inject(PermissionsService);
+  /** UI-1: permission codes for the template's gates. */
+  protected readonly PERM = PERM;
   private readonly modal = inject(ModalService);
   private readonly toast = inject(ToastService);
   readonly locale = inject(LocaleService);

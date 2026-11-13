@@ -1,3 +1,4 @@
+import { PermissionsService } from '@platform/permissions';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { signal } from '@angular/core';
@@ -25,6 +26,7 @@ describe('the client hub Gathering tab is a read-only summary', () => {
     TestBed.configureTestingModule({
       imports: [ClientHubGatheringTabComponent],
       providers: [
+        { provide: PermissionsService, useValue: { can: () => true, canAll: () => true } },
         provideRouter([]),
         { provide: ClientHubStore, useValue: { selectedProjectId } },
         { provide: PeriodStore, useValue: { openPeriod } },

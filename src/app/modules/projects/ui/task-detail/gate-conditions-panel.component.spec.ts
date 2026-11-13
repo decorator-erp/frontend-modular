@@ -1,3 +1,4 @@
+import { PermissionsService } from '@platform/permissions';
 import { TestBed } from '@angular/core/testing';
 import { of } from 'rxjs';
 import { GateConditionsPanelComponent } from './gate-conditions-panel.component';
@@ -45,6 +46,7 @@ describe('GateConditionsPanelComponent', () => {
     TestBed.configureTestingModule({
       imports: [GateConditionsPanelComponent],
       providers: [
+        { provide: PermissionsService, useValue: { can: () => true, canAll: () => true } },
         {
           provide: TaskGateConditionService,
           useValue: {
@@ -109,8 +111,9 @@ describe('GateConditionsPanelComponent', () => {
     expect(getByTaskCalls).toBe(before);
   });
 
-  it('uses the stage-tasks manage permission for task owners', () => {
+  it('uses the stage-tasks manage-gates permission for task owners', () => {
     const fixture = make([]);
-    expect(fixture.componentInstance.managePermission()).toBe('stage_tasks.manage');
+    // UI-1: gate routes need the manage-gates permission.
+    expect(fixture.componentInstance.managePermission()).toBe('stage_tasks.manage_gates');
   });
 });

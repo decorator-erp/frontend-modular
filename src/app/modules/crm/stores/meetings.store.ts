@@ -251,10 +251,16 @@ export const MeetingsStore = signalStore(
             });
         },
 
-        /** The server-computed free-slot grid — the client derives nothing. */
-        loadFreeSlots(projectId: string, fromUtc: string, toUtc: string): void {
+        /**
+         * The server-computed free-slot grid — the client derives nothing. UI-1: `portal` reads the
+         * client-scoped route (crm.meetings.request_own) instead of the office one (crm.meetings.read).
+         */
+        loadFreeSlots(projectId: string, fromUtc: string, toUtc: string, portal = false): void {
           patchState(store, { loadingSlots: true, error: null });
-          api.freeSlots(projectId, fromUtc, toUtc).subscribe({
+          (portal
+            ? api.portalFreeSlots(projectId, fromUtc, toUtc)
+            : api.freeSlots(projectId, fromUtc, toUtc)
+          ).subscribe({
             next: (freeSlots) => patchState(store, { freeSlots, loadingSlots: false }),
             error: () =>
               patchState(store, { loadingSlots: false, error: catalog.t('sched.slotsLoadFailed') }),

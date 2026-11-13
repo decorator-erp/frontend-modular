@@ -71,7 +71,7 @@ describe('FilesFolderModalComponent', () => {
     return TestBed.createComponent(FilesFolderModalComponent).componentInstance;
   }
 
-  const base = { taskId: 't1', folderName: 'Drawings', canManage: true };
+  const base = { taskId: 't1', folderName: 'Drawings', canDelete: true };
 
   it('starts on the grid listing the folder files', () => {
     const c = make({ ...base, files: [tile(), tile({ id: 'a2', name: 'b.pdf' })] });

@@ -1,3 +1,4 @@
+import { PERM, PermissionsService } from '@platform/permissions';
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import type { Observable } from 'rxjs';
@@ -80,7 +81,8 @@ export interface AddEntryFormDialogData {
               [options]="spaceOptions()"
               [disabled]="isEdit"
             />
-            @if (!isEdit) {
+            <!-- UI-1: a new space lists space types (crm.space_types.read) and creates one (crm.spaces.manage). -->
+            @if (!isEdit && canNewSpace) {
               <pera-button variant="ghost" size="sm" (click)="newSpace()">{{
                 catalog.t('space.newSpace')
               }}</pera-button>
@@ -120,6 +122,10 @@ export interface AddEntryFormDialogData {
   `,
 })
 export class CrmAddEntryFormComponent {
+  protected readonly canNewSpace = inject(PermissionsService).canAll([
+    PERM.crm.spaces.manage,
+    PERM.crm.spaceTypes.read,
+  ]);
   private readonly fb = inject(FormBuilder);
   private readonly briefs = inject(CrmBriefService);
   private readonly meetingService = inject(CrmMeetingService);

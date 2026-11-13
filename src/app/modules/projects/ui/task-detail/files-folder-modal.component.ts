@@ -26,7 +26,8 @@ export interface FilesFolderModalData {
   taskId: string;
   folderName: string;
   files: AttTile[];
-  canManage: boolean;
+  /** UI-1: deleting a file needs `documents.delete`. */
+  canDelete: boolean;
 }
 
 /**
@@ -244,7 +245,7 @@ export interface FilesFolderModalData {
                         <path d="M8 11V7a4 4 0 0 1 8 0v4" />
                       </svg>
                     </span>
-                  } @else if (data.canManage) {
+                  } @else if (data.canDelete) {
                     <button
                       type="button"
                       class="shrink-0 -me-0.5 text-text-muted hover:text-danger opacity-0 group-hover:opacity-100 transition-opacity"

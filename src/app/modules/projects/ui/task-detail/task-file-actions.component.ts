@@ -31,14 +31,17 @@ import { ApplyFileTemplateDialogData, loadApplyFileTemplateDialog } from '@modul
         >
           + {{ t('ftpl.taskFolder') }}
         </button>
-        <button
-          type="button"
-          class="font-mono fs-label text-accent hover:underline cursor-pointer"
-          (click)="applyTemplate()"
-          data-apply-template
-        >
-          {{ t('ftpl.apply') }}
-        </button>
+        <!-- UI-1: the dialog lists templates (GET /api/file-templates, file_templates.read). -->
+        @if (canReadTemplates()) {
+          <button
+            type="button"
+            class="font-mono fs-label text-accent hover:underline cursor-pointer"
+            (click)="applyTemplate()"
+            data-apply-template
+          >
+            {{ t('ftpl.apply') }}
+          </button>
+        }
       </div>
     }
   `,
@@ -54,6 +57,7 @@ export class TaskFileActionsComponent {
   private readonly access = inject(ProjectAccessStore);
   private readonly catalog = inject(CatalogService);
 
+  readonly canReadTemplates = computed(() => this.perms.can(PERM.fileTemplates.read));
   readonly canUpload = computed(() =>
     claimCheck(
       this.access.project(this.projectId())()?.myAccess,
