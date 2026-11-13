@@ -636,7 +636,8 @@ export type AttachmentView = 'grid' | 'list';
         padding: 6px 11px;
         background: var(--color-bg, var(--surface));
         border: 1px solid var(--color-border);
-        width: 240px;
+        width: 100%;
+        max-width: 240px;
       }
       .at-search svg {
         color: var(--color-text-muted);
@@ -976,6 +977,35 @@ export type AttachmentView = 'grid' | 'list';
       }
       .at-card .body .mt .lk {
         color: var(--color-accent);
+      }
+
+      /* RS-1: below desktop the folder rail stacks above the files (a scrolling strip), and on a
+         phone each row keeps only checkbox, icon, name and actions — the fixed columns needed
+         about 39rem before the name got any room. */
+      @media (max-width: 63.9375rem) {
+        .at-shell {
+          grid-template-columns: minmax(0, 1fr);
+          min-height: 0;
+        }
+        .at-rail {
+          border-right: 0;
+          border-bottom: var(--hairline) solid var(--color-border);
+          padding: var(--space-3) 0;
+          max-height: 13.75rem;
+          overflow-y: auto;
+        }
+      }
+      @media (max-width: 47.9375rem) {
+        .at-list-head,
+        .at-row {
+          grid-template-columns: 1.625rem 1.625rem minmax(0, 1fr) 2.25rem;
+          gap: var(--space-2);
+          padding: var(--space-2) var(--space-3);
+        }
+        .at-list-head > :nth-child(n + 4):nth-child(-n + 7),
+        .at-row > :nth-child(n + 4):nth-child(-n + 7) {
+          display: none;
+        }
       }
     `,
   ],

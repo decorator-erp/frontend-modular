@@ -64,7 +64,7 @@ export interface StageGatesModalData {
   imports: [PeraModalComponent, PeraModalFooterDirective, PeraButtonComponent],
   template: `
     <pera-modal title="Gate to advance" size="md">
-      <div class="flex flex-col min-w-[var(--w-dialog)]">
+      <div class="flex flex-col">
         <p class="m-0 px-1 pb-2 fs-label text-text-muted">
           {{ satisfied() }} of {{ total() }} satisfied · {{ data.stageName }}
         </p>

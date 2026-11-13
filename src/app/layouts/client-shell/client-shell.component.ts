@@ -98,7 +98,7 @@ const NAV_ITEMS: ClientNavItem[] = [
       </main>
 
       <nav
-        class="shrink-0 fixed inset-x-0 bottom-0 border-t border-border bg-surface grid"
+        class="shrink-0 fixed inset-x-0 bottom-0 border-t border-border bg-surface grid pb-[var(--safe-bottom)]"
         [class.grid-cols-4]="navItems().length === 4"
         [class.grid-cols-3]="navItems().length === 3"
       >

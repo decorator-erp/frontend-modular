@@ -8,7 +8,7 @@
       roles().length + ' ' + (roles().length === 1 ? 'ROLE' : 'ROLES') + ' · CONFIG-DRIVEN ACCESS'
     "
   >
-    <div actions class="flex gap-2 items-center">
+    <div actions class="flex flex-wrap gap-2 items-center">
       <a routerLink="/permissions" class="font-mono fs-label text-accent hover:underline"
         >View capability matrix →</a
       >
@@ -81,7 +81,7 @@
     <!-- .rp-detail (selected role) -->
     <main class="overflow-y-auto bg-bg">
       @if (selected(); as role) {
-        <div class="px-8 py-6 max-w-4xl">
+        <div class="px-4 md:px-6 lg:px-8 py-6 max-w-4xl">
           <!-- Selected role header -->
           <div class="font-mono fs-micro uppercase tracking-[0.06em] text-text-muted mb-2">
             Selected role

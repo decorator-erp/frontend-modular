@@ -75,7 +75,7 @@ type HubTab = 'overview' | 'gathering' | 'meetings' | 'approvals';
           than jumping to a tab that can no longer do the thing.
         -->
         @if (store.selectedProjectId(); as projectId) {
-          <div actions class="flex items-center gap-2">
+          <div actions class="flex flex-wrap items-center gap-2">
             <!-- UI-1: each link needs its target's permission. -->
             <pera-button
               *peraCan="PERM.crm.meetings.read"

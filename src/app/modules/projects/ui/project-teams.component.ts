@@ -337,7 +337,7 @@ const NEW_TEAM_TAB = '__new__';
                   @if (!member.isHead) {
                     <button
                       type="button"
-                      class="opacity-0 group-hover:opacity-100 font-mono fs-micro uppercase text-text-muted hover:text-danger transition-opacity"
+                      class="[@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 focus-visible:opacity-100 font-mono fs-micro uppercase text-text-muted hover:text-danger transition-opacity"
                       (click)="removeMember(team, member.id, member.employeeName)"
                     >
                       Remove

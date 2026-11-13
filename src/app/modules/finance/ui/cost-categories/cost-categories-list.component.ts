@@ -53,7 +53,7 @@ type StatusFilter = 'active' | 'inactive' | 'all';
   host: { class: 'block bg-bg min-h-full' },
   template: `
     <pera-page-header title="Cost categories" [count]="totalCount() + ' total'">
-      <div actions class="flex gap-2 items-center">
+      <div actions class="flex flex-wrap gap-2 items-center">
         <pera-button
           *peraCan="cap.manageCostCategory"
           variant="primary"

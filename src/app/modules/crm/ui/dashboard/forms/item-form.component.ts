@@ -91,7 +91,7 @@ const PRIORITY_KEYS: Record<RequirementPriority, CatalogKey> = {
           <pera-input formControlName="title" [error]="errorOf('title')" />
         </pera-form-field>
 
-        <div class="grid grid-cols-2 gap-x-4 gap-y-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-4">
           <pera-form-field
             [label]="catalog.t('brief.fCategory')"
             [required]="true"
@@ -116,7 +116,7 @@ const PRIORITY_KEYS: Record<RequirementPriority, CatalogKey> = {
         </pera-form-field>
 
         <pera-form-field
-          class="col-span-2"
+          class="sm:col-span-2"
           [label]="catalog.t('brief.entryReqsL')"
           [hint]="catalog.t('common.optionalLbl')"
         >

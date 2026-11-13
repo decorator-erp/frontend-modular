@@ -153,7 +153,7 @@ type TaskFilter = 'all' | RollupStatus;
       </div>
     } @else if (stage(); as s) {
       <div class="font-sans text-text-primary antialiased">
-        <div class="max-w-[80rem] mx-auto px-7 pt-6 pb-14">
+        <div class="max-w-[80rem] mx-auto px-4 md:px-6 lg:px-7 pt-6 pb-14">
           <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_21rem] gap-6 items-start">
             <!-- ============ MAIN COLUMN ============ -->
             <div class="min-w-0 flex flex-col gap-4">

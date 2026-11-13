@@ -64,7 +64,7 @@ export interface EditEmployeeDialogData {
       <form [formGroup]="form" [serverErrors]="serverError()" (ngSubmit)="submit()" novalidate>
         <div class="flex flex-col gap-3">
           <!-- 006b-2 #21: the login's name, optional, both or neither (blank = unchanged). -->
-          <div class="grid grid-cols-2 gap-3">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <pera-form-field
               label="First name"
               [error]="errorOf('firstName') || nameError()"

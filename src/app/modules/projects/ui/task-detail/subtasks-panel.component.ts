@@ -113,7 +113,7 @@ import { SubtaskFormDialogComponent, SubtaskFormDialogData } from './subtask-for
           >
         }
         <span
-          class="opacity-0 group-hover:opacity-100 flex items-center gap-1.5 font-mono fs-micro text-text-muted uppercase transition-opacity"
+          class="[@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 focus-visible:opacity-100 flex items-center gap-1.5 font-mono fs-micro text-text-muted uppercase transition-opacity"
         >
           @if (canWrite('subtask.update')) {
             <button type="button" class="hover:text-accent" (click)="openEdit(sub)">Edit</button>

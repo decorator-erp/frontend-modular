@@ -74,7 +74,7 @@ export interface EditLeadDialogData {
       <div
         [formGroup]="form"
         [serverErrors]="serverError()"
-        class="grid grid-cols-2 gap-x-4 gap-y-4"
+        class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-4"
       >
         <pera-form-field
           [label]="catalog.t('brief.fFirst')"
@@ -118,7 +118,7 @@ export interface EditLeadDialogData {
           />
         </pera-form-field>
 
-        <pera-form-field class="col-span-2" [label]="catalog.t('brief.fNotes')">
+        <pera-form-field class="sm:col-span-2" [label]="catalog.t('brief.fNotes')">
           <pera-textarea formControlName="notes" [rows]="3" />
         </pera-form-field>
       </div>

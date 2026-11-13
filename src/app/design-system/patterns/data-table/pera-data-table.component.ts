@@ -336,7 +336,7 @@ const HEADER_LABEL = 'uppercase tracking-wide fs-label font-semibold text-text-m
               @if (!col.hideOnMobile) {
                 <div class="flex items-start justify-between gap-3 text-sm">
                   <span class="shrink-0 pt-0.5 {{ HEADER_LABEL }}">{{ col.header }}</span>
-                  <span class="text-end min-w-0">
+                  <span class="text-end min-w-0 [overflow-wrap:anywhere]">
                     @if (col.template) {
                       <ng-container *ngTemplateOutlet="col.template; context: { $implicit: row }" />
                     } @else {

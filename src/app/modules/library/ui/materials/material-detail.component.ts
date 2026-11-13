@@ -15,7 +15,9 @@ import { MOCK_MATERIALS } from './mock/materials.mock';
   host: { class: 'block bg-bg min-h-full' },
   template: `
     @if (material(); as m) {
-      <header class="px-7 pt-5 pb-3.5 border-b border-border bg-surface flex items-start gap-5">
+      <header
+        class="px-4 md:px-6 lg:px-7 pt-5 pb-3.5 border-b border-border bg-surface flex items-start gap-5"
+      >
         <div class="w-24 h-24 border border-border" [style.background-color]="m.swatchHex"></div>
         <div class="flex-1">
           <a routerLink="/library/materials" class="font-mono fs-label text-accent hover:underline"
@@ -41,30 +43,34 @@ import { MOCK_MATERIALS } from './mock/materials.mock';
         </div>
       </header>
 
-      <div class="px-7 py-5 grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_var(--w-rail)] gap-5">
+      <div
+        class="px-4 md:px-6 lg:px-7 py-5 grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_var(--w-rail)] gap-5"
+      >
         <div>
           <section class="border border-border bg-surface p-5 rounded-md mb-4">
             <div class="font-mono fs-label text-text-muted uppercase mb-3">
               Vendors &amp; pricing
             </div>
-            <table class="w-full fs-caption">
-              <thead>
-                <tr class="font-mono fs-micro text-text-muted uppercase">
-                  <th class="text-start py-1.5">Vendor</th>
-                  <th class="text-end py-1.5">Price (EGP)</th>
-                  <th class="text-end py-1.5">Lead time (days)</th>
-                </tr>
-              </thead>
-              <tbody>
-                @for (v of m.vendors; track v.vendorId) {
-                  <tr class="border-t border-border-soft">
-                    <td class="py-2">{{ v.name }}</td>
-                    <td class="text-end font-sans tabular-nums">{{ v.price | number }}</td>
-                    <td class="text-end font-sans tabular-nums">{{ v.leadTime }}</td>
+            <div class="overflow-x-auto">
+              <table class="w-full fs-caption">
+                <thead>
+                  <tr class="font-mono fs-micro text-text-muted uppercase">
+                    <th class="text-start py-1.5">Vendor</th>
+                    <th class="text-end py-1.5">Price (EGP)</th>
+                    <th class="text-end py-1.5">Lead time (days)</th>
                   </tr>
-                }
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  @for (v of m.vendors; track v.vendorId) {
+                    <tr class="border-t border-border-soft">
+                      <td class="py-2">{{ v.name }}</td>
+                      <td class="text-end font-sans tabular-nums">{{ v.price | number }}</td>
+                      <td class="text-end font-sans tabular-nums">{{ v.leadTime }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
           </section>
 
           <section class="border border-border bg-surface p-5 rounded-md">

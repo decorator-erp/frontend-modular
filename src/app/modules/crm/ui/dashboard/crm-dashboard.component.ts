@@ -83,7 +83,7 @@ import { CrmPeriodCardComponent } from './period-card.component';
             catalog.t('nav.projectPage')
           }}</a>
         </div>
-        <div actions class="flex items-center gap-2">
+        <div actions class="flex flex-wrap items-center gap-2">
           @if (store.isOpen()) {
             <pera-button
               variant="secondary"

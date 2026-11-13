@@ -12,7 +12,7 @@
       (canEdit() ? '' : ' · READ-ONLY')
     "
   >
-    <div actions class="flex gap-2 items-center">
+    <div actions class="flex flex-wrap gap-2 items-center">
       <pera-button variant="secondary" size="sm">Export policy</pera-button>
       <a
         *peraCan="'roles.read'"
@@ -39,7 +39,9 @@
     <!-- UI-1: the role matrix reads GET /api/roles and the role grants, which need roles.read. -->
     @if (canReadRoles()) {
       <!-- ============ .rp-toolbar — search + role chips + legend ============ -->
-      <div class="px-7 py-3 border-b border-border bg-surface flex items-center gap-2.5 flex-wrap">
+      <div
+        class="px-4 md:px-6 lg:px-7 py-3 border-b border-border bg-surface flex items-center gap-2.5 flex-wrap"
+      >
         <!-- .ad-search -->
         <div
           class="inline-flex items-center gap-2 px-2.5 py-1.5 border border-border bg-bg min-w-[var(--w-panel)]"
@@ -88,7 +90,7 @@
       @if (matrixError(); as message) {
         <div
           role="alert"
-          class="px-7 py-2.5 border-b border-border bg-danger-soft fs-caption text-text-primary"
+          class="px-4 md:px-6 lg:px-7 py-2.5 border-b border-border bg-danger-soft fs-caption text-text-primary"
         >
           {{ message }}
         </div>
@@ -247,7 +249,7 @@
     <!-- ============ Per-user overrides — bottom panel ============ -->
     <!-- UI-1: user overrides are permissions.manage only. -->
     @if (canOverride()) {
-      <section class="px-7 py-6 border-t border-border bg-surface mt-4">
+      <section class="px-4 md:px-6 lg:px-7 py-6 border-t border-border bg-surface mt-4">
         <h2 class="m-0 fs-body font-semibold tracking-tight">Per-user overrides</h2>
         <p class="m-0 mt-1 mb-4 fs-caption text-text-muted">
           Grant or deny a single capability for one person, on top of their roles.

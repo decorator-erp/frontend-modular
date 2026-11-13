@@ -8,7 +8,7 @@
       departments().length + ' ' + (departments().length === 1 ? 'DEPARTMENT' : 'DEPARTMENTS')
     "
   >
-    <div actions class="flex gap-2 items-center">
+    <div actions class="flex flex-wrap gap-2 items-center">
       <ng-container *peraCan="'departments.create'">
         <pera-button variant="primary" iconStart="plus" (click)="openCreate()"
           >Add department</pera-button
@@ -18,7 +18,7 @@
   </pera-page-header>
 
   <!-- ph-tabs -->
-  <div class="px-7 border-b border-border bg-surface flex gap-0">
+  <div class="px-4 md:px-6 lg:px-7 border-b border-border bg-surface flex gap-0">
     @for (tab of tabs; track tab.id) {
       <button
         type="button"

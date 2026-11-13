@@ -52,7 +52,7 @@ import {
     PeraTooltipDirective,
   ],
   template: `
-    <div class="px-8 py-6 max-w-[var(--w-form)] mx-auto">
+    <div class="px-4 md:px-6 lg:px-8 py-6 max-w-[var(--w-form)] mx-auto">
       @if (loading()) {
         <pera-skeleton [height]="220" rounded="md" />
       } @else if (variation(); as v) {

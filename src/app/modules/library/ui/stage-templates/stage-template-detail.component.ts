@@ -68,7 +68,9 @@ const byOrder = <T extends { order: number }>(a: T, b: T) => a.order - b.order;
   ],
   template: `
     <div class="bg-bg min-h-full">
-      <header class="px-7 pt-5 pb-3.5 border-b border-border bg-surface flex items-start gap-4">
+      <header
+        class="px-4 md:px-6 lg:px-7 pt-5 pb-3.5 border-b border-border bg-surface flex items-start gap-4"
+      >
         <div class="flex-1 min-w-0">
           <a
             routerLink="/library/stage-templates"

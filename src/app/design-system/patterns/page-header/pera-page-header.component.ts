@@ -28,8 +28,9 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
         <span class="flex-1 h-px bg-border" aria-hidden="true"></span>
       </div>
     } @else {
-      <header class="bg-surface border-b border-border px-8 pt-7">
-        <div class="flex items-center justify-between gap-6 flex-wrap mb-5">
+      <!-- RS-1: phone padding; the action row wraps instead of pushing past the screen edge. -->
+      <header class="bg-surface border-b border-border px-4 md:px-6 lg:px-8 pt-5 md:pt-7">
+        <div class="flex items-center justify-between gap-x-6 gap-y-3 flex-wrap mb-4 md:mb-5">
           <div class="flex items-baseline gap-3.5 flex-wrap">
             <h1 class="font-semibold fs-h1 leading-[1.15] tracking-[-0.01em] text-text-primary">
               {{ title() }}
@@ -38,7 +39,7 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
               <span class="font-mono fs-label text-text-muted self-center">{{ count() }}</span>
             }
           </div>
-          <div class="flex items-center gap-2">
+          <div class="flex items-center gap-2 flex-wrap min-w-0 max-w-full [&>*]:max-w-full">
             <ng-content select="[actions]"></ng-content>
           </div>
         </div>

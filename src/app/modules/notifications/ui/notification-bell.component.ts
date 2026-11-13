@@ -52,7 +52,7 @@ import { NotificationStore } from './notification.store';
         capped below its usable height (max-h-72) and only the list scrolls. Header + footer are
         pinned (shrink-0); the list flexes and is the sole overflow container.
       -->
-      <div class="font-sans w-80 flex flex-col max-h-72">
+      <div class="font-sans w-[min(20rem,calc(100vw-1rem))] flex flex-col max-h-72">
         <div class="shrink-0 flex items-center justify-between px-3 py-2 border-b border-border">
           <span class="text-sm font-medium text-text-primary">Notifications</span>
           @if (store.hasUnread()) {

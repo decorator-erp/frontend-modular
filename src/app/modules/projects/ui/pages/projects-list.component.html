@@ -5,7 +5,7 @@
     title="Projects"
     [count]="totalCount() + ' ' + (totalCount() === 1 ? 'PROJECT' : 'PROJECTS')"
   >
-    <div actions class="flex gap-2 items-center">
+    <div actions class="flex flex-wrap gap-2 items-center">
       <!-- UI-1: POST /api/projects needs project.create. -->
       <pera-button
         *peraCan="'project.create'"

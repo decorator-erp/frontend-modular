@@ -40,7 +40,7 @@ import { PeraButtonComponent, PeraCardComponent, PeraPageHeaderComponent } from 
       </pera-button>
     </pera-page-header>
 
-    <div class="px-8 py-7 grid grid-cols-1 lg:grid-cols-2 gap-5 max-w-5xl">
+    <div class="px-4 md:px-6 lg:px-8 py-7 grid grid-cols-1 lg:grid-cols-2 gap-5 max-w-5xl">
       <pera-card padding="none" class="flex flex-col h-full">
         <div class="flex items-center gap-2.5 px-5 py-3 border-b border-border">
           <h3 class="font-medium text-sm text-text-primary truncate">Per-project finance</h3>
