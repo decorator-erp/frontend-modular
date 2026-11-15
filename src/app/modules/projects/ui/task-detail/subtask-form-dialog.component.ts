@@ -56,10 +56,10 @@ export interface SubtaskFormDialogData {
       <div
         [formGroup]="form"
         [serverErrors]="serverError()"
-        class="grid grid-cols-2 gap-x-4 gap-y-4"
+        class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-4"
       >
         <pera-form-field
-          class="col-span-2"
+          class="sm:col-span-2"
           label="Title"
           [required]="true"
           [error]="errorOf('title')"
@@ -73,7 +73,7 @@ export interface SubtaskFormDialogData {
         <pera-form-field label="Order" [required]="true" [error]="errorOf('order')">
           <pera-input type="number" formControlName="order" [error]="errorOf('order')" />
         </pera-form-field>
-        <div class="col-span-2">
+        <div class="sm:col-span-2">
           <pera-checkbox formControlName="isRequired">Required to complete the task</pera-checkbox>
         </div>
       </div>

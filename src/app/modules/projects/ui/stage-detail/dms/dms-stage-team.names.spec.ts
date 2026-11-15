@@ -1,3 +1,4 @@
+import { PermissionsService } from '@platform/permissions';
 import { TestBed } from '@angular/core/testing';
 import { of } from 'rxjs';
 import { describe, expect, it } from 'vitest';
@@ -11,6 +12,7 @@ describe('DmsStageTeamComponent — member names (crmp R1-F3)', () => {
     TestBed.configureTestingModule({
       imports: [DmsStageTeamComponent],
       providers: [
+        { provide: PermissionsService, useValue: { can: () => true, canAll: () => true } },
         {
           provide: StageTeamsService,
           useValue: {

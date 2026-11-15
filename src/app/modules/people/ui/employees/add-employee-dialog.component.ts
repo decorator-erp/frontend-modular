@@ -1,3 +1,4 @@
+import { PERM, PermissionsService } from '@platform/permissions';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -106,15 +107,18 @@ import {
               [error]="errorOf('contractType')"
             />
           </pera-form-field>
-          <!-- Department is a SECOND call after create — the create command binds no department. -->
-          <pera-form-field label="Department" [required]="true" [error]="errorOf('departmentId')">
-            <pera-select
-              formControlName="departmentId"
-              [options]="departmentOptions()"
-              placeholder="Select a department"
-              [error]="errorOf('departmentId')"
-            />
-          </pera-form-field>
+          <!-- Department is a SECOND call after create — the create command binds no department.
+               UI-1: it needs departments.read (the list) and departments.assign_to_user (the call). -->
+          @if (canAssignDepartment) {
+            <pera-form-field label="Department" [required]="true" [error]="errorOf('departmentId')">
+              <pera-select
+                formControlName="departmentId"
+                [options]="departmentOptions()"
+                placeholder="Select a department"
+                [error]="errorOf('departmentId')"
+              />
+            </pera-form-field>
+          }
           <div class="md:col-span-2">
             <pera-form-field
               label="Emergency contact phone"
@@ -189,10 +193,21 @@ export class AddEmployeeDialogComponent implements OnInit {
   readonly submitting = signal(false);
 
   readonly contractOptions: SelectOption[] = CONTRACT_TYPE_OPTIONS;
+  /** UI-1: the department step needs the list (departments.read) and the assignment call. */
+  readonly canAssignDepartment = inject(PermissionsService).canAll([
+    PERM.departments.read,
+    PERM.departments.assignToUser,
+  ]);
   private readonly departmentList = signal<SelectOption[]>([]);
   readonly departmentOptions = computed(() => this.departmentList());
 
   ngOnInit(): void {
+    // UI-1: without both department permissions the field is hidden, not required, and not loaded.
+    if (!this.canAssignDepartment) {
+      this.form.controls.departmentId.clearValidators();
+      this.form.controls.departmentId.updateValueAndValidity();
+      return;
+    }
     // Read through the shared cache rather than hitting /departments again per dialog open.
     this.lookups
       .departments()
@@ -236,7 +251,7 @@ export class AddEmployeeDialogComponent implements OnInit {
     };
 
     // Department is the second call `create()` makes for us — it is not part of the command.
-    this.employees.create(payload, v.departmentId).subscribe({
+    this.employees.create(payload, this.canAssignDepartment ? v.departmentId : null).subscribe({
       next: () => {
         this.toast.show({
           tone: 'success',

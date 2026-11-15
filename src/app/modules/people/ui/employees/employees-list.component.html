@@ -13,7 +13,7 @@
       ' DEPARTMENTS'
     "
   >
-    <div actions class="flex gap-2 items-center">
+    <div actions class="flex flex-wrap gap-2 items-center">
       <pera-button variant="secondary" iconStart="file-text" (click)="exportCsv()"
         >Export CSV</pera-button
       >
@@ -47,7 +47,7 @@
     <!-- ============ .tbl ============ -->
     <div class="bg-bg overflow-x-auto">
       @if (loading()) {
-        <div class="px-7 py-10 text-center">
+        <div class="px-4 md:px-6 lg:px-7 py-10 text-center">
           <pera-skeleton [height]="240" rounded="md" />
         </div>
       } @else if (!pageRows().length) {

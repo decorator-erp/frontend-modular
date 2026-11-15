@@ -89,6 +89,18 @@ interface GanttRow {
         grid-template-columns: minmax(0, 1fr) 9rem 10.5rem 6rem 3.5rem 5.5rem;
         gap: 0.75rem;
       }
+      /* RS-1: on a phone a row keeps the task and its status; assignee, priority, points and
+         due (cells 3-6) hide — the fixed columns needed ~35rem before the name got any room. */
+      @media (max-width: 47.9375rem) {
+        .thd,
+        .trow {
+          grid-template-columns: minmax(0, 1fr) auto;
+        }
+        .thd > :nth-child(n + 3),
+        .trow > :nth-child(n + 3) {
+          display: none;
+        }
+      }
 
       .gt-body {
         position: relative;

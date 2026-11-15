@@ -26,7 +26,7 @@ import { ToastService } from '@platform/feedback/toast.service';
 import { ErrorHandlerService, friendly } from '@platform/http/error-handler.service';
 import { CatalogService } from '@platform/i18n/catalog.service';
 import type { CatalogKey } from '@platform/i18n/catalog/en';
-import { CanDirective, PERM } from '@platform/permissions';
+import { CanDirective, PERM, PermissionsService } from '@platform/permissions';
 import { StageTemplateStructureService } from '../../data/stage-template-structure.service';
 import { StageTemplatesService } from '../../data/stage-templates.service';
 import type {
@@ -68,7 +68,9 @@ const byOrder = <T extends { order: number }>(a: T, b: T) => a.order - b.order;
   ],
   template: `
     <div class="bg-bg min-h-full">
-      <header class="px-7 pt-5 pb-3.5 border-b border-border bg-surface flex items-start gap-4">
+      <header
+        class="px-4 md:px-6 lg:px-7 pt-5 pb-3.5 border-b border-border bg-surface flex items-start gap-4"
+      >
         <div class="flex-1 min-w-0">
           <a
             routerLink="/library/stage-templates"
@@ -305,6 +307,7 @@ const byOrder = <T extends { order: number }>(a: T, b: T) => a.order - b.order;
   `,
 })
 export class StageTemplateDetailComponent implements OnInit {
+  private readonly perms = inject(PermissionsService);
   private readonly api = inject(StageTemplateStructureService);
   private readonly templates = inject(StageTemplatesService);
   private readonly departmentsApi = inject(DepartmentService);
@@ -330,10 +333,12 @@ export class StageTemplateDetailComponent implements OnInit {
   );
 
   ngOnInit(): void {
-    this.departmentsApi
-      .getAll()
-      .pipe(catchError(() => of([])))
-      .subscribe((list) => this.departments.set(list.map((d) => ({ id: d.id, name: d.name }))));
+    // UI-1: the department picker reads GET /api/departments (departments.read) — no request without it.
+    if (this.perms.can(PERM.departments.read))
+      this.departmentsApi
+        .getAll()
+        .pipe(catchError(() => of([])))
+        .subscribe((list) => this.departments.set(list.map((d) => ({ id: d.id, name: d.name }))));
     this.load();
   }
 

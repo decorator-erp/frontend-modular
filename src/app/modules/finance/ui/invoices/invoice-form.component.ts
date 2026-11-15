@@ -54,8 +54,48 @@ import {
     PeraSelectComponent,
     PeraTextareaComponent,
   ],
+  // RS-1: below md each invoice line is a stacked card (labels from data-label); the table
+  // returns from md up. Display-only — the FormArray and its controls are unchanged.
+  styles: [
+    `
+      @media (max-width: 47.9375rem) {
+        .inv-lines,
+        .inv-lines tbody,
+        .inv-lines tr,
+        .inv-lines td {
+          display: block;
+          width: 100%;
+        }
+        .inv-lines thead {
+          display: none;
+        }
+        .inv-lines tr {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+          gap: var(--space-2) var(--space-3);
+          padding: var(--space-3);
+        }
+        .inv-lines td {
+          padding: 0;
+          text-align: start;
+        }
+        .inv-lines td[data-label]::before {
+          content: attr(data-label);
+          display: block;
+          margin-bottom: var(--space-1);
+          font-family: var(--font-mono);
+          font-size: var(--fs-micro);
+          text-transform: uppercase;
+          color: var(--color-text-muted);
+        }
+        .inv-lines td.inv-wide {
+          grid-column: 1 / -1;
+        }
+      }
+    `,
+  ],
   template: `
-    <div class="px-8 py-6 pb-24 max-w-[var(--w-page)] mx-auto">
+    <div class="px-4 md:px-6 lg:px-8 pt-6 max-w-[var(--w-page)] mx-auto">
       <header class="mb-5">
         <div class="font-mono fs-label uppercase text-text-muted tracking-[0.04em] mb-1">
           FINANCE · NEW INVOICE
@@ -138,7 +178,7 @@ import {
               Add the first line to start.
             </p>
           } @else {
-            <table class="w-full border-collapse">
+            <table class="inv-lines w-full border-collapse">
               <thead>
                 <tr
                   class="text-left font-mono fs-micro uppercase tracking-[0.04em] text-text-muted"
@@ -156,28 +196,36 @@ import {
               <tbody>
                 @for (line of linesArray.controls; track $index; let i = $index) {
                   <tr [formGroupName]="i" class="border-t border-border-soft align-top">
-                    <td class="p-2">
+                    <td class="p-2 inv-wide" data-label="Description">
                       <pera-input formControlName="description" placeholder="Item description" />
                     </td>
-                    <td class="p-2"><pera-input formControlName="unit" placeholder="ea" /></td>
-                    <td class="p-2"><pera-input formControlName="quantity" placeholder="1" /></td>
-                    <td class="p-2"><pera-money-input formControlName="unitPrice" /></td>
-                    <td class="p-2 text-right tabular-nums font-medium">{{ lineTotal(i) }}</td>
-                    <td class="p-2">
+                    <td class="p-2" data-label="Unit">
+                      <pera-input formControlName="unit" placeholder="ea" />
+                    </td>
+                    <td class="p-2" data-label="Qty">
+                      <pera-input formControlName="quantity" placeholder="1" />
+                    </td>
+                    <td class="p-2" data-label="Unit price">
+                      <pera-money-input formControlName="unitPrice" />
+                    </td>
+                    <td class="p-2 text-right tabular-nums font-medium" data-label="Line total">
+                      {{ lineTotal(i) }}
+                    </td>
+                    <td class="p-2" data-label="Task">
                       <pera-select
                         formControlName="projectTaskId"
                         [options]="taskOptions()"
                         placeholder="—"
                       />
                     </td>
-                    <td class="p-2">
+                    <td class="p-2" data-label="Budget line">
                       <pera-select
                         formControlName="budgetLineId"
                         [options]="budgetOptions()"
                         placeholder="—"
                       />
                     </td>
-                    <td class="p-2 text-center">
+                    <td class="p-2 text-center inv-wide">
                       <button
                         type="button"
                         class="font-mono fs-label uppercase text-danger hover:underline"
@@ -194,9 +242,10 @@ import {
         </section>
       </form>
 
-      <!-- Sticky footer total -->
+      <!-- Sticky footer total. RS-1: sticky inside the page (was fixed to the viewport, which
+           sat over the sidebar and the phone tab bar) and wrapping. -->
       <div
-        class="fixed left-0 right-0 bottom-0 bg-surface border-t border-border px-8 py-3 flex items-center justify-end gap-4 z-10"
+        class="sticky bottom-0 mt-5 -mx-4 md:-mx-6 lg:-mx-8 bg-surface border-t border-border px-4 md:px-6 lg:px-8 py-3 flex flex-wrap items-center justify-end gap-x-4 gap-y-2 z-10"
       >
         <div class="font-mono fs-label uppercase text-text-muted">Total</div>
         <div class="fs-h3 font-semibold tabular-nums">{{ total() }}</div>

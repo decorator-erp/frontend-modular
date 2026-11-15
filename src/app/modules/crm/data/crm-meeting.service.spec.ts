@@ -244,4 +244,24 @@ describe('CrmMeetingService', () => {
       expect(id).toBe('M');
     });
   });
+
+  // UI-1: the client portal reads its own free-slots route (crm.meetings.request_own).
+  describe('portalFreeSlots (UI-1)', () => {
+    it('GETs /crm/portal/meetings/free-slots with the project and window', () => {
+      let slots: unknown[] = [];
+      service
+        .portalFreeSlots('P', '2026-11-14T00:00:00Z', '2026-11-21T00:00:00Z')
+        .subscribe((v) => (slots = v));
+      const req = http.expectOne(
+        (r) =>
+          r.url === url('/crm/portal/meetings/free-slots') &&
+          r.params.get('projectId') === 'P' &&
+          r.params.get('fromUtc') === '2026-11-14T00:00:00Z' &&
+          r.params.get('toUtc') === '2026-11-21T00:00:00Z',
+      );
+      expect(req.request.method).toBe('GET');
+      req.flush([{ startsAtUtc: '2026-11-15T09:00:00Z', endsAtUtc: '2026-11-15T10:00:00Z' }]);
+      expect(slots).toHaveLength(1);
+    });
+  });
 });

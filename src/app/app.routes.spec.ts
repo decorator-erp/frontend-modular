@@ -29,7 +29,8 @@ describe('app.routes — DMS Stage Detail GA cutover', () => {
   it('routes the canonical stage path to the DMS redesign component', async () => {
     const route = byPath('projects/:projectId/stages/:stageId');
     expect(route).toBeTruthy();
-    expect(route!.data?.['permission']).toBe('project.read');
+    // UI-1: the page reads GET …/stages/{s}, which needs stages.read.
+    expect(route!.data?.['permission']).toBe('stages.read');
     const cmp = (await (route!.loadComponent as () => Promise<unknown>)!()) as { name: string };
     // By name, not identity: the page is not in the projects barrel (it would join the initial
     // bundle); projects.routes.spec.ts pins the identity inside the module.
@@ -206,16 +207,20 @@ describe('app.routes — the 006 people routes', () => {
     ['employees', 'employees.read', 'Employees', 'EmployeesListComponent'],
     ['employees/:id', 'employees.read', 'Employee', 'EmployeeDetailComponent'],
     ['roles', 'roles.read', 'Roles', 'RolesComponent'],
-    ['permissions', 'permissions.manage', 'Permissions', 'PermissionsComponent'],
+    // UI-1: either part of the page opens it (role matrix: roles.read; overrides: permissions.manage).
+    ['permissions', ['permissions.manage', 'roles.read'], 'Permissions', 'PermissionsComponent'],
     ['departments', 'departments.read', 'Departments', 'DepartmentsListComponent'],
-  ])('%s: PermissionGuard, %s, breadcrumb %s', async (path, permission, breadcrumb, cmpName) => {
-    const r = route(path);
-    expect(r).toBeTruthy();
-    expect(r!.canActivate).toEqual([PermissionGuard]);
-    expect(r!.data).toEqual({ permission, breadcrumb });
-    const cmp = (await r!.loadComponent!()) as { name: string };
-    expect(cmp.name).toContain(cmpName);
-  });
+  ] as [string, string | string[], string, string][])(
+    '%s: PermissionGuard, %s, breadcrumb %s',
+    async (path, permission, breadcrumb, cmpName) => {
+      const r = route(path);
+      expect(r).toBeTruthy();
+      expect(r!.canActivate).toEqual([PermissionGuard]);
+      expect(r!.data).toEqual({ permission, breadcrumb });
+      const cmp = (await r!.loadComponent!()) as { name: string };
+      expect(cmp.name).toContain(cmpName);
+    },
+  );
 
   it('profile: no guard, breadcrumb Profile', async () => {
     const r = route('profile');
@@ -246,11 +251,11 @@ describe('app.routes — the 005 leaf-module routes', () => {
     expect(await r!.loadComponent!()).toBe(AuditLogComponent);
   });
 
-  it('notifications: no guard, breadcrumb Notifications → NotificationsPageComponent', async () => {
+  it('notifications: PermissionGuard notifications.view_own (UI-1) → NotificationsPageComponent', async () => {
     const r = route('notifications');
     expect(r).toBeTruthy();
-    expect(r!.canActivate).toBeUndefined();
-    expect(r!.data).toEqual({ breadcrumb: 'Notifications' });
+    expect(r!.canActivate).toEqual([PermissionGuard]);
+    expect(r!.data).toEqual({ permission: 'notifications.view_own', breadcrumb: 'Notifications' });
     expect(await r!.loadComponent!()).toBe(NotificationsPageComponent);
   });
 

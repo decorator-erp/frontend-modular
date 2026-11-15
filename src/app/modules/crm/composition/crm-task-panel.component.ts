@@ -1,3 +1,4 @@
+import { CanDirective } from '@platform/permissions';
 import { ChangeDetectionStrategy, Component, computed, effect, inject, input } from '@angular/core';
 import { CatalogService } from '@platform/i18n/catalog.service';
 import type { BriefSpace } from '../model';
@@ -28,6 +29,7 @@ import { BriefStore } from '../stores/brief.store';
   changeDetection: ChangeDetectionStrategy.OnPush,
   providers: [BriefStore],
   imports: [
+    CanDirective,
     PeraAlertComponent,
     PeraButtonComponent,
     PeraEmptyComponent,
@@ -48,9 +50,14 @@ import { BriefStore } from '../stores/brief.store';
           catalog.t('ws.taskEntries')
         }}</span>
         <div class="flex items-center gap-2">
-          <pera-button variant="secondary" size="xs" (click)="openAddEntry()">{{
-            catalog.t('brief.addEntry')
-          }}</pera-button>
+          <!-- UI-1: adding an entry writes the brief (crm.briefs.manage). -->
+          <pera-button
+            *peraCan="'crm.briefs.manage'"
+            variant="secondary"
+            size="xs"
+            (click)="openAddEntry()"
+            >{{ catalog.t('brief.addEntry') }}</pera-button
+          >
         </div>
       </div>
       <div class="p-4">

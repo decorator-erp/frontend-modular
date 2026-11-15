@@ -15,7 +15,9 @@ import { Material, MaterialDiscipline } from './material.types';
   imports: [FormsModule, RouterLink, DecimalPipe],
   host: { class: 'block bg-bg min-h-full' },
   template: `
-    <header class="px-7 pt-5 pb-3.5 border-b border-border bg-surface flex items-start gap-4">
+    <header
+      class="px-4 md:px-6 lg:px-7 pt-5 pb-3.5 border-b border-border bg-surface flex items-start gap-4"
+    >
       <div class="flex-1">
         <h1 class="m-0 fs-h2 font-semibold tracking-tight">Materials</h1>
         <div class="font-mono fs-label text-text-muted mt-1.5 uppercase flex gap-2.5">
@@ -28,7 +30,9 @@ import { Material, MaterialDiscipline } from './material.types';
       </div>
     </header>
 
-    <div class="px-7 py-3 border-b border-border bg-surface flex items-center gap-2.5 flex-wrap">
+    <div
+      class="px-4 md:px-6 lg:px-7 py-3 border-b border-border bg-surface flex items-center gap-2.5 flex-wrap"
+    >
       <select class="border border-border bg-bg px-2 py-1 fs-label" [(ngModel)]="discipline">
         <option [ngValue]="null">Discipline · All</option>
         @for (d of disciplines; track d) {

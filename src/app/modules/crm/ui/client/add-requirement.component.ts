@@ -111,7 +111,7 @@ export const PRIORITY_KEYS: Record<RequirementPriority, CatalogKey> = {
             </pera-form-field>
           }
 
-          <div class="grid grid-cols-2 gap-x-4 gap-y-4">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-4">
             <pera-form-field
               [label]="catalog.t('brief.room')"
               [hint]="catalog.t('common.optionalLbl')"

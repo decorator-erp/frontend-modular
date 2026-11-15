@@ -8,7 +8,7 @@ import { PaletteChip } from './builder.types';
   selector: 'app-builder-canvas',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [CdkDrag, CdkDropList],
-  host: { class: 'block relative overflow-auto bg-bg' },
+  host: { class: 'block relative overflow-auto bg-bg max-lg:min-h-80' },
   template: `
     <div
       class="absolute inset-0 opacity-50 pointer-events-none"

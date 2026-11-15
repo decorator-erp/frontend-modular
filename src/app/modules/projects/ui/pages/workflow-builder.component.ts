@@ -30,9 +30,12 @@ import { PaletteChip } from '../workflow-builder/builder.types';
   selector: 'app-workflow-builder',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [BuilderCanvasComponent, StagePaletteComponent, StageConfigPanelComponent],
-  host: { class: 'block h-[calc(100vh-3rem)] flex flex-col bg-bg' },
+  // RS-1: the three panes stack below lg; the page then scrolls instead of each pane.
+  host: { class: 'block lg:h-[calc(100dvh-3rem)] flex flex-col bg-bg' },
   template: `
-    <div class="h-12 border-b border-border flex items-center gap-3.5 px-4 bg-surface">
+    <div
+      class="min-h-12 py-2 border-b border-border flex flex-wrap items-center gap-x-3.5 gap-y-2 px-4 bg-surface"
+    >
       <div class="fs-body font-semibold flex items-center gap-2">
         {{ project()?.name ?? 'Workflow' }}
         <span
@@ -56,8 +59,7 @@ import { PaletteChip } from '../workflow-builder/builder.types';
       }
     </div>
     <div
-      class="flex-1 grid min-h-0"
-      style="grid-template-columns: var(--w-column-lg) 1fr var(--w-panel);"
+      class="flex-1 grid grid-cols-1 lg:grid-cols-[var(--w-column-lg)_minmax(0,1fr)_var(--w-panel)] min-h-0"
     >
       <app-stage-palette [connectedTo]="['workflow-canvas']" />
       <app-builder-canvas

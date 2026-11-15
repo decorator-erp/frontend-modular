@@ -145,16 +145,21 @@ const EMPTY_HEADER: UpdateScopeOfWorkHeaderRequest = {
         }
 
         <!-- step strip -->
-        <ol class="m-0 p-0 list-none grid grid-cols-5 border border-border bg-surface rounded-card">
+        <ol
+          class="m-0 p-0 list-none flex sm:grid sm:grid-cols-5 border border-border bg-surface rounded-card"
+        >
           @for (s of stepIndex(); track s.n) {
             <li
-              class="flex items-center gap-2 px-3 py-2 fs-body-sm border-e border-border last:border-e-0"
+              class="flex items-center gap-2 px-2 sm:px-3 py-2 fs-body-sm border-e border-border last:border-e-0 min-w-0 {{
+                s.active ? 'flex-1' : 'shrink-0'
+              }}"
               [class.font-semibold]="s.active"
               [class.text-text-primary]="s.active"
               [class.text-text-muted]="!s.active"
             >
               <span class="fs-label" [class.text-accent]="s.active">0{{ s.n }}</span>
-              <span class="truncate">{{ s.name }}</span>
+              <!-- RS-1: on a phone only the active step keeps its name; the others show 0N. -->
+              <span class="truncate {{ s.active ? '' : 'max-sm:hidden' }}">{{ s.name }}</span>
             </li>
           }
         </ol>

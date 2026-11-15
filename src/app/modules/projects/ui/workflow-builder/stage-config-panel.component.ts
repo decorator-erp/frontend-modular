@@ -23,7 +23,10 @@ const KIND_OPTIONS: RadioOption[] = [
   selector: 'app-stage-config-panel',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [FormsModule, PeraRadioComponent],
-  host: { class: 'block border-s border-border bg-surface overflow-y-auto w-[312px]' },
+  host: {
+    class:
+      'block border-s border-border bg-surface overflow-y-auto w-full max-lg:border-s-0 max-lg:border-t',
+  },
   template: `
     @if (stage(); as s) {
       <div class="p-4 border-b border-border">

@@ -53,9 +53,9 @@ type StatusFilter = 'active' | 'inactive' | 'all';
   host: { class: 'block bg-bg min-h-full' },
   template: `
     <pera-page-header title="Cost categories" [count]="totalCount() + ' total'">
-      <div actions class="flex gap-2 items-center">
+      <div actions class="flex flex-wrap gap-2 items-center">
         <pera-button
-          *peraCan="cap.manageBudget"
+          *peraCan="cap.manageCostCategory"
           variant="primary"
           iconStart="plus"
           (click)="openCreate()"
@@ -177,7 +177,7 @@ type StatusFilter = 'active' | 'inactive' | 'all';
                   <td class="px-4 py-2.5 border-b border-border-soft text-end">
                     <div class="inline-flex gap-1.5">
                       <pera-button
-                        *peraCan="cap.manageBudget"
+                        *peraCan="cap.manageCostCategory"
                         size="sm"
                         variant="ghost"
                         (click)="openEdit(row)"
@@ -185,7 +185,7 @@ type StatusFilter = 'active' | 'inactive' | 'all';
                       >
                       @if (row.isActive) {
                         <pera-button
-                          *peraCan="cap.manageBudget"
+                          *peraCan="cap.manageCostCategory"
                           size="sm"
                           variant="ghost"
                           (click)="toggleActive(row)"
@@ -193,7 +193,7 @@ type StatusFilter = 'active' | 'inactive' | 'all';
                         >
                       } @else {
                         <pera-button
-                          *peraCan="cap.manageBudget"
+                          *peraCan="cap.manageCostCategory"
                           size="sm"
                           variant="ghost"
                           (click)="toggleActive(row)"

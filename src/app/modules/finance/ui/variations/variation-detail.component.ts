@@ -1,3 +1,4 @@
+import { CanDirective, PERM, PermissionsService } from '@platform/permissions';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -40,6 +41,7 @@ import {
   selector: 'app-variation-detail',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
+    CanDirective,
     ReactiveFormsModule,
     RouterLink,
     PeraAlertComponent,
@@ -50,7 +52,7 @@ import {
     PeraTooltipDirective,
   ],
   template: `
-    <div class="px-8 py-6 max-w-[var(--w-form)] mx-auto">
+    <div class="px-4 md:px-6 lg:px-8 py-6 max-w-[var(--w-form)] mx-auto">
       @if (loading()) {
         <pera-skeleton [height]="220" rounded="md" />
       } @else if (variation(); as v) {
@@ -100,7 +102,8 @@ import {
           </dl>
         </section>
 
-        @if (v.status === 'Draft') {
+        <!-- UI-1: editing the description needs finance.manage_variation; otherwise it is read-only. -->
+        @if (v.status === 'Draft' && canManage) {
           <section class="border border-border bg-surface rounded-card p-5 mb-5">
             <h3 class="m-0 mb-3 fs-body-sm font-semibold">Description</h3>
             <form [formGroup]="descForm" (ngSubmit)="saveDescription()" class="flex flex-col gap-3">
@@ -124,11 +127,13 @@ import {
           </section>
         }
 
-        <!-- Lifecycle action row — every action always visible, disabled with reason when not allowed -->
+        <!-- Lifecycle action row. UI-1: each action is shown only with its permission (manage_variation
+             for submit/reject/cancel, variations.approve / .sign / .apply), then enabled by status. -->
         <section class="border border-border bg-surface rounded-card p-5">
           <h3 class="m-0 mb-3 fs-body-sm font-semibold">Lifecycle</h3>
           <div class="flex flex-wrap gap-2">
             <button
+              *peraCan="PERM.finance.manageVariation"
               type="button"
               class="lc-btn"
               [disabled]="!can('submit')"
@@ -138,6 +143,7 @@ import {
               Submit
             </button>
             <button
+              *peraCan="PERM.finance.approveVariation"
               type="button"
               class="lc-btn"
               [disabled]="!can('approve')"
@@ -147,6 +153,7 @@ import {
               Approve
             </button>
             <button
+              *peraCan="PERM.finance.signVariation"
               type="button"
               class="lc-btn"
               [disabled]="!can('sign')"
@@ -156,6 +163,7 @@ import {
               Sign
             </button>
             <button
+              *peraCan="PERM.finance.applyVariation"
               type="button"
               class="lc-btn"
               [disabled]="!can('apply')"
@@ -165,6 +173,7 @@ import {
               Apply
             </button>
             <button
+              *peraCan="PERM.finance.manageVariation"
               type="button"
               class="lc-btn danger"
               [disabled]="!can('reject')"
@@ -174,6 +183,7 @@ import {
               Reject
             </button>
             <button
+              *peraCan="PERM.finance.manageVariation"
               type="button"
               class="lc-btn danger"
               [disabled]="!can('cancel')"
@@ -212,6 +222,8 @@ import {
   ],
 })
 export class VariationDetailComponent implements OnInit {
+  protected readonly PERM = PERM;
+  protected readonly canManage = inject(PermissionsService).can(PERM.finance.manageVariation);
   private readonly fb = inject(FormBuilder);
   private readonly api = inject(VariationService);
   private readonly errors = inject(ErrorHandlerService);

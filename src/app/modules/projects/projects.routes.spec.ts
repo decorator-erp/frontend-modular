@@ -39,19 +39,21 @@ describe('projectsRoutes', () => {
     ]);
   });
 
-  it.each([
-    ['projects', { breadcrumb: 'route.projects' }, ProjectsListComponent],
-    ['projects/new', { breadcrumb: 'route.newProject' }, ProjectCreateComponent],
-    ['projects/:id', { breadcrumb: 'route.project' }, ProjectDetailComponent],
-    ['projects/:id/tasks/:taskId', { breadcrumb: 'route.task' }, TaskDetailComponent],
-  ])('%s: no guard, %o', async (path, data, cmp) => {
-    const r = route(path)!;
-    expect(r.canActivate).toBeUndefined();
-    expect(r.data).toEqual(data);
-    expect(await r.loadComponent!()).toBe(cmp);
-  });
+  // UI-1: projects/:id stays guardless — access grants decide it, the page itself handles a denial.
+  it.each([['projects/:id', { breadcrumb: 'route.project' }, ProjectDetailComponent]])(
+    '%s: no guard, %o',
+    async (path, data, cmp) => {
+      const r = route(path)!;
+      expect(r.canActivate).toBeUndefined();
+      expect(r.data).toEqual(data);
+      expect(await r.loadComponent!()).toBe(cmp);
+    },
+  );
 
   it.each([
+    // UI-1: the list needs project.read, the create page project.create.
+    ['projects', 'project.read', 'route.projects', ProjectsListComponent],
+    ['projects/new', 'project.create', 'route.newProject', ProjectCreateComponent],
     [
       'dms/projects/:projectId/tasks/:taskId',
       'dms.task_detail.view',
@@ -72,12 +74,20 @@ describe('projectsRoutes', () => {
   });
 
   it.each([
+    // UI-1: the stage page reads GET …/stages/{s} (stages.read); the task page stage_tasks.read.
     [
       'projects/:projectId/stages/:stageId',
-      'project.read',
+      'stages.read',
       'StagesAndTasks',
       'route.stage',
       DmsStageDetailComponent,
+    ],
+    [
+      'projects/:id/tasks/:taskId',
+      'stage_tasks.read',
+      'StagesAndTasks',
+      'route.task',
+      TaskDetailComponent,
     ],
     [
       'projects/:id/scope-of-work',

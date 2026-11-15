@@ -132,6 +132,10 @@ export class PermissionsComponent implements OnInit {
   );
   readonly selfTargetReason = 'This is your own account. Ask another administrator.';
 
+  /** UI-1: the role matrix needs `roles.read`; the per-user overrides need `permissions.manage`. */
+  readonly canReadRoles = computed(() => this.perms.can(PERM.roles.read));
+  readonly canOverride = computed(() => this.perms.can(PERM.permissions.manage));
+
   readonly canEdit = computed(() =>
     this.perms.can([PERM.permissions.assignToRole, PERM.permissions.removeFromRole]),
   );
@@ -185,7 +189,10 @@ export class PermissionsComponent implements OnInit {
     forkJoin({
       permissions: this.permissionsApi.getAll(),
       // 403 handled (spec 002c): a failed catalog load renders `catalogFailed`, not a toast.
-      roles: this.rolesApi.getAll({ context: handled(403) }),
+      // UI-1: the role list is read only by a caller who may see the matrix.
+      roles: this.canReadRoles()
+        ? this.rolesApi.getAll({ context: handled(403) })
+        : of([] as RoleResponse[]),
     }).subscribe({
       next: ({ permissions, roles }) => {
         this.allPermissions.set(toRows(permissions));
@@ -199,6 +206,18 @@ export class PermissionsComponent implements OnInit {
         this.loading.set(false);
       },
     });
+
+    // UI-1: the override target list is only needed by a caller who may write overrides, and only
+    // the directories the caller may read are asked (users.read, else employees.read).
+    if (!this.canOverride()) return;
+    if (!this.perms.can(PERM.users.read)) {
+      if (!this.perms.can(PERM.employees.read)) return;
+      this.directory
+        .listPaged({ page: 1, pageSize: 500, isActive: true })
+        .pipe(map((paged) => paged.items.map(fromEmployee)))
+        .subscribe((targets) => (this.allEmployees = targets));
+      return;
+    }
 
     // 006b-1 #17: every account from `/api/users`, so the seeded admin and clients can be picked.
     // Without `users.read` that answers 403: fall back to the ported employee directory.

@@ -26,26 +26,27 @@ describe('DmsStageFilesComponent — grantees (crmp P1-B)', () => {
     const f = TestBed.createComponent(DmsStageFilesComponent);
     f.componentRef.setInput('stageId', stageId);
     f.componentRef.setInput('projectId', 'p1');
-    return f.componentInstance.canManage();
+    return f.componentInstance.canDelete();
   }
   const grant = (level: ProjectAccess['level'], stageIds: string[] = []): ProjectAccess => ({
     source: 'Grant',
     level,
-    areas: ['StagesAndTasks'],
+    areas: ['Documents'],
     stageIds,
     expiresAtUtc: null,
   });
 
-  it('an Editor grant manages without the token claim; a Viewer grant does not', () => {
-    expect(canManage(grant('Editor'), false)).toBe(true);
+  // UI-1: deleting a stage file needs documents.delete — a Documents grant implies it at Manager.
+  it('a Manager Documents grant deletes without the token claim; an Editor grant does not', () => {
+    expect(canManage(grant('Manager'), false)).toBe(true);
     TestBed.resetTestingModule();
-    expect(canManage(grant('Viewer'), true)).toBe(false);
+    expect(canManage(grant('Editor'), true)).toBe(false);
   });
 
   it('a stage-limited grant manages only its stages', () => {
-    expect(canManage(grant('Editor', ['s1']), false, 's1')).toBe(true);
+    expect(canManage(grant('Manager', ['s1']), false, 's1')).toBe(true);
     TestBed.resetTestingModule();
-    expect(canManage(grant('Editor', ['s1']), false, 's2')).toBe(false);
+    expect(canManage(grant('Manager', ['s1']), false, 's2')).toBe(false);
   });
 
   it('a member keeps the token', () => {

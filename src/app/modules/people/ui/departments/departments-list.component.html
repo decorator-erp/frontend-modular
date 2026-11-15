@@ -8,7 +8,7 @@
       departments().length + ' ' + (departments().length === 1 ? 'DEPARTMENT' : 'DEPARTMENTS')
     "
   >
-    <div actions class="flex gap-2 items-center">
+    <div actions class="flex flex-wrap gap-2 items-center">
       <ng-container *peraCan="'departments.create'">
         <pera-button variant="primary" iconStart="plus" (click)="openCreate()"
           >Add department</pera-button
@@ -18,7 +18,7 @@
   </pera-page-header>
 
   <!-- ph-tabs -->
-  <div class="px-7 border-b border-border bg-surface flex gap-0">
+  <div class="px-4 md:px-6 lg:px-7 border-b border-border bg-surface flex gap-0">
     @for (tab of tabs; track tab.id) {
       <button
         type="button"
@@ -132,7 +132,9 @@
                     <span class="text-text-muted">{{ NO_HEAD }}</span>
                   }
                   <span class="inline-flex gap-2">
-                    <ng-container *peraCan="PERM.departments.assignDepartmentHead">
+                    <!-- UI-1: assigning picks from the employee list (employees.read); changing a head
+                         also removes the current one (unassign_department_head). -->
+                    @if (canSetHead(d)) {
                       <button
                         type="button"
                         (click)="assignHead(d)"
@@ -140,7 +142,7 @@
                       >
                         {{ hasHead(d) ? 'Change' : 'Assign' }}
                       </button>
-                    </ng-container>
+                    }
                     @if (hasHead(d)) {
                       <ng-container *peraCan="PERM.departments.unassignDepartmentHead">
                         <button

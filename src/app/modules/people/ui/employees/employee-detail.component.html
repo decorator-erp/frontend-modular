@@ -19,7 +19,7 @@
     </div>
   } @else if (employee(); as person) {
     <!-- ============ profile header card ============ -->
-    <div class="px-8 pt-6 pb-0 border-b border-border bg-surface">
+    <div class="px-4 md:px-6 lg:px-8 pt-6 pb-0 border-b border-border bg-surface">
       <div class="flex items-start gap-5">
         <!-- .av-c.xl — large avatar -->
         <pera-avatar [name]="person.fullName" size="lg" />
@@ -178,7 +178,7 @@
       </div>
 
       <!-- ============ .ph-tabs ============ -->
-      <div class="flex gap-0 mt-[var(--space-5)] -mx-8 px-8">
+      <div class="flex gap-0 mt-[var(--space-5)] -mx-8 px-4 md:px-6 lg:px-8">
         @for (tab of tabs; track tab.id) {
           <button
             type="button"
@@ -199,7 +199,9 @@
 
     <!-- ============ Body 2-column grid ============ -->
     @if (activeTab() === 'overview') {
-      <div class="px-8 py-6 grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_var(--w-rail)] gap-6">
+      <div
+        class="px-4 md:px-6 lg:px-8 py-6 grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_var(--w-rail)] gap-6"
+      >
         <div class="flex flex-col gap-5">
           <!-- Contact panel -->
           <section class="border border-border bg-surface rounded-card">
@@ -240,7 +242,7 @@
             <div class="px-5 py-3.5 border-b border-border">
               <h3 class="m-0 fs-body font-semibold">Workload</h3>
             </div>
-            <div class="px-5 py-4 grid grid-cols-3 gap-3">
+            <div class="px-5 py-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div class="flex flex-col gap-1 p-3 border border-border-soft bg-bg">
                 <span class="font-mono fs-micro uppercase text-text-muted">Projects</span>
                 <span class="fs-h2 font-semibold tabular-nums leading-none">{{
@@ -296,7 +298,7 @@
     }
 
     @if (activeTab() === 'projects') {
-      <div class="px-8 py-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div class="px-4 md:px-6 lg:px-8 py-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         @for (project of projects(); track project.projectId) {
           <button
             type="button"
@@ -326,7 +328,7 @@
     }
 
     @if (activeTab() === 'tasks') {
-      <div class="px-8 py-6">
+      <div class="px-4 md:px-6 lg:px-8 py-6">
         <pera-data-table
           [columns]="taskColumns()"
           [rows]="tasks()"
@@ -338,7 +340,7 @@
     }
 
     @if (activeTab() === 'activity') {
-      <div class="px-8 py-6">
+      <div class="px-4 md:px-6 lg:px-8 py-6">
         <pera-empty
           title="Audit log integration coming soon"
           description="Recent actions by this employee will appear here."

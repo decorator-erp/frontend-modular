@@ -30,28 +30,30 @@ export interface CrmMeetingSummaryRow {
       </div>
       <div class="p-4">
         @if (rows().length) {
-          <table class="w-full fs-body-sm">
-            <thead>
-              <tr class="text-start text-text-muted fs-label">
-                <th class="text-start font-normal pb-2">{{ catalog.t('sched.meeting') }}</th>
-                <th class="text-start font-normal pb-2">{{ catalog.t('sched.when') }}</th>
-                <th class="text-start font-normal pb-2">{{ catalog.t('common.type') }}</th>
-                <th class="text-start font-normal pb-2">{{ catalog.t('common.status') }}</th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (row of rows(); track row.id) {
-                <tr class="border-t border-border">
-                  <td class="py-2 text-text-primary">{{ row.title }}</td>
-                  <td class="py-2 text-text-secondary" dir="ltr">{{ row.whenLabel }}</td>
-                  <td class="py-2 text-text-secondary">{{ row.typeLabel }}</td>
-                  <td class="py-2">
-                    <pera-status-badge [tone]="row.statusTone" [label]="row.statusLabel" />
-                  </td>
+          <div class="overflow-x-auto">
+            <table class="w-full fs-body-sm">
+              <thead>
+                <tr class="text-start text-text-muted fs-label">
+                  <th class="text-start font-normal pb-2">{{ catalog.t('sched.meeting') }}</th>
+                  <th class="text-start font-normal pb-2">{{ catalog.t('sched.when') }}</th>
+                  <th class="text-start font-normal pb-2">{{ catalog.t('common.type') }}</th>
+                  <th class="text-start font-normal pb-2">{{ catalog.t('common.status') }}</th>
                 </tr>
-              }
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                @for (row of rows(); track row.id) {
+                  <tr class="border-t border-border">
+                    <td class="py-2 text-text-primary">{{ row.title }}</td>
+                    <td class="py-2 text-text-secondary" dir="ltr">{{ row.whenLabel }}</td>
+                    <td class="py-2 text-text-secondary">{{ row.typeLabel }}</td>
+                    <td class="py-2">
+                      <pera-status-badge [tone]="row.statusTone" [label]="row.statusLabel" />
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
         } @else {
           <pera-empty [title]="catalog.t('sched.meetings')" />
         }

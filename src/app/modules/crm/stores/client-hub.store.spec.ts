@@ -1,3 +1,4 @@
+import { PermissionsService } from '@platform/permissions';
 import { TestBed } from '@angular/core/testing';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideHttpClient } from '@angular/common/http';
@@ -10,7 +11,12 @@ describe('ClientHubStore', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      providers: [ClientHubStore, provideHttpClient(), provideHttpClientTesting()],
+      providers: [
+        ClientHubStore,
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        { provide: PermissionsService, useValue: { can: () => true, canAll: () => true } },
+      ],
     });
     http = TestBed.inject(HttpTestingController);
   });

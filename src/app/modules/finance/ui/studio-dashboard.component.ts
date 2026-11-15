@@ -34,13 +34,13 @@ import { PeraButtonComponent, PeraCardComponent, PeraPageHeaderComponent } from 
         variant="secondary"
         size="sm"
         routerLink="/finance/cost-categories"
-        *peraCan="cap.manageBudget"
+        *peraCan="cap.read"
       >
         Cost categories
       </pera-button>
     </pera-page-header>
 
-    <div class="px-8 py-7 grid grid-cols-1 lg:grid-cols-2 gap-5 max-w-5xl">
+    <div class="px-4 md:px-6 lg:px-8 py-7 grid grid-cols-1 lg:grid-cols-2 gap-5 max-w-5xl">
       <pera-card padding="none" class="flex flex-col h-full">
         <div class="flex items-center gap-2.5 px-5 py-3 border-b border-border">
           <h3 class="font-medium text-sm text-text-primary truncate">Per-project finance</h3>
@@ -64,7 +64,7 @@ import { PeraButtonComponent, PeraCardComponent, PeraPageHeaderComponent } from 
         </div>
       </pera-card>
 
-      <pera-card padding="none" class="flex flex-col h-full" *peraCan="cap.manageBudget">
+      <pera-card padding="none" class="flex flex-col h-full" *peraCan="cap.read">
         <div class="flex items-center gap-2.5 px-5 py-3 border-b border-border">
           <h3 class="font-medium text-sm text-text-primary truncate">Cost categories catalog</h3>
         </div>

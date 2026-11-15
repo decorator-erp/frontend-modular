@@ -31,7 +31,10 @@ describe('TopbarComponent — the notification bell (005)', () => {
           { path: 'projects', component: BlankComponent, data: { breadcrumb: 'route.projects' } },
           { path: 'legacy', component: BlankComponent, data: { breadcrumb: 'Audit log' } },
         ]),
-        { provide: AuthStore, useValue: { user: () => ({ userName: 'Mona' }), logout: vi.fn() } },
+        {
+          provide: AuthStore,
+          useValue: { user: () => ({ userName: 'Mona' }), logout: vi.fn(), can: () => true },
+        },
         {
           provide: NotificationStore,
           useValue: {

@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, effect, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { PERM } from '@platform/permissions';
+import { CanDirective, PERM, PermissionsService } from '@platform/permissions';
 import { CatalogService } from '@platform/i18n/catalog.service';
 import { ApprovalState } from '../../model/crm-enums';
 import {
@@ -41,6 +41,7 @@ type HubTab = 'overview' | 'gathering' | 'meetings' | 'approvals';
   changeDetection: ChangeDetectionStrategy.OnPush,
   providers: [ClientHubStore, PeriodStore, BriefStore, ItemsStore, MeetingsStore],
   imports: [
+    CanDirective,
     RouterLink,
     PeraButtonComponent,
     PeraEmptyComponent,
@@ -74,15 +75,20 @@ type HubTab = 'overview' | 'gathering' | 'meetings' | 'approvals';
           than jumping to a tab that can no longer do the thing.
         -->
         @if (store.selectedProjectId(); as projectId) {
-          <div actions class="flex items-center gap-2">
+          <div actions class="flex flex-wrap items-center gap-2">
+            <!-- UI-1: each link needs its target's permission. -->
             <pera-button
+              *peraCan="PERM.crm.meetings.read"
               variant="secondary"
               [routerLink]="['/crm/projects', projectId, 'scheduler']"
               >{{ catalog.t('hub.scheduleMeeting') }}</pera-button
             >
-            <pera-button variant="primary" [routerLink]="['/crm/projects', projectId, 'items']">{{
-              catalog.t('hub.addRequirement')
-            }}</pera-button>
+            <pera-button
+              *peraCan="PERM.crm.items.create"
+              variant="primary"
+              [routerLink]="['/crm/projects', projectId, 'items']"
+              >{{ catalog.t('hub.addRequirement') }}</pera-button
+            >
           </div>
         }
       </pera-page-header>
@@ -105,6 +111,7 @@ type HubTab = 'overview' | 'gathering' | 'meetings' | 'approvals';
           </button>
         }
         <button
+          *peraCan="PERM.projects.create"
           type="button"
           class="rounded-full border border-dashed border-border px-3 py-1 fs-caption text-text-muted cursor-pointer"
           (click)="newProject()"
@@ -158,14 +165,26 @@ export class ClientHubComponent {
   protected readonly PERM = PERM;
   protected readonly APPROVAL_STATE = ApprovalState;
 
-  protected readonly activeTab = signal<HubTab>('gathering');
+  private readonly perms = inject(PermissionsService);
 
-  protected readonly tabs: TabDef[] = [
-    { id: 'overview', label: this.catalog.t('hub.tOverview') },
-    { id: 'gathering', label: this.catalog.t('hub.tGathering') },
-    { id: 'meetings', label: this.catalog.t('hub.tMeetings') },
-    { id: 'approvals', label: this.catalog.t('hub.tApprovals') },
-  ];
+  /**
+   * UI-1: a tab is offered only when the caller may read what it shows — Gathering: the period, brief
+   * and items; Meetings: crm.meetings.read; Approvals: approvals.read. Overview needs only the page.
+   */
+  protected readonly tabs: TabDef[] = (
+    [
+      { id: 'overview', label: this.catalog.t('hub.tOverview'), perm: null },
+      { id: 'gathering', label: this.catalog.t('hub.tGathering'), perm: PERM.crm.periods.read },
+      { id: 'meetings', label: this.catalog.t('hub.tMeetings'), perm: PERM.crm.meetings.read },
+      { id: 'approvals', label: this.catalog.t('hub.tApprovals'), perm: PERM.approvals.read },
+    ] as (TabDef & { perm: string | null })[]
+  )
+    .filter((t) => !t.perm || this.perms.can(t.perm))
+    .map(({ id, label }) => ({ id, label }));
+
+  protected readonly activeTab = signal<HubTab>(
+    (this.tabs.some((t) => t.id === 'gathering') ? 'gathering' : 'overview') as HubTab,
+  );
 
   constructor() {
     const clientId = this.route.snapshot.paramMap.get('clientId') ?? '';
@@ -174,10 +193,11 @@ export class ClientHubComponent {
     effect(() => {
       const projectId = this.store.selectedProjectId();
       if (!projectId) return;
-      this.period.load(projectId);
-      this.brief.load(projectId);
-      this.items.load(projectId);
-      this.meetings.load(projectId);
+      // UI-1: each project-scoped read only with its permission (no 403 toast otherwise).
+      if (this.perms.can(PERM.crm.periods.read)) this.period.load(projectId);
+      if (this.perms.can(PERM.crm.briefs.read)) this.brief.load(projectId);
+      if (this.perms.can(PERM.crm.items.read)) this.items.load(projectId);
+      if (this.perms.can(PERM.crm.meetings.read)) this.meetings.load(projectId);
     });
   }
 

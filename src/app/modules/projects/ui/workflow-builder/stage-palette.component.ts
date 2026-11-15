@@ -7,7 +7,10 @@ import { PALETTE_CHIPS, PaletteChip } from './builder.types';
   selector: 'app-stage-palette',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [CdkDrag, CdkDropList],
-  host: { class: 'block border-e border-border bg-surface p-3.5 overflow-y-auto w-[200px]' },
+  host: {
+    class:
+      'block border-e border-border bg-surface p-3.5 overflow-y-auto w-full max-lg:border-e-0 max-lg:border-b max-lg:max-h-60',
+  },
   template: `
     <div class="font-mono fs-micro text-text-muted tracking-wide mx-1 mt-1 mb-3 uppercase">
       Stage types — drag to canvas

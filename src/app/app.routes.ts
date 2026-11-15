@@ -91,9 +91,11 @@ export const routes: Routes = [
       //
       {
         path: 'notifications',
+        // UI-1: every notification route needs `notifications.view_own`.
+        canActivate: [PermissionGuard],
         loadComponent: () =>
           import('@modules/notifications').then((m) => m.NotificationsPageComponent),
-        data: { breadcrumb: 'Notifications' },
+        data: { permission: 'notifications.view_own', breadcrumb: 'Notifications' },
       },
       //
       {

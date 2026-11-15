@@ -56,6 +56,7 @@ import {
       [items]="items()"
       [selectedFolderId]="selectedFolderId()"
       [canManage]="canManage()"
+      [canDelete]="canDelete()"
       [lockedLabel]="catalog.t('docs.locked')"
       defaultView="list"
       uploadHint="Drag files here. PDFs, drawings, photos all welcome."
@@ -94,6 +95,13 @@ export class DocumentsTabComponent implements OnInit {
     claimCheck(this.access.project(this.projectId())()?.myAccess, 'Documents', (p) =>
       this.perms.can(p),
     )(PERM.documents.upload),
+  );
+
+  /** UI-1: DELETE /api/project-documents/{id} needs `documents.delete` (not the upload permission). */
+  readonly canDelete = computed(() =>
+    claimCheck(this.access.project(this.projectId())()?.myAccess, 'Documents', (p) =>
+      this.perms.can(p),
+    )(PERM.documents.delete),
   );
 
   /** Sync F2(c): a review request needs `documents.update` (DocumentEndpoints.cs:46). */

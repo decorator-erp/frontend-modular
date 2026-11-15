@@ -96,7 +96,7 @@ export const COMMENT_PAGE_SIZE = 50;
               <span class="fs-label text-text-muted uppercase tracking-wide">edited</span>
             }
             <span
-              class="ms-auto opacity-0 group-hover:opacity-100 flex items-center gap-1.5 fs-label text-text-muted uppercase transition-opacity"
+              class="ms-auto [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 focus-visible:opacity-100 flex items-center gap-1.5 fs-label text-text-muted uppercase transition-opacity"
             >
               @if (canChange(c, 'comment.edit')) {
                 <button type="button" class="hover:text-accent" (click)="startEdit(c)" data-edit>

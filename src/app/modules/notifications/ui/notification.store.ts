@@ -106,7 +106,11 @@ export const NotificationStore = signalStore(
       router = inject(Router),
       deepLink = inject(NotificationDeepLink),
       toast = inject(ToastService),
+      auth = inject(AuthStore),
     ) => {
+      // UI-1: every notification route requires `notifications.view_own` — without it nothing is
+      // fetched (no 403 toast at login) and the bell is not rendered.
+      const canView = (): boolean => auth.can('notifications.view_own');
       const TOAST_CAP = 3;
       const raised = new Set<number>();
       let summaryId: number | null = null;
@@ -126,6 +130,7 @@ export const NotificationStore = signalStore(
         // ── Connection layer (Phase 3) ──
         /** Fetch the authoritative unread total (initial paint + reconnect resync). */
         loadUnreadCount(): void {
+          if (!canView()) return;
           api.unreadCount().subscribe({
             next: (count) => patchState(store, { unreadCount: count, error: null }),
             error: () => patchState(store, { error: 'Could not load the unread count.' }),
@@ -179,6 +184,7 @@ export const NotificationStore = signalStore(
         // ── Data layer (Phase 4) ──
         /** Load the bounded recent subset for the dropdown. */
         loadRecent(): void {
+          if (!canView()) return;
           patchState(store, { loadingRecent: true });
           api.list(1, RECENT_SIZE).subscribe({
             next: (res) =>
@@ -192,6 +198,7 @@ export const NotificationStore = signalStore(
         },
         /** Load a page of the full history (1-based). */
         loadPage(pageIndex: number, unreadOnly = store.page().unreadOnly): void {
+          if (!canView()) return;
           patchState(store, (s) => ({ page: { ...s.page, loading: true, unreadOnly } }));
           api.list(pageIndex, PAGE_SIZE, unreadOnly).subscribe({
             next: (res) =>

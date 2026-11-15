@@ -73,7 +73,7 @@ const ROLE_KEYS: Record<ContactRole, CatalogKey> = {
           <div class="fs-body-sm text-text-primary py-1.5">{{ data.clientName }}</div>
         </pera-form-field>
 
-        <div class="grid grid-cols-2 gap-x-4 gap-y-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-4">
           <pera-form-field
             [label]="catalog.t('brief.fFirst')"
             [required]="true"

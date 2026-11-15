@@ -85,7 +85,8 @@ export class DashboardStore {
   /** What the signed-in user may see, read once per load. */
   readonly can = computed(() => ({
     projects: this.permissions.can(PERM.projects.read),
-    tasks: this.permissions.can(PERM.stageTasks.read),
+    // UI-1: my tasks are found through my projects (GET /api/projects, project.read) first.
+    tasks: this.permissions.canAll([PERM.stageTasks.read, PERM.projects.read]),
     approvals: this.permissions.can(PERM.approvals.read),
     gathering: this.permissions.can(PERM.crm.briefs.read),
     leads: this.permissions.can(PERM.crm.leads.read),

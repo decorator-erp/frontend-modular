@@ -78,7 +78,7 @@ const BUILT_TABS: readonly SiteTab[] = [
   ],
   template: `
     @if (store.notFound()) {
-      <div class="px-8 py-10" data-not-found>
+      <div class="px-4 md:px-6 lg:px-8 py-10" data-not-found>
         <pera-empty
           [title]="t('sv.notFound')"
           [description]="t('sv.notFoundSub')"
@@ -87,7 +87,7 @@ const BUILT_TABS: readonly SiteTab[] = [
         />
       </div>
     } @else if (store.error() && !store.site()) {
-      <div class="px-8 py-6">
+      <div class="px-4 md:px-6 lg:px-8 py-6">
         <pera-alert tone="danger" data-detail-error>
           {{ store.error() }}
           <pera-button variant="secondary" size="sm" (click)="store.reload()">{{
@@ -96,13 +96,13 @@ const BUILT_TABS: readonly SiteTab[] = [
         </pera-alert>
       </div>
     } @else if (!store.site()) {
-      <div class="px-8 py-6 flex flex-col gap-3" aria-busy="true">
+      <div class="px-4 md:px-6 lg:px-8 py-6 flex flex-col gap-3" aria-busy="true">
         <pera-skeleton [height]="40" width="30%" />
         <pera-skeleton [height]="20" width="50%" />
         <pera-skeleton [height]="240" />
       </div>
     } @else if (store.site(); as s) {
-      <header class="bg-surface border-b border-border px-8 pt-7">
+      <header class="bg-surface border-b border-border px-4 md:px-6 lg:px-8 pt-7">
         <div class="flex items-start justify-between gap-6 flex-wrap mb-5">
           <div class="flex flex-col gap-2">
             <div class="flex items-center gap-3">
@@ -259,7 +259,7 @@ const BUILT_TABS: readonly SiteTab[] = [
         </div>
         <pera-tabs [tabs]="tabs()" [activeId]="tab()" (activeChange)="go($event)" />
       </header>
-      <div class="px-8 py-6">
+      <div class="px-4 md:px-6 lg:px-8 py-6">
         @switch (tab()) {
           @case ('capture') {
             <app-site-capture [moduleId]="moduleId()" [recordId]="recordId()" />

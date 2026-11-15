@@ -6,13 +6,13 @@
      team → documents → risk (empty). -->
 <div class="block bg-bg min-h-full tabular-nums">
   @if (loading()) {
-    <div class="px-8 py-6">
+    <div class="px-4 md:px-6 lg:px-8 py-6">
       <pera-skeleton [height]="150" rounded="md" />
       <div class="h-5"></div>
       <pera-skeleton [height]="320" rounded="md" />
     </div>
   } @else if (loadError() === 'notFound') {
-    <div class="px-8 py-6" data-load-state="not-found">
+    <div class="px-4 md:px-6 lg:px-8 py-6" data-load-state="not-found">
       <pera-empty
         [title]="catalog.t('project.notFound')"
         [description]="catalog.t('project.notFoundHint')"
@@ -20,7 +20,7 @@
       />
     </div>
   } @else if (loadError() === 'error') {
-    <div class="px-8 py-6" data-load-state="error">
+    <div class="px-4 md:px-6 lg:px-8 py-6" data-load-state="error">
       <pera-empty
         [title]="catalog.t('project.loadFailed')"
         [description]="catalog.t('project.loadFailedHint')"
@@ -29,7 +29,7 @@
     </div>
   } @else if (project(); as proj) {
     <!-- ============ Project header card ============ -->
-    <div class="px-8 pt-6 flex flex-col gap-3">
+    <div class="px-4 md:px-6 lg:px-8 pt-6 flex flex-col gap-3">
       <app-project-closed-banner [project]="proj" />
       <app-project-grant-banner [access]="myAccess()" [stages]="stages()" />
       @if (scopeBlocksStages()) {
@@ -94,7 +94,8 @@
               Edit
             </button>
           }
-          @if (covers('Documents')) {
+          <!-- UI-1: the documents browser reads GET …/documents, which needs documents.read. -->
+          @if (covers('Documents') && areaCan('Documents', PERM.documents.read)) {
             <button type="button" [class]="btnClass" (click)="openDocuments()">
               <svg
                 width="13"
@@ -150,7 +151,8 @@
               >{{ catalog.t('sv.navSurveys') }}</a
             >
           }
-          @if (shows('StagesAndTasks')) {
+          <!-- UI-1: the tasks page needs stage_tasks.read. -->
+          @if (shows('StagesAndTasks') && listCan('StagesAndTasks', PERM.stageTasks.read)) {
             <a [class]="btnClass" [routerLink]="['/projects', proj.id, 'tasks']" data-tasks-link>{{
               catalog.t('projects.tasksLink')
             }}</a>
@@ -210,7 +212,7 @@
     </div>
 
     <!-- ============ Panel grid ============ -->
-    <div class="mx-8 mt-6 mb-9 grid grid-cols-1 lg:grid-cols-12 gap-5">
+    <div class="mx-4 md:mx-6 lg:mx-8 mt-6 mb-9 grid grid-cols-1 lg:grid-cols-12 gap-5">
       <!-- Stage timeline — Stage workflows only -->
       @if (isStage()) {
         <section [class]="panelClass" class="lg:col-span-12">

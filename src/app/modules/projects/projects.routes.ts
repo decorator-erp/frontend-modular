@@ -11,15 +11,20 @@ import { ProjectGrantGuard } from './project-grant.guard';
 export const projectsRoutes: Routes = [
   {
     path: 'projects',
+    // UI-1: GET /api/projects needs `project.read`. A caller who only holds access grants uses
+    // "Shared with me" instead.
+    canActivate: [PermissionGuard],
     loadComponent: () =>
       import('./ui/pages/projects-list.component').then((m) => m.ProjectsListComponent),
-    data: { breadcrumb: 'route.projects' },
+    data: { permission: PERM.projects.read, breadcrumb: 'route.projects' },
   },
   {
     path: 'projects/new',
+    // UI-1: POST /api/projects needs `project.create`.
+    canActivate: [PermissionGuard],
     loadComponent: () =>
       import('./ui/pages/project-create.component').then((m) => m.ProjectCreateComponent),
-    data: { breadcrumb: 'route.newProject' },
+    data: { permission: PERM.projects.create, breadcrumb: 'route.newProject' },
   },
   // crmp P1-B: the caller's own temporary access ("Shared with me"). Signed-in only, like the backend
   // route (GET /api/me/access-grants needs no permission). Before projects/:id, which would match it.
@@ -45,15 +50,22 @@ export const projectsRoutes: Routes = [
     path: 'projects/:projectId/stages/:stageId',
     // crmp P1-B: a grant on Stages & tasks covering the stage opens it too (ProjectGrantGuard).
     canActivate: [ProjectGrantGuard],
-    data: { permission: 'project.read', grantArea: 'StagesAndTasks', breadcrumb: 'route.stage' },
+    // UI-1: GET /api/projects/{p}/stages/{s} needs `stages.read` (was gated on project.read).
+    data: { permission: PERM.stages.read, grantArea: 'StagesAndTasks', breadcrumb: 'route.stage' },
     loadComponent: () =>
       import('./ui/pages/dms-stage-detail.component').then((m) => m.DmsStageDetailComponent),
   },
   {
     path: 'projects/:id/tasks/:taskId',
+    // UI-1: the task details need `stage_tasks.read`; a Stages & tasks grant on the project opens it too.
+    canActivate: [ProjectGrantGuard],
     loadComponent: () =>
       import('./ui/pages/task-detail.component').then((m) => m.TaskDetailComponent),
-    data: { breadcrumb: 'route.task' },
+    data: {
+      permission: PERM.stageTasks.read,
+      grantArea: 'StagesAndTasks',
+      breadcrumb: 'route.task',
+    },
   },
   // Redesigned DMS task view. Same component/data as the route above, but
   // permission-gated for staged rollout. `dms.task_detail.view` is a UI-side

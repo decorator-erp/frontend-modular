@@ -65,7 +65,7 @@ describe('NotificationStore (connection layer)', () => {
       providers: [
         { provide: NotificationService, useValue: { unreadCount: () => of(unreadServer) } },
         { provide: RealtimeService, useValue: rt },
-        { provide: AuthStore, useValue: { isAuthenticated: signal(false) } },
+        { provide: AuthStore, useValue: { isAuthenticated: signal(false), can: () => true } },
         { provide: Router, useValue: { navigate: vi.fn() } },
         {
           provide: NotificationDeepLink,
@@ -76,6 +76,27 @@ describe('NotificationStore (connection layer)', () => {
     });
     return TestBed.inject(NotificationStore);
   }
+
+  // UI-1: every notification route needs notifications.view_own — without it nothing is requested.
+  it('never asks for the unread count (or recent items) without notifications.view_own', () => {
+    const unreadCount = vi.fn(() => of(3));
+    const list = vi.fn(() => of({ items: [], totalCount: 0 }));
+    TestBed.configureTestingModule({
+      providers: [
+        { provide: NotificationService, useValue: { unreadCount, list } },
+        { provide: RealtimeService, useValue: realtimeMock() },
+        { provide: AuthStore, useValue: { isAuthenticated: signal(false), can: () => false } },
+        { provide: Router, useValue: { navigate: vi.fn() } },
+        { provide: NotificationDeepLink, useValue: { resolve: vi.fn() } },
+        { provide: ToastService, useValue: toastMock() },
+      ],
+    });
+    const store = TestBed.inject(NotificationStore);
+    store.loadUnreadCount();
+    store.loadRecent();
+    expect(unreadCount).not.toHaveBeenCalled();
+    expect(list).not.toHaveBeenCalled();
+  });
 
   it('registers the ReceiveNotification + reconnect handlers on init (before any start)', () => {
     make();
@@ -174,7 +195,7 @@ describe('NotificationStore (data layer)', () => {
           },
         },
         { provide: RealtimeService, useValue: realtimeMock() },
-        { provide: AuthStore, useValue: { isAuthenticated: signal(false) } },
+        { provide: AuthStore, useValue: { isAuthenticated: signal(false), can: () => true } },
         { provide: Router, useValue: { navigate: vi.fn().mockResolvedValue(true) } },
         {
           provide: NotificationDeepLink,

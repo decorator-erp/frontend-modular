@@ -17,7 +17,7 @@ import { PeraEmptyComponent, PeraPageHeaderComponent } from '@ds';
   host: { class: 'block bg-bg min-h-full' },
   template: `
     <pera-page-header [title]="title()"></pera-page-header>
-    <div class="px-8 py-8">
+    <div class="px-4 md:px-6 lg:px-8 py-8">
       <pera-empty
         iconName="package"
         [title]="title() + ' — coming next'"

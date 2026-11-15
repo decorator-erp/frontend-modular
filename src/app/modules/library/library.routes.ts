@@ -9,7 +9,9 @@ import { PermissionGuard } from '@platform/auth/permission.guard';
 export const libraryRoutes: Routes = [
   {
     path: 'library/stage-templates',
-    data: { breadcrumb: 'Stage templates' },
+    // UI-1: GET /api/stage-templates needs `stages.read`.
+    canActivate: [PermissionGuard],
+    data: { permission: 'stages.read', breadcrumb: 'Stage templates' },
     loadComponent: () =>
       import('./ui/stage-templates/stage-templates-list.component').then(
         (m) => m.StageTemplatesListComponent,
@@ -19,7 +21,8 @@ export const libraryRoutes: Routes = [
   // like the list: reads need `stages.read`, every write control is behind `*peraCan` stages.manage.
   {
     path: 'library/stage-templates/:id',
-    data: { breadcrumb: 'Stage template' },
+    canActivate: [PermissionGuard],
+    data: { permission: 'stages.read', breadcrumb: 'Stage template' },
     loadComponent: () =>
       import('./ui/stage-templates/stage-template-detail.component').then(
         (m) => m.StageTemplateDetailComponent,

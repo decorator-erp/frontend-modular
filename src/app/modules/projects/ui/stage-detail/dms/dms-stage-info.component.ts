@@ -37,8 +37,13 @@ type EditField = 'start' | 'target' | 'owner';
       /* Inline click-to-edit affordance. Scoped to this component now (emulated
          encapsulation), and expressed with tokens rather than raw pixels. */
       .ie-trigger .ie-pen {
-        opacity: 0;
         transition: opacity 0.12s;
+      }
+      /* RS-1: hide the pen only where hover exists; touch screens always see it. */
+      @media (hover: hover) {
+        .ie-trigger .ie-pen {
+          opacity: 0;
+        }
       }
       .ie-trigger:hover .ie-pen,
       .ie-trigger:focus-visible .ie-pen {

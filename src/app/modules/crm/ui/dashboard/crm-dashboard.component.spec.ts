@@ -1,3 +1,4 @@
+import { PermissionsService } from '@platform/permissions';
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, provideRouter } from '@angular/router';
 import { of } from 'rxjs';
@@ -55,6 +56,7 @@ describe('CrmDashboardComponent', () => {
     TestBed.configureTestingModule({
       imports: [CrmDashboardComponent],
       providers: [
+        { provide: PermissionsService, useValue: { can: () => true, canAll: () => true } },
         provideRouter([]),
         {
           provide: ActivatedRoute,

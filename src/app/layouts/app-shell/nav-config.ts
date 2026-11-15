@@ -25,7 +25,7 @@ export const NAV_SECTIONS: NavSection[] = [
     title: 'Operations',
     items: [
       { label: 'Dashboard', icon: 'home', route: '/dashboard' },
-      { label: 'Projects', icon: 'briefcase', route: '/projects' },
+      { label: 'Projects', icon: 'briefcase', route: '/projects', capability: 'project.read' },
       // crmp P1-B: the caller's temporary project access; only when there is some.
       {
         label: 'Shared with me',
@@ -71,7 +71,7 @@ export const NAV_SECTIONS: NavSection[] = [
         // viewer who will 403 on every button inside it.
         capability: 'crm.catalog.manage',
       },
-      { label: 'Finance', icon: 'briefcase', route: '/finance' },
+      { label: 'Finance', icon: 'briefcase', route: '/finance', capability: 'finance.read' },
       { label: 'Audit log', icon: 'file-text', route: '/audit', capability: 'audit.read' },
       {
         label: 'Survey definitions',
@@ -84,7 +84,12 @@ export const NAV_SECTIONS: NavSection[] = [
   {
     title: 'Library',
     items: [
-      { label: 'Stage templates', icon: 'folder', route: '/library/stage-templates' },
+      {
+        label: 'Stage templates',
+        icon: 'folder',
+        route: '/library/stage-templates',
+        capability: 'stages.read',
+      },
       // Sync F3: the file template library (FileTemplateEndpoints.cs).
       {
         label: 'File templates',

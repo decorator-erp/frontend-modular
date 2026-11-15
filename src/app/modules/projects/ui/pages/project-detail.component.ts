@@ -114,7 +114,9 @@ const BTN =
   'inline-flex items-center gap-2 px-3 py-1.5 min-h-8 bg-surface border border-border text-text-primary font-medium cursor-pointer whitespace-nowrap hover:bg-hover hover:border-text-muted transition-colors';
 const BTN_PRIMARY =
   'inline-flex items-center gap-2 px-3 py-1.5 min-h-8 bg-accent border border-accent text-on-accent font-medium cursor-pointer whitespace-nowrap hover:bg-accent-hover transition-colors';
-const STL_GRID = 'grid grid-cols-[minmax(0,1fr)_9rem_8rem_6rem_9rem] gap-3 items-center';
+// RS-1: below md the row keeps name + status; owner, due and progress (cells 3-5) hide.
+const STL_GRID =
+  'grid grid-cols-[minmax(0,1fr)_auto] md:grid-cols-[minmax(0,1fr)_9rem_8rem_6rem_9rem] max-md:[&>*:nth-child(n+3)]:hidden gap-3 items-center';
 
 /**
  * Project dashboard — a faithful rebuild of the **Project · Marina Tower** view in
@@ -166,6 +168,8 @@ export class ProjectDetailComponent implements OnInit {
   private readonly docsApi = inject(ProjectDocumentsService);
   private readonly directory = inject(EmployeeService);
   private readonly perms = inject(PermissionsService);
+  /** UI-1: permission codes for the template's gates. */
+  protected readonly PERM = PERM;
   private readonly modal = inject(ModalService);
   private readonly toast = inject(ToastService);
   readonly locale = inject(LocaleService);

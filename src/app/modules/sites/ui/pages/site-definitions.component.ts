@@ -97,7 +97,7 @@ import {
       }
     </pera-page-header>
 
-    <div class="px-8 py-6 flex flex-col gap-4">
+    <div class="px-4 md:px-6 lg:px-8 py-6 flex flex-col gap-4">
       <p class="m-0 fs-body-sm text-text-secondary">{{ t('sv.defsSub') }}</p>
       <pera-tabs [tabs]="tabs()" [activeId]="tab()" (activeChange)="go($event)" />
       <div class="flex items-center justify-between gap-4 flex-wrap">

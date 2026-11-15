@@ -71,7 +71,7 @@ import {
           <span class="text-text-secondary">{{ categoryName(current) }}</span>
         }
       </div>
-      <div actions class="flex items-center gap-2">
+      <div actions class="flex flex-wrap items-center gap-2">
         <!-- crmp C-4: GET /tree?spaceTypeId — what one space type's picker offers. -->
         <pera-select
           class="min-w-0"

@@ -95,8 +95,8 @@
       {{ locale.locale() === 'en' ? 'ع' : 'EN' }}
     </button>
 
-    <!-- Notifications — live unread badge + (US2) dropdown -->
-    <app-notification-bell />
+    <!-- Notifications — live unread badge + (US2) dropdown. UI-1: only with notifications.view_own. -->
+    <app-notification-bell *peraCan="'notifications.view_own'" />
 
     <!-- Avatar dropdown — borderless, like sb-foot avatar -->
     <button

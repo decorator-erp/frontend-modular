@@ -73,7 +73,7 @@ const TYPE_CARDS: { value: LedgerType; label: string; hint: string }[] = [
     PeraTextareaComponent,
   ],
   template: `
-    <div class="px-8 py-6 max-w-[var(--w-form)] mx-auto">
+    <div class="px-4 md:px-6 lg:px-8 py-6 max-w-[var(--w-form)] mx-auto">
       <header class="mb-5">
         <div class="font-mono fs-label uppercase text-text-muted tracking-[0.04em] mb-1">
           FINANCE · POST LEDGER ENTRY

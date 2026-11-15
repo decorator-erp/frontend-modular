@@ -29,7 +29,7 @@ import {
   ],
   host: { class: 'block bg-bg min-h-full' },
   template: `
-    <div class="px-8 py-6 max-w-[var(--w-form)] mx-auto">
+    <div class="px-4 md:px-6 lg:px-8 py-6 max-w-[var(--w-form)] mx-auto">
       @if (loading()) {
         <pera-skeleton [height]="220" rounded="md" />
       } @else if (invoice(); as inv) {
@@ -85,34 +85,38 @@ import {
           <header class="px-5 py-3 border-b border-border">
             <h3 class="m-0 fs-body-sm font-semibold">Lines</h3>
           </header>
-          <table class="w-full border-collapse">
-            <thead>
-              <tr
-                class="text-left font-mono fs-micro uppercase tracking-[0.04em] text-text-muted bg-bg"
-              >
-                <th class="p-2.5 font-medium">Description</th>
-                <th class="p-2.5 font-medium w-[var(--w-column-sm)]">Unit</th>
-                <th class="p-2.5 font-medium w-[var(--w-column-sm)] text-right">Qty</th>
-                <th class="p-2.5 font-medium w-[var(--w-column)] text-right">Unit price</th>
-                <th class="p-2.5 font-medium w-[var(--w-column)] text-right">Line total</th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (l of inv.lines; track l.id) {
-                <tr class="border-t border-border-soft fs-caption">
-                  <td class="p-2.5">{{ l.description }}</td>
-                  <td class="p-2.5 text-text-secondary">{{ l.unit || '—' }}</td>
-                  <td class="p-2.5 text-right tabular-nums">{{ l.quantity }}</td>
-                  <td class="p-2.5 text-right tabular-nums">{{ l.unitPrice }}</td>
-                  <td class="p-2.5 text-right tabular-nums font-medium">{{ l.lineTotal }}</td>
+          <div class="overflow-x-auto">
+            <table class="w-full border-collapse">
+              <thead>
+                <tr
+                  class="text-left font-mono fs-micro uppercase tracking-[0.04em] text-text-muted bg-bg"
+                >
+                  <th class="p-2.5 font-medium">Description</th>
+                  <th class="p-2.5 font-medium w-[var(--w-column-sm)]">Unit</th>
+                  <th class="p-2.5 font-medium w-[var(--w-column-sm)] text-right">Qty</th>
+                  <th class="p-2.5 font-medium w-[var(--w-column)] text-right">Unit price</th>
+                  <th class="p-2.5 font-medium w-[var(--w-column)] text-right">Line total</th>
                 </tr>
-              } @empty {
-                <tr>
-                  <td colspan="5" class="p-6 text-center text-text-muted fs-caption">No lines.</td>
-                </tr>
-              }
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                @for (l of inv.lines; track l.id) {
+                  <tr class="border-t border-border-soft fs-caption">
+                    <td class="p-2.5">{{ l.description }}</td>
+                    <td class="p-2.5 text-text-secondary">{{ l.unit || '—' }}</td>
+                    <td class="p-2.5 text-right tabular-nums">{{ l.quantity }}</td>
+                    <td class="p-2.5 text-right tabular-nums">{{ l.unitPrice }}</td>
+                    <td class="p-2.5 text-right tabular-nums font-medium">{{ l.lineTotal }}</td>
+                  </tr>
+                } @empty {
+                  <tr>
+                    <td colspan="5" class="p-6 text-center text-text-muted fs-caption">
+                      No lines.
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
         </section>
 
         @if (inv.note) {
@@ -123,7 +127,8 @@ import {
         }
 
         <section class="flex gap-2">
-          <ng-container *peraCan="manageInvoice">
+          <!-- UI-1: PUT /api/invoices/{id}/cancel needs finance.cancel_invoice. -->
+          <ng-container *peraCan="cancelInvoice">
             <pera-button
               variant="danger"
               [disabled]="inv.status !== 'Open' || busy()"
@@ -145,6 +150,7 @@ export class InvoiceDetailComponent implements OnInit {
   private readonly router = inject(Router);
 
   readonly manageInvoice = PERM.finance.manageInvoice;
+  readonly cancelInvoice = PERM.finance.cancelInvoice;
   readonly loading = signal(true);
   readonly busy = signal(false);
   readonly alert = signal<string | null>(null);

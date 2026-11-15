@@ -1,3 +1,4 @@
+import { CanDirective } from '@platform/permissions';
 import { CatalogService } from '@platform/i18n/catalog.service';
 import {
   ChangeDetectionStrategy,
@@ -48,6 +49,7 @@ const PAGE_SIZE = 20;
     PeraFilterBarComponent,
     PeraPageHeaderComponent,
     PeraSkeletonComponent,
+    CanDirective,
   ],
   templateUrl: './projects-list.component.html',
 })

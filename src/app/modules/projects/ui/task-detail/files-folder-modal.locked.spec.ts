@@ -30,7 +30,7 @@ describe('FilesFolderModalComponent — locked documents and versions (sync W2-3
     const data: FilesFolderModalData = {
       taskId: 't1',
       folderName: 'Drawings',
-      canManage: true,
+      canDelete: true,
       files: [
         tile({ id: 'open', name: 'a.pdf' }),
         tile({ id: 'locked', name: 'b.pdf', locked: true, version: 3 }),

@@ -244,6 +244,8 @@ export type AttachmentView = 'grid' | 'list';
               <button class="ak" (click)="bulkDownload.emit(selectedIdsArray())">Download</button>
               @if (canManage() && !selectionLocked()) {
                 <button class="ak" (click)="bulkMove.emit(selectedIdsArray())">Move</button>
+              }
+              @if (deleteAllowed() && !selectionLocked()) {
                 <button
                   class="ak solid"
                   (click)="bulkDelete.emit(selectedIdsArray()); clearSelection()"
@@ -331,7 +333,7 @@ export type AttachmentView = 'grid' | 'list';
                       <path d="M8 11V7a4 4 0 0 1 8 0v4" />
                     </svg>
                   </span>
-                } @else if (canManage()) {
+                } @else if (deleteAllowed()) {
                   <button
                     type="button"
                     class="at-act"
@@ -634,7 +636,8 @@ export type AttachmentView = 'grid' | 'list';
         padding: 6px 11px;
         background: var(--color-bg, var(--surface));
         border: 1px solid var(--color-border);
-        width: 240px;
+        width: 100%;
+        max-width: 240px;
       }
       .at-search svg {
         color: var(--color-text-muted);
@@ -975,6 +978,35 @@ export type AttachmentView = 'grid' | 'list';
       .at-card .body .mt .lk {
         color: var(--color-accent);
       }
+
+      /* RS-1: below desktop the folder rail stacks above the files (a scrolling strip), and on a
+         phone each row keeps only checkbox, icon, name and actions — the fixed columns needed
+         about 39rem before the name got any room. */
+      @media (max-width: 63.9375rem) {
+        .at-shell {
+          grid-template-columns: minmax(0, 1fr);
+          min-height: 0;
+        }
+        .at-rail {
+          border-right: 0;
+          border-bottom: var(--hairline) solid var(--color-border);
+          padding: var(--space-3) 0;
+          max-height: 13.75rem;
+          overflow-y: auto;
+        }
+      }
+      @media (max-width: 47.9375rem) {
+        .at-list-head,
+        .at-row {
+          grid-template-columns: 1.625rem 1.625rem minmax(0, 1fr) 2.25rem;
+          gap: var(--space-2);
+          padding: var(--space-2) var(--space-3);
+        }
+        .at-list-head > :nth-child(n + 4):nth-child(-n + 7),
+        .at-row > :nth-child(n + 4):nth-child(-n + 7) {
+          display: none;
+        }
+      }
     `,
   ],
 })
@@ -987,6 +1019,12 @@ export class PeraAttachmentsShellComponent {
   readonly uploadHint = input<string>('PDF, JPG, PNG, DWG — up to 25 MB each.');
   /** When false, all mutating controls (upload, new folder, delete, move) are hidden. */
   readonly canManage = input<boolean>(true);
+  /**
+   * UI-1: deleting needs its own permission (documents.delete) — not the upload one. Unset keeps the
+   * old behaviour (delete follows `canManage`).
+   */
+  readonly canDelete = input<boolean | null>(null);
+  readonly deleteAllowed = computed(() => this.canDelete() ?? this.canManage());
   /** Tooltip / accessible label for a locked row's lock glyph (caller supplies the copy). */
   readonly lockedLabel = input<string>('Locked');
 

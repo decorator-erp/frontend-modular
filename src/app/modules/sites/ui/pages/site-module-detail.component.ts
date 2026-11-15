@@ -57,7 +57,7 @@ import { attachForm, moduleForm } from '../definitions/site-def-forms';
   ],
   template: `
     @if (store.error(); as message) {
-      <div class="px-8 py-6">
+      <div class="px-4 md:px-6 lg:px-8 py-6">
         <pera-alert tone="danger" data-module-error>
           {{ message }}
           <pera-button variant="secondary" size="sm" (click)="reload()">{{
@@ -66,16 +66,16 @@ import { attachForm, moduleForm } from '../definitions/site-def-forms';
         </pera-alert>
       </div>
     } @else if (store.modules() === null) {
-      <div class="px-8 py-6 flex flex-col gap-3" aria-busy="true">
+      <div class="px-4 md:px-6 lg:px-8 py-6 flex flex-col gap-3" aria-busy="true">
         <pera-skeleton [height]="40" width="30%" />
         <pera-skeleton [height]="240" />
       </div>
     } @else if (!module()) {
-      <div class="px-8 py-10" data-not-found>
+      <div class="px-4 md:px-6 lg:px-8 py-10" data-not-found>
         <pera-empty [title]="t('sv.moduleNotFound')" iconName="alert-circle" [cta]="backCta()" />
       </div>
     } @else if (module(); as m) {
-      <header class="bg-surface border-b border-border px-8 pt-7 pb-5">
+      <header class="bg-surface border-b border-border px-4 md:px-6 lg:px-8 pt-7 pb-5">
         <a class="fs-label text-accent underline" [routerLink]="['/admin/site-definitions']">{{
           t('sv.backToDefs')
         }}</a>
@@ -119,7 +119,7 @@ import { attachForm, moduleForm } from '../definitions/site-def-forms';
         </div>
       </header>
 
-      <div class="px-8 py-6 grid gap-4 lg:grid-cols-3">
+      <div class="px-4 md:px-6 lg:px-8 py-6 grid gap-4 lg:grid-cols-3">
         <div class="lg:col-span-2 flex flex-col gap-4">
           @if (actionError(); as message) {
             <pera-alert tone="danger" data-action-error>{{ message }}</pera-alert>

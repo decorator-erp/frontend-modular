@@ -123,7 +123,7 @@ const APPROVAL_LABEL: Record<ApprovalType, string> = {
   ],
   template: `
     <pera-modal [title]="title()" size="md">
-      <div class="flex flex-col gap-3 min-w-[var(--w-dialog)]">
+      <div class="flex flex-col gap-3">
         <p class="m-0 fs-label text-text-muted">{{ subtitle() }}</p>
 
         @if (mode() === 'view' && data.gate; as g) {

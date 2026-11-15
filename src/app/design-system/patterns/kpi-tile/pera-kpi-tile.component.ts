@@ -90,7 +90,7 @@ const CHIP_TONES: Record<KpiTone, string> = {
           >{{ caption() }}</span
         >
       }
-      <span class="text-2xl font-semibold text-text-primary tabular-nums">
+      <span class="text-xl md:text-2xl font-semibold text-text-primary tabular-nums truncate">
         {{ value() }}
         @if (frac()) {
           <span class="font-mono text-xs font-normal text-text-muted ms-1.5">{{ frac() }}</span>

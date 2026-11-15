@@ -50,7 +50,7 @@ describe('DepartmentsListComponent — list response only (006b-2 #22)', () => {
         { provide: ModalService, useValue: { open: vi.fn() } },
         { provide: ConfirmService, useValue: { open: vi.fn() } },
         { provide: ToastService, useValue: { show: vi.fn() } },
-        { provide: PermissionsService, useValue: { can: () => true } },
+        { provide: PermissionsService, useValue: { can: () => true, canAll: () => true } },
       ],
     });
   });
@@ -92,7 +92,7 @@ describe('DepartmentsListComponent — a vanished department (006b-2 #26)', () =
         { provide: ModalService, useValue: { open: vi.fn() } },
         { provide: ConfirmService, useValue: { open: vi.fn() } },
         { provide: ToastService, useValue: { show: vi.fn() } },
-        { provide: PermissionsService, useValue: { can: () => true } },
+        { provide: PermissionsService, useValue: { can: () => true, canAll: () => true } },
       ],
     });
     const fixture = TestBed.createComponent(DepartmentsListComponent);
