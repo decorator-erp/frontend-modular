@@ -13,6 +13,7 @@ export * from './components/icon/icon-registry';
 export * from './components/spinner/pera-spinner.component';
 export * from './components/tooltip/pera-tooltip.directive';
 export * from './components/card/pera-card.component';
+export * from './components/swatch/pera-swatch.component';
 
 // Components — finance form primitives (Phase G0)
 export * from './components/money-input/pera-money-input.component';
