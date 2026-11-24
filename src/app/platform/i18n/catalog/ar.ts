@@ -750,6 +750,18 @@ export const AR: Partial<Record<CatalogKey, string>> = {
   'lead.sourceWebsite': 'الموقع الإلكتروني',
 
   // Leads — office list + detail.
+  // OS-6 — Ocean Studio leads list and preview panel
+  'leads.preview': 'معاينة العميل المحتمل',
+  'leads.closePreview': 'إغلاق المعاينة',
+  'leads.openLead': 'فتح العميل المحتمل',
+  'leads.markContacted': 'تم التواصل',
+  'leads.fPhone': 'الهاتف',
+  'leads.fEmail': 'البريد الإلكتروني',
+  'leads.fArea': 'المساحة',
+  'leads.noIntake': 'لم تُسجَّل بيانات التأهيل بعد.',
+  'leads.allStatuses': 'الكل',
+  'leads.statusChanged': 'تم تحديد العميل المحتمل كتم التواصل معه.',
+  'leads.statusChangeFailed': 'تعذّر تغيير حالة العميل المحتمل.',
   'leads.listTitle': 'العملاء المحتملون',
   'leads.empty': 'لا عملاء محتملون بعد',
   'leads.emptyMsg': 'سجّل عميلاً محتملاً لبدء مسار جمع المتطلبات.',
@@ -1218,6 +1230,8 @@ export const AR: Partial<Record<CatalogKey, string>> = {
   'project.backToProjects': 'العودة إلى المشاريع',
   'project.loadFailed': 'تعذّر تحميل المشروع.',
   'project.loadFailedHint': 'تحقّق من الاتصال وحاول مرة أخرى.',
+  // OS-5 — the section nav's first item (this page)
+  'project.overview': 'نظرة عامة',
   'project.kpiGates': 'البوابات',
   'project.kpiGatesPendingOf': 'معلّقة من {total}',
   'clients.fJobTitle': 'الوظيفة',
@@ -2455,6 +2469,15 @@ export const AR: Partial<Record<CatalogKey, string>> = {
   'dash.kpiApprovals': 'بانتظار موافقتي',
   'dash.kpiApprovalsMsg': 'راجعها قبل موعدها',
   'dash.kpiUnread': 'إشعارات غير مقروءة',
+  // OS-3 — Ocean Studio dashboard
+  'dash.filterActive': 'نشطة',
+  'dash.filterOnHold': 'معلّقة',
+  'dash.filterAll': 'الكل',
+  'dash.groupOverdue': 'متأخرة',
+  'dash.groupThisWeek': 'هذا الأسبوع',
+  'dash.groupLater': 'لاحقًا',
+  'dash.review': 'مراجعة',
+  'dash.projectsFilterEmpty': 'لا توجد مشاريع تطابق هذا الفلتر.',
   'dash.wProjects': 'مشاريعي',
   'dash.projectsEmpty': 'لا توجد مشاريع بعد.',
   'dash.wMyTasks': 'مهامي',

@@ -809,6 +809,18 @@ export const EN = {
   'lead.statusConverted': 'Converted',
 
   // Leads — office list + detail (lead intake feature).
+  // OS-6 — Ocean Studio leads list and preview panel
+  'leads.preview': 'Lead preview',
+  'leads.closePreview': 'Close preview',
+  'leads.openLead': 'Open lead',
+  'leads.markContacted': 'Mark contacted',
+  'leads.fPhone': 'Phone',
+  'leads.fEmail': 'Email',
+  'leads.fArea': 'Area',
+  'leads.noIntake': 'No intake captured yet.',
+  'leads.allStatuses': 'All',
+  'leads.statusChanged': 'Lead marked as contacted.',
+  'leads.statusChangeFailed': 'Could not change the lead status.',
   'leads.listTitle': 'Leads',
   'leads.empty': 'No leads yet',
   'leads.emptyMsg': 'Capture a prospect to start the requirement-gathering flow.',
@@ -1290,6 +1302,8 @@ export const EN = {
   'project.backToProjects': 'Back to projects',
   'project.loadFailed': 'Could not load the project.',
   'project.loadFailedHint': 'Check your connection and try again.',
+  // OS-5 — the section nav's first item (this page)
+  'project.overview': 'Overview',
   'project.kpiGates': 'Gates',
   'project.kpiGatesPendingOf': 'pending of {total}',
   'clients.fJobTitle': 'Job title',
@@ -2551,6 +2565,15 @@ export const EN = {
   'dash.kpiApprovals': 'Waiting for my approval',
   'dash.kpiApprovalsMsg': 'Review them before they are due',
   'dash.kpiUnread': 'Unread notifications',
+  // OS-3 — Ocean Studio dashboard
+  'dash.filterActive': 'Active',
+  'dash.filterOnHold': 'On hold',
+  'dash.filterAll': 'All',
+  'dash.groupOverdue': 'Overdue',
+  'dash.groupThisWeek': 'This week',
+  'dash.groupLater': 'Later',
+  'dash.review': 'Review',
+  'dash.projectsFilterEmpty': 'No projects match this filter.',
   'dash.wProjects': 'My projects',
   'dash.projectsEmpty': 'No projects yet.',
   'dash.wMyTasks': 'My tasks',

@@ -73,7 +73,7 @@ import {
 } from '@ds';
 import { TasksGanttViewComponent } from '../tasks-view/tasks-gantt-view.component';
 import { ActivityFeedComponent } from '../activity/activity-feed.component';
-import { StageTimelineComponent } from '../overview/stage-timeline.component';
+import { StageChevronsComponent } from '../overview/stage-chevrons.component';
 import {
   collectTasks,
   priorityDistribution,
@@ -99,21 +99,26 @@ import {
  * encapsulation and carries zero raw pixels — the Batch 4a de-port (FR-018).
  * Tailwind sees these literals when it scans the file.
  */
-const PANEL = 'bg-surface border border-border rounded-card flex flex-col min-w-0';
-const PANEL_HEAD = 'px-5 py-3 border-b border-border flex items-center justify-between gap-3';
-const PANEL_TITLE = 'm-0 font-medium text-text-primary';
-const COUNT_CHIP = 'font-mono text-text-muted px-1.5 py-px bg-selected';
+// OS-5 (Ocean Studio): soft cards, extra-bold panel titles, rounded pills and controls.
+const PANEL =
+  'bg-surface border border-border-soft rounded-card shadow-[var(--shadow-card)] flex flex-col min-w-0';
+const PANEL_HEAD = 'px-5 pt-4 pb-3 flex items-center justify-between gap-3';
+const PANEL_TITLE = 'm-0 fs-body font-extrabold text-text-primary';
+const COUNT_CHIP =
+  'fs-label font-bold text-text-secondary px-2 py-0.5 rounded-full bg-surface-muted tabular-nums';
 const PANEL_LINK =
-  'font-mono font-medium text-text-secondary bg-transparent border-0 p-0 cursor-pointer hover:text-accent transition-colors';
+  'fs-caption font-bold text-accent bg-transparent border-0 p-0 cursor-pointer hover:underline transition-colors';
 const PANEL_EMPTY = 'px-5 py-6 m-0 text-text-muted';
 const TAG =
-  'font-mono text-text-secondary px-1.5 py-0.5 border border-border bg-selected uppercase whitespace-nowrap';
+  'fs-label font-bold text-sand-ink px-2 py-0.5 rounded-full bg-sand-soft uppercase whitespace-nowrap';
 const AV_MINI =
-  'inline-flex items-center justify-center rounded-full bg-text-primary text-bg font-medium shrink-0';
+  'inline-flex items-center justify-center rounded-full bg-accent-soft text-accent font-bold shrink-0';
 const BTN =
-  'inline-flex items-center gap-2 px-3 py-1.5 min-h-8 bg-surface border border-border text-text-primary font-medium cursor-pointer whitespace-nowrap hover:bg-hover hover:border-text-muted transition-colors';
+  'inline-flex items-center gap-2 px-3.5 h-[var(--space-10)] rounded-[var(--radius-control)] bg-surface border border-border text-text-primary fs-body-sm font-semibold cursor-pointer whitespace-nowrap hover:bg-hover hover:border-border-strong transition-colors disabled:opacity-45';
 const BTN_PRIMARY =
-  'inline-flex items-center gap-2 px-3 py-1.5 min-h-8 bg-accent border border-accent text-on-accent font-medium cursor-pointer whitespace-nowrap hover:bg-accent-hover transition-colors';
+  'inline-flex items-center gap-2 px-3.5 h-[var(--space-10)] rounded-[var(--radius-control)] bg-accent border border-accent text-on-accent fs-body-sm font-bold cursor-pointer whitespace-nowrap hover:bg-accent-hover transition-colors';
+const NAV_ITEM =
+  'inline-flex items-center px-3.5 h-[var(--space-8)] rounded-[var(--radius-md)] fs-body-sm font-semibold whitespace-nowrap border-0 transition-colors outline-none focus-visible:outline-2 focus-visible:outline-accent';
 // RS-1: below md the row keeps name + status; owner, due and progress (cells 3-5) hide.
 const STL_GRID =
   'grid grid-cols-[minmax(0,1fr)_auto] md:grid-cols-[minmax(0,1fr)_9rem_8rem_6rem_9rem] max-md:[&>*:nth-child(n+3)]:hidden gap-3 items-center';
@@ -151,7 +156,7 @@ const STL_GRID =
     PeraSkeletonComponent,
     PeraStatusBadgeComponent,
     RouterLink,
-    StageTimelineComponent,
+    StageChevronsComponent,
     TasksGanttViewComponent,
     ActivityFeedComponent,
   ],
@@ -364,7 +369,8 @@ export class ProjectDetailComponent implements OnInit {
   protected readonly avMiniClass = AV_MINI;
   protected readonly btnClass = BTN;
   protected readonly btnPrimaryClass = BTN_PRIMARY;
-  protected readonly btnSmClass = `${BTN} text-xs`;
+  protected readonly navItemClass = `${NAV_ITEM} bg-transparent cursor-pointer text-text-secondary hover:bg-surface-muted hover:text-text-primary`;
+  protected readonly navItemActiveClass = `${NAV_ITEM} bg-sidebar text-sidebar-active-text cursor-default`;
   protected readonly stlGrid = STL_GRID;
   protected readonly stlNameClass =
     'flex items-center gap-2 min-w-0 truncate font-semibold text-text-primary';
@@ -372,9 +378,10 @@ export class ProjectDetailComponent implements OnInit {
   protected readonly stlTaskClass = `${STL_GRID} w-full text-start px-5 py-2 border-0 border-b border-border-soft bg-transparent cursor-pointer hover:bg-hover transition-colors`;
 
   protected chipClass(active: boolean): string {
-    const base = 'font-mono font-medium px-2 py-1 border cursor-pointer transition-colors';
+    const base =
+      'fs-caption font-bold px-2.5 py-1 rounded-[var(--radius-md)] border cursor-pointer transition-colors';
     return active
-      ? `${base} bg-accent border-accent text-on-accent`
+      ? `${base} bg-sidebar border-sidebar text-sidebar-active-text`
       : `${base} bg-surface border-border text-text-secondary hover:bg-hover hover:text-text-primary`;
   }
 
@@ -464,6 +471,16 @@ export class ProjectDetailComponent implements OnInit {
     const kpis: EntityHeaderKpi[] = [
       { caption: 'Progress', value: p.progressPercentage, frac: '%' },
       { caption: 'Tasks', value: this.totalTasks(), frac: `${this.doneCount()} done` },
+      // OS-5: the current stage sits among the header KPIs (Stage workflows only).
+      ...(this.isStage()
+        ? [
+            {
+              caption: 'Current stage',
+              value: this.activeStage() ? this.pad(this.activeStage()!.order) : '—',
+              frac: this.activeStage()?.name,
+            },
+          ]
+        : []),
       {
         caption: 'Days remaining',
         value: days === null ? '—' : Math.abs(days),
@@ -856,15 +873,6 @@ export class ProjectDetailComponent implements OnInit {
   manageTeam(): void {
     const project = this.project();
     if (project) void this.router.navigate(['/projects', project.id, 'teams']);
-  }
-
-  /**
-   * Risk register has no backend endpoint yet (see STAGE_TASK_BACKEND_GAPS.md).
-   * The design's "Log a risk" CTA is a MOCK affordance — surface that honestly
-   * rather than wiring a fake create.
-   */
-  logRisk(): void {
-    this.toast.show({ tone: 'info', message: 'Risk register isn’t available yet.' });
   }
 
   backToProjects(): void {

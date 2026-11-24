@@ -9,7 +9,8 @@ import {
   viewChild,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Subscription, catchError, of } from 'rxjs';
 import { CrmLeadService, type CrmLead } from '../../data/crm-lead.service';
 import { CatalogService } from '@platform/i18n/catalog.service';
@@ -39,6 +40,7 @@ import {
 } from '@ds';
 import { CrmLeadFormComponent } from '../dashboard/forms/lead-form.component';
 import { LEAD_SOURCE_KEYS, LEAD_STATUS_KEYS, LEAD_STATUS_TONE } from './lead-labels';
+import { LeadPreviewComponent } from './lead-preview.component';
 
 const STATUS_ORDER: LeadStatus[] = [
   LeadStatus.New,
@@ -61,6 +63,7 @@ const STATUS_ORDER: LeadStatus[] = [
   imports: [
     CanDirective,
     FormsModule,
+    LeadPreviewComponent,
     PeraAvatarComponent,
     PeraAlertComponent,
     PeraButtonComponent,
@@ -76,7 +79,7 @@ const STATUS_ORDER: LeadStatus[] = [
   host: { class: 'block' },
   template: `
     <pera-page-header [title]="catalog.t('leads.listTitle')" [count]="paged().totalCount">
-      <div actions>
+      <div actions class="max-md:hidden">
         <pera-button
           *peraCan="PERM.crm.leads.create"
           variant="primary"
@@ -89,7 +92,7 @@ const STATUS_ORDER: LeadStatus[] = [
         <pera-filter-bar
           class="flex-1 min-w-0"
           [search]="true"
-          [facets]="facets()"
+          [facets]="[]"
           [value]="filters()"
           (valueChange)="onFilters($event)"
           (clearAll)="onClear()"
@@ -103,7 +106,38 @@ const STATUS_ORDER: LeadStatus[] = [
       </div>
     </pera-page-header>
 
-    <div class="p-4">
+    <!-- OS-6 (Ocean Studio): status pills with counts from status-counts; they set the same
+         server-side status filter the facet did. -->
+    <div class="px-4 md:px-6 lg:px-8 pb-4 flex gap-2 overflow-x-auto" data-status-pills>
+      @for (pill of pills(); track pill.value) {
+        <button
+          type="button"
+          [attr.data-pill]="pill.value || 'all'"
+          [attr.aria-pressed]="pill.active"
+          (click)="pickStatus(pill.value)"
+          class="shrink-0 inline-flex items-center gap-2 px-3.5 h-[var(--space-10)] rounded-full border fs-body-sm font-semibold cursor-pointer transition-colors outline-none focus-visible:outline-2 focus-visible:outline-accent"
+          [class.bg-sidebar]="pill.active"
+          [class.text-sidebar-active-text]="pill.active"
+          [class.border-sidebar]="pill.active"
+          [class.bg-surface]="!pill.active"
+          [class.border-border]="!pill.active"
+          [class.text-text-secondary]="!pill.active"
+          [class.hover:bg-surface-muted]="!pill.active"
+        >
+          {{ pill.label }}
+          @if (pill.count !== null) {
+            <span
+              class="fs-label font-extrabold tabular-nums px-1.5 rounded-full"
+              [class.bg-sidebar-hover]="pill.active"
+              [class.bg-surface-muted]="!pill.active"
+              >{{ pill.count }}</span
+            >
+          }
+        </button>
+      }
+    </div>
+
+    <div class="px-4 md:px-6 lg:px-8 pb-8">
       @if (loading()) {
         @if (view() === 'cards') {
           <div
@@ -142,26 +176,29 @@ const STATUS_ORDER: LeadStatus[] = [
             <button
               type="button"
               (click)="open(row)"
-              class="text-start bg-surface border border-border rounded-card p-4 flex flex-col gap-2.5 cursor-pointer hover:bg-surface-muted transition-colors outline-none focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2"
+              class="text-start bg-surface border border-border-soft rounded-card shadow-[var(--shadow-card)] p-4 flex flex-col gap-3 cursor-pointer hover:border-border-strong transition-colors outline-none focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2"
               [class.opacity-60]="isConverted(row)"
             >
               <!-- Header: intake dot (hidden until DTO carries it) + name + phone · status -->
               <div class="flex items-start justify-between gap-2">
-                <div class="min-w-0">
-                  <div class="flex items-center gap-2">
-                    @if (intakePresent(row)) {
-                      <span
-                        class="w-2 h-2 shrink-0 bg-accent-soft border border-accent"
-                        [title]="catalog.t('leads.identity')"
-                      ></span>
+                <div class="min-w-0 flex items-center gap-3">
+                  <pera-avatar [name]="row.firstName + ' ' + row.lastName" size="md" />
+                  <div class="min-w-0">
+                    <div class="flex items-center gap-2">
+                      @if (intakePresent(row)) {
+                        <span
+                          class="w-2 h-2 shrink-0 bg-accent-soft border border-accent"
+                          [title]="catalog.t('leads.identity')"
+                        ></span>
+                      }
+                      <span class="font-extrabold text-text-primary truncate"
+                        >{{ row.firstName }} {{ row.lastName }}</span
+                      >
+                    </div>
+                    @if (row.phone) {
+                      <div class="fs-caption text-text-muted mt-0.5" dir="ltr">{{ row.phone }}</div>
                     }
-                    <span class="font-medium text-text-primary truncate"
-                      >{{ row.firstName }} {{ row.lastName }}</span
-                    >
                   </div>
-                  @if (row.phone) {
-                    <div class="fs-label text-text-muted mt-0.5" dir="ltr">{{ row.phone }}</div>
-                  }
                 </div>
                 <pera-status-badge
                   class="shrink-0"
@@ -177,7 +214,7 @@ const STATUS_ORDER: LeadStatus[] = [
                   {{ catalog.t(sourceKey(row.source)) }}</span
                 >
                 @if (sectorLabel(row); as sector) {
-                  <span class="px-1.5 py-0.5 border border-border-strong text-text-secondary">{{
+                  <span class="px-2 py-0.5 rounded-full bg-sand-soft text-sand-ink font-bold">{{
                     sector
                   }}</span>
                 }
@@ -207,26 +244,50 @@ const STATUS_ORDER: LeadStatus[] = [
           />
         </div>
       } @else {
-        <pera-data-table
-          [columns]="columns()"
-          [rows]="rows()"
-          [rowId]="rowId"
-          [hasRowClick]="true"
-          [page]="paged().page"
-          [pageSize]="paged().pageSize || pageSize"
-          [totalCount]="paged().totalCount"
-          (pageChange)="goToPage($event)"
-          (rowClick)="open($event)"
-        />
+        <!-- OS-6: on desktop a row opens the preview panel beside the table; elsewhere it opens
+             the lead. -->
+        <div
+          class="grid gap-5 items-start"
+          [class]="selected() ? 'lg:grid-cols-[minmax(0,1fr)_var(--w-rail)]' : ''"
+        >
+          <pera-data-table
+            class="min-w-0"
+            [columns]="columns()"
+            [rows]="rows()"
+            [rowId]="rowId"
+            [hasRowClick]="true"
+            [page]="paged().page"
+            [pageSize]="paged().pageSize || pageSize"
+            [totalCount]="paged().totalCount"
+            (pageChange)="goToPage($event)"
+            (rowClick)="select($event)"
+          />
+          @if (selected(); as lead) {
+            <app-lead-preview
+              class="max-lg:hidden sticky top-[calc(var(--topbar-h)+var(--space-4))]"
+              [lead]="lead"
+              [ownerName]="ownerName(lead)"
+              (closed)="selected.set(null)"
+              (changed)="afterStatusChange()"
+            />
+          }
+        </div>
       }
     </div>
 
     <ng-template #nameTpl let-row>
-      <div class="flex flex-col gap-0.5">
-        <span class="font-medium text-text-primary">{{ row.firstName }} {{ row.lastName }}</span>
-        @if (row.phone) {
-          <span class="fs-label text-text-muted" dir="ltr">{{ row.phone }}</span>
-        }
+      <div class="flex items-center gap-3 min-w-0" [attr.data-lead-row]="row.id">
+        <pera-avatar [name]="row.firstName + ' ' + row.lastName" size="sm" />
+        <div class="flex flex-col gap-0.5 min-w-0">
+          <span
+            class="font-bold text-text-primary truncate"
+            [class.text-accent]="selected()?.id === row.id"
+            >{{ row.firstName }} {{ row.lastName }}</span
+          >
+          @if (row.phone) {
+            <span class="fs-caption text-text-muted" dir="ltr">{{ row.phone }}</span>
+          }
+        </div>
       </div>
     </ng-template>
     <ng-template #statusTpl let-row>
@@ -242,6 +303,7 @@ export class CrmLeadsListComponent implements OnInit {
   private readonly directory = inject(EmployeeService);
   private readonly modal = inject(ModalService);
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
   protected readonly catalog = inject(CatalogService);
   protected readonly PERM = PERM;
 
@@ -276,11 +338,51 @@ export class CrmLeadsListComponent implements OnInit {
     },
   ]);
 
+  /** OS-6: the lead shown in the desktop preview panel. */
+  readonly selected = signal<CrmLead | null>(null);
+
+  /** OS-6: All plus one pill per status, counted by status-counts under the search filter. */
+  readonly pills = computed(() => {
+    const current = this.filters().facets?.['status']?.at(-1) ?? '';
+    const c = this.counts();
+    return [
+      {
+        value: '',
+        label: this.catalog.t('leads.allStatuses'),
+        count: c ? c.total : null,
+        active: current === '',
+      },
+      ...STATUS_ORDER.map((s) => ({
+        value: String(s),
+        label: this.catalog.t(LEAD_STATUS_KEYS[s]),
+        count: this.statusCount(s),
+        active: current === String(s),
+      })),
+    ];
+  });
+
+  pickStatus(value: string): void {
+    this.onFilters({ ...this.filters(), facets: value ? { status: [value] } : {} });
+  }
+
+  /** Desktop table: a row opens the preview; narrower screens open the lead page. */
+  select(row: CrmLead): void {
+    const wide = typeof matchMedia === 'function' && matchMedia('(min-width: 1024px)').matches;
+    if (wide) this.selected.set(row);
+    else this.open(row);
+  }
+
+  afterStatusChange(): void {
+    this.selected.set(null);
+    this.loadPage();
+    this.loadCounts();
+  }
+
   readonly columns = computed<ColumnDef<CrmLead>[]>(() => [
     {
       key: 'name',
       header: this.catalog.t('leads.colName'),
-      minWidth: 200,
+      minWidth: 220,
       template: this.nameTpl(),
     },
     {
@@ -300,6 +402,7 @@ export class CrmLeadsListComponent implements OnInit {
       header: this.catalog.t('leads.colOwner'),
       minWidth: 140,
       value: (r) => this.ownerName(r),
+      hideBelowLg: true,
     },
   ]);
 
@@ -321,6 +424,21 @@ export class CrmLeadsListComponent implements OnInit {
     action: () => void this.openNew(),
     capability: PERM.crm.leads.create,
   }));
+
+  constructor() {
+    // OS-2: the phone tab bar's centre "New lead" lands here with `?new=1`. Open the form, then
+    // drop the flag so Back or a refresh does not reopen it.
+    this.route.queryParamMap.pipe(takeUntilDestroyed()).subscribe((q) => {
+      if (q.get('new') !== '1') return;
+      void this.router.navigate([], {
+        relativeTo: this.route,
+        queryParams: { new: null },
+        queryParamsHandling: 'merge',
+        replaceUrl: true,
+      });
+      void this.openNew();
+    });
+  }
 
   setView(v: 'cards' | 'table'): void {
     this.view.set(v);

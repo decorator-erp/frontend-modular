@@ -3,7 +3,10 @@
      are gone. Layout is Tailwind utilities + scale tokens; the header, status pills and
      donuts are design-system primitives. Section order is unchanged:
      header → timeline → stages&tasks → status donut → priority donut → activity →
-     team → documents → risk (empty). -->
+     team → documents → risk (empty).
+     OS-5 (Ocean Studio): header card with a cover slot, a segmented section nav, chevron stage
+     timeline, Stages & tasks beside the donuts, then Team, Documents and Activity in three
+     columns. The risk register empty state is dropped (no backend). -->
 <div class="block bg-bg min-h-full tabular-nums">
   @if (loading()) {
     <div class="px-4 md:px-6 lg:px-8 py-6">
@@ -44,6 +47,7 @@
         kind="project"
         [name]="proj.name"
         [avatar]="{ name: proj.name }"
+        [cover]="{ seed: proj.id, label: proj.name }"
         [kindBadge]="proj.code || undefined"
         [status]="headerStatus()"
         [meta]="headerMeta()"
@@ -94,85 +98,6 @@
               Edit
             </button>
           }
-          <!-- UI-1: the documents browser reads GET …/documents, which needs documents.read. -->
-          @if (covers('Documents') && areaCan('Documents', PERM.documents.read)) {
-            <button type="button" [class]="btnClass" (click)="openDocuments()">
-              <svg
-                width="13"
-                height="13"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.7"
-                class="shrink-0"
-              >
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                <path d="M14 2v6h6" />
-              </svg>
-              Documents
-            </button>
-          }
-          @if (areaCan('Crm', perm.crmDashboard)) {
-            <button type="button" [class]="btnClass" (click)="openRequirementGathering()">
-              <svg
-                width="13"
-                height="13"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.7"
-                class="shrink-0"
-              >
-                <path
-                  d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"
-                />
-                <rect x="9" y="3" width="6" height="4" rx="1" />
-              </svg>
-              {{ catalog.t('nav.reqGathering') }}
-            </button>
-          }
-          <!-- crmp P2-B: the CRM Client portal tab (a URL only; projects never imports crm). -->
-          @if (canClientPortal()) {
-            <a [class]="btnClass" [routerLink]="['/crm/projects', proj.id, 'portal']">{{
-              catalog.t('pportal.title')
-            }}</a>
-          }
-          @if (isStage() && areaCan('Overview', perm.scope)) {
-            <a [class]="btnClass" [routerLink]="['/projects', proj.id, 'scope-of-work']">{{
-              catalog.t('sow.title')
-            }}</a>
-          }
-          @if (areaCan('Sites', 'sites.read')) {
-            <a
-              [class]="btnClass"
-              [routerLink]="['/sites']"
-              [queryParams]="{ projectId: proj.id }"
-              data-sites-link
-              >{{ catalog.t('sv.navSurveys') }}</a
-            >
-          }
-          <!-- UI-1: the tasks page needs stage_tasks.read. -->
-          @if (shows('StagesAndTasks') && listCan('StagesAndTasks', PERM.stageTasks.read)) {
-            <a [class]="btnClass" [routerLink]="['/projects', proj.id, 'tasks']" data-tasks-link>{{
-              catalog.t('projects.tasksLink')
-            }}</a>
-          }
-          @if (shows('Team')) {
-            <a
-              [class]="btnClass"
-              [routerLink]="['/projects', proj.id, 'members']"
-              data-members-link
-              >{{ catalog.t('projects.membersLink') }}</a
-            >
-          }
-          @if (canManageAccess()) {
-            <a
-              [class]="btnClass"
-              [routerLink]="['/projects', proj.id, 'access']"
-              data-access-link
-              >{{ catalog.t('projects.accessLink') }}</a
-            >
-          }
           @if (canAddStage()) {
             <button type="button" [class]="btnClass" (click)="newStage()" data-new-stage>
               <svg
@@ -209,10 +134,82 @@
           }
         </div>
       </pera-entity-header-card>
+
+      <!-- OS-5 (Ocean Studio): the project's sections as one segmented bar; this page is the navy
+           Overview item. Each link keeps its UI-1 permission gate. Scrolls sideways on phones. -->
+      <nav
+        aria-label="Project sections"
+        class="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0"
+        data-section-nav
+      >
+        <div
+          class="inline-flex items-center gap-1 p-1 rounded-[var(--radius-control)] bg-surface border border-border-soft shadow-[var(--shadow-card)]"
+        >
+          <span [class]="navItemActiveClass" aria-current="page">{{
+            catalog.t('project.overview')
+          }}</span>
+          <!-- UI-1: the documents browser reads GET …/documents, which needs documents.read. -->
+          @if (covers('Documents') && areaCan('Documents', PERM.documents.read)) {
+            <button type="button" [class]="navItemClass" (click)="openDocuments()">
+              Documents
+            </button>
+          }
+          @if (areaCan('Crm', perm.crmDashboard)) {
+            <button type="button" [class]="navItemClass" (click)="openRequirementGathering()">
+              {{ catalog.t('nav.reqGathering') }}
+            </button>
+          }
+          <!-- crmp P2-B: the CRM Client portal tab (a URL only; projects never imports crm). -->
+          @if (canClientPortal()) {
+            <a [class]="navItemClass" [routerLink]="['/crm/projects', proj.id, 'portal']">{{
+              catalog.t('pportal.title')
+            }}</a>
+          }
+          @if (isStage() && areaCan('Overview', perm.scope)) {
+            <a [class]="navItemClass" [routerLink]="['/projects', proj.id, 'scope-of-work']">{{
+              catalog.t('sow.title')
+            }}</a>
+          }
+          @if (areaCan('Sites', 'sites.read')) {
+            <a
+              [class]="navItemClass"
+              [routerLink]="['/sites']"
+              [queryParams]="{ projectId: proj.id }"
+              data-sites-link
+              >{{ catalog.t('sv.navSurveys') }}</a
+            >
+          }
+          <!-- UI-1: the tasks page needs stage_tasks.read. -->
+          @if (shows('StagesAndTasks') && listCan('StagesAndTasks', PERM.stageTasks.read)) {
+            <a
+              [class]="navItemClass"
+              [routerLink]="['/projects', proj.id, 'tasks']"
+              data-tasks-link
+              >{{ catalog.t('projects.tasksLink') }}</a
+            >
+          }
+          @if (shows('Team')) {
+            <a
+              [class]="navItemClass"
+              [routerLink]="['/projects', proj.id, 'members']"
+              data-members-link
+              >{{ catalog.t('projects.membersLink') }}</a
+            >
+          }
+          @if (canManageAccess()) {
+            <a
+              [class]="navItemClass"
+              [routerLink]="['/projects', proj.id, 'access']"
+              data-access-link
+              >{{ catalog.t('projects.accessLink') }}</a
+            >
+          }
+        </div>
+      </nav>
     </div>
 
     <!-- ============ Panel grid ============ -->
-    <div class="mx-4 md:mx-6 lg:mx-8 mt-6 mb-9 grid grid-cols-1 lg:grid-cols-12 gap-5">
+    <div class="mx-4 md:mx-6 lg:mx-8 mt-5 mb-9 grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
       <!-- Stage timeline — Stage workflows only -->
       @if (isStage()) {
         <section [class]="panelClass" class="lg:col-span-12">
@@ -229,12 +226,9 @@
           </div>
           <div class="min-w-0">
             @if (stages().length) {
-              <app-stage-timeline
-                [stages]="stages()"
-                [startDate]="proj.startDate"
-                [endDate]="proj.endDate"
-                (stageClick)="openStage($event)"
-              />
+              <div class="px-5 pb-5 pt-1">
+                <app-stage-chevrons [stages]="stages()" (stageClick)="openStage($event)" />
+              </div>
             } @else {
               <p [class]="panelEmptyClass">No stages defined yet.</p>
             }
@@ -244,7 +238,7 @@
 
       <!-- Stages & tasks — List ⇄ Gantt -->
       @if (listCan('StagesAndTasks', perm.tasksPanel)) {
-        <section [class]="panelClass" class="lg:col-span-12">
+        <section [class]="panelClass" class="lg:col-span-8">
           <div data-panel-head [class]="panelHeadClass">
             <div class="flex items-center gap-2.5">
               <h3 [class]="panelTitleClass">Stages &amp; tasks</h3>
@@ -422,55 +416,62 @@
         </section>
       }
 
-      <!-- Task status donut — the three cards in this row are equal height; content tops out. -->
-      <section [class]="panelClass" class="lg:col-span-4">
-        <div data-panel-head [class]="panelHeadClass">
-          <div class="flex items-center gap-2.5">
-            <h3 [class]="panelTitleClass">Task status</h3>
-            <span [class]="countChipClass">{{ totalTasks() }}</span>
+      <!-- OS-5: the task donuts stack beside Stages & tasks. -->
+      <div class="lg:col-span-4 flex flex-col gap-5 min-w-0">
+        <!-- Task status donut — the three cards in this row are equal height; content tops out. -->
+        <section [class]="panelClass">
+          <div data-panel-head [class]="panelHeadClass">
+            <div class="flex items-center gap-2.5">
+              <h3 [class]="panelTitleClass">Task status</h3>
+              <span [class]="countChipClass">{{ totalTasks() }}</span>
+            </div>
           </div>
-        </div>
-        <div class="min-w-0 p-5">
-          @if (totalTasks()) {
-            <!-- `[&>div]:items-start` replaces the old `.dms-proj pera-donut > div` reach-in:
-                 the ring pins to the top of its legend so a 4-row and a 5-row legend align. -->
-            <pera-donut
-              class="[&>div]:items-start"
-              [segments]="statusSegments()"
-              [centerValue]="totalTasks()"
-              centerLabel="tasks"
-            />
-          } @else {
-            <p class="m-0 text-text-muted" [style.fontSize]="'var(--fs-caption)'">No tasks yet.</p>
-          }
-        </div>
-      </section>
+          <div class="min-w-0 p-5">
+            @if (totalTasks()) {
+              <!-- `[&>div]:items-start` replaces the old `.dms-proj pera-donut > div` reach-in:
+                   the ring pins to the top of its legend so a 4-row and a 5-row legend align. -->
+              <pera-donut
+                class="[&>div]:items-start"
+                [segments]="statusSegments()"
+                [centerValue]="totalTasks()"
+                centerLabel="tasks"
+              />
+            } @else {
+              <p class="m-0 text-text-muted" [style.fontSize]="'var(--fs-caption)'">
+                No tasks yet.
+              </p>
+            }
+          </div>
+        </section>
 
-      <!-- Task priority donut -->
-      <section [class]="panelClass" class="lg:col-span-4">
-        <div data-panel-head [class]="panelHeadClass">
-          <div class="flex items-center gap-2.5">
-            <h3 [class]="panelTitleClass">Task priority</h3>
-            <span [class]="countChipClass">{{ totalTasks() }}</span>
+        <!-- Task priority donut -->
+        <section [class]="panelClass">
+          <div data-panel-head [class]="panelHeadClass">
+            <div class="flex items-center gap-2.5">
+              <h3 [class]="panelTitleClass">Task priority</h3>
+              <span [class]="countChipClass">{{ totalTasks() }}</span>
+            </div>
           </div>
-        </div>
-        <div class="min-w-0 p-5">
-          @if (totalTasks()) {
-            <pera-donut
-              class="[&>div]:items-start"
-              [segments]="prioritySegments()"
-              [centerValue]="totalTasks()"
-              centerLabel="tasks"
-              [roundSwatch]="true"
-            />
-          } @else {
-            <p class="m-0 text-text-muted" [style.fontSize]="'var(--fs-caption)'">No tasks yet.</p>
-          }
-        </div>
-      </section>
+          <div class="min-w-0 p-5">
+            @if (totalTasks()) {
+              <pera-donut
+                class="[&>div]:items-start"
+                [segments]="prioritySegments()"
+                [centerValue]="totalTasks()"
+                centerLabel="tasks"
+                [roundSwatch]="true"
+              />
+            } @else {
+              <p class="m-0 text-text-muted" [style.fontSize]="'var(--fs-caption)'">
+                No tasks yet.
+              </p>
+            }
+          </div>
+        </section>
+      </div>
 
       <!-- Activity — fills the row height, dropping "N of M shown" to the bottom -->
-      <section [class]="panelClass" class="lg:col-span-4" *peraCan="perm.activity">
+      <section [class]="panelClass" class="lg:col-span-4 lg:order-last" *peraCan="perm.activity">
         <div data-panel-head [class]="panelHeadClass">
           <div class="flex items-center gap-2.5">
             <h3 [class]="panelTitleClass">Activity</h3>
@@ -493,7 +494,7 @@
 
       <!-- Team — compact project-member roster -->
       @if (shows('Team') && areaCan('Team', perm.team)) {
-        <section [class]="panelClass" class="lg:col-span-6">
+        <section [class]="panelClass" class="lg:col-span-4">
           <div data-panel-head [class]="panelHeadClass">
             <div class="flex items-center gap-2.5">
               <h3 [class]="panelTitleClass">Team</h3>
@@ -533,7 +534,7 @@
 
       <!-- Documents -->
       @if (areaCan('Documents', perm.documents)) {
-        <section [class]="panelClass" class="lg:col-span-6">
+        <section [class]="panelClass" class="lg:col-span-4">
           <div data-panel-head [class]="panelHeadClass">
             <div class="flex items-center gap-2.5">
               <h3 [class]="panelTitleClass">Documents</h3>
@@ -590,63 +591,6 @@
           </div>
         </section>
       }
-
-      <!-- Risk register (empty state) — no backend endpoint yet -->
-      <section [class]="panelClass" class="lg:col-span-12">
-        <div data-panel-head [class]="panelHeadClass">
-          <div class="flex items-center gap-2.5">
-            <h3 [class]="panelTitleClass">Risk register</h3>
-          </div>
-          <button type="button" [class]="panelLinkClass" (click)="logRisk()">Add risk</button>
-        </div>
-        <div class="min-w-0">
-          <div data-risk-empty class="px-6 py-9 flex flex-col items-center gap-2.5 text-center">
-            <div
-              class="w-10 h-10 border border-border flex items-center justify-center text-text-muted"
-            >
-              <svg
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.5"
-              >
-                <path d="M12 22a10 10 0 1 1 0-20 10 10 0 0 1 0 20zM12 8v4M12 16v.01" />
-              </svg>
-            </div>
-            <div
-              data-empty-title
-              class="font-medium text-text-primary"
-              [style.fontSize]="'var(--fs-body)'"
-            >
-              No open risks logged
-            </div>
-            <div
-              data-empty-sub
-              class="font-mono text-text-muted max-w-96 leading-relaxed"
-              [style.fontSize]="'var(--fs-label)'"
-            >
-              No risks logged yet. Capture delivery threats here — owner, mitigation, and review
-              date keep delivery honest.
-            </div>
-            <button type="button" [class]="btnSmClass" class="mt-1.5" (click)="logRisk()">
-              <svg
-                width="11"
-                height="11"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                class="shrink-0"
-              >
-                <path d="M12 5v14M5 12h14" />
-              </svg>
-              Log a risk
-            </button>
-          </div>
-        </div>
-      </section>
     </div>
   }
 </div>

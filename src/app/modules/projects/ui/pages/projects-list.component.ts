@@ -10,6 +10,7 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
 import { Router } from '@angular/router';
 import { Subject } from 'rxjs';
 import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
@@ -30,7 +31,11 @@ import {
   PeraEmptyComponent,
   PeraFilterBarComponent,
   PeraPageHeaderComponent,
+  PeraProgressBarComponent,
+  PeraSegmentedComponent,
   PeraSkeletonComponent,
+  PeraSwatchComponent,
+  SegmentedOption,
   SelectOption,
   TableSort,
 } from '@ds';
@@ -42,13 +47,17 @@ const PAGE_SIZE = 20;
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     FormsModule,
+    NgTemplateOutlet,
     PeraAvatarComponent,
     PeraButtonComponent,
     PeraDataTableComponent,
     PeraEmptyComponent,
     PeraFilterBarComponent,
     PeraPageHeaderComponent,
+    PeraProgressBarComponent,
+    PeraSegmentedComponent,
     PeraSkeletonComponent,
+    PeraSwatchComponent,
     CanDirective,
   ],
   templateUrl: './projects-list.component.html',
@@ -138,18 +147,24 @@ export class ProjectsListComponent implements OnInit {
       .map((o) => ({ value: String(o.value), label: o.label }));
   }
 
-  private readonly codeTpl = viewChild.required<TemplateRef<unknown>>('codeTpl');
+  private readonly projectTpl = viewChild.required<TemplateRef<unknown>>('projectTpl');
   private readonly statusTpl = viewChild.required<TemplateRef<unknown>>('statusTpl');
   private readonly typeTpl = viewChild.required<TemplateRef<unknown>>('typeTpl');
   private readonly progressTpl = viewChild.required<TemplateRef<unknown>>('progressTpl');
   private readonly ownerTpl = viewChild.required<TemplateRef<unknown>>('ownerTpl');
 
   readonly columns = computed<ColumnDef<ProjectWithCode>[]>(() => [
-    { key: 'code', header: 'Code', width: 100, sortable: false, template: this.codeTpl() },
-    { key: 'name', header: 'Project', minWidth: 200, sortable: false },
-    { key: 'status', header: 'Status', width: 120, sortable: false, template: this.statusTpl() },
-    { key: 'workflowType', header: 'Type', width: 100, template: this.typeTpl() },
-    { key: 'clientName', header: 'Client', width: 160, sortable: false },
+    // OS-4: the code sits under the name, beside the swatch thumbnail.
+    { key: 'name', header: 'Project', minWidth: 240, sortable: false, template: this.projectTpl() },
+    { key: 'status', header: 'Status', width: 130, sortable: false, template: this.statusTpl() },
+    {
+      key: 'workflowType',
+      header: 'Type',
+      width: 110,
+      template: this.typeTpl(),
+      hideBelowLg: true,
+    },
+    { key: 'clientName', header: 'Client', width: 160, sortable: false, hideBelowLg: true },
     {
       key: 'progressPercentage',
       header: 'Progress',
@@ -157,9 +172,63 @@ export class ProjectsListComponent implements OnInit {
       sortable: false,
       template: this.progressTpl(),
     },
-    { key: 'productOwnerName', header: 'Owner', width: 140, template: this.ownerTpl() },
+    {
+      key: 'productOwnerName',
+      header: 'Owner',
+      width: 150,
+      template: this.ownerTpl(),
+      hideBelowLg: true,
+    },
     // Sync W2-2: no Budget column — ProjectResponse carries no budget.
   ]);
+
+  readonly viewOptions: SegmentedOption[] = [
+    { value: 'cards', label: 'Cards' },
+    { value: 'table', label: 'Table' },
+  ];
+
+  /**
+   * OS-4: the status summary. `GET /api/projects` has no status filter and no status counts, so the
+   * per-status counts (and picking one) work only when every match is on this page. Otherwise they
+   * show "—" and only All is live. A projects `status-counts` endpoint would lift this.
+   */
+  readonly statusFilter = signal<ProjectStatus | null>(null);
+  readonly summaryComplete = computed(
+    () => this.page() === 1 && this.pageRows().length >= this.totalCount(),
+  );
+  readonly summary = computed(() => {
+    const rows = this.rows();
+    const complete = this.summaryComplete();
+    const count = (s: ProjectStatus) =>
+      complete ? rows.filter((r) => r.status === s).length : null;
+    const card = (key: ProjectStatus, label: string, dot: string) => ({
+      key: key as ProjectStatus | null,
+      label,
+      dot,
+      count: count(key),
+    });
+    return [
+      {
+        key: null as ProjectStatus | null,
+        label: 'All',
+        dot: 'bg-text-muted',
+        count: this.totalCount() as number | null,
+      },
+      card('InProgress', 'In progress', 'bg-info'),
+      card('OnHold', 'On hold', 'bg-warning'),
+      card('Draft', 'Draft', 'bg-sand'),
+      card('Completed', 'Completed', 'bg-success'),
+    ];
+  });
+  /** The rows shown: the page, narrowed by the picked status card when the page holds every match. */
+  readonly visibleRows = computed(() => {
+    const s = this.statusFilter();
+    return s && this.summaryComplete() ? this.rows().filter((r) => r.status === s) : this.rows();
+  });
+
+  pickStatus(status: ProjectStatus | null): void {
+    this.statusFilter.set(this.statusFilter() === status ? null : status);
+  }
 
   readonly statusTone = projectStatusTone;
   readonly statusLabel = projectStatusLabel;
@@ -291,7 +360,8 @@ export class ProjectsListComponent implements OnInit {
     void this.router.navigate(['/projects', row.id]);
   }
 
-  setView(v: 'cards' | 'table'): void {
+  setView(v: 'cards' | 'table' | unknown): void {
+    if (v !== 'cards' && v !== 'table') return;
     this.view.set(v);
     if (typeof localStorage !== 'undefined') localStorage.setItem('pera.projects.view', v);
   }

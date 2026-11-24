@@ -53,6 +53,25 @@ describe('CrmLeadsListComponent — status pills (009b #2)', () => {
   });
 });
 
+describe('CrmLeadsListComponent — Ocean Studio pills and preview (OS-6)', () => {
+  it('shows All plus one pill per status, and a pill sets the server-side status filter', () => {
+    const { component, leads } = make();
+    component.ngOnInit();
+    const pills = component.pills();
+    expect(pills.map((p) => p.count)).toEqual([9, 1, 2, 3, 1, 2]);
+    expect(pills[0].active).toBe(true);
+
+    component.pickStatus(String(LeadStatus.Qualified));
+    expect(leads.search).toHaveBeenLastCalledWith(
+      expect.objectContaining({ status: LeadStatus.Qualified }),
+    );
+    expect(component.pills().find((p) => p.active)?.value).toBe(String(LeadStatus.Qualified));
+
+    component.pickStatus('');
+    expect(leads.search).toHaveBeenLastCalledWith(expect.objectContaining({ status: undefined }));
+  });
+});
+
 describe('CrmLeadsListComponent — load failure (crm-prod M4)', () => {
   it('shows an error with Retry instead of the empty state, and Retry refetches', () => {
     const { leads } = make();

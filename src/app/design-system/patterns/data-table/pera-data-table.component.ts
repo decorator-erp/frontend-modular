@@ -206,6 +206,7 @@ const HEADER_LABEL = 'uppercase tracking-wide fs-label font-semibold text-text-m
                   }}"
                   [class.start-0]="stickyFirstCol() && first && !selectable()"
                   [class.z-20]="stickyFirstCol() && first && !selectable()"
+                  [class.max-lg:hidden]="col.hideBelowLg"
                   [style.width.px]="col.width"
                   [style.minWidth.px]="col.minWidth"
                 >
@@ -273,6 +274,7 @@ const HEADER_LABEL = 'uppercase tracking-wide fs-label font-semibold text-text-m
                 @for (col of visibleColumns(); track col.key; let first = $first) {
                   <td
                     [class]="cellClass()"
+                    [class.max-lg:hidden]="col.hideBelowLg"
                     [style.padding]="cellPadding()"
                     [class.sticky]="stickyFirstCol() && first && !selectable()"
                     [class.start-0]="stickyFirstCol() && first && !selectable()"

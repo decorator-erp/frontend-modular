@@ -4,10 +4,12 @@ import { PeraTrendArrowComponent } from '../../components/trend-arrow/pera-trend
 import { PeraProgressBarComponent } from '../../components/progress-bar/pera-progress-bar.component';
 import { PeraIconComponent } from '../../components/icon/pera-icon.component';
 
-export type KpiTone = 'accent' | 'info' | 'success' | 'warning' | 'danger' | 'pending';
+export type KpiTone = 'accent' | 'sand' | 'info' | 'success' | 'warning' | 'danger' | 'pending';
 
 const CHIP_TONES: Record<KpiTone, string> = {
   accent: 'bg-accent-soft text-accent',
+  // OS-3: the Ocean Studio secondary; the icon uses the ink shade, sand itself is never text.
+  sand: 'bg-sand-soft text-sand-ink',
   info: 'bg-info-soft text-info',
   success: 'bg-success-soft text-success',
   warning: 'bg-warning-soft text-warning',
@@ -70,13 +72,13 @@ const CHIP_TONES: Record<KpiTone, string> = {
         <!-- RD-1 "icon and trend": the caption with a coloured icon chip at the end. -->
         <span class="flex items-start justify-between gap-2 min-w-0">
           <span
-            class="uppercase tracking-wide text-text-muted truncate"
+            class="uppercase tracking-wide font-bold text-text-muted min-w-0 leading-snug line-clamp-2"
             [style.fontSize]="'var(--fs-label)'"
             >{{ caption() }}</span
           >
           <span
             data-kpi-icon
-            class="w-8 h-8 rounded-lg grid place-items-center shrink-0"
+            class="size-[var(--space-10)] rounded-[var(--radius-control)] grid place-items-center shrink-0"
             [class]="chipClass()"
             aria-hidden="true"
           >
@@ -90,7 +92,9 @@ const CHIP_TONES: Record<KpiTone, string> = {
           >{{ caption() }}</span
         >
       }
-      <span class="text-xl md:text-2xl font-semibold text-text-primary tabular-nums truncate">
+      <span
+        class="text-xl md:text-2xl font-extrabold tracking-[-0.02em] text-text-primary tabular-nums truncate"
+      >
         {{ value() }}
         @if (frac()) {
           <span class="font-mono text-xs font-normal text-text-muted ms-1.5">{{ frac() }}</span>

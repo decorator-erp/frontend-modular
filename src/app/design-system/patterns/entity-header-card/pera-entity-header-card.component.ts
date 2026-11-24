@@ -10,6 +10,7 @@ import {
 } from '../../components/status-badge/pera-status-badge.component';
 import { PeraBadgeComponent } from '../../components/badge/pera-badge.component';
 import { PeraKpiTileComponent } from '../kpi-tile/pera-kpi-tile.component';
+import { PeraSwatchComponent } from '../../components/swatch/pera-swatch.component';
 
 /** A single KPI shown in the header card's bottom strip. */
 export interface EntityHeaderKpi {
@@ -72,21 +73,35 @@ export interface EntityHeaderMeta {
     PeraStatusBadgeComponent,
     PeraKpiTileComponent,
     PeraBadgeComponent,
+    PeraSwatchComponent,
   ],
   host: { class: 'block' },
   template: `
-    <div class="bg-surface border border-border rounded-lg p-4 flex flex-col gap-4">
+    <!-- OS-5 (Ocean Studio): a soft card; an optional cover slot replaces the avatar. -->
+    <div
+      class="bg-surface border border-border-soft rounded-card shadow-[var(--shadow-card)] p-4 md:p-5 flex flex-col gap-4 md:gap-5"
+    >
       <!-- The row wraps: with many actions they drop to their own line rather than squeezing the
            name and meta (which then truncated to blank). The identity column keeps a minimum width. -->
       <div class="flex flex-wrap items-start gap-4">
-        <pera-avatar size="lg" [name]="avatar()?.name ?? name()" [src]="avatar()?.src" />
+        @if (cover(); as c) {
+          <pera-swatch
+            data-header-cover
+            class="max-md:w-full max-md:[&>span]:w-full"
+            size="xl"
+            [seed]="c.seed"
+            [label]="c.label ?? name()"
+          />
+        } @else {
+          <pera-avatar size="lg" [name]="avatar()?.name ?? name()" [src]="avatar()?.src" />
+        }
 
         <div data-header-identity class="flex flex-col gap-1 min-w-64 flex-1">
           <div class="flex flex-wrap items-center gap-2">
             <span
-              class="font-semibold text-text-primary truncate"
-              [style.fontSize]="'var(--fs-h2)'"
-              [style.lineHeight]="'var(--lh-h2)'"
+              class="font-extrabold tracking-[-0.02em] text-text-primary truncate"
+              [style.fontSize]="'var(--fs-h1)'"
+              [style.lineHeight]="'var(--lh-h1)'"
               >{{ name() }}</span
             >
 
@@ -110,7 +125,7 @@ export interface EntityHeaderMeta {
               @for (pair of meta(); track pair.label) {
                 <div class="flex flex-col gap-0.5 min-w-0">
                   <span
-                    class="uppercase tracking-wide text-text-muted"
+                    class="uppercase tracking-wide font-bold text-text-muted"
                     [style.fontSize]="'var(--fs-label)'"
                     >{{ pair.label }}</span
                   >
@@ -118,8 +133,8 @@ export interface EntityHeaderMeta {
                     <pera-avatar-stack [people]="group.people" [max]="group.max ?? 4" />
                   } @else {
                     <span
-                      class="font-medium text-text-primary truncate"
-                      [style.fontSize]="'var(--fs-caption)'"
+                      class="font-semibold text-text-primary truncate"
+                      [style.fontSize]="'var(--fs-body-sm)'"
                       >{{ pair.value }}</span
                     >
                   }
@@ -138,7 +153,9 @@ export interface EntityHeaderMeta {
       </div>
 
       @if (kpis().length) {
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div
+          class="grid grid-cols-2 md:grid-cols-4 gap-3 [&_.rounded-card]:bg-bg [&_.rounded-card]:border-transparent"
+        >
           @for (kpi of kpis(); track kpi.caption) {
             <pera-kpi-tile
               [caption]="kpi.caption"
@@ -161,6 +178,8 @@ export class PeraEntityHeaderCardComponent {
   readonly nameAr = input<string | undefined>(undefined);
   /** Optional avatar source; `name` falls back to the card `name`. */
   readonly avatar = input<{ name?: string; src?: string } | undefined>(undefined);
+  /** OS-5: a cover thumbnail (a hashed swatch until records carry an image); replaces the avatar. */
+  readonly cover = input<{ seed: string; label?: string } | undefined>(undefined);
   /** Optional label rendered as a neutral kind badge next to the name. */
   readonly kindBadge = input<string | undefined>(undefined);
   /** Optional status, rendered via `pera-status-badge`. */
