@@ -72,7 +72,7 @@ const CHIP_TONES: Record<KpiTone, string> = {
         <!-- RD-1 "icon and trend": the caption with a coloured icon chip at the end. -->
         <span class="flex items-start justify-between gap-2 min-w-0">
           <span
-            class="uppercase tracking-wide font-bold text-text-muted truncate"
+            class="uppercase tracking-wide font-bold text-text-muted min-w-0 leading-snug line-clamp-2"
             [style.fontSize]="'var(--fs-label)'"
             >{{ caption() }}</span
           >

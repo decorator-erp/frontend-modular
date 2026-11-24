@@ -118,7 +118,7 @@ const BTN =
 const BTN_PRIMARY =
   'inline-flex items-center gap-2 px-3.5 h-[var(--space-10)] rounded-[var(--radius-control)] bg-accent border border-accent text-on-accent fs-body-sm font-bold cursor-pointer whitespace-nowrap hover:bg-accent-hover transition-colors';
 const NAV_ITEM =
-  'inline-flex items-center px-3.5 h-[var(--space-8)] rounded-[var(--radius-md)] fs-body-sm font-semibold whitespace-nowrap cursor-pointer bg-transparent border-0 transition-colors outline-none focus-visible:outline-2 focus-visible:outline-accent';
+  'inline-flex items-center px-3.5 h-[var(--space-8)] rounded-[var(--radius-md)] fs-body-sm font-semibold whitespace-nowrap border-0 transition-colors outline-none focus-visible:outline-2 focus-visible:outline-accent';
 // RS-1: below md the row keeps name + status; owner, due and progress (cells 3-5) hide.
 const STL_GRID =
   'grid grid-cols-[minmax(0,1fr)_auto] md:grid-cols-[minmax(0,1fr)_9rem_8rem_6rem_9rem] max-md:[&>*:nth-child(n+3)]:hidden gap-3 items-center';
@@ -369,7 +369,7 @@ export class ProjectDetailComponent implements OnInit {
   protected readonly avMiniClass = AV_MINI;
   protected readonly btnClass = BTN;
   protected readonly btnPrimaryClass = BTN_PRIMARY;
-  protected readonly navItemClass = `${NAV_ITEM} text-text-secondary hover:bg-surface-muted hover:text-text-primary`;
+  protected readonly navItemClass = `${NAV_ITEM} bg-transparent cursor-pointer text-text-secondary hover:bg-surface-muted hover:text-text-primary`;
   protected readonly navItemActiveClass = `${NAV_ITEM} bg-sidebar text-sidebar-active-text cursor-default`;
   protected readonly stlGrid = STL_GRID;
   protected readonly stlNameClass =
