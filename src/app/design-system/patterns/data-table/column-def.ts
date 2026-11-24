@@ -16,6 +16,8 @@ export interface ColumnDef<T> {
   value?: (row: T) => unknown;
   /** Hide the column label/value pair on the mobile card view. */
   hideOnMobile?: boolean;
+  /** OS-4: drop the column from the table below the desktop breakpoint (tablet widths). */
+  hideBelowLg?: boolean;
   /** Hidden by default in the column-visibility menu (user can re-enable). */
   hidden?: boolean;
   /** Exclude from CSV/XLSX/PDF export (e.g. action/template-only columns). */

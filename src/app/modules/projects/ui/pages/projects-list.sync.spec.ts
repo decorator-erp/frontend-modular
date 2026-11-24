@@ -50,4 +50,28 @@ describe('ProjectsListComponent — names and columns (sync W2-2)', () => {
     const c = make([]);
     expect(c.columns().map((col) => col.header)).not.toContain('Budget');
   });
+
+  it('counts the status cards from the page when every match is on it, and filters by them (OS-4)', () => {
+    const c = make([
+      { id: 'P1', name: 'Villa', status: 'InProgress' },
+      { id: 'P2', name: 'Loft', status: 'OnHold' },
+      { id: 'P3', name: 'Office', status: 'InProgress' },
+    ]);
+    const counts = Object.fromEntries(c.summary().map((s) => [s.key ?? 'all', s.count]));
+    expect(counts).toMatchObject({ all: 3, InProgress: 2, OnHold: 1, Draft: 0 });
+    c.pickStatus('InProgress');
+    expect(c.visibleRows().map((r) => r.id)).toEqual(['P1', 'P3']);
+    c.pickStatus('InProgress');
+    expect(c.visibleRows()).toHaveLength(3);
+  });
+
+  it('drops Type, Client and Owner below the desktop breakpoint (OS-4)', () => {
+    const c = make([]);
+    expect(
+      c
+        .columns()
+        .filter((col) => col.hideBelowLg)
+        .map((col) => col.key),
+    ).toEqual(['workflowType', 'clientName', 'productOwnerName']);
+  });
 });

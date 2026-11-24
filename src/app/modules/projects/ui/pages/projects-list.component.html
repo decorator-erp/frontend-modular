@@ -1,11 +1,13 @@
 <!-- Translated to match A-04 BOQ data-grid density + B-01 ad-head/ad-toolbar patterns -->
 <div class="bg-bg min-h-full">
+  <!-- OS-4 (Ocean Studio): header, status summary, then the list in soft cards. -->
   <!-- ============ .pg header ============ -->
   <pera-page-header
     title="Projects"
     [count]="totalCount() + ' ' + (totalCount() === 1 ? 'PROJECT' : 'PROJECTS')"
   >
-    <div actions class="flex flex-wrap gap-2 items-center">
+    <!-- OS-4: on phones New project is the centre tab button instead. -->
+    <div actions class="flex flex-wrap gap-2 items-center max-md:hidden">
       <!-- UI-1: POST /api/projects needs project.create. -->
       <pera-button
         *peraCan="'project.create'"
@@ -28,156 +30,139 @@
         (valueChange)="onFilters($event)"
         (clearAll)="onClearFilters()"
       />
-      <div
-        class="inline-flex border border-border bg-surface font-mono"
-        [style.fontSize]="'var(--fs-label)'"
-      >
-        <button
-          type="button"
-          (click)="setView('cards')"
-          class="px-2.5 py-1 cursor-pointer"
-          [class.bg-accent-soft]="view() === 'cards'"
-          [class.text-accent]="view() === 'cards'"
-          [class.text-text-secondary]="view() !== 'cards'"
-        >
-          Cards
-        </button>
-        <button
-          type="button"
-          (click)="setView('table')"
-          class="px-2.5 py-1 cursor-pointer border-s border-border"
-          [class.bg-accent-soft]="view() === 'table'"
-          [class.text-accent]="view() === 'table'"
-          [class.text-text-secondary]="view() !== 'table'"
-        >
-          Table
-        </button>
-      </div>
+      <!-- OS-4: the Cards|Table switch is the shared segmented control. -->
+      <pera-segmented
+        class="shrink-0"
+        data-view-toggle
+        [options]="viewOptions"
+        [ngModel]="view()"
+        (ngModelChange)="setView($event)"
+      />
     </div>
   </pera-page-header>
 
-  <!-- ============ .boq-grid ============ -->
-  <div class="bg-bg overflow-x-auto">
+  <!-- ============ Status summary (OS-4) ============ -->
+  <div
+    class="px-4 md:px-6 lg:px-8 pb-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3"
+    data-status-summary
+  >
+    @for (card of summary(); track card.key) {
+      <button
+        type="button"
+        [attr.data-status-card]="card.key ?? 'all'"
+        [attr.aria-pressed]="statusFilter() === card.key"
+        [disabled]="!summaryComplete() && card.key !== null"
+        (click)="pickStatus(card.key)"
+        class="text-start bg-surface border rounded-card shadow-[var(--shadow-card)] px-4 py-3 flex flex-col gap-1 cursor-pointer transition-colors outline-none focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2 disabled:cursor-default"
+        [class.border-accent]="statusFilter() === card.key"
+        [class.ring-1]="statusFilter() === card.key"
+        [class.ring-accent]="statusFilter() === card.key"
+        [class.border-border-soft]="statusFilter() !== card.key"
+      >
+        <span
+          class="flex items-center gap-2 fs-label font-bold uppercase tracking-[0.08em] text-text-muted"
+        >
+          <span class="size-2 rounded-full {{ card.dot }}" aria-hidden="true"></span>
+          {{ card.label }}
+        </span>
+        <span class="fs-h2 font-extrabold tabular-nums text-text-primary">{{
+          card.count ?? '—'
+        }}</span>
+      </button>
+    }
+  </div>
+
+  <div class="px-4 md:px-6 lg:px-8 pb-8">
     @if (loading()) {
-      <div class="p-6"><pera-skeleton [height]="360" rounded="md" /></div>
-    } @else if (!rows().length) {
-      <pera-empty
-        title="No projects found"
-        description="Adjust the filters or start a new project."
-      />
+      <pera-skeleton [height]="360" rounded="md" />
+    } @else if (!visibleRows().length) {
+      <div class="bg-surface border border-border-soft rounded-card shadow-[var(--shadow-card)]">
+        <pera-empty
+          title="No projects found"
+          description="Adjust the filters or start a new project."
+        />
+      </div>
     } @else if (view() === 'cards') {
-      <div class="p-6 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-        @for (row of rows(); track row.id) {
+      <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        @for (row of visibleRows(); track row.id) {
           <button
             type="button"
             (click)="open(row)"
-            class="text-start bg-surface border border-border rounded-md p-4 cursor-pointer hover:bg-surface-muted hover:shadow-sm transition-all outline-none focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2"
+            data-project-card
+            class="text-start bg-surface border border-border-soft rounded-card shadow-[var(--shadow-card)] p-4 flex flex-col gap-3 cursor-pointer hover:border-border-strong transition-colors outline-none focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2"
           >
-            <div class="flex items-start justify-between gap-3 mb-2.5">
-              <div class="min-w-0">
-                <div class="font-mono fs-label text-text-muted">
-                  {{ row.id.slice(0, 6).toUpperCase() }}
-                </div>
-                <div class="fs-body font-semibold leading-tight truncate mt-1">
-                  {{ row.name }}
+            <div class="flex items-start gap-3">
+              <pera-swatch [seed]="row.id" [label]="row.name" size="md" />
+              <div class="flex-1 min-w-0">
+                <div class="fs-body font-extrabold leading-tight truncate">{{ row.name }}</div>
+                <div class="fs-caption text-text-muted truncate mt-0.5">
+                  {{ row.code || row.id.slice(0, 6).toUpperCase() }} · {{ row.clientName || '—' }}
                 </div>
               </div>
-              <span
-                class="shrink-0 inline-flex items-center gap-1.5 fs-micro font-medium px-2.5 py-0.5 rounded-full bg-surface-muted"
-                [class.text-text-muted]="row.status === 'Draft'"
-                [class.text-info]="row.status === 'InProgress'"
-                [class.bg-info-soft]="row.status === 'InProgress'"
-                [class.text-warning]="row.status === 'OnHold'"
-                [class.bg-warning-soft]="row.status === 'OnHold'"
-                [class.text-success]="row.status === 'Completed'"
-                [class.bg-success-soft]="row.status === 'Completed'"
-                [class.text-danger]="row.status === 'Cancelled'"
-                [class.bg-danger-soft]="row.status === 'Cancelled'"
+              <ng-container *ngTemplateOutlet="statusTpl; context: { $implicit: row }" />
+            </div>
+            <div class="flex items-center gap-2">
+              <pera-progress-bar class="flex-1" [value]="row.progressPercentage" [height]="6" />
+              <span class="fs-caption font-bold text-text-secondary tabular-nums"
+                >{{ row.progressPercentage }}%</span
               >
+            </div>
+            <div class="flex items-center justify-between gap-2 pt-3 border-t border-border-soft">
+              @if (row.productOwnerName) {
                 <span
-                  class="w-1.5 h-1.5 rounded-full"
-                  [class.bg-text-muted]="row.status === 'Draft'"
-                  [class.bg-info]="row.status === 'InProgress'"
-                  [class.bg-warning]="row.status === 'OnHold'"
-                  [class.bg-success]="row.status === 'Completed'"
-                  [class.bg-danger]="row.status === 'Cancelled'"
-                ></span>
-                {{ statusLabel(row.status) }}
-              </span>
-            </div>
-            <div class="h-1 rounded-full bg-surface-muted overflow-hidden mb-2.5">
-              <div
-                class="h-full bg-accent rounded-full"
-                [style.width.%]="row.progressPercentage"
-              ></div>
-            </div>
-            <div class="font-mono fs-label text-text-muted mb-3">
-              {{ row.progressPercentage }}% complete
-            </div>
-            <div class="grid grid-cols-2 gap-2 fs-label">
-              <div>
-                <div class="font-mono fs-micro text-text-muted uppercase mb-1">Owner</div>
-                @if (row.productOwnerName) {
-                  <div class="inline-flex items-center gap-1.5 min-w-0">
-                    <pera-avatar [name]="row.productOwnerName" size="xs" />
-                    <span class="truncate">{{ row.productOwnerName }}</span>
-                  </div>
-                } @else {
-                  <span class="text-text-muted">—</span>
-                }
-              </div>
-              <div>
-                <div class="font-mono fs-micro text-text-muted uppercase mb-1">Client</div>
-                <span class="truncate block">{{ row.clientName || '—' }}</span>
-              </div>
+                  class="inline-flex items-center gap-1.5 min-w-0 fs-caption text-text-secondary"
+                >
+                  <pera-avatar [name]="row.productOwnerName" size="xs" />
+                  <span class="truncate">{{ row.productOwnerName }}</span>
+                </span>
+              } @else {
+                <span class="fs-caption text-text-muted">—</span>
+              }
+              <ng-container *ngTemplateOutlet="typeTpl; context: { $implicit: row }" />
             </div>
           </button>
         }
       </div>
-      <div
-        class="px-6 py-3.5 font-mono fs-label text-text-muted border-t border-border bg-surface flex justify-between"
-      >
-        <span>Showing {{ rows().length }} of {{ totalCount() }}</span>
+      <div class="pt-4 fs-caption font-semibold text-text-muted flex justify-between">
+        <span>Showing {{ visibleRows().length }} of {{ totalCount() }}</span>
         <span>Page {{ page() }}</span>
       </div>
     } @else {
-      <!-- The columns() computed and its six cell templates were drafted in 001 and
-           never rendered: PeraDataTableComponent was imported but missing from
-           `imports:`, so `columns()` had no consumer. Both are now live. -->
-      <div class="p-6">
-        <pera-data-table
-          [columns]="columns()"
-          [rows]="rows()"
-          [rowId]="rowId"
-          [sortBy]="sort().sortBy"
-          [sortDir]="sort().sortDir"
-          [page]="page()"
-          [pageSize]="pageSize"
-          [totalCount]="totalCount()"
-          [hasRowClick]="true"
-          (sortChange)="onSort($event)"
-          (pageChange)="onPage($event)"
-          (rowClick)="open($event)"
-        />
-      </div>
+      <pera-data-table
+        [columns]="columns()"
+        [rows]="visibleRows()"
+        [rowId]="rowId"
+        [sortBy]="sort().sortBy"
+        [sortDir]="sort().sortDir"
+        [page]="page()"
+        [pageSize]="pageSize"
+        [totalCount]="totalCount()"
+        [hasRowClick]="true"
+        (sortChange)="onSort($event)"
+        (pageChange)="onPage($event)"
+        (rowClick)="open($event)"
+      />
     }
   </div>
 </div>
 
 <!-- ============ Cell templates consumed by columns() ============ -->
-<ng-template #codeTpl let-row>
-  <span
-    class="font-mono text-text-secondary whitespace-nowrap"
-    [style.fontSize]="'var(--fs-label)'"
-  >
-    {{ row.code || row.id.slice(0, 6).toUpperCase() }}
+<ng-template #projectTpl let-row>
+  <span class="flex items-center gap-3 min-w-0">
+    <pera-swatch [seed]="row.id" [label]="row.name" size="sm" />
+    <span class="flex flex-col min-w-0">
+      <span class="fs-body-sm font-bold text-text-primary truncate">{{ row.name }}</span>
+      <span class="fs-caption text-text-muted whitespace-nowrap">{{
+        row.code || row.id.slice(0, 6).toUpperCase()
+      }}</span>
+    </span>
   </span>
 </ng-template>
 
 <ng-template #statusTpl let-row>
   <span
-    class="inline-flex items-center gap-1.5 font-medium px-2.5 py-0.5 rounded-full bg-surface-muted"
-    [style.fontSize]="'var(--fs-micro)'"
+    class="shrink-0 inline-flex items-center gap-1.5 font-bold px-2.5 py-0.5 rounded-full bg-surface-muted whitespace-nowrap"
+    [style.fontSize]="'var(--fs-label)'"
     [class.text-text-muted]="row.status === 'Draft'"
     [class.text-info]="row.status === 'InProgress'"
     [class.bg-info-soft]="row.status === 'InProgress'"
@@ -203,28 +188,23 @@
 <ng-template #typeTpl let-row>
   @if (row.workflowType === 'Stage') {
     <span
-      class="inline-flex items-center font-mono px-1.5 py-0.5 border border-accent bg-accent-soft text-accent"
-      [style.fontSize]="'var(--fs-micro)'"
+      class="inline-flex items-center font-semibold px-2 py-0.5 rounded-[var(--radius-sm)] bg-accent-soft text-accent"
+      [style.fontSize]="'var(--fs-label)'"
       >Stage</span
     >
   } @else {
     <span
-      class="inline-flex items-center font-mono px-1.5 py-0.5 border border-border bg-bg text-text-secondary"
-      [style.fontSize]="'var(--fs-micro)'"
+      class="inline-flex items-center font-semibold px-2 py-0.5 rounded-[var(--radius-sm)] bg-sand-soft text-sand-ink"
+      [style.fontSize]="'var(--fs-label)'"
       >Free-style</span
     >
   }
 </ng-template>
 
 <ng-template #progressTpl let-row>
-  <div class="inline-flex items-center gap-2">
-    <span class="inline-block h-1 w-16 bg-border relative">
-      <span
-        class="absolute inset-y-0 start-0 bg-accent"
-        [style.width.%]="row.progressPercentage"
-      ></span>
-    </span>
-    <span class="font-mono text-text-secondary tabular-nums" [style.fontSize]="'var(--fs-label)'">
+  <div class="flex items-center gap-2 w-[var(--w-column-sm)] max-w-full">
+    <pera-progress-bar class="flex-1" [value]="row.progressPercentage" [height]="6" />
+    <span class="fs-caption font-bold text-text-secondary tabular-nums">
       {{ row.progressPercentage }}%
     </span>
   </div>
