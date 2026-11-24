@@ -750,6 +750,18 @@ export const AR: Partial<Record<CatalogKey, string>> = {
   'lead.sourceWebsite': 'الموقع الإلكتروني',
 
   // Leads — office list + detail.
+  // OS-6 — Ocean Studio leads list and preview panel
+  'leads.preview': 'معاينة العميل المحتمل',
+  'leads.closePreview': 'إغلاق المعاينة',
+  'leads.openLead': 'فتح العميل المحتمل',
+  'leads.markContacted': 'تم التواصل',
+  'leads.fPhone': 'الهاتف',
+  'leads.fEmail': 'البريد الإلكتروني',
+  'leads.fArea': 'المساحة',
+  'leads.noIntake': 'لم تُسجَّل بيانات التأهيل بعد.',
+  'leads.allStatuses': 'الكل',
+  'leads.statusChanged': 'تم تحديد العميل المحتمل كتم التواصل معه.',
+  'leads.statusChangeFailed': 'تعذّر تغيير حالة العميل المحتمل.',
   'leads.listTitle': 'العملاء المحتملون',
   'leads.empty': 'لا عملاء محتملون بعد',
   'leads.emptyMsg': 'سجّل عميلاً محتملاً لبدء مسار جمع المتطلبات.',

@@ -809,6 +809,18 @@ export const EN = {
   'lead.statusConverted': 'Converted',
 
   // Leads — office list + detail (lead intake feature).
+  // OS-6 — Ocean Studio leads list and preview panel
+  'leads.preview': 'Lead preview',
+  'leads.closePreview': 'Close preview',
+  'leads.openLead': 'Open lead',
+  'leads.markContacted': 'Mark contacted',
+  'leads.fPhone': 'Phone',
+  'leads.fEmail': 'Email',
+  'leads.fArea': 'Area',
+  'leads.noIntake': 'No intake captured yet.',
+  'leads.allStatuses': 'All',
+  'leads.statusChanged': 'Lead marked as contacted.',
+  'leads.statusChangeFailed': 'Could not change the lead status.',
   'leads.listTitle': 'Leads',
   'leads.empty': 'No leads yet',
   'leads.emptyMsg': 'Capture a prospect to start the requirement-gathering flow.',
