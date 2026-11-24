@@ -18,6 +18,8 @@ const SIZE_CLASS = {
   sm: 'size-[var(--space-8)] fs-label rounded-[var(--radius-md)]',
   md: 'size-[var(--space-10)] fs-body-sm rounded-[var(--radius-control)]',
   lg: 'size-[var(--space-16)] fs-h3 rounded-[var(--radius-card)]',
+  // OS-5: the project header cover (112px; full width on phones via the caller).
+  xl: 'w-[calc(var(--space-16)*1.75)] h-[calc(var(--space-16)*1.75)] max-md:h-[var(--space-16)] fs-h1 rounded-[var(--radius-card)]',
 } as const;
 
 /** A stable, non-cryptographic string hash (djb2). */

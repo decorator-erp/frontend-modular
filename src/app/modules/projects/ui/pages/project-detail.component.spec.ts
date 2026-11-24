@@ -281,7 +281,12 @@ describe('ProjectDetailComponent', () => {
     expect(c.totalTasks()).toBe(3);
     expect(c.doneCount()).toBe(1);
     expect(c.inProgressCount()).toBe(1);
-    expect(c.headerKpis().map((k) => k.caption)).toEqual(['Progress', 'Tasks', 'Days remaining']);
+    expect(c.headerKpis().map((k) => k.caption)).toEqual([
+      'Progress',
+      'Tasks',
+      'Current stage', // OS-5
+      'Days remaining',
+    ]);
     const strip = Array.from(
       (fixture.nativeElement as HTMLElement).querySelectorAll('pera-kpi-tile'),
     )
@@ -307,7 +312,7 @@ describe('ProjectDetailComponent', () => {
       'Activity',
       'Team',
       'Documents',
-      'Risk register',
+      // OS-5: the risk register empty state is dropped.
     ]);
   });
 
@@ -427,17 +432,15 @@ describe('ProjectDetailComponent', () => {
     expect(c.stageOwner('no-team')).toBe(''); // template falls back to —
   });
 
-  it('renders the risk register empty state without asserting unknown project health', () => {
+  it('puts the section links in one nav after the header, with Overview current (OS-5)', () => {
     granted = new Set(ALL);
     const el = render().nativeElement as HTMLElement;
-    expect(el.querySelector('[data-risk-empty] [data-empty-title]')?.textContent).toContain(
-      'No open risks logged',
-    );
-    const sub = el.querySelector('[data-risk-empty] [data-empty-sub]')?.textContent ?? '';
-    expect(sub).toContain('Capture delivery threats');
-    // must NOT fabricate schedule/budget health it can't know
-    expect(sub).not.toContain('clean schedule');
-    expect(sub).not.toContain('Marina Tower');
+    const nav = el.querySelector('[data-section-nav]')!;
+    expect(nav.querySelector('[aria-current="page"]')?.textContent).toContain('Overview');
+    // Navigation lives in the bar; the header keeps only actions (buttons), never links.
+    expect(el.querySelectorAll('[data-header-actions] a')).toHaveLength(0);
+    expect(el.querySelector('[data-header-cover]')).not.toBeNull();
+    expect(el.querySelector('[data-risk-empty]')).toBeNull();
   });
 
   // crm-prod B2-fe part 2: the real ProjectService against a payload in the backend's shape
@@ -545,7 +548,7 @@ describe('ProjectDetailComponent', () => {
       const c = fixture.componentInstance;
       TestBed.inject(LocaleService).locale.set('ar');
       fixture.detectChanges();
-      expect(c.headerKpis()[3]).toMatchObject({
+      expect(c.headerKpis()[4]).toMatchObject({
         caption: 'البوابات',
         value: 1,
         frac: 'معلّقة من 2',
@@ -567,10 +570,11 @@ describe('ProjectDetailComponent', () => {
       expect(c.headerKpis().map((k) => k.caption)).toEqual([
         'Progress',
         'Tasks',
+        'Current stage',
         'Days remaining',
         'Gates',
       ]);
-      expect(c.headerKpis()[3]).toMatchObject({ value: 1, frac: 'pending of 2' });
+      expect(c.headerKpis()[4]).toMatchObject({ value: 1, frac: 'pending of 2' });
 
       expect(c.stages().map((s) => [s.id, s.status])).toEqual([['s1', 'Active']]);
       expect(c.totalTasks()).toBe(2);

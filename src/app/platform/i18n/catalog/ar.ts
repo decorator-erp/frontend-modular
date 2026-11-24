@@ -1218,6 +1218,8 @@ export const AR: Partial<Record<CatalogKey, string>> = {
   'project.backToProjects': 'العودة إلى المشاريع',
   'project.loadFailed': 'تعذّر تحميل المشروع.',
   'project.loadFailedHint': 'تحقّق من الاتصال وحاول مرة أخرى.',
+  // OS-5 — the section nav's first item (this page)
+  'project.overview': 'نظرة عامة',
   'project.kpiGates': 'البوابات',
   'project.kpiGatesPendingOf': 'معلّقة من {total}',
   'clients.fJobTitle': 'الوظيفة',

@@ -1290,6 +1290,8 @@ export const EN = {
   'project.backToProjects': 'Back to projects',
   'project.loadFailed': 'Could not load the project.',
   'project.loadFailedHint': 'Check your connection and try again.',
+  // OS-5 — the section nav's first item (this page)
+  'project.overview': 'Overview',
   'project.kpiGates': 'Gates',
   'project.kpiGatesPendingOf': 'pending of {total}',
   'clients.fJobTitle': 'Job title',
