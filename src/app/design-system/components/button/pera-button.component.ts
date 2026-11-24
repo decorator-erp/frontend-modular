@@ -73,7 +73,9 @@ export class PeraButtonComponent {
 
   readonly classes = computed(() =>
     [
-      'inline-flex items-center justify-center font-medium whitespace-nowrap select-none',
+      'inline-flex items-center justify-center font-semibold whitespace-nowrap select-none',
+      // OS-1 (Ocean Studio): soft controls.
+      'rounded-[var(--radius-control)]',
       'transition-colors cursor-pointer outline-none',
       'focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2',
       this.iconOnly() ? ICON_ONLY_SIZE_CLASSES[this.size()] : SIZE_CLASSES[this.size()],

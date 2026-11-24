@@ -12,13 +12,13 @@
     [class.px-4]="full()"
   >
     <span
-      class="w-icon-lg h-icon-lg rounded-md bg-brand text-on-brand grid place-items-center font-bold fs-caption shrink-0"
+      class="size-[var(--space-8)] rounded-[var(--radius-md)] bg-sand text-sidebar grid place-items-center font-extrabold fs-body shrink-0"
       aria-hidden="true"
       >P</span
     >
     @if (full()) {
       <span class="flex flex-col min-w-0 flex-1 leading-none">
-        <span class="font-semibold fs-body tracking-tight text-sidebar-strong">PERA</span>
+        <span class="font-extrabold fs-body tracking-[0.04em] text-sidebar-strong">PERA</span>
         <span class="fs-micro uppercase tracking-[0.06em] text-sidebar-muted mt-1 truncate"
           >Atelier PERA · Studio</span
         >
@@ -41,7 +41,7 @@
   <button
     type="button"
     (click)="palette.openPalette()"
-    class="my-3 flex items-center rounded-md border border-sidebar-line bg-sidebar-hover text-sidebar-muted cursor-pointer hover:text-sidebar-strong outline-none focus-visible:outline-2 focus-visible:outline-sidebar-active-text"
+    class="my-3 flex items-center rounded-[var(--radius-control)] border border-sidebar-line bg-sidebar-hover text-sidebar-muted cursor-pointer hover:text-sidebar-strong outline-none focus-visible:outline-2 focus-visible:outline-sidebar-active-text"
     [class.mx-3]="full()"
     [class.gap-2]="full()"
     [class.px-2.5]="full()"
@@ -70,7 +70,7 @@
       <div class="flex flex-col gap-0.5" [attr.aria-label]="section.title">
         @if (full()) {
           <div
-            class="px-2.5 pt-1 pb-1.5 fs-micro font-semibold uppercase tracking-[0.08em] text-sidebar-muted"
+            class="px-3 pt-2 pb-1.5 fs-label font-bold uppercase tracking-[0.12em] text-sidebar-muted"
           >
             {{ section.title }}
           </div>
@@ -81,16 +81,16 @@
           @if (canAccess(item)) {
             <a
               [routerLink]="item.route"
-              routerLinkActive="bg-sidebar-active text-sidebar-active-text font-semibold"
+              routerLinkActive="bg-sidebar-active text-sidebar-active-text"
               data-nav-item
-              class="flex items-center gap-2.5 py-2 rounded-md fs-caption text-sidebar-text hover:bg-sidebar-hover hover:text-sidebar-strong outline-none focus-visible:outline-2 focus-visible:outline-sidebar-active-text"
+              class="flex items-center gap-3 py-2.5 rounded-[var(--radius-control)] fs-body-sm font-semibold text-sidebar-text hover:bg-sidebar-hover hover:text-sidebar-strong outline-none focus-visible:outline-2 focus-visible:outline-sidebar-active-text"
               [class.px-2.5]="full()"
               [class.justify-center]="!full()"
               [peraTooltip]="full() ? '' : item.label"
               [attr.aria-label]="item.label"
               (click)="onNavigate()"
             >
-              <pera-icon [name]="item.icon" [size]="full() ? 15 : 17" />
+              <pera-icon [name]="item.icon" [size]="full() ? 17 : 18" />
               @if (full()) {
                 <span class="flex-1 truncate">{{ item.label }}</span>
               }
@@ -98,14 +98,14 @@
           } @else {
             <!-- Rendered but disabled — the capability gate doubles as the tooltip text. -->
             <span
-              class="flex items-center gap-2.5 py-2 fs-caption text-sidebar-muted opacity-60 cursor-not-allowed select-none"
+              class="flex items-center gap-3 py-2.5 fs-body-sm font-semibold text-sidebar-muted opacity-60 cursor-not-allowed select-none"
               [class.px-2.5]="full()"
               [class.justify-center]="!full()"
               [peraTooltip]="'Requires ' + item.capability"
               [attr.aria-label]="item.label + ' — requires ' + item.capability"
               [attr.aria-disabled]="true"
             >
-              <pera-icon [name]="item.icon" [size]="full() ? 15 : 17" />
+              <pera-icon [name]="item.icon" [size]="full() ? 17 : 18" />
               @if (full()) {
                 <span class="flex-1 truncate">{{ item.label }}</span>
               }
@@ -143,7 +143,8 @@
     type="button"
     cdkOverlayOrigin
     #userMenuOrigin="cdkOverlayOrigin"
-    class="m-2.5 flex items-center gap-2.5 p-2 rounded-lg cursor-pointer hover:bg-sidebar-hover outline-none focus-visible:outline-2 focus-visible:outline-sidebar-active-text shrink-0"
+    data-sidebar-user
+    class="m-2.5 flex items-center gap-2.5 p-2.5 rounded-[var(--radius-control)] bg-sidebar-hover cursor-pointer hover:bg-sidebar-line outline-none focus-visible:outline-2 focus-visible:outline-sidebar-active-text shrink-0"
     [class.justify-center]="!full()"
     (click)="menuOpen.set(!menuOpen())"
     [attr.aria-expanded]="menuOpen()"
@@ -154,7 +155,7 @@
     <pera-avatar [name]="userName()" size="sm" />
     @if (full()) {
       <div class="flex flex-col min-w-0 flex-1 leading-tight text-start">
-        <div class="fs-caption font-medium truncate text-sidebar-strong">{{ userName() }}</div>
+        <div class="fs-body-sm font-bold truncate text-sidebar-strong">{{ userName() }}</div>
         <div class="fs-micro text-sidebar-muted truncate">{{ userEmail() }}</div>
       </div>
       <pera-icon name="more-horizontal" [size]="16" class="text-sidebar-muted" />

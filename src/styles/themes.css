@@ -42,6 +42,10 @@
   --danger-500: #ef7c7c;
   --info-500: #7fb0e8;
   --accent-500: #5cb3e0;
+  /* OS-1: sand, dark mode. */
+  --sand-500: #d4b88e;
+  --sand-50: rgba(212, 184, 142, 0.14);
+  --sand-700: #e6cfa9;
 
   /* Kit alias layer — dark overrides (Phase 1). Tokens that alias --color-*
      (--bg, --surface, --border, --ink, --primary*, --accent, --on-accent)

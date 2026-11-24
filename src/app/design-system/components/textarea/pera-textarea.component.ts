@@ -46,7 +46,7 @@ export class PeraTextareaComponent implements ControlValueAccessor {
 
   readonly classes = computed(() =>
     [
-      'w-full px-3 py-2 bg-surface text-text-primary border rounded-sm outline-none text-sm resize-y',
+      'w-full px-3 py-2 bg-surface text-text-primary border rounded-[var(--radius-control)] outline-none text-sm resize-y',
       'placeholder:text-text-muted',
       'focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2',
       this.error() ? 'border-danger' : 'border-border',

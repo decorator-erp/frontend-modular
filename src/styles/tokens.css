@@ -23,6 +23,12 @@
   /* PendingApproval — the one hue outside the core ramp (DMS dashboards). */
   --pending-500: #6b4fb8;
   --pending-50: #f0ebf9;
+  /* OS-1 (Ocean Studio): the sand secondary. --sand-500 is decoration only (brand
+     mark, chart segments, the phone New button ring) — never text. Text on the
+     soft fill uses --sand-700 (7:1 on --sand-50). */
+  --sand-500: #c8a97e;
+  --sand-50: #f4ecdf;
+  --sand-700: #6e4f22;
 
   /* Semantic — light */
   --color-bg: var(--gray-50);
@@ -139,14 +145,16 @@
   --radius-lg: 12px;
   --radius-full: 9999px;
   /* RD-1: cards, panels and tables are soft rounded (the owner's pick) — was 0. */
-  --radius-card: 12px;
+  --radius-card: 16px; /* OS-1: 12 → 16 (Ocean Studio) */
+  /* OS-1: buttons, inputs, search fields and segmented controls. */
+  --radius-control: 12px;
 
   /* Shadow */
   --shadow-sm: 0 1px 2px rgba(17, 17, 17, 0.04);
   --shadow-md: 0 4px 12px rgba(17, 17, 17, 0.06);
   --shadow-lg: 0 12px 32px rgba(17, 17, 17, 0.08);
   /* RD-1 soft rounded cards: a light double shadow under every `rounded-card`. */
-  --shadow-card: 0 1px 2px rgba(12, 26, 38, 0.05), 0 6px 18px rgba(12, 26, 38, 0.06);
+  --shadow-card: 0 1px 2px rgba(12, 26, 38, 0.06), 0 4px 16px rgba(12, 26, 38, 0.05);
 
   /* Motion */
   --dur-fast: 120ms;
@@ -156,7 +164,7 @@
   --ease-in: cubic-bezier(0.4, 0, 1, 1);
 
   /* Typography */
-  --font-sans: 'Inter', 'Noto Sans Arabic', sans-serif;
+  --font-sans: 'Manrope', 'Noto Sans Arabic', sans-serif;
   /* Locked template (colors_and_type.css) collapses "mono" to Inter — no mono
      labels, no JetBrains. Kept as an alias so `font-mono` utilities still work. */
   --font-mono: var(--font-sans);
@@ -290,7 +298,7 @@
   /* Type & layout constants */
   --sans: var(--font-sans);
   --mono: var(--font-sans); /* see --font-mono note above */
-  --arabic: 'Noto Sans Arabic', 'Inter', system-ui, sans-serif;
+  --arabic: 'Noto Sans Arabic', 'Manrope', system-ui, sans-serif;
   /* v2 DS migration (002): icon-only sidebar — was 216px, now 56px (permanent,
      no expand state per spec clarification Q3). Shell lays out from this token. */
   /* RD-1: the dark brand sidebar. Full width on desktop, the icon rail when the
@@ -305,7 +313,7 @@
   /* Page filter rail (clients / employees list pages) — a content column, not the
      nav sidebar. Tokenized to drop the raw 216px literal and decouple from --sidebar-w. */
   --filter-rail-w: 216px;
-  --topbar-h: 52px;
+  --topbar-h: 64px; /* OS-2: 52 → 64 (Ocean Studio) */
 }
 
 @theme {
@@ -334,6 +342,10 @@
   --color-info-soft: var(--info-50);
   --color-pending: var(--color-pending);
   --color-pending-soft: var(--color-pending-soft);
+  /* OS-1: bg-sand, bg-sand-soft, text-sand-ink. */
+  --color-sand: var(--sand-500);
+  --color-sand-soft: var(--sand-50);
+  --color-sand-ink: var(--sand-700);
 
   /* 003 — RAG health + data-viz utilities. Additive: these are new names, so no
      existing utility changes. Spacing deliberately stays at its current rungs;
@@ -377,6 +389,7 @@
   --radius-lg: var(--radius-lg);
   --radius-full: var(--radius-full);
   --radius-card: var(--radius-card);
+  --radius-control: var(--radius-control);
 
   --shadow-sm: var(--shadow-sm);
   --shadow-md: var(--shadow-md);

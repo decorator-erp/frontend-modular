@@ -158,7 +158,7 @@ export class PeraSelectComponent implements ControlValueAccessor {
     }
 
     return [
-      'w-full px-3 bg-surface text-text-primary border rounded-sm outline-none',
+      'w-full px-3 bg-surface text-text-primary border rounded-[var(--radius-control)] outline-none',
       'inline-flex items-center gap-2 text-start cursor-pointer',
       'focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2',
       this.size() === 'sm'

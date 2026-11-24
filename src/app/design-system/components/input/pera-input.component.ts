@@ -81,7 +81,7 @@ export class PeraInputComponent implements ControlValueAccessor {
 
   readonly classes = computed(() =>
     [
-      'w-full px-3 bg-surface text-text-primary border rounded-sm outline-none',
+      'w-full px-3 bg-surface text-text-primary border rounded-[var(--radius-control)] outline-none',
       'placeholder:text-text-muted',
       'focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2',
       HEIGHT[this.size()],

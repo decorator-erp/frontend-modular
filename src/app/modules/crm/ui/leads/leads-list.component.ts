@@ -9,7 +9,8 @@ import {
   viewChild,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Subscription, catchError, of } from 'rxjs';
 import { CrmLeadService, type CrmLead } from '../../data/crm-lead.service';
 import { CatalogService } from '@platform/i18n/catalog.service';
@@ -242,6 +243,7 @@ export class CrmLeadsListComponent implements OnInit {
   private readonly directory = inject(EmployeeService);
   private readonly modal = inject(ModalService);
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
   protected readonly catalog = inject(CatalogService);
   protected readonly PERM = PERM;
 
@@ -321,6 +323,21 @@ export class CrmLeadsListComponent implements OnInit {
     action: () => void this.openNew(),
     capability: PERM.crm.leads.create,
   }));
+
+  constructor() {
+    // OS-2: the phone tab bar's centre "New lead" lands here with `?new=1`. Open the form, then
+    // drop the flag so Back or a refresh does not reopen it.
+    this.route.queryParamMap.pipe(takeUntilDestroyed()).subscribe((q) => {
+      if (q.get('new') !== '1') return;
+      void this.router.navigate([], {
+        relativeTo: this.route,
+        queryParams: { new: null },
+        queryParamsHandling: 'merge',
+        replaceUrl: true,
+      });
+      void this.openNew();
+    });
+  }
 
   setView(v: 'cards' | 'table'): void {
     this.view.set(v);

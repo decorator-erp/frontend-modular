@@ -34,7 +34,12 @@ export interface SegmentedOption {
   ],
   host: { class: 'block' },
   template: `
-    <div class="flex flex-wrap gap-2" role="radiogroup" [attr.aria-label]="ariaLabel() || null">
+    <!-- OS-1 (Ocean Studio): one rounded track; the picked option is filled navy. -->
+    <div
+      class="inline-flex flex-wrap gap-1 p-1 rounded-[var(--radius-control)] bg-surface border border-border"
+      role="radiogroup"
+      [attr.aria-label]="ariaLabel() || null"
+    >
       @for (opt of options(); track $index) {
         <button
           type="button"
@@ -43,16 +48,14 @@ export interface SegmentedOption {
           [disabled]="isDisabled() || opt.disabled"
           (click)="pick(opt)"
           (blur)="onTouched()"
-          class="text-xs leading-normal font-medium px-3 py-2 border cursor-pointer transition-colors
+          class="fs-body-sm leading-normal font-semibold px-3 py-1.5 rounded-[var(--radius-md)] cursor-pointer transition-colors
                  outline-none focus-visible:outline-2 focus-visible:outline-accent
                  disabled:opacity-45 disabled:cursor-not-allowed"
-          [class.bg-text-primary]="isSelected(opt)"
-          [class.text-bg]="isSelected(opt)"
-          [class.border-text-primary]="isSelected(opt)"
-          [class.bg-surface]="!isSelected(opt)"
+          [class.bg-sidebar]="isSelected(opt)"
+          [class.text-sidebar-active-text]="isSelected(opt)"
           [class.text-text-secondary]="!isSelected(opt)"
-          [class.border-border-strong]="!isSelected(opt)"
-          [class.hover:border-text-muted]="!isSelected(opt)"
+          [class.hover:bg-surface-muted]="!isSelected(opt)"
+          [class.hover:text-text-primary]="!isSelected(opt)"
         >
           {{ opt.label }}
         </button>

@@ -1,9 +1,10 @@
 @font-face {
-  font-family: 'Inter';
+  /* OS-1 (Ocean Studio): Manrope replaces Inter for Latin text. Variable, 200–800. */
+  font-family: 'Manrope';
   font-style: normal;
-  font-weight: 100 900;
+  font-weight: 200 800;
   font-display: swap;
-  src: url('/fonts/Inter-Variable.ttf') format('truetype-variations');
+  src: url('/fonts/Manrope-Variable.ttf') format('truetype-variations');
 }
 
 @font-face {
